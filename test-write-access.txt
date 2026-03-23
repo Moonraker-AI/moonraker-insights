@@ -1,1 +1,0 @@
-Write access test via git CLI + PAT — March 23, 2026. Safe to delete.
