@@ -1,0 +1,463 @@
+<!DOCTYPE html>
+<html lang="en" data-theme="light">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Moonraker x Sky Therapies: Progress Tracker</title>
+<style>
+@import url('https://fonts.googleapis.com/css2?family=Outfit:wght@400;600;700&display=swap');
+@import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600&display=swap');
+
+:root, [data-theme="light"] {
+  --color-primary: #00D47E;
+  --color-primary-hover: #00b86c;
+  --color-primary-light: #B4EEE0;
+  --color-primary-subtle: #DDF8F2;
+  --color-bg: #F7FDFB;
+  --color-surface: #FFFFFF;
+  --color-border: #E2E8F0;
+  --color-heading: #1E2A5E;
+  --color-body: #333F70;
+  --color-muted: #6B7599;
+  --color-navy: #141C3A;
+  --color-success: #00D47E;
+  --color-warning: #F59E0B;
+  --color-danger: #EF4444;
+  --color-info: #3B82F6;
+}
+[data-theme="dark"] {
+  --color-primary: #00D47E;
+  --color-primary-hover: #00f598;
+  --color-primary-light: #1A4A38;
+  --color-primary-subtle: #0D2E22;
+  --color-bg: #080F0B;
+  --color-surface: #0E1A14;
+  --color-border: #1E3530;
+  --color-heading: #E8F5EF;
+  --color-body: #C8D8D0;
+  --color-muted: #5A7A6E;
+  --color-navy: #0A1630;
+  --color-success: #00D47E;
+  --color-warning: #F59E0B;
+  --color-danger: #FF6B6B;
+  --color-info: #60A5FA;
+}
+
+*, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+html { scroll-behavior: smooth; font-size: 16px; }
+body { font-family: 'Inter', -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif; font-weight: 400; color: var(--color-body); background: var(--color-bg); line-height: 1.7; -webkit-font-smoothing: antialiased; transition: background .3s ease, color .3s ease; }
+h1, h2, h3, h4 { font-family: 'Outfit', sans-serif; font-weight: 700; color: var(--color-heading); line-height: 1.15; }
+h1 { font-size: 2.75rem; letter-spacing: -0.02em; }
+h2 { font-size: 2rem; margin-bottom: .75rem; letter-spacing: -0.01em; }
+h3 { font-size: 1.35rem; }
+h4 { font-size: 1.15rem; }
+p { margin-bottom: 1rem; }
+a { color: var(--color-primary); text-decoration: none; transition: color .2s; }
+a:hover { color: var(--color-primary-hover); }
+strong { font-weight: 600; color: var(--color-heading); }
+
+.progress-bar { position: fixed; top: 0; left: 0; height: 3px; background: var(--color-primary); width: 0%; z-index: 999; transition: width .3s ease; box-shadow: 0 0 8px rgba(0,212,126,.4); }
+
+.container { max-width: 1060px; margin: 0 auto; padding: 0 3rem; }
+@media (max-width: 768px) { .container { padding: 0 1.5rem; } }
+section { padding: 4.5rem 0; }
+.divider { height: 1px; background: var(--color-border); border: none; margin: 0; }
+
+.theme-toggle { position: fixed; top: 1.25rem; right: 1.25rem; z-index: 200; background: var(--color-surface); border: 1px solid var(--color-border); border-radius: 50%; width: 40px; height: 40px; cursor: pointer; display: flex; align-items: center; justify-content: center; font-size: 1.15rem; transition: all .25s ease; box-shadow: 0 2px 8px rgba(0,0,0,.06); }
+.theme-toggle:hover { border-color: var(--color-primary); box-shadow: 0 2px 12px rgba(0,212,126,.15); }
+
+.header { background: var(--color-navy); padding: 2rem 0; position: relative; overflow: hidden; }
+.header::before { content: ''; position: absolute; top: -60%; right: -10%; width: 500px; height: 500px; background: radial-gradient(circle, rgba(0,212,126,.08) 0%, transparent 70%); pointer-events: none; }
+.header-inner { display: flex; justify-content: space-between; align-items: center; flex-wrap: wrap; gap: 1rem; }
+.header img { height: 36px; }
+.header-meta { text-align: right; }
+.header-meta p { margin: 0; font-size: .8125rem; color: rgba(232,245,239,.45); }
+.header-meta .name { color: #E8F5EF; font-weight: 600; font-size: .9375rem; }
+
+/* Progress dashboard */
+.dashboard { display: grid; grid-template-columns: 200px 1fr; gap: 2.5rem; align-items: start; margin: 2rem 0 1rem; }
+@media (max-width: 768px) { .dashboard { grid-template-columns: 1fr; justify-items: center; } }
+.ring-container { position: relative; width: 180px; height: 180px; }
+.ring-container svg { width: 100%; height: 100%; }
+.ring-container .ring-bg { fill: none; stroke: var(--color-border); stroke-width: 8; }
+.ring-container .ring-fg { fill: none; stroke: var(--color-primary); stroke-width: 8; stroke-linecap: round; transform: rotate(-90deg); transform-origin: center; transition: stroke-dashoffset .8s cubic-bezier(.4,0,.2,1); }
+.ring-center { position: absolute; top: 50%; left: 50%; transform: translate(-50%,-50%); text-align: center; }
+.ring-pct { font-family: 'Outfit', sans-serif; font-weight: 700; font-size: 2.5rem; color: var(--color-heading); line-height: 1; }
+.ring-label { font-size: .75rem; color: var(--color-muted); font-weight: 500; margin-top: .25rem; }
+
+.stats-grid { display: grid; grid-template-columns: repeat(3, 1fr); gap: .75rem; }
+@media (max-width: 480px) { .stats-grid { grid-template-columns: 1fr; } }
+.stat-card { background: var(--color-surface); border: 1px solid var(--color-border); border-radius: 12px; padding: 1rem 1.25rem; text-align: center; }
+.stat-num { font-family: 'Outfit', sans-serif; font-weight: 700; font-size: 1.75rem; line-height: 1.1; }
+.stat-num.s-done { color: var(--color-success); }
+.stat-num.s-progress { color: var(--color-info); }
+.stat-num.s-todo { color: var(--color-muted); }
+.stat-label { font-size: .75rem; color: var(--color-muted); font-weight: 500; margin-top: .15rem; }
+
+/* Filter bar */
+.filter-bar { display: flex; flex-wrap: wrap; gap: .5rem; margin: 2rem 0 1.5rem; }
+.filter-btn { background: var(--color-surface); border: 1px solid var(--color-border); border-radius: 100px; padding: .4rem 1rem; font-size: .8125rem; font-weight: 600; font-family: 'Inter', sans-serif; color: var(--color-muted); cursor: pointer; transition: all .2s ease; }
+.filter-btn:hover { border-color: var(--color-primary); color: var(--color-heading); }
+.filter-btn.active { background: var(--color-primary-subtle); border-color: var(--color-primary); color: var(--color-primary); }
+
+/* Phase groups */
+.phase-group { margin-bottom: 2rem; }
+.phase-group-header { display: flex; align-items: center; gap: .75rem; margin-bottom: .75rem; padding-bottom: .5rem; border-bottom: 1px solid var(--color-border); }
+.phase-dot { width: 10px; height: 10px; border-radius: 50%; flex-shrink: 0; }
+.phase-dot.p1 { background: var(--color-danger); }
+.phase-dot.p2 { background: var(--color-warning); }
+.phase-dot.p3 { background: var(--color-success); }
+.phase-group-header h3 { font-size: 1.1rem; margin: 0; }
+.phase-group-header .phase-count { font-size: .75rem; color: var(--color-muted); font-weight: 500; margin-left: auto; }
+
+/* Task rows */
+.task-row { display: grid; grid-template-columns: auto 1fr auto; gap: 1rem; align-items: center; padding: 1rem 1.25rem; background: var(--color-surface); border: 1px solid var(--color-border); border-radius: 12px; margin-bottom: .5rem; transition: all .25s ease; cursor: pointer; user-select: none; }
+.task-row:hover { border-color: var(--color-primary); box-shadow: 0 2px 12px rgba(0,212,126,.06); }
+.task-row.is-complete { opacity: .6; }
+.task-row.is-complete .task-title { text-decoration: line-through; }
+
+.task-checkbox { width: 28px; height: 28px; border-radius: 8px; border: 2px solid var(--color-border); display: flex; align-items: center; justify-content: center; flex-shrink: 0; transition: all .25s ease; font-size: .875rem; }
+.task-row.is-not-started .task-checkbox { border-color: var(--color-border); background: transparent; }
+.task-row.is-in-progress .task-checkbox { border-color: var(--color-info); background: rgba(59,130,246,.1); color: var(--color-info); }
+.task-row.is-complete .task-checkbox { border-color: var(--color-success); background: var(--color-success); color: #fff; }
+
+.task-content { min-width: 0; }
+.task-title { font-family: 'Outfit', sans-serif; font-weight: 600; font-size: .9375rem; color: var(--color-heading); margin-bottom: .15rem; transition: all .2s ease; }
+.task-meta { font-size: .8125rem; color: var(--color-muted); display: flex; flex-wrap: wrap; gap: .5rem; align-items: center; }
+.task-meta .sep { opacity: .3; }
+
+.task-status-badge { font-size: .6875rem; font-weight: 600; text-transform: uppercase; letter-spacing: .03em; padding: .2rem .6rem; border-radius: 100px; white-space: nowrap; transition: all .2s ease; }
+.task-status-badge.s-not-started { background: rgba(107,117,153,.08); color: var(--color-muted); }
+.task-status-badge.s-in-progress { background: rgba(59,130,246,.1); color: var(--color-info); }
+.task-status-badge.s-complete { background: rgba(0,212,126,.1); color: var(--color-success); }
+
+/* Audit nav */
+.audit-nav { display: flex; flex-wrap: wrap; gap: 1rem; margin: 2rem 0; }
+.audit-nav-link { display: flex; align-items: center; gap: .75rem; background: var(--color-surface); border: 1px solid var(--color-border); border-radius: 12px; padding: 1rem 1.5rem; flex: 1; min-width: 200px; transition: all .25s ease; text-decoration: none; color: var(--color-body); }
+.audit-nav-link:hover { border-color: var(--color-primary); box-shadow: 0 4px 16px rgba(0,212,126,.1); transform: translateY(-2px); color: var(--color-body); }
+.audit-nav-link .nav-icon { font-size: 1.5rem; }
+.audit-nav-link h4 { margin-bottom: .15rem; font-size: .9375rem; }
+.audit-nav-link p { margin: 0; font-size: .8125rem; color: var(--color-muted); }
+
+.cta-btn { display: inline-block; background: var(--color-primary); color: #fff; font-weight: 600; font-size: 1rem; padding: .875rem 2rem; border-radius: 10px; transition: all .25s ease; text-decoration: none; }
+.cta-btn:hover { background: var(--color-primary-hover); color: #fff; transform: translateY(-1px); box-shadow: 0 6px 20px rgba(0,212,126,.3); }
+.cta-btn-outline { display: inline-block; background: transparent; color: var(--color-primary); font-weight: 600; font-size: .9375rem; padding: .7rem 1.75rem; border-radius: 10px; border: 2px solid var(--color-primary); transition: all .2s ease; text-decoration: none; }
+.cta-btn-outline:hover { background: var(--color-primary-subtle); color: var(--color-primary); }
+.cta-group { display: flex; flex-wrap: wrap; justify-content: center; gap: 1rem; margin-top: 2.5rem; }
+
+.confidential { text-align: center; padding: 2rem 0; color: var(--color-muted); font-size: .8125rem; letter-spacing: .04em; }
+.footer { background: var(--color-navy); padding: 3rem 0; text-align: center; color: rgba(232,245,239,.4); font-size: .8125rem; }
+.footer img { height: 28px; margin-bottom: .75rem; opacity: .6; }
+.footer a { color: var(--color-primary); }
+
+.last-saved { text-align: center; font-size: .75rem; color: var(--color-muted); margin-top: 1rem; }
+
+@media print {
+  .theme-toggle, .progress-bar, .filter-bar { display: none !important; }
+  .task-row { break-inside: avoid; }
+  body { -webkit-print-color-adjust: exact; print-color-adjust: exact; }
+}
+</style>
+</head>
+<body>
+
+<div class="progress-bar" id="progressBar"></div>
+<button class="theme-toggle" title="Toggle dark mode" id="themeBtn" aria-label="Toggle dark mode">&#x1F319;</button>
+
+<header class="header">
+  <div class="container header-inner">
+    <img src="https://moonraker.ai/wp-content/uploads/2023/10/Moonraker-Logo-Transparent.png" alt="Moonraker">
+    <div class="header-meta">
+      <p class="name">Prepared for Anna Skomorovskaia, MSW, BASc, RSW, RD</p>
+      <p>Sky Therapies &middot; Toronto, Ontario</p>
+      <p>March 24, 2026 &middot; Confidential</p>
+    </div>
+  </div>
+</header>
+
+<section id="tracker">
+  <div class="container">
+    <h1 style="margin-bottom:.5rem;">Progress Tracker</h1>
+    <p style="color:var(--color-muted);margin-bottom:0;">Click any task to cycle its status. Your progress is saved automatically.</p>
+
+    <div class="dashboard">
+      <div class="ring-container">
+        <svg viewBox="0 0 200 200">
+          <circle class="ring-bg" cx="100" cy="100" r="85"/>
+          <circle class="ring-fg" id="progressRing" cx="100" cy="100" r="85" stroke-dasharray="534.07" stroke-dashoffset="534.07"/>
+        </svg>
+        <div class="ring-center">
+          <div class="ring-pct" id="pctDisplay">0%</div>
+          <div class="ring-label">Complete</div>
+        </div>
+      </div>
+      <div>
+        <div class="stats-grid">
+          <div class="stat-card"><div class="stat-num s-done" id="countDone">0</div><div class="stat-label">Complete</div></div>
+          <div class="stat-card"><div class="stat-num s-progress" id="countProgress">0</div><div class="stat-label">In Progress</div></div>
+          <div class="stat-card"><div class="stat-num s-todo" id="countTodo">25</div><div class="stat-label">Not Started</div></div>
+        </div>
+        <div class="stats-grid" style="margin-top:.75rem;">
+          <div class="stat-card"><div class="stat-num" style="color:var(--color-danger);" id="countP1">0<span style="font-size:.875rem;opacity:.4">/8</span></div><div class="stat-label">P1 Critical</div></div>
+          <div class="stat-card"><div class="stat-num" style="color:var(--color-warning);" id="countP2">0<span style="font-size:.875rem;opacity:.4">/13</span></div><div class="stat-label">P2 Important</div></div>
+          <div class="stat-card"><div class="stat-num" style="color:var(--color-success);" id="countP3">0<span style="font-size:.875rem;opacity:.4">/4</span></div><div class="stat-label">P3 Maintenance</div></div>
+        </div>
+      </div>
+    </div>
+
+    <div class="filter-bar" id="filterBar">
+      <button class="filter-btn active" data-filter="all">All (25)</button>
+      <button class="filter-btn" data-filter="p1">P1 Critical</button>
+      <button class="filter-btn" data-filter="p2">P2 Important</button>
+      <button class="filter-btn" data-filter="p3">P3 Maintenance</button>
+      <button class="filter-btn" data-filter="not-started">Not Started</button>
+      <button class="filter-btn" data-filter="in-progress">In Progress</button>
+      <button class="filter-btn" data-filter="complete">Complete</button>
+    </div>
+
+    <div id="taskContainer"></div>
+    <div class="last-saved" id="lastSaved"></div>
+  </div>
+</section>
+
+<hr class="divider">
+
+<section>
+  <div class="container">
+    <h2>Navigate Your Audit</h2>
+    <div class="audit-nav">
+      <a href="/sky-therapies/diagnosis" class="audit-nav-link">
+        <span class="nav-icon">&#128269;</span>
+        <div>
+          <h4>View Diagnosis</h4>
+          <p>CORE assessment, findings, and opportunity analysis</p>
+        </div>
+      </a>
+      <a href="/sky-therapies/action-plan" class="audit-nav-link">
+        <span class="nav-icon">&#128203;</span>
+        <div>
+          <h4>View Action Plan</h4>
+          <p>Phased roadmap with priorities and timelines</p>
+        </div>
+      </a>
+    </div>
+    <div class="cta-group">
+      <a href="https://msg.moonraker.ai/widget/bookings/scott-pope-calendar" class="cta-btn" target="_blank">Book a Call to Review Progress</a>
+      <a href="mailto:support@moonraker.ai" class="cta-btn-outline">Email Us With Questions</a>
+    </div>
+  </div>
+</section>
+
+<div class="confidential"><div class="container">This report is confidential and prepared exclusively for Anna Skomorovskaia, MSW, BASc, RSW, RD.<br>&copy; 2026 Moonraker AI &middot; moonraker.ai</div></div>
+<footer class="footer"><div class="container"><img src="https://moonraker.ai/wp-content/uploads/2023/10/Moonraker-Logo-Transparent.png" alt="Moonraker"><br><a href="https://moonraker.ai">moonraker.ai</a></div></footer>
+
+<script>
+(function() {
+  // ============================================================
+  // CONFIGURATION
+  // To enable Supabase persistence (shared state), set these:
+  // var SUPABASE_URL = 'https://ofmmwcjhdrhvxxkhcuww.supabase.co';
+  // var SUPABASE_ANON_KEY = 'your-anon-key-here';
+  // var CLIENT_SLUG = 'sky-therapies';
+  // When not set, falls back to localStorage.
+  // ============================================================
+
+  var STORAGE_KEY = 'moonraker-progress-sky-therapies';
+
+  // Task data - all 25 tasks from the action plan
+  var TASKS = [
+    // P1 Critical - Entity Identity & Schema (Phase 6)
+    { id: 1, title: 'Create and deploy brand.jsonld entity identity file', phase: 'Entity Identity + Schema', priority: 'p1', owner: 'Dev / SEO', time: '1-2 days', impact: 'Entity Recognition 0 > 40-60' },
+    { id: 2, title: 'Add AggregateRating schema to homepage', phase: 'Entity Identity + Schema', priority: 'p1', owner: 'Dev', time: '1 day', impact: 'Reputation: None > Moderate' },
+    { id: 3, title: 'Move H1 into main content block', phase: 'Entity Identity + Schema', priority: 'p1', owner: 'Dev / Writer', time: '1-2 days', impact: 'AI Extraction 55 > 65-70' },
+    { id: 4, title: 'Source or attribute outcome statistics (80%, 98%, 67%)', phase: 'Entity Identity + Schema', priority: 'p1', owner: 'Owner / Writer', time: '2-3 days', impact: 'First-Party Evidence 1/5 > 3-4/5' },
+    { id: 5, title: 'Resolve GBP data integrity issue', phase: 'Entity Identity + Schema', priority: 'p1', owner: 'Owner', time: '1 day', impact: 'Local entity anchor' },
+    { id: 6, title: 'Standardize schema @id and brand name', phase: 'Entity Identity + Schema', priority: 'p1', owner: 'Dev', time: '1 day', impact: 'Entity coherence 80 > 95+' },
+    { id: 7, title: 'Add VideoObject schema for embedded video', phase: 'Entity Identity + Schema', priority: 'p1', owner: 'Dev', time: '1 day', impact: 'Schema stack 0.72 > 0.80+' },
+    // P1 Critical - Prep (Phase 1)
+    { id: 8, title: 'Verify GBP listing: name, phone, website, photos, hours', phase: 'Prep + Strategy', priority: 'p1', owner: 'Owner', time: '1 day', impact: 'GBP data integrity' },
+    // P2 Important - Content (Phase 2)
+    { id: 9, title: 'Replace opening narrative with entity definition block', phase: 'Content Structure', priority: 'p2', owner: 'Writer', time: '1 day', impact: 'Definition phase 40 > 70+' },
+    { id: 10, title: 'Add "Our Clinical Approaches" section with modality depth', phase: 'Content Structure', priority: 'p2', owner: 'Writer / Dev', time: '2-3 days', impact: 'Topical Depth 62 > 75+' },
+    { id: 11, title: 'Surface RSW + RD bridging differentiator in headings', phase: 'Content Structure', priority: 'p2', owner: 'Writer', time: '1 day', impact: 'Unique Value: Moderate > High' },
+    { id: 12, title: 'Add comparison table (mind-body vs. standard therapy)', phase: 'Content Structure', priority: 'p2', owner: 'Writer', time: '1 day', impact: 'Comparison TEPM 20 > 50+' },
+    { id: 13, title: 'Add video transcript / key points summary', phase: 'Content Structure', priority: 'p2', owner: 'Writer / Dev', time: '1 day', impact: 'Video-Text reinforcement 0 > 50+' },
+    // P2 Important - FAQs (Phase 3)
+    { id: 14, title: 'Write and place 10 FAQ questions', phase: 'FAQ Content + Schema', priority: 'p2', owner: 'Writer', time: '2 days', impact: 'FAQ Coverage 0.25 > 0.50+' },
+    { id: 15, title: 'Implement FAQPage schema markup', phase: 'FAQ Content + Schema', priority: 'p2', owner: 'Dev', time: '1 day', impact: 'AI extraction in Claude/Perplexity/Bing' },
+    // P2 Important - Off-Page (Phase 7)
+    { id: 16, title: 'Standardize NAP across all directory listings', phase: 'Off-Page + Brand Signals', priority: 'p2', owner: 'Marketing', time: '2-3 days', impact: 'Entity consistency' },
+    { id: 17, title: 'Optimize Psychology Today profile for AI extraction', phase: 'Off-Page + Brand Signals', priority: 'p2', owner: 'Writer / Owner', time: '1 day', impact: 'PT ranks #2 and #7' },
+    { id: 18, title: 'Build Reddit community presence (educational posts)', phase: 'Off-Page + Brand Signals', priority: 'p2', owner: 'Owner / Marketing', time: 'Ongoing', impact: 'Reddit: 0 > Present' },
+    { id: 19, title: 'Publish LinkedIn article on mind-body framework', phase: 'Off-Page + Brand Signals', priority: 'p2', owner: 'Writer / Marketing', time: '1-2 days', impact: 'ChatGPT Amplifying gap' },
+    // P2 Important - Media (Phase 5)
+    { id: 20, title: 'Fix "Deression therapy" alt text typo', phase: 'Images, Video + Audio', priority: 'p2', owner: 'Dev / Writer', time: '5 minutes', impact: 'Image quality' },
+    { id: 21, title: 'Produce YouTube explainer video (mind-body + chronic pain)', phase: 'Images, Video + Audio', priority: 'p2', owner: 'Owner / Marketing', time: '1 week', impact: 'Video 58 > 68+' },
+    { id: 22, title: 'Record 60-90 second audio explainer', phase: 'Images, Video + Audio', priority: 'p2', owner: 'Owner', time: '30 minutes', impact: 'Audio 0 > 30+' },
+    // P3 Maintenance - QA (Phase 8)
+    { id: 23, title: 'Add Service schema for individual therapy modalities', phase: 'QA + Re-Run', priority: 'p3', owner: 'Dev', time: '1-2 days', impact: 'Parallel dataset extraction' },
+    { id: 24, title: 'Complete full QA checklist (content + technical + claims)', phase: 'QA + Re-Run', priority: 'p3', owner: 'Dev / SEO / Owner', time: '1 day', impact: 'Quality assurance' },
+    { id: 25, title: 'Re-run Surge analysis (14+ days post-implementation)', phase: 'QA + Re-Run', priority: 'p3', owner: 'SEO', time: '14+ days', impact: 'Variance 37 > 20-25' }
+  ];
+
+  // Status cycle: not-started -> in-progress -> complete -> not-started
+  var STATUS_CYCLE = ['not-started', 'in-progress', 'complete'];
+  var STATUS_LABELS = { 'not-started': 'Not Started', 'in-progress': 'In Progress', 'complete': 'Complete' };
+  var STATUS_CLASSES = { 'not-started': 's-not-started', 'in-progress': 's-in-progress', 'complete': 's-complete' };
+  var CHECKBOX_ICONS = { 'not-started': '', 'in-progress': '&#9679;', 'complete': '&#10003;' };
+
+  // State
+  var taskStatuses = {};
+  var currentFilter = 'all';
+
+  // Load from localStorage
+  function loadState() {
+    try {
+      var saved = localStorage.getItem(STORAGE_KEY);
+      if (saved) { taskStatuses = JSON.parse(saved); }
+    } catch(e) {}
+    TASKS.forEach(function(t) { if (!taskStatuses[t.id]) taskStatuses[t.id] = 'not-started'; });
+  }
+
+  function saveState() {
+    try {
+      localStorage.setItem(STORAGE_KEY, JSON.stringify(taskStatuses));
+      var now = new Date();
+      document.getElementById('lastSaved').textContent = 'Last saved: ' + now.toLocaleString();
+    } catch(e) {}
+  }
+
+  function cycleStatus(id) {
+    var current = taskStatuses[id] || 'not-started';
+    var idx = STATUS_CYCLE.indexOf(current);
+    taskStatuses[id] = STATUS_CYCLE[(idx + 1) % STATUS_CYCLE.length];
+    saveState();
+    render();
+  }
+
+  // Counting
+  function getCounts() {
+    var done = 0, progress = 0, todo = 0;
+    var p1Done = 0, p2Done = 0, p3Done = 0;
+    TASKS.forEach(function(t) {
+      var s = taskStatuses[t.id] || 'not-started';
+      if (s === 'complete') { done++; if (t.priority === 'p1') p1Done++; if (t.priority === 'p2') p2Done++; if (t.priority === 'p3') p3Done++; }
+      else if (s === 'in-progress') progress++;
+      else todo++;
+    });
+    return { done: done, progress: progress, todo: todo, p1Done: p1Done, p2Done: p2Done, p3Done: p3Done, total: TASKS.length };
+  }
+
+  // Group tasks by phase
+  function groupByPhase(tasks) {
+    var groups = [];
+    var seen = {};
+    tasks.forEach(function(t) {
+      if (!seen[t.phase]) { seen[t.phase] = { name: t.phase, priority: t.priority, tasks: [] }; groups.push(seen[t.phase]); }
+      seen[t.phase].tasks.push(t);
+    });
+    return groups;
+  }
+
+  // Filter tasks
+  function getFilteredTasks() {
+    return TASKS.filter(function(t) {
+      if (currentFilter === 'all') return true;
+      if (currentFilter === 'p1' || currentFilter === 'p2' || currentFilter === 'p3') return t.priority === currentFilter;
+      var s = taskStatuses[t.id] || 'not-started';
+      if (currentFilter === 'not-started') return s === 'not-started';
+      if (currentFilter === 'in-progress') return s === 'in-progress';
+      if (currentFilter === 'complete') return s === 'complete';
+      return true;
+    });
+  }
+
+  function render() {
+    var counts = getCounts();
+    var pct = Math.round((counts.done / counts.total) * 100);
+
+    // Update progress ring
+    var circumference = 534.07;
+    var offset = circumference - (pct / 100) * circumference;
+    document.getElementById('progressRing').style.strokeDashoffset = offset;
+    document.getElementById('pctDisplay').textContent = pct + '%';
+
+    // Update scroll progress bar to match task completion
+    document.getElementById('progressBar').style.width = pct + '%';
+
+    // Update stat counts
+    document.getElementById('countDone').textContent = counts.done;
+    document.getElementById('countProgress').textContent = counts.progress;
+    document.getElementById('countTodo').textContent = counts.todo;
+    document.getElementById('countP1').innerHTML = counts.p1Done + '<span style="font-size:.875rem;opacity:.4">/8</span>';
+    document.getElementById('countP2').innerHTML = counts.p2Done + '<span style="font-size:.875rem;opacity:.4">/13</span>';
+    document.getElementById('countP3').innerHTML = counts.p3Done + '<span style="font-size:.875rem;opacity:.4">/4</span>';
+
+    // Render task list
+    var container = document.getElementById('taskContainer');
+    var filtered = getFilteredTasks();
+    var groups = groupByPhase(filtered);
+    var html = '';
+
+    if (filtered.length === 0) {
+      html = '<div style="text-align:center;padding:3rem 0;color:var(--color-muted);">No tasks match this filter.</div>';
+    } else {
+      groups.forEach(function(g) {
+        var groupDone = g.tasks.filter(function(t) { return taskStatuses[t.id] === 'complete'; }).length;
+        html += '<div class="phase-group">';
+        html += '<div class="phase-group-header"><span class="phase-dot ' + g.priority + '"></span><h3>' + g.name + '</h3><span class="phase-count">' + groupDone + '/' + g.tasks.length + ' done</span></div>';
+        g.tasks.forEach(function(t) {
+          var s = taskStatuses[t.id] || 'not-started';
+          var rowClass = 'is-' + s;
+          html += '<div class="task-row ' + rowClass + '" data-id="' + t.id + '">';
+          html += '<div class="task-checkbox">' + CHECKBOX_ICONS[s] + '</div>';
+          html += '<div class="task-content"><div class="task-title">' + t.title + '</div>';
+          html += '<div class="task-meta"><span>' + t.owner + '</span><span class="sep">|</span><span>' + t.time + '</span>';
+          if (t.impact) html += '<span class="sep">|</span><span>' + t.impact + '</span>';
+          html += '</div></div>';
+          html += '<span class="task-status-badge ' + STATUS_CLASSES[s] + '">' + STATUS_LABELS[s] + '</span>';
+          html += '</div>';
+        });
+        html += '</div>';
+      });
+    }
+    container.innerHTML = html;
+
+    // Bind click handlers
+    container.querySelectorAll('.task-row').forEach(function(row) {
+      row.addEventListener('click', function() { cycleStatus(parseInt(this.getAttribute('data-id'))); });
+    });
+  }
+
+  // Filter handling
+  document.getElementById('filterBar').addEventListener('click', function(e) {
+    var btn = e.target.closest('.filter-btn');
+    if (!btn) return;
+    currentFilter = btn.getAttribute('data-filter');
+    document.querySelectorAll('.filter-btn').forEach(function(b) { b.classList.remove('active'); });
+    btn.classList.add('active');
+    render();
+  });
+
+  // Theme toggle
+  var themeBtn = document.getElementById('themeBtn');
+  if (themeBtn) {
+    themeBtn.addEventListener('click', function() {
+      var h = document.documentElement;
+      if (h.getAttribute('data-theme') === 'light') {
+        h.setAttribute('data-theme', 'dark');
+        themeBtn.innerHTML = '&#9728;&#65039;';
+      } else {
+        h.setAttribute('data-theme', 'light');
+        themeBtn.innerHTML = '&#x1F319;';
+      }
+    });
+  }
+
+  // Init
+  loadState();
+  render();
+})();
+</script>
+</body>
+</html>
