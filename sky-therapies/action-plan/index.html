@@ -1,5 +1,6 @@
 <!DOCTYPE html>
 <html lang="en" data-theme="light">
+<script>try{var st=localStorage.getItem('moonraker-theme');if(st){document.documentElement.setAttribute('data-theme',st)}}catch(e){}</script>
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
@@ -211,6 +212,7 @@ section { padding: 4.5rem 0; }
 .owner-legend-dot.co { background: #F59E0B; }
 .owner-legend-label { font-weight: 600; }
 </style>
+<script>document.addEventListener('DOMContentLoaded',function(){try{var t=localStorage.getItem('moonraker-theme');if(t==='dark'){var b=document.getElementById('themeBtn');if(b)b.innerHTML='\u2600\uFE0F'}}catch(e){}})</script>
 </head>
 <body>
 
@@ -632,7 +634,7 @@ section { padding: 4.5rem 0; }
           <div>
             <h4>Record 60-90 Second Audio Explainer</h4>
             <p>Record a short audio value proposition on a smartphone and upload to Spotify for Podcasters (formerly Anchor). Title: "What Is Sky Therapies? A Brief Introduction." This creates audio presence from 0/100 to measurable. Low effort, high modality coverage impact.</p>
-            <div class="task-tags"><span class="tag tag-client">Client</span><span class="tag tag-impact">Audio 0 &#8594; 30+</span><span class="tag tag-time">30 minutes</span></div>
+            <div class="task-tags"><span class="tag tag-collab">Collaboration</span><span class="tag tag-impact">Audio 0 &#8594; 30+</span><span class="tag tag-time">30 minutes</span></div>
           </div>
         </div>
         <div class="task-card">
@@ -735,9 +737,11 @@ section { padding: 4.5rem 0; }
       if (h.getAttribute('data-theme') === 'light') {
         h.setAttribute('data-theme', 'dark');
         themeBtn.innerHTML = '&#9728;&#65039;';
+        try{localStorage.setItem('moonraker-theme','dark')}catch(e){}
       } else {
         h.setAttribute('data-theme', 'light');
         themeBtn.innerHTML = '&#x1F319;';
+        try{localStorage.setItem('moonraker-theme','light')}catch(e){}
       }
     });
   }
