@@ -155,6 +155,39 @@ strong { font-weight: 600; color: var(--color-heading); }
 .status-signed { background: rgba(0,212,126,.1); color: var(--color-success); border: 1px solid rgba(0,212,126,.2); border-radius: 12px; padding: 1.5rem; text-align: center; margin: 1.5rem 0; }
 .status-signed h4 { color: var(--color-success); margin-bottom: .25rem; }
 
+
+/* Form elements */
+.form-section { margin-bottom: 2.5rem; }
+.form-section h3 { margin-bottom: 1rem; padding-bottom: .5rem; border-bottom: 1px solid var(--color-border); }
+.form-row { display: grid; grid-template-columns: 1fr 1fr; gap: 1rem; margin-bottom: 1rem; }
+.form-row.three-col { grid-template-columns: 1fr 1fr 1fr; }
+@media (max-width: 640px) { .form-row, .form-row.three-col { grid-template-columns: 1fr; } }
+.form-group { margin-bottom: 1rem; }
+.form-group label { display: block; font-size: .75rem; font-weight: 600; letter-spacing: .04em; text-transform: uppercase; color: var(--color-muted); margin-bottom: .35rem; }
+.form-group input, .form-group select, .form-group textarea { width: 100%; font-family: 'Inter', sans-serif; font-size: .9375rem; padding: .6rem .85rem; border: 1px solid var(--color-border); border-radius: 8px; background: var(--color-bg); color: var(--color-heading); transition: border-color .2s; }
+.form-group input:focus, .form-group select:focus, .form-group textarea:focus { outline: none; border-color: var(--color-primary); box-shadow: 0 0 0 3px rgba(0,212,126,.12); }
+.form-group textarea { resize: vertical; min-height: 80px; line-height: 1.6; }
+.form-group select { appearance: none; -webkit-appearance: none; background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='12' height='8'%3E%3Cpath d='M1 1l5 5 5-5' stroke='%236B7599' stroke-width='1.5' fill='none' stroke-linecap='round'/%3E%3C/svg%3E"); background-repeat: no-repeat; background-position: right .75rem center; padding-right: 2.5rem; }
+.form-group .help-text { font-size: .75rem; color: var(--color-muted); margin-top: .25rem; }
+.form-group .prefilled { font-size: .7rem; color: var(--color-primary); margin-top: .2rem; }
+.radio-group { display: flex; gap: 1rem; flex-wrap: wrap; }
+.radio-option { display: flex; align-items: center; gap: .5rem; padding: .5rem 1rem; border: 1px solid var(--color-border); border-radius: 8px; cursor: pointer; transition: all .2s; font-size: .875rem; }
+.radio-option:hover { border-color: var(--color-primary); }
+.radio-option input[type="radio"] { accent-color: var(--color-primary); }
+.radio-option.selected { border-color: var(--color-primary); background: var(--color-primary-subtle); }
+.social-row { display: flex; align-items: center; gap: 1rem; padding: .75rem 0; border-bottom: 1px solid var(--color-border); }
+.social-row:last-child { border-bottom: none; }
+.social-platform { font-weight: 600; font-size: .875rem; color: var(--color-heading); min-width: 100px; }
+.social-row input { flex: 1; font-family: 'Inter', sans-serif; font-size: .875rem; padding: .5rem .75rem; border: 1px solid var(--color-border); border-radius: 8px; background: var(--color-bg); color: var(--color-heading); }
+.social-row input:focus { outline: none; border-color: var(--color-primary); }
+.social-row select { font-family: 'Inter', sans-serif; font-size: .8125rem; padding: .4rem .6rem; border: 1px solid var(--color-border); border-radius: 6px; background: var(--color-bg); color: var(--color-heading); min-width: 130px; }
+.drive-card { background: var(--color-surface); border: 1px solid var(--color-border); border-radius: 14px; padding: 2rem; text-align: center; margin: 1.5rem 0; }
+.drive-card .drive-icon { font-size: 3rem; margin-bottom: .75rem; }
+.drive-card h4 { margin-bottom: .5rem; }
+.drive-card a { font-weight: 600; }
+.save-note { font-size: .8125rem; color: var(--color-success); margin-top: .75rem; display: none; }
+.save-note.visible { display: block; }
+
 /* Loading */
 .loading-state { text-align: center; padding: 6rem 2rem; }
 .loading-spinner { width: 36px; height: 36px; border: 3px solid var(--color-border); border-top-color: var(--color-primary); border-radius: 50%; animation: spin .8s linear infinite; margin: 0 auto 1rem; }
@@ -200,15 +233,57 @@ strong { font-weight: 600; color: var(--color-heading); }
   <!-- MAIN -->
   <div class="main-content">
 
-    <!-- STEP 1: Confirm Info (Phase B placeholder) -->
+    <!-- STEP 1: Confirm Info -->
     <div class="step-panel" data-step="confirm_info">
       <span class="step-badge">Step 1 of 8</span>
       <h1>Confirm Your Info</h1>
-      <div class="placeholder-step">
-        <div class="placeholder-icon">&#128203;</div>
-        <h3>Coming Soon</h3>
-        <p>This step will let you review and confirm the practice details we have on file. For now, skip ahead to sign your agreement.</p>
+      <p style="color:var(--color-muted)">We have gathered some details about your practice. Please review and correct anything that needs updating.</p>
+
+      <div class="form-section">
+        <h3>Contact</h3>
+        <div class="form-row">
+          <div class="form-group"><label>First Name</label><input type="text" id="ci_first_name"></div>
+          <div class="form-group"><label>Last Name</label><input type="text" id="ci_last_name"></div>
+        </div>
+        <div class="form-row">
+          <div class="form-group"><label>Credentials / Suffixes</label><input type="text" id="ci_credentials" placeholder="e.g. LCSW, Psy.D., LMFT"></div>
+          <div class="form-group"><label>Email</label><input type="email" id="ci_email"></div>
+        </div>
+        <div class="form-group"><label>Phone</label><input type="tel" id="ci_phone"></div>
       </div>
+
+      <div class="form-section">
+        <h3>Practice</h3>
+        <div class="form-row">
+          <div class="form-group"><label>Practice Name</label><input type="text" id="ci_practice_name"></div>
+          <div class="form-group"><label>Legal Business Name (if different)</label><input type="text" id="ci_legal_business_name"></div>
+        </div>
+        <div class="form-group"><label>Website URL</label><input type="url" id="ci_website_url" placeholder="https://"></div>
+        <div class="form-row">
+          <div class="form-group"><label>Team Size</label>
+            <select id="ci_team_size"><option value="">Select...</option><option value="solo">Solo Practice</option><option value="group">Group Practice</option></select>
+          </div>
+          <div class="form-group"><label>Service Delivery</label>
+            <select id="ci_service_delivery"><option value="">Select...</option><option value="in-person">In-Person Only</option><option value="virtual">Virtual Only</option><option value="in-person and virtual">Both In-Person and Virtual</option></select>
+          </div>
+        </div>
+      </div>
+
+      <div class="form-section">
+        <h3>Address</h3>
+        <div class="form-group"><label>Street Address</label><input type="text" id="ci_address_line1"></div>
+        <div class="form-group"><label>Suite / Unit (optional)</label><input type="text" id="ci_address_line2"></div>
+        <div class="form-row three-col">
+          <div class="form-group"><label>City</label><input type="text" id="ci_city"></div>
+          <div class="form-group"><label>State / Province</label><input type="text" id="ci_state_province"></div>
+          <div class="form-group"><label>Postal Code</label><input type="text" id="ci_postal_code"></div>
+        </div>
+        <div class="form-group"><label>Country</label><input type="text" id="ci_country"></div>
+      </div>
+
+      <button class="btn btn-primary" onclick="saveConfirmInfo()">Save &amp; Continue &#8594;</button>
+      <div class="save-note" id="ci_saved">&#10003; Info saved</div>
+
       <div class="step-actions">
         <span></span>
         <button class="btn btn-primary" onclick="goToStep(1)">Next: Sign Agreement &#8594;</button>
@@ -292,30 +367,125 @@ strong { font-weight: 600; color: var(--color-heading); }
       </div>
     </div>
 
-    <!-- STEP 4: Practice Details (Phase B placeholder) -->
+    <!-- STEP 4: Practice Details -->
     <div class="step-panel" data-step="practice_details">
       <span class="step-badge">Step 4 of 8</span>
       <h1>Practice &amp; Clinical Details</h1>
-      <div class="placeholder-step">
-        <div class="placeholder-icon">&#127973;</div>
-        <h3>Coming Soon</h3>
-        <p>This step will collect your specialties, modalities, campaign goals, and content preferences. We will reach out via email to gather these details in the meantime.</p>
+      <p style="color:var(--color-muted)">This information helps us build your service pages, write content in your voice, and target the right audience. Separate multiple items with commas.</p>
+
+      <div class="form-section">
+        <h3>Clinical Focus</h3>
+        <div class="form-group"><label>Specialties</label><input type="text" id="pd_specialties" placeholder="e.g. Anxiety, Trauma, PTSD, Couples"><div class="help-text">Separate with commas</div></div>
+        <div class="form-group"><label>Modalities / Treatment Approaches</label><input type="text" id="pd_modalities" placeholder="e.g. EMDR, CBT, Gottman, Somatic Experiencing"><div class="help-text">Separate with commas</div></div>
+        <div class="form-group"><label>Populations Treated</label><input type="text" id="pd_populations" placeholder="e.g. Adults, Teens, Couples, First Responders"><div class="help-text">Separate with commas</div></div>
+        <div class="form-group"><label>Primary Issues Treated</label><textarea id="pd_issues_treated" placeholder="e.g. Trauma, PTSD, anxiety, depression, eating disorders, relationship issues..."></textarea></div>
       </div>
+
+      <div class="form-section">
+        <h3>Business Details</h3>
+        <div class="form-row">
+          <div class="form-group"><label>Average Session Cost</label><input type="text" id="pd_session_cost" placeholder="e.g. $175"></div>
+          <div class="form-group"><label>Session Frequency</label><input type="text" id="pd_session_frequency" placeholder="e.g. Weekly, Bi-weekly"></div>
+        </div>
+        <div class="form-row">
+          <div class="form-group"><label>Insurance or Private Pay?</label>
+            <select id="pd_insurance"><option value="">Select...</option><option value="private_pay">Private Pay Only</option><option value="insurance">Insurance</option><option value="hybrid">Both Insurance and Private Pay</option></select>
+          </div>
+          <div class="form-group"><label>Insurance Panels (if applicable)</label><input type="text" id="pd_insurance_panels" placeholder="e.g. Aetna, Blue Cross, Cigna"></div>
+        </div>
+        <div class="form-row">
+          <div class="form-group"><label>States / Provinces Licensed In</label><input type="text" id="pd_licensed_states" placeholder="e.g. NY, PA, CA"><div class="help-text">Separate with commas</div></div>
+          <div class="form-group"><label>Number of Therapists</label><input type="number" id="pd_num_therapists" min="1" placeholder="1"></div>
+        </div>
+        <div class="form-row">
+          <div class="form-group"><label>Offer Free Consultation?</label>
+            <select id="pd_offers_consultation"><option value="">Select...</option><option value="true">Yes</option><option value="false">No</option></select>
+          </div>
+          <div class="form-group"><label>Consultation Length</label><input type="text" id="pd_consultation_length" placeholder="e.g. 15 minutes, 20 minutes"></div>
+        </div>
+        <div class="form-group"><label>Booking URL or Method</label><input type="url" id="pd_booking_url" placeholder="https://..."><div class="help-text">Link to your booking page, SimplePractice portal, etc.</div></div>
+      </div>
+
+      <div class="form-section">
+        <h3>Campaign &amp; Content Strategy</h3>
+        <div class="form-group"><label>Primary Campaign Objective</label><textarea id="pd_campaign_objectives" placeholder="e.g. Increase visibility for private pay clients, grow group practice, establish AI presence..."></textarea></div>
+        <div class="form-row">
+          <div class="form-group"><label>Current Weekly Caseload</label><input type="text" id="pd_current_caseload" placeholder="e.g. 15 clients/week"></div>
+          <div class="form-group"><label>Target Weekly Caseload</label><input type="text" id="pd_target_caseload" placeholder="e.g. 25 clients/week"></div>
+        </div>
+        <div class="form-group"><label>Top 5 Target Keywords / Services</label><input type="text" id="pd_target_keywords" placeholder="e.g. anxiety therapy Austin, EMDR Austin, trauma therapist near me"><div class="help-text">Separate with commas</div></div>
+        <div class="form-group"><label>Anything to Completely Omit from Content?</label><input type="text" id="pd_content_to_omit" placeholder="e.g. Do not mention specific insurance providers, do not use the word 'fix'"></div>
+        <div class="form-row">
+          <div class="form-group"><label>Pronoun Usage in Content</label>
+            <select id="pd_pronoun_usage"><option value="">Select...</option><option value="I/my">I / My (solo voice)</option><option value="we/our">We / Our (team voice)</option></select>
+          </div>
+          <div class="form-group"><label>Content Approval Preference</label>
+            <select id="pd_content_approval"><option value="">Select...</option><option value="review_all">Review everything before publishing</option><option value="trust_team">Trust the team to publish</option></select>
+          </div>
+        </div>
+        <div class="form-group"><label>Links to Existing Writing / Brand Voice Samples</label><input type="text" id="pd_brand_voice_sources" placeholder="Link to blog posts, articles, or other writing that reflects your voice"></div>
+        <div class="form-group"><label>Other Marketing Currently Running</label><input type="text" id="pd_current_marketing" placeholder="e.g. Google Ads, Psychology Today, Instagram"></div>
+      </div>
+
+      <div class="form-section">
+        <h3>Ideal Client &amp; Differentiators</h3>
+        <div class="form-group"><label>Describe Your Ideal Client</label><textarea id="pd_ideal_client" placeholder="Who is the person you most want to work with? What are they going through?"></textarea></div>
+        <div class="form-group"><label>Why Do Clients Choose You Over Competitors?</label><textarea id="pd_differentiators" placeholder="What makes your practice unique? Special training, approach, population focus?"></textarea></div>
+        <div class="form-group"><label>What Can Clients Expect About Your Intake Process?</label><textarea id="pd_intake_process" placeholder="Walk us through what happens when a new client reaches out..."></textarea></div>
+        <div class="form-group"><label>What Can Clients Expect After Care is Established?</label><textarea id="pd_after_care" placeholder="Session cadence, communication between sessions, treatment planning..."></textarea></div>
+      </div>
+
+      <button class="btn btn-primary" onclick="savePracticeDetails()">Save &amp; Continue &#8594;</button>
+      <div class="save-note" id="pd_saved">&#10003; Practice details saved</div>
+
       <div class="step-actions">
         <button class="btn btn-outline" onclick="goToStep(2)">&#8592; Back</button>
         <button class="btn btn-primary" onclick="goToStep(4)">Next: Bio Materials &#8594;</button>
       </div>
     </div>
 
-    <!-- STEP 5: Bio Materials (Phase B placeholder) -->
+    <!-- STEP 5: Bio Materials -->
     <div class="step-panel" data-step="bio_materials">
       <span class="step-badge">Step 5 of 8</span>
       <h1>Bio Page Materials</h1>
-      <div class="placeholder-step">
-        <div class="placeholder-icon">&#128100;</div>
-        <h3>Coming Soon</h3>
-        <p>This step will collect your credentials, headshot, license images, and education details for your bio page. We will reach out via email for these materials in the meantime.</p>
+      <p style="color:var(--color-muted)">We build a detailed bio page for each therapist at your practice. This info feeds directly into your bio page, schema markup, and AI visibility. Start with the primary therapist and we can add more later.</p>
+
+      <div class="form-section">
+        <h3>Primary Therapist</h3>
+        <div class="form-row">
+          <div class="form-group"><label>Full Name</label><input type="text" id="bio_name"></div>
+          <div class="form-group"><label>Credentials</label><input type="text" id="bio_credentials" placeholder="e.g. PhD, LCSW, LMFT"></div>
+        </div>
+        <div class="form-group"><label>NPI Number (US) or Registration Number</label><input type="text" id="bio_npi" placeholder="e.g. 1234567890"><div class="help-text">We use this to verify your profile in the NPI Registry and add it to schema</div></div>
+        <div class="form-group"><label>Professional Bio</label><textarea id="bio_professional_bio" style="min-height:120px" placeholder="A narrative description of your background, approach, and what drives your work. This becomes the main content of your bio page."></textarea></div>
+        <div class="form-group"><label>Clinical Approach Keywords</label><input type="text" id="bio_clinical_approach" placeholder="e.g. trauma-informed, attachment-based, holistic, mind-body"><div class="help-text">How you describe your therapeutic style, separated with commas</div></div>
       </div>
+
+      <div class="form-section">
+        <h3>Education &amp; Licenses</h3>
+        <div class="form-group"><label>Education (Institution, Degree, Year)</label><textarea id="bio_education" placeholder="e.g. University of Michigan, MSW, 2015&#10;Columbia University, BA Psychology, 2012"><div class="help-text">One per line</div></textarea></div>
+        <div class="form-group"><label>License Details (State, Type, Number, Verification URL)</label><textarea id="bio_licenses" placeholder="e.g. NY, LCSW, 123456, https://verify.op.nysed.gov/...&#10;PA, LCSW, 789012, https://www.pals.pa.gov/..."><div class="help-text">One per line. Include the URL where the license can be verified online</div></textarea></div>
+        <div class="form-group"><label>Board Certifications</label><textarea id="bio_certifications" placeholder="e.g. EMDRIA Certified EMDR Therapist, https://emdria.org/verify/...&#10;Gottman Level 3 Trained"><div class="help-text">One per line. Include verification URLs when available</div></textarea></div>
+      </div>
+
+      <div class="form-section">
+        <h3>Professional Affiliations</h3>
+        <div class="form-group"><label>Associations / Organizations</label><textarea id="bio_associations" placeholder="e.g. American Psychological Association (APA)&#10;EMDRIA&#10;National Register of Health Service Psychologists"><div class="help-text">One per line</div></textarea></div>
+        <div class="form-group"><label>Awards &amp; Recognitions</label><input type="text" id="bio_awards" placeholder="Any awards, recognitions, or media features"></div>
+      </div>
+
+      <div class="form-section">
+        <h3>Images</h3>
+        <p style="color:var(--color-muted);font-size:.875rem;">Please upload your headshot and any license/diploma/certification images to your Google Drive folder. We will use these on your bio page.</p>
+        <div id="bioImagesDrive"></div>
+        <div class="embed-note" style="margin-top:1rem;">
+          <strong>What to upload:</strong> Professional headshot, images of your license(s), diploma(s), and certifications. These images build trust with potential clients and help AI systems verify your credentials.
+        </div>
+      </div>
+
+      <button class="btn btn-primary" onclick="saveBioMaterials()">Save &amp; Continue &#8594;</button>
+      <div class="save-note" id="bio_saved">&#10003; Bio materials saved</div>
+
       <div class="step-actions">
         <button class="btn btn-outline" onclick="goToStep(3)">&#8592; Back</button>
         <button class="btn btn-primary" onclick="goToStep(5)">Next: Connect Accounts &#8594;</button>
@@ -349,30 +519,76 @@ strong { font-weight: 600; color: var(--color-heading); }
       </div>
     </div>
 
-    <!-- STEP 7: Social Profiles (Phase B placeholder) -->
+    <!-- STEP 7: Social Profiles -->
     <div class="step-panel" data-step="social_profiles">
       <span class="step-badge">Step 7 of 8</span>
       <h1>Social Profiles</h1>
-      <div class="placeholder-step">
-        <div class="placeholder-icon">&#128241;</div>
-        <h3>Coming Soon</h3>
-        <p>This step will help us identify which social profiles exist and which ones we need to create together. We will coordinate this via email for now.</p>
+      <p style="color:var(--color-muted)">Google crawls social profiles to verify your practice is tied to a real person. We build out 9 interconnected profiles as part of our Rising Tide strategy. Please share any existing profile URLs below.</p>
+
+      <div class="form-section">
+        <h3>Existing Profiles</h3>
+        <p style="color:var(--color-muted);font-size:.875rem;margin-bottom:1rem;">Enter the URL for any profiles that already exist. Leave blank if you do not have one yet.</p>
+        <div id="socialProfilesList">
+          <div class="social-row"><span class="social-platform">YouTube</span><input type="url" id="sp_youtube" placeholder="https://youtube.com/@..."></div>
+          <div class="social-row"><span class="social-platform">LinkedIn</span><input type="url" id="sp_linkedin" placeholder="https://linkedin.com/company/..."></div>
+          <div class="social-row"><span class="social-platform">Facebook</span><input type="url" id="sp_facebook" placeholder="https://facebook.com/..."></div>
+          <div class="social-row"><span class="social-platform">Instagram</span><input type="url" id="sp_instagram" placeholder="https://instagram.com/..."></div>
+          <div class="social-row"><span class="social-platform">Quora</span><input type="url" id="sp_quora" placeholder="https://quora.com/..."></div>
+          <div class="social-row"><span class="social-platform">Pinterest</span><input type="url" id="sp_pinterest" placeholder="https://pinterest.com/..."></div>
+          <div class="social-row"><span class="social-platform">TikTok</span><input type="url" id="sp_tiktok" placeholder="https://tiktok.com/@..."></div>
+          <div class="social-row"><span class="social-platform">X</span><input type="url" id="sp_x" placeholder="https://x.com/..."></div>
+        </div>
       </div>
+
+      <div class="form-section">
+        <h3>Directories</h3>
+        <div class="social-row"><span class="social-platform">Psychology Today</span><input type="url" id="sp_psychtoday" placeholder="https://psychologytoday.com/us/therapists/..."></div>
+        <div class="social-row"><span class="social-platform">GBP URL</span><input type="url" id="sp_gbp" placeholder="https://google.com/maps/place/..."></div>
+      </div>
+
+      <div class="form-section">
+        <h3>Platforms to Skip</h3>
+        <p style="color:var(--color-muted);font-size:.875rem;">Some clients prefer to omit certain platforms for personal reasons. Let us know if there are any you would like us to skip.</p>
+        <div class="form-group"><label>Platforms to Omit (optional)</label><input type="text" id="sp_omit" placeholder="e.g. TikTok, X"><div class="help-text">We will not create profiles on these platforms</div></div>
+      </div>
+
+      <button class="btn btn-primary" onclick="saveSocialProfiles()">Save &amp; Continue &#8594;</button>
+      <div class="save-note" id="sp_saved">&#10003; Social profiles saved</div>
+
       <div class="step-actions">
         <button class="btn btn-outline" onclick="goToStep(5)">&#8592; Back</button>
         <button class="btn btn-primary" onclick="goToStep(7)">Next: Check-Ins &amp; Drive &#8594;</button>
       </div>
     </div>
 
-    <!-- STEP 8: Check-ins & Drive (Phase B placeholder) -->
+    <!-- STEP 8: Check-Ins & Drive -->
     <div class="step-panel" data-step="checkins_and_drive">
       <span class="step-badge">Step 8 of 8</span>
       <h1>Check-In Calls &amp; Drive Access</h1>
-      <div class="placeholder-step">
-        <div class="placeholder-icon">&#128197;</div>
-        <h3>Coming Soon</h3>
-        <p>This step will let you book your 2-month and 3-month check-in calls and access your shared Google Drive folder. Scott will coordinate these with you during your intro call.</p>
+      <p style="color:var(--color-muted)">We schedule check-in calls at the 2-month and 3-month marks to review progress and adjust strategy. You also have a shared Google Drive folder for uploading creative assets.</p>
+
+      <div class="form-section">
+        <h3>Book Your Check-In Calls</h3>
+        <p style="color:var(--color-muted);font-size:.875rem;">Use the calendar below to book your 2-month and 3-month check-in calls with Scott. We recommend booking both now while you are here.</p>
+        <div class="embed-container">
+          <iframe src="https://msg.moonraker.ai/widget/booking/ouIbhSjJ3q2VTR8U0g8z" style="height:600px;" scrolling="no"></iframe>
+        </div>
       </div>
+
+      <div class="form-section">
+        <h3>Your Google Drive Folder</h3>
+        <div id="driveFolderSection">
+          <div class="drive-card">
+            <div class="drive-icon">&#128194;</div>
+            <h4>Shared Drive Folder</h4>
+            <p style="color:var(--color-muted);font-size:.875rem;margin-bottom:.75rem;">Upload headshots, logos, creative assets, and any documents you would like us to use in your campaign.</p>
+            <p id="driveFolderLink" style="margin:0;">Your Drive folder link will appear here once created.</p>
+          </div>
+        </div>
+      </div>
+
+      <button class="btn btn-success" onclick="completeStep('checkins_and_drive')">Complete Onboarding &#10003;</button>
+
       <div class="step-actions">
         <button class="btn btn-outline" onclick="goToStep(6)">&#8592; Back</button>
         <a href="" id="dashboardLink" class="btn btn-primary">Go to Dashboard &#8594;</a>
@@ -742,6 +958,274 @@ strong { font-weight: 600; color: var(--color-heading); }
     });
   };
 
+
+  // ============================================================
+  // FORM: Helper to split comma-separated strings to arrays
+  // ============================================================
+  function csvToArray(str) {
+    if (!str) return [];
+    return str.split(',').map(function(s) { return s.trim(); }).filter(Boolean);
+  }
+  function arrayToCsv(arr) {
+    if (!arr || !Array.isArray(arr)) return '';
+    return arr.join(', ');
+  }
+
+  // ============================================================
+  // FORM: Pre-fill all forms from loaded data
+  // ============================================================
+  var practiceData = null;
+  var bioData = null;
+
+  function prefillForms() {
+    if (!contact) return;
+
+    // Step 1: Confirm Info
+    var fields = {
+      ci_first_name: contact.first_name,
+      ci_last_name: contact.last_name,
+      ci_credentials: contact.credentials,
+      ci_email: contact.email,
+      ci_phone: contact.phone,
+      ci_practice_name: contact.practice_name,
+      ci_legal_business_name: contact.legal_business_name,
+      ci_website_url: contact.website_url,
+      ci_team_size: contact.team_size,
+      ci_service_delivery: contact.service_delivery,
+      ci_address_line1: contact.practice_address_line1,
+      ci_address_line2: contact.practice_address_line2,
+      ci_city: contact.city,
+      ci_state_province: contact.state_province,
+      ci_postal_code: contact.postal_code,
+      ci_country: contact.country
+    };
+    Object.keys(fields).forEach(function(id) {
+      var el = document.getElementById(id);
+      if (el && fields[id]) el.value = fields[id];
+    });
+
+    // Step 4: Practice Details
+    if (practiceData) {
+      var pd = practiceData;
+      var pdFields = {
+        pd_specialties: arrayToCsv(pd.specialties),
+        pd_modalities: arrayToCsv(pd.modalities),
+        pd_populations: arrayToCsv(pd.populations),
+        pd_issues_treated: pd.issues_treated,
+        pd_session_cost: pd.session_cost,
+        pd_session_frequency: pd.session_frequency,
+        pd_insurance: pd.insurance_or_private_pay,
+        pd_insurance_panels: pd.insurance_panels,
+        pd_licensed_states: arrayToCsv(pd.licensed_states),
+        pd_num_therapists: pd.num_therapists,
+        pd_offers_consultation: pd.offers_consultation === true ? 'true' : (pd.offers_consultation === false ? 'false' : ''),
+        pd_consultation_length: pd.consultation_length,
+        pd_booking_url: pd.booking_url,
+        pd_campaign_objectives: pd.campaign_objectives,
+        pd_current_caseload: pd.current_caseload,
+        pd_target_caseload: pd.target_caseload,
+        pd_target_keywords: arrayToCsv(pd.target_keywords),
+        pd_content_to_omit: pd.content_to_omit,
+        pd_pronoun_usage: pd.pronoun_usage,
+        pd_content_approval: pd.content_approval,
+        pd_brand_voice_sources: pd.brand_voice_sources,
+        pd_current_marketing: pd.current_marketing,
+        pd_ideal_client: pd.ideal_client,
+        pd_differentiators: pd.differentiators,
+        pd_intake_process: pd.intake_process,
+        pd_after_care: pd.after_care
+      };
+      Object.keys(pdFields).forEach(function(id) {
+        var el = document.getElementById(id);
+        if (el && pdFields[id] != null && pdFields[id] !== '') el.value = pdFields[id];
+      });
+    }
+
+    // Step 5: Bio Materials
+    if (bioData) {
+      var b = bioData;
+      if (b.therapist_name) document.getElementById('bio_name').value = b.therapist_name;
+      if (b.therapist_credentials) document.getElementById('bio_credentials').value = b.therapist_credentials;
+      if (b.professional_bio) document.getElementById('bio_professional_bio').value = b.professional_bio;
+      if (b.clinical_approach) document.getElementById('bio_clinical_approach').value = b.clinical_approach;
+      // NPI from contact
+      if (contact.npi_number) document.getElementById('bio_npi').value = contact.npi_number;
+    } else {
+      // Pre-fill from contact if no bio row yet
+      var fullName = ((contact.first_name || '') + ' ' + (contact.last_name || '')).trim();
+      if (fullName) document.getElementById('bio_name').value = fullName;
+      if (contact.credentials) document.getElementById('bio_credentials').value = contact.credentials;
+      if (contact.npi_number) document.getElementById('bio_npi').value = contact.npi_number;
+    }
+
+    // Step 7: Social Profiles - fill from contact record
+    var socialMap = {
+      sp_youtube: contact.youtube_url,
+      sp_linkedin: contact.linkedin_url,
+      sp_facebook: contact.facebook_url,
+      sp_instagram: contact.instagram_url,
+      sp_quora: contact.quora_url,
+      sp_pinterest: contact.pinterest_url,
+      sp_tiktok: contact.tiktok_url,
+      sp_x: contact.x_url,
+      sp_psychtoday: contact.psychology_today_url,
+      sp_gbp: contact.gbp_url
+    };
+    Object.keys(socialMap).forEach(function(id) {
+      var el = document.getElementById(id);
+      if (el && socialMap[id]) el.value = socialMap[id];
+    });
+
+    // Step 8: Drive folder link
+    if (contact.drive_folder_url) {
+      document.getElementById('driveFolderLink').innerHTML = '<a href="' + contact.drive_folder_url + '" target="_blank" style="font-size:1rem;">Open Your Drive Folder &#8599;</a>';
+    }
+
+    // Bio images Drive link
+    var bioImgDiv = document.getElementById('bioImagesDrive');
+    if (bioImgDiv && contact.drive_folder_url) {
+      bioImgDiv.innerHTML = '<div class="drive-card"><div class="drive-icon">&#128247;</div><h4>Upload Images to Drive</h4><p style="color:var(--color-muted);font-size:.875rem;margin-bottom:.75rem;">Upload your headshot, license images, and diploma photos here.</p><a href="' + contact.drive_folder_url + '" target="_blank">Open Drive Folder &#8599;</a></div>';
+    }
+  }
+
+  // ============================================================
+  // FORM: Save Step 1 - Confirm Info
+  // ============================================================
+  window.saveConfirmInfo = function() {
+    var data = {
+      first_name: document.getElementById('ci_first_name').value.trim(),
+      last_name: document.getElementById('ci_last_name').value.trim(),
+      credentials: document.getElementById('ci_credentials').value.trim(),
+      email: document.getElementById('ci_email').value.trim(),
+      phone: document.getElementById('ci_phone').value.trim(),
+      practice_name: document.getElementById('ci_practice_name').value.trim(),
+      legal_business_name: document.getElementById('ci_legal_business_name').value.trim(),
+      website_url: document.getElementById('ci_website_url').value.trim(),
+      team_size: document.getElementById('ci_team_size').value,
+      service_delivery: document.getElementById('ci_service_delivery').value,
+      practice_address_line1: document.getElementById('ci_address_line1').value.trim(),
+      practice_address_line2: document.getElementById('ci_address_line2').value.trim(),
+      city: document.getElementById('ci_city').value.trim(),
+      state_province: document.getElementById('ci_state_province').value.trim(),
+      postal_code: document.getElementById('ci_postal_code').value.trim(),
+      country: document.getElementById('ci_country').value.trim()
+    };
+    sbPatch('contacts', 'id=eq.' + contact.id, data).then(function() {
+      Object.assign(contact, data);
+      document.getElementById('ci_saved').classList.add('visible');
+      completeStep('confirm_info');
+      setTimeout(function() { document.getElementById('ci_saved').classList.remove('visible'); }, 3000);
+    }).catch(function(err) { console.error('Save failed:', err); alert('Save failed. Please try again.'); });
+  };
+
+  // ============================================================
+  // FORM: Save Step 4 - Practice Details
+  // ============================================================
+  window.savePracticeDetails = function() {
+    var data = {
+      contact_id: contact.id,
+      specialties: csvToArray(document.getElementById('pd_specialties').value),
+      modalities: csvToArray(document.getElementById('pd_modalities').value),
+      populations: csvToArray(document.getElementById('pd_populations').value),
+      issues_treated: document.getElementById('pd_issues_treated').value.trim(),
+      session_cost: document.getElementById('pd_session_cost').value.trim(),
+      session_frequency: document.getElementById('pd_session_frequency').value.trim(),
+      insurance_or_private_pay: document.getElementById('pd_insurance').value,
+      insurance_panels: document.getElementById('pd_insurance_panels').value.trim(),
+      licensed_states: csvToArray(document.getElementById('pd_licensed_states').value),
+      num_therapists: parseInt(document.getElementById('pd_num_therapists').value) || null,
+      offers_consultation: document.getElementById('pd_offers_consultation').value === 'true' ? true : (document.getElementById('pd_offers_consultation').value === 'false' ? false : null),
+      consultation_length: document.getElementById('pd_consultation_length').value.trim(),
+      booking_url: document.getElementById('pd_booking_url').value.trim(),
+      campaign_objectives: document.getElementById('pd_campaign_objectives').value.trim(),
+      current_caseload: document.getElementById('pd_current_caseload').value.trim(),
+      target_caseload: document.getElementById('pd_target_caseload').value.trim(),
+      target_keywords: csvToArray(document.getElementById('pd_target_keywords').value),
+      content_to_omit: document.getElementById('pd_content_to_omit').value.trim(),
+      pronoun_usage: document.getElementById('pd_pronoun_usage').value,
+      content_approval: document.getElementById('pd_content_approval').value,
+      brand_voice_sources: document.getElementById('pd_brand_voice_sources').value.trim(),
+      current_marketing: document.getElementById('pd_current_marketing').value.trim(),
+      ideal_client: document.getElementById('pd_ideal_client').value.trim(),
+      differentiators: document.getElementById('pd_differentiators').value.trim(),
+      intake_process: document.getElementById('pd_intake_process').value.trim(),
+      after_care: document.getElementById('pd_after_care').value.trim()
+    };
+
+    var method = practiceData ? 'PATCH' : 'POST';
+    var url = practiceData
+      ? SB_URL + '/rest/v1/practice_details?contact_id=eq.' + contact.id
+      : SB_URL + '/rest/v1/practice_details';
+    var h = sbHeaders(); h['Prefer'] = 'return=representation';
+
+    fetch(url, { method: method === 'PATCH' ? 'PATCH' : 'POST', headers: h, body: JSON.stringify(method === 'POST' ? data : (delete data.contact_id, data)) })
+      .then(function(r) { if (!r.ok) throw new Error(r.status); return r.json(); })
+      .then(function(res) {
+        practiceData = Array.isArray(res) ? res[0] : res;
+        document.getElementById('pd_saved').classList.add('visible');
+        completeStep('practice_details');
+        setTimeout(function() { document.getElementById('pd_saved').classList.remove('visible'); }, 3000);
+      }).catch(function(err) { console.error('Save failed:', err); alert('Save failed. Please try again.'); });
+  };
+
+  // ============================================================
+  // FORM: Save Step 5 - Bio Materials
+  // ============================================================
+  window.saveBioMaterials = function() {
+    var data = {
+      contact_id: contact.id,
+      therapist_name: document.getElementById('bio_name').value.trim(),
+      therapist_credentials: document.getElementById('bio_credentials').value.trim(),
+      professional_bio: document.getElementById('bio_professional_bio').value.trim(),
+      clinical_approach: document.getElementById('bio_clinical_approach').value.trim(),
+      is_primary: true
+    };
+
+    // Also update NPI on contact
+    var npi = document.getElementById('bio_npi').value.trim();
+    if (npi) { sbPatch('contacts', 'id=eq.' + contact.id, { npi_number: npi }); }
+
+    var method = bioData ? 'PATCH' : 'POST';
+    var url = bioData
+      ? SB_URL + '/rest/v1/bio_materials?contact_id=eq.' + contact.id + '&is_primary=eq.true'
+      : SB_URL + '/rest/v1/bio_materials';
+    var h = sbHeaders(); h['Prefer'] = 'return=representation';
+
+    fetch(url, { method: method === 'PATCH' ? 'PATCH' : 'POST', headers: h, body: JSON.stringify(method === 'POST' ? data : (delete data.contact_id, data)) })
+      .then(function(r) { if (!r.ok) throw new Error(r.status); return r.json(); })
+      .then(function(res) {
+        bioData = Array.isArray(res) ? res[0] : res;
+        document.getElementById('bio_saved').classList.add('visible');
+        completeStep('bio_materials');
+        setTimeout(function() { document.getElementById('bio_saved').classList.remove('visible'); }, 3000);
+      }).catch(function(err) { console.error('Save failed:', err); alert('Save failed. Please try again.'); });
+  };
+
+  // ============================================================
+  // FORM: Save Step 7 - Social Profiles
+  // ============================================================
+  window.saveSocialProfiles = function() {
+    var socialData = {
+      youtube_url: document.getElementById('sp_youtube').value.trim() || null,
+      linkedin_url: document.getElementById('sp_linkedin').value.trim() || null,
+      facebook_url: document.getElementById('sp_facebook').value.trim() || null,
+      instagram_url: document.getElementById('sp_instagram').value.trim() || null,
+      quora_url: document.getElementById('sp_quora').value.trim() || null,
+      pinterest_url: document.getElementById('sp_pinterest').value.trim() || null,
+      tiktok_url: document.getElementById('sp_tiktok').value.trim() || null,
+      x_url: document.getElementById('sp_x').value.trim() || null,
+      psychology_today_url: document.getElementById('sp_psychtoday').value.trim() || null,
+      gbp_url: document.getElementById('sp_gbp').value.trim() || null
+    };
+
+    sbPatch('contacts', 'id=eq.' + contact.id, socialData).then(function() {
+      Object.assign(contact, socialData);
+      document.getElementById('sp_saved').classList.add('visible');
+      completeStep('social_profiles');
+      setTimeout(function() { document.getElementById('sp_saved').classList.remove('visible'); }, 3000);
+    }).catch(function(err) { console.error('Save failed:', err); alert('Save failed. Please try again.'); });
+  };
+
   // ============================================================
   // INIT
   // ============================================================
@@ -758,19 +1242,23 @@ strong { font-weight: 600; color: var(--color-heading); }
         document.getElementById('headerName').textContent = contact.practice_name || 'Onboarding';
         document.getElementById('dashboardLink').href = '/' + CLIENT_SLUG;
 
-        // Load onboarding steps
-        return sbFetch('onboarding_steps', 'contact_id=eq.' + contact.id + '&select=step_key,status&order=sort_order');
+        // Load all related data in parallel
+        return Promise.all([
+          sbFetch('onboarding_steps', 'contact_id=eq.' + contact.id + '&select=step_key,status&order=sort_order'),
+          sbFetch('signed_agreements', 'contact_id=eq.' + contact.id + '&agreement_type=eq.csa&select=signer_name,signed_at&limit=1'),
+          sbFetch('practice_details', 'contact_id=eq.' + contact.id + '&select=*&limit=1'),
+          sbFetch('bio_materials', 'contact_id=eq.' + contact.id + '&is_primary=eq.true&select=*&limit=1')
+        ]);
       })
-      .then(function(steps) {
-        if (!steps) return;
+      .then(function(allData) {
+        if (!allData) return;
+
+        var steps = allData[0] || [];
+        var agreements = allData[1] || [];
+        practiceData = (allData[2] && allData[2][0]) ? allData[2][0] : null;
+        bioData = (allData[3] && allData[3][0]) ? allData[3][0] : null;
 
         steps.forEach(function(s) { stepData[s.step_key] = s.status; });
-
-        // Check if CSA is already signed
-        return sbFetch('signed_agreements', 'contact_id=eq.' + contact.id + '&agreement_type=eq.csa&select=signer_name,signed_at&limit=1');
-      })
-      .then(function(agreements) {
-        if (!agreements) return;
 
         if (agreements.length > 0) {
           stepData['sign_agreement'] = 'complete';
@@ -792,6 +1280,9 @@ strong { font-weight: 600; color: var(--color-heading); }
 
         // Render CSA
         renderCSA();
+
+        // Pre-fill all form fields
+        prefillForms();
 
         // Show the app
         document.getElementById('loadingState').style.display = 'none';
