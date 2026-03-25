@@ -8,305 +8,73 @@
 <style>
 @import url('https://fonts.googleapis.com/css2?family=Outfit:wght@400;600;700&display=swap');
 @import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600&display=swap');
-
-:root, [data-theme="light"] {
-  --color-primary: #00D47E;
-  --color-primary-hover: #00b86c;
-  --color-primary-light: #B4EEE0;
-  --color-primary-subtle: #DDF8F2;
-  --color-bg: #F7FDFB;
-  --color-surface: #FFFFFF;
-  --color-border: #E2E8F0;
-  --color-heading: #1E2A5E;
-  --color-body: #333F70;
-  --color-muted: #6B7599;
-  --color-navy: #141C3A;
-  --color-success: #00D47E;
-  --color-warning: #F59E0B;
-  --color-danger: #EF4444;
-  --color-info: #3B82F6;
-}
-[data-theme="dark"] {
-  --color-primary: #00D47E;
-  --color-primary-hover: #00f598;
-  --color-primary-light: #1A4A38;
-  --color-primary-subtle: #0D2E22;
-  --color-bg: #080F0B;
-  --color-surface: #0E1A14;
-  --color-border: #1E3530;
-  --color-heading: #E8F5EF;
-  --color-body: #C8D8D0;
-  --color-muted: #5A7A6E;
-  --color-navy: #0A1630;
-  --color-success: #00D47E;
-  --color-warning: #F59E0B;
-  --color-danger: #FF6B6B;
-  --color-info: #60A5FA;
-}
-
-*, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
-html { scroll-behavior: smooth; font-size: 16px; }
-body { font-family: 'Inter', -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif; font-weight: 400; color: var(--color-body); background: var(--color-bg); line-height: 1.8; -webkit-font-smoothing: antialiased; transition: background .3s ease, color .3s ease; }
-h1, h2, h3, h4 { font-family: 'Outfit', sans-serif; font-weight: 700; color: var(--color-heading); line-height: 1.15; }
-h1 { font-size: 2rem; letter-spacing: -0.02em; }
-h4 { font-size: 1.05rem; margin: 2rem 0 .5rem; padding-bottom: .35rem; border-bottom: 1px solid var(--color-border); }
-p { margin-bottom: .85rem; font-size: .9375rem; }
-ul { margin: 0 0 1rem 1.5rem; font-size: .9375rem; }
-ul li { margin-bottom: .3rem; }
-a { color: var(--color-primary); text-decoration: none; }
-a:hover { color: var(--color-primary-hover); }
-strong { font-weight: 600; color: var(--color-heading); }
-em { font-style: italic; }
-
-.progress-bar { position: fixed; top: 0; left: 0; height: 3px; background: var(--color-primary); width: 0%; z-index: 999; transition: width .1s linear; box-shadow: 0 0 8px rgba(0,212,126,.4); }
-
-.theme-toggle { position: fixed; top: 1.25rem; right: 1.25rem; z-index: 200; background: var(--color-surface); border: 1px solid var(--color-border); border-radius: 50%; width: 40px; height: 40px; cursor: pointer; display: flex; align-items: center; justify-content: center; font-size: 1.15rem; transition: all .25s ease; box-shadow: 0 2px 8px rgba(0,0,0,.06); }
-.theme-toggle:hover { border-color: var(--color-primary); }
-
-.header { background: var(--color-navy); padding: 2rem 0; position: relative; overflow: hidden; }
-.header::before { content: ''; position: absolute; top: -60%; right: -10%; width: 500px; height: 500px; background: radial-gradient(circle, rgba(0,212,126,.08) 0%, transparent 70%); pointer-events: none; }
-.header-inner { max-width: 780px; margin: 0 auto; padding: 0 2rem; display: flex; justify-content: space-between; align-items: center; }
-.header img { height: 36px; }
-.header-meta p { margin: 0; font-size: .8125rem; color: rgba(232,245,239,.45); }
-
-.container { max-width: 780px; margin: 0 auto; padding: 0 2rem; }
-
-.hero { padding: 4rem 0 2rem; text-align: center; }
-.hero .badge { display: inline-block; background: var(--color-primary-subtle); color: var(--color-primary); font-weight: 600; font-size: .7rem; padding: .35rem .85rem; border-radius: 100px; letter-spacing: .04em; text-transform: uppercase; margin-bottom: 1rem; }
-.hero h1 { margin-bottom: .5rem; }
-.hero p { color: var(--color-muted); font-size: .9375rem; max-width: 500px; margin: 0 auto 1.5rem; }
-
-.csa-body { background: var(--color-surface); border: 1px solid var(--color-border); border-radius: 16px; padding: 3rem; margin-bottom: 3rem; }
-@media (max-width: 640px) { .csa-body { padding: 1.5rem; } }
-
-.csa-parties { text-align: center; margin-bottom: 2.5rem; padding-bottom: 2rem; border-bottom: 1px solid var(--color-border); }
-.csa-parties p { font-size: .9375rem; margin-bottom: .25rem; }
-
-.cta-bar { text-align: center; padding: 2rem; margin-bottom: 3rem; }
-.cta-bar p { color: var(--color-muted); font-size: .9375rem; margin-bottom: 1rem; }
-.cta-btn { display: inline-block; background: var(--color-primary); color: #fff; font-family: 'Outfit', sans-serif; font-weight: 700; font-size: .9375rem; padding: .75rem 2rem; border-radius: 10px; text-decoration: none; transition: background .2s, transform .2s; }
-.cta-btn:hover { background: var(--color-primary-hover); transform: translateY(-1px); color: #fff; }
-
-.confidential { text-align: center; padding: 2rem 0; color: var(--color-muted); font-size: .8125rem; letter-spacing: .04em; }
-.footer { background: var(--color-navy); padding: 3rem 0; text-align: center; color: rgba(232,245,239,.4); font-size: .8125rem; }
-.footer img { height: 28px; margin-bottom: .75rem; opacity: .6; }
-.footer a { color: var(--color-primary); }
-
-@media print {
-  .progress-bar, .theme-toggle, .cta-bar { display: none !important; }
-  .header { background: #141C3A !important; -webkit-print-color-adjust: exact; print-color-adjust: exact; }
-  .csa-body { border: none; padding: 0; box-shadow: none; }
-}
+:root,[data-theme="light"]{--color-primary:#00D47E;--color-primary-hover:#00b86c;--color-primary-subtle:#DDF8F2;--color-bg:#F7FDFB;--color-surface:#FFFFFF;--color-border:#E2E8F0;--color-heading:#1E2A5E;--color-body:#333F70;--color-muted:#6B7599;--color-navy:#141C3A;--color-success:#00D47E}
+[data-theme="dark"]{--color-primary:#00D47E;--color-primary-hover:#00f598;--color-primary-subtle:#0D2E22;--color-bg:#080F0B;--color-surface:#0E1A14;--color-border:#1E3530;--color-heading:#E8F5EF;--color-body:#C8D8D0;--color-muted:#5A7A6E;--color-navy:#0A1630}
+*,*::before,*::after{box-sizing:border-box;margin:0;padding:0}html{scroll-behavior:smooth;font-size:16px}body{font-family:'Inter',-apple-system,BlinkMacSystemFont,'Segoe UI',sans-serif;font-weight:400;color:var(--color-body);background:var(--color-bg);line-height:1.7;-webkit-font-smoothing:antialiased;transition:background .3s,color .3s}h1,h2,h3,h4{font-family:'Outfit',sans-serif;font-weight:700;color:var(--color-heading);line-height:1.15}h1{font-size:2.25rem;letter-spacing:-0.02em}h4{font-size:1.05rem}p{margin-bottom:1rem}a{color:var(--color-primary);text-decoration:none;transition:color .2s}a:hover{color:var(--color-primary-hover)}strong{font-weight:600;color:var(--color-heading)}em{font-style:italic}
+.progress-bar{position:fixed;top:0;left:0;height:3px;background:var(--color-primary);width:0%;z-index:999;transition:width .1s linear;box-shadow:0 0 8px rgba(0,212,126,.4)}
+.theme-toggle{position:fixed;top:1.25rem;right:1.25rem;z-index:200;background:var(--color-surface);border:1px solid var(--color-border);border-radius:50%;width:40px;height:40px;cursor:pointer;display:flex;align-items:center;justify-content:center;font-size:1.15rem;transition:all .25s;box-shadow:0 2px 8px rgba(0,0,0,.06)}.theme-toggle:hover{border-color:var(--color-primary)}
+.header{background:var(--color-navy);padding:2rem 0;position:relative;overflow:hidden}.header::before{content:'';position:absolute;top:-60%;right:-10%;width:500px;height:500px;background:radial-gradient(circle,rgba(0,212,126,.08) 0%,transparent 70%);pointer-events:none}.header-inner{max-width:800px;margin:0 auto;padding:0 2rem;display:flex;justify-content:space-between;align-items:center}.header img{height:36px}.header-meta p{margin:0;font-size:.8125rem;color:rgba(232,245,239,.45)}.header-meta .name{color:#E8F5EF;font-weight:600;font-size:.9375rem}
+.container{max-width:800px;margin:0 auto;padding:0 2rem}
+.hero{padding:4rem 0 2rem;text-align:center}.hero h1{margin-bottom:.5rem}.hero .subtitle{color:var(--color-muted);font-size:1rem}
+.badge{display:inline-block;background:var(--color-primary-subtle);color:var(--color-primary);font-weight:600;font-size:.7rem;padding:.3rem .75rem;border-radius:100px;letter-spacing:.04em;text-transform:uppercase;margin-bottom:.75rem}
+.csa-body{background:var(--color-surface);border:1px solid var(--color-border);border-radius:14px;padding:3rem;margin-bottom:3rem}@media(max-width:640px){.csa-body{padding:1.5rem}}
+.csa-body .csa-parties{text-align:center;margin-bottom:2.5rem;padding-bottom:2rem;border-bottom:1px solid var(--color-border)}.csa-body .csa-parties h3{font-family:'Outfit',sans-serif;font-size:1.25rem;margin-bottom:.75rem}.csa-body .csa-parties p{font-size:.875rem;margin-bottom:.25rem}
+.csa-body h4{margin:2rem 0 .5rem;font-size:1.05rem}.csa-body h4:first-child{margin-top:0}.csa-body p{font-size:.875rem;line-height:1.8}.csa-body ul{margin:0 0 1rem 1.5rem;font-size:.875rem;line-height:1.8}.csa-body ul li{margin-bottom:.25rem}
+.csa-note{background:var(--color-primary-subtle);border-radius:12px;padding:1.5rem;text-align:center;margin:2rem 0 3rem}.csa-note p{margin:0;font-size:.9375rem;color:var(--color-body)}.csa-note a{font-weight:600}
+.confidential{text-align:center;padding:2rem 0;color:var(--color-muted);font-size:.8125rem;letter-spacing:.04em}
+.footer{background:var(--color-navy);padding:3rem 0;text-align:center;color:rgba(232,245,239,.4);font-size:.8125rem}.footer img{height:28px;margin-bottom:.75rem;opacity:.6}.footer a{color:var(--color-primary)}
+@media print{.theme-toggle,.progress-bar{display:none!important}.header{background:#141C3A!important;-webkit-print-color-adjust:exact;print-color-adjust:exact}.csa-body{border:none;padding:0;box-shadow:none}}
 </style>
 </head>
 <body>
-
 <div class="progress-bar" id="progressBar"></div>
 <button class="theme-toggle" id="themeBtn" aria-label="Toggle theme">&#x1F319;</button>
-
-<div class="header">
-  <div class="header-inner">
-    <a href="https://moonraker.ai"><img src="https://moonraker.ai/wp-content/uploads/2023/10/Moonraker-Logo-Transparent.png" alt="Moonraker"></a>
-    <div class="header-meta"><p>Client Service Agreement</p></div>
-  </div>
-</div>
-
+<div class="header"><div class="header-inner"><a href="https://moonraker.ai"><img src="https://moonraker.ai/wp-content/uploads/2023/10/Moonraker-Logo-Transparent.png" alt="Moonraker"></a><div class="header-meta"><p class="name">Client Service Agreement</p><p>Read-Only Reference</p></div></div></div>
 <div class="container">
-  <div class="hero">
-    <span class="badge">Reference Document</span>
-    <h1>Client Service Agreement</h1>
-    <p>This is the standard agreement between Moonraker.AI, LLC and our clients. You will be asked to review and sign this during onboarding.</p>
-  </div>
-
-  <div class="csa-body">
-    <div class="csa-parties">
-      <p>This Client Service Agreement ("the Agreement") is entered into between:</p>
-      <p><strong>Moonraker.AI, LLC</strong>, a Massachusetts limited liability company,<br>located at 119 Oliver St, Easthampton, MA 01027 ("Moonraker")</p>
-      <p style="margin:.5rem 0;">and</p>
-      <p><strong>The Client</strong> (details completed during onboarding)</p>
-    </div>
-
-    <h4>Purpose of the Agreement</h4>
-    <p>The purpose of the Agreement is to set a clear, mutual understanding between Moonraker and the Client regarding the scope, objectives, and deliverables of the digital marketing services provided by Moonraker to the Client ("the Services"). It outlines the details of the Services, while also specifying the Client's responsibilities. The Agreement is essential to ensure that both parties are aligned on the goals, timelines, and measurable outcomes of the Services, thus minimizing misunderstandings and setting a clear path for collaboration and success.</p>
-
-    <h4>Scope of Services and Limitations</h4>
-    <p>Moonraker is your dedicated marketing and SEO team, and our mission is simple: to help potential clients find your practice when they're searching for the support you provide. To ensure there is clarity on what's included in our partnership, it's important to note what Moonraker does and doesn't handle. The sections below outline exactly what services Moonraker provides, what falls outside our expertise, and how we'll work together when questions arise.</p>
-
-    <h4>What Moonraker DOES Provide</h4>
-    <ul>
-      <li>Digital marketing strategy</li>
-      <li>Initial campaign setup and configuration</li>
-      <li>Technical website optimization</li>
-      <li>Search Engine Optimization (SEO) and Answer Engine Optimization (AEO)</li>
-    </ul>
-    <p>The complete scope of your specific project is outlined in the Statement of Work section of this Agreement.</p>
-
-    <h4>What Moonraker Does NOT Provide</h4>
-    <p><strong>Website Infrastructure and Hosting:</strong> Website hosting services or server management, ongoing security monitoring, patches, or updates, SSL certificate management, website backups, DNS or domain management, ongoing website maintenance beyond SEO-related updates, or installation and management of website plugins that fall outside our immediate SEO work.</p>
-    <p><strong>Third-Party Platform Management:</strong> Ongoing management, technical support, or troubleshooting for third-party platforms, including: Electronic Health Records (EHR) systems, booking and scheduling platforms, CRM systems, email marketing platforms, payment processing systems, communication tools, practice management software, and any other third-party applications or services.</p>
-    <p><em>Important Clarification:</em> When we perform initial setup or configuration of platforms like your booking calendar and communication tools as part of your Statement of Work, this is a one-time implementation. Ongoing management, updates, troubleshooting, or monitoring of these platforms is not included unless explicitly stated in your monthly deliverables.</p>
-    <p><strong>HIPAA Compliance and Regulatory Consulting:</strong> Moonraker does not provide legal, compliance, or regulatory consulting services of any kind, including HIPAA compliance guidance or auditing, healthcare regulatory compliance advice, data privacy regulation guidance (GDPR, CCPA, etc.), professional licensing requirements, industry-specific compliance standards, or Business Associate Agreement (BAA) consulting beyond marketing services.</p>
-
-    <h4>The Gray Area (When We'll Still Help)</h4>
-    <p><strong>We WILL:</strong> Answer questions about tools and integrations we installed (even months after setup), help troubleshoot tracking codes or analytics we implemented, guide you through basic fixes for marketing-related issues, point you toward the right resources or vendors for issues we can't handle, and provide reasonable support for minor issues related to our initial work.</p>
-    <p><strong>We WON'T:</strong> Act as ongoing technical support for your EHR or booking platform, monitor your website for security vulnerabilities or breaches, provide general IT support for technology issues, take responsibility for third-party platform outages or functionality issues, guarantee the ongoing functionality of platforms we don't control, or install and manage website plugins that fall outside our immediate SEO work.</p>
-    <p>If you're ever unsure whether something falls within our scope, just ask. We'll give you a clear, honest answer and point you in the right direction if it's outside our expertise.</p>
-
-    <h4>Your Responsibilities as the Client</h4>
-    <p><strong>Platform Selection and Management:</strong> Selecting appropriate third-party service providers and platforms, ensuring all third-party platforms meet your compliance and security requirements, managing user access, permissions, and security settings for all platforms, and reviewing platform terms of service and privacy policies.</p>
-    <p><strong>Compliance and Regulatory Matters:</strong> Ensuring your business operations, website, and third-party platforms comply with applicable laws and regulations (HIPAA, state regulations, etc.), consulting with legal or compliance professionals when guidance is needed, and implementing required privacy policies, terms of service, and consent mechanisms on your website.</p>
-    <p><strong>Data and Security Management:</strong> Monitoring for and responding to security incidents or data breaches, maintaining backups of all data and systems, coordinating with third-party platform vendors for support and issue resolution, and implementing appropriate security measures to protect client data.</p>
-    <p><strong>Website and Infrastructure:</strong> Maintaining website hosting, security updates, and backups, ensuring your website platform and plugins stay updated, and managing domain registration and DNS settings.</p>
-
-    <h4>Limited Warranties for Integration Work</h4>
-    <p><strong>Our Responsibility:</strong> Correct technical implementation of the integration at the time of installation, following industry best practices for implementation, testing the integration to ensure it works at the time of setup, and providing documentation or basic guidance on how the integration functions.</p>
-    <p><strong>Our Limitations:</strong> We make no warranties regarding the security, compliance, or ongoing performance of third-party platforms. We are not responsible for changes made by third-party platform providers after our initial implementation, issues caused by platform updates, service outages, or policy changes, or compliance violations related to your selection or use of third-party platforms.</p>
-    <p><strong>Your Responsibility:</strong> Vetting and selecting platforms that meet your specific compliance requirements, understanding how platforms handle, store, and process data, monitoring integrations for ongoing functionality, and contacting platform vendors directly for platform-specific technical issues or support.</p>
-
-    <h4>Liability and Indemnification</h4>
-    <p>You acknowledge and agree that Moonraker is not responsible or liable for: security breaches, data breaches, or compliance violations involving your website, third-party platforms, or systems (unless directly and solely caused by Moonraker's proven negligence in performing services within our stated scope); your failure to maintain compliance with applicable laws and regulations; issues arising from third-party platforms, services, or vendors that you selected or use; or modifications made to your website, integrations, or third-party platforms by you or other parties after Moonraker's initial implementation.</p>
-    <p>The Client agrees to indemnify and hold Moonraker harmless from any claims, damages, losses, or expenses (including attorney fees) arising from or related to the above. Moonraker maintains appropriate professional liability insurance and takes full responsibility for work performed within our defined scope of services.</p>
-
-    <h4>Clarification Requests</h4>
-    <p>If the Client is uncertain whether a requested service falls within Moonraker's scope of work, the Client agrees to submit a written request for clarification prior to assuming such services are included. Moonraker will respond in writing within 2 business days to confirm whether the requested service is included or would constitute additional work requiring a separate agreement and fees.</p>
-
-    <h4>Ownership</h4>
-    <p>The Client represents and warrants to Moonraker that the Client owns and/or has a legitimate legal license to use for business purposes, all photos, text, artwork, graphics, designs, trademarks, and other materials provided by the Client for Moonraker's use. The Client shall indemnify and hold Moonraker harmless from all losses and claims, including attorney fees, that may result by reason of claims by third parties related to such materials.</p>
-
-    <h4>Alteration</h4>
-    <p>Terms of this agreement are renegotiable after 90 days. After 12 months, Moonraker rates are subject to change for all services. In the event that the scope of work is required to change, Moonraker reserves the right to cancel or renegotiate this Agreement and the Client reserves the right to accept or reject the new terms provided. Any alteration will be agreed upon by both parties, and new paperwork will be issued.</p>
-
-    <h4>Intellectual Property</h4>
-    <p><strong>Client Ownership of Deliverables:</strong> Upon completion of the Services and receipt of full payment, the Client shall own all tangible work product and deliverables created specifically for the Client, including but not limited to: the Client's website, Google Business Profile, content created for the Client, and data/analytics reports. The Client may continue to use, modify, and maintain these deliverables without additional consent or compensation from Moonraker.</p>
-    <p><strong>Moonraker's Proprietary Methods:</strong> Moonraker retains all ownership and intellectual property rights to its proprietary processes, methodologies, tools, software, frameworks, and strategic approaches used in delivering the Services. These proprietary methods represent Moonraker's competitive advantage and trade secrets.</p>
-
-    <h4>Mutual Confidentiality</h4>
-    <p>Moonraker will not directly share or divulge any type of proprietary or private information of the Client's in any form. Moonraker will protect such information and treat it as strictly confidential. The Client shall not divulge or otherwise communicate any information that is proprietary to Moonraker as it relates to Moonraker's proprietary strategy and structure of the Services. Both parties shall continue to hold each other in good faith after the termination of the Agreement.</p>
-
-    <h4>Independent Contractor</h4>
-    <p>Moonraker is an independent contractor with respect to its relationship to the Client. Moonraker shall not be deemed, for any purpose, an employee of the Client.</p>
-
-    <h4>Warranty</h4>
-    <p>Moonraker represents and warrants that it has the unencumbered right and power to enter into and perform the Agreement and that Moonraker is not aware of any claims or basis for claims of infringement of any patent, trademark, copyright, trade secret, or contractual or other proprietary rights of third parties in or to any materials included by Moonraker in the Services.</p>
-
-    <h4>Limitation of Liability</h4>
-    <p>Under no circumstances shall either party be liable to the other party or any third party for indirect incidental, consequential, special, or exemplary damages, arising from any provision of the Agreement. This includes, but is not limited to, loss of revenue or anticipated profit or lost business, costs of delay or failure of delivery, or liabilities to third parties arising from any source.</p>
-
-    <h4>Indemnity</h4>
-    <p>Each party agrees to defend, indemnify, and hold harmless the other party and its business partners from any and all third party claims, demands, liabilities, costs and expenses, including reasonable attorney fees, resulting from the indemnifying party's material breach of any duty, representation, or warranty under this agreement.</p>
-
-    <h4>Legal Notice</h4>
-    <p>Neither Moonraker nor any of its employees or agents warrants that the functions contained in the Services will be uninterrupted or error-free. The entire risk as to the quality and performance is with the Client. In no event will Moonraker be liable for any claimed damages resulting from service interruptions caused by circumstances beyond Moonraker's reasonable control.</p>
-
-    <h4>Account Access</h4>
-    <p><strong>Client Ownership:</strong> The Client retains primary ownership and control of all accounts, profiles, and digital assets. The Client agrees to grant Moonraker administrator-level access necessary to perform the Services.</p>
-    <p><strong>Access Requirements:</strong> The Client shall provide and maintain administrator-level access for Moonraker to all relevant accounts and platforms. This access must remain active and uninterrupted throughout the duration of the contract.</p>
-    <p><strong>Access Stability:</strong> Both parties agree not to modify login credentials, revoke access, or change account permissions without prior written notice at least 48 hours in advance when feasible.</p>
-    <p><strong>Third-Party Access:</strong> The Client agrees to notify Moonraker in writing before granting account access to any third parties who will have access to accounts where Moonraker is actively providing Services.</p>
-    <p><strong>Service Interference:</strong> If the Client or any third party takes actions that interfere with Moonraker's ability to perform the Services, the Client assumes full responsibility for any resulting issues. Moonraker shall not be held liable for outcomes resulting from such interference.</p>
-
-    <h4>Communication</h4>
-    <p>Moonraker will make every effort to reply to inquiries within 24-72 hours except where the Client has been previously notified of a period of limited availability. The Services will be provided in a timely and professional manner.</p>
-
-    <h4>Ethics</h4>
-    <p>Moonraker will conduct services so long as the Client's requests remain ethical. Any requests to provide black hat or otherwise questionable tactics may result in the immediate cancellation of the Agreement.</p>
-
-    <h4>Termination</h4>
-    <p>Moonraker may terminate the contract if the Client violates any ethical or legal standards. Unless otherwise terminated, the Agreement will terminate upon completion of the Services.</p>
-
-    <h4>Termination on Default</h4>
-    <p>If the Client defaults by failing to substantially perform any provision of the Agreement (including failure to make monetary payment when due), Moonraker may terminate the Agreement by providing notice. The Client shall have 15 days to cure the default(s). Moonraker is owed in full for any Termination on Default.</p>
-
-    <h4>Governing Forum</h4>
-    <p>The Agreement shall be construed in accordance with the internal laws of Hampshire County, in the State of Massachusetts. Venue shall be in a court of competent jurisdiction in the State of Massachusetts. All disputes will be settled through mediation.</p>
-
-    <h4>Complete Contract / Amendment</h4>
-    <p>The Agreement supersedes all prior agreements and understandings between the parties. The parties may amend the Agreement in a written document signed by both parties. All prices specified are honored for 12 months after both parties sign. Continuation of the Services after that time will require a new agreement.</p>
-
-    <h4>Payment Terms</h4>
-    <p>All payments shall be made digitally using Moonraker's digital payment processing. If the Services are paid for via credit card or eChecks, processing and service fees will be passed on to the Client. If payment is not made in full, Moonraker retains full ownership of content not provided by the Client. All payments are final.</p>
-
-    <h4>Service Fees</h4>
-    <p>All fees must be paid in full at the start of the scheduled payment term (the Effective Date). Fees are determined by the campaign scope and payment term chosen by the Client. If payment is not received by the Effective Date, Moonraker reserves the right to withhold Services.</p>
-
-    <h4>Performance Guarantee</h4>
-    <p>Moonraker provides a performance guarantee for 12-month payment terms. The specific goal will be determined collaboratively and confirmed in writing. Should Moonraker fail to help the Client achieve the goal by end of the 12-month term, Moonraker will continue providing the Services at no cost until the goal is met.</p>
-
-    <h4>Additional Fees</h4>
-    <p>Any additional services not included in the Agreement will result in additional fees. An excessive amount of work orders may result in additional fees including for additional work, multiple revisions, extensions, or additional resources.</p>
-
-    <h4>Cancellation of Services</h4>
-    <p>The Client may cancel services in writing at any time. Moonraker will deactivate billing and complete all deliverables for the current billing cycle before initiating offboarding.</p>
-
-    <h4>Refund Policy</h4>
-    <p>The Client acknowledges and agrees that no refunds will be provided by Moonraker for any work that has been completed in accordance with the Agreement. All payments made to Moonraker are final and non-refundable, regardless of the Client's satisfaction with the outcomes of the Services rendered.</p>
-
-    <h4>Statement of Work</h4>
-    <p>The following services are included in your campaign (scope may vary by plan):</p>
-    <ul>
-      <li>Project setup, tracking, and baseline reporting</li>
-      <li>Google Assets configuration (GBP, GA4, GSC, GTM)</li>
-      <li>Keyword and entities research</li>
-      <li>Website speed, security, and technical optimization</li>
-      <li>Conversion rate optimization (Hero section)</li>
-      <li>Up to 5 new and optimized website pages with custom HTML and schema</li>
-      <li>Bio page creation for each therapist</li>
-      <li>General FAQ page</li>
-      <li>Google Business Profile optimization</li>
-      <li>Citation audit and directory listings management</li>
-      <li>Press release syndication</li>
-      <li>LiveDrive local signal deployment</li>
-      <li>Rising Tide social profile buildout and content distribution</li>
-      <li>2 posts per month on 4 platforms (GBP, Facebook, LinkedIn, Quora)</li>
-      <li>NEO image creation and distribution</li>
-      <li>Monthly campaign reporting with AI-powered insights</li>
-    </ul>
-
-    <h4>Campaign Communications</h4>
-    <p><strong>Month 1:</strong> Reporting on all completed deliverables, content approval request, weekly campaign updates, video progress update.</p>
-    <p><strong>Month 2 Onward:</strong> Monthly video progress updates to report on analytics and deliverables.</p>
-
-    <h4>Client Responsibilities</h4>
-    <ul>
-      <li><strong>Complete Campaign Onboarding:</strong> Provide all requested information in the Client Onboarding dashboard in a thorough and exhaustive manner.</li>
-      <li><strong>Provide Access to Website and Google Properties:</strong> Provide access to website, GBP, GA4, GSC, and GTM, if available.</li>
-      <li><strong>Provide Access to Historical SEO Data:</strong> Provide access to previous SEO tools or accounts for performance analysis.</li>
-      <li><strong>Approve Campaign Content in a Timely Manner:</strong> Respond to content approval requests within 48 hours. If no response within 7 days, Moonraker may publish on the Client's behalf. Changes can still be made after content goes live.</li>
-    </ul>
-  </div>
-
-  <div class="cta-bar">
-    <p>Have questions about this agreement? Let's talk.</p>
-    <a href="https://msg.moonraker.ai/widget/bookings/scott-pope-calendar" target="_blank" class="cta-btn">Book a Call with Scott</a>
-  </div>
+<div class="hero"><span class="badge">Reference Document</span><h1>Client Service Agreement</h1><p class="subtitle">This is a read-only reference copy. You will review and sign a personalized version during onboarding.</p></div>
+<div class="csa-body">
+<div class="csa-parties"><h3>Moonraker Client Service Agreement</h3><p>This Client Service Agreement ("the Agreement") is entered into between:</p><p><strong>Moonraker.AI, LLC</strong>, a Massachusetts limited liability company,<br>located at 119 Oliver St, Easthampton, MA 01027 ("Moonraker")</p><p style="margin-top:.5rem;">and <strong>the Client</strong></p></div>
+<h4>Purpose of the Agreement</h4><p>The purpose of the Agreement is to set a clear, mutual understanding between Moonraker and the Client regarding the scope, objectives, and deliverables of the digital marketing services provided by Moonraker to the Client ("the Services"). It outlines the details of the Services, while also specifying the Client's responsibilities. The Agreement is essential to ensure that both parties are aligned on the goals, timelines, and measurable outcomes of the Services, thus minimizing misunderstandings and setting a clear path for collaboration and success.</p>
+<h4>Scope of Services and Limitations</h4><p>Moonraker is your dedicated marketing and SEO team, and our mission is simple: to help potential clients find your practice when they're searching for the support you provide. To ensure there is clarity on what's included in our partnership, it's important to note what Moonraker does and doesn't handle.</p>
+<h4>What Moonraker DOES Provide</h4><ul><li>Digital marketing strategy</li><li>Initial campaign setup and configuration</li><li>Technical website optimization</li><li>Search Engine Optimization (SEO) and Answer Engine Optimization (AEO)</li></ul><p>The complete scope of your specific project is outlined in the Statement of Work section of this Agreement.</p>
+<h4>What Moonraker Does NOT Provide</h4><p><strong>Website Infrastructure and Hosting:</strong> Website hosting services or server management, ongoing security monitoring, patches, or updates, SSL certificate management, website backups, DNS or domain management, ongoing website maintenance beyond SEO-related updates, or installation and management of website plugins that fall outside our immediate SEO work.</p><p><strong>Third-Party Platform Management:</strong> Ongoing management, technical support, or troubleshooting for third-party platforms, including: Electronic Health Records (EHR) systems, booking and scheduling platforms, CRM systems, email marketing platforms, payment processing systems, communication tools, practice management software, and any other third-party applications or services.</p><p><em>Important Clarification:</em> When we perform initial setup or configuration of platforms as part of your Statement of Work, this is a one-time implementation. Ongoing management is not included unless explicitly stated in your monthly deliverables.</p><p><strong>HIPAA Compliance and Regulatory Consulting:</strong> Moonraker does not provide legal, compliance, or regulatory consulting services of any kind, including HIPAA compliance guidance, healthcare regulatory compliance advice, data privacy regulation guidance (GDPR, CCPA, etc.), professional licensing requirements, or BAA consulting beyond marketing services.</p>
+<h4>The Gray Area (When We'll Still Help)</h4><p><strong>We WILL:</strong> Answer questions about tools and integrations we installed (even months after setup), help troubleshoot tracking codes or analytics we implemented, guide you through basic fixes for marketing-related issues, point you toward the right resources, and provide reasonable support for minor issues related to our initial work.</p><p><strong>We WON'T:</strong> Act as ongoing technical support for your EHR or booking platform, monitor your website for security vulnerabilities, provide general IT support, take responsibility for third-party platform outages, guarantee the ongoing functionality of platforms we don't control, or manage plugins outside our immediate SEO work.</p><p>If you're ever unsure whether something falls within our scope, just ask.</p>
+<h4>Your Responsibilities as the Client</h4><p><strong>Platform Selection and Management:</strong> Selecting appropriate third-party service providers, ensuring platforms meet your compliance requirements, managing user access and permissions, and reviewing platform terms of service.</p><p><strong>Compliance and Regulatory Matters:</strong> Ensuring your business operations comply with applicable laws (HIPAA, state regulations, etc.), consulting with legal professionals when needed, and implementing required privacy policies and consent mechanisms.</p><p><strong>Data and Security Management:</strong> Monitoring for security incidents, maintaining backups, coordinating with third-party vendors for support, and implementing appropriate security measures.</p><p><strong>Website and Infrastructure:</strong> Maintaining website hosting, security updates and backups, ensuring plugins stay updated, and managing domain registration and DNS settings.</p>
+<h4>Limited Warranties for Integration Work</h4><p><strong>Our Responsibility:</strong> Correct technical implementation at the time of installation, following industry best practices, testing the integration, and providing documentation.</p><p><strong>Our Limitations:</strong> We make no warranties regarding the security, compliance, or ongoing performance of third-party platforms. We are not responsible for changes made by providers after our implementation, or compliance violations related to your platform selections.</p><p><strong>Your Responsibility:</strong> Vetting platforms for compliance, understanding data handling, monitoring integrations, and contacting vendors for platform-specific issues.</p>
+<h4>Liability and Indemnification</h4><p>You acknowledge that Moonraker is not responsible for: security breaches or compliance violations involving your systems (unless caused by Moonraker's proven negligence); your failure to maintain compliance; issues from third-party platforms you selected; or modifications made after our implementation. The Client agrees to indemnify and hold Moonraker harmless from related claims. Moonraker maintains professional liability insurance and takes full responsibility for work within our defined scope.</p>
+<h4>Clarification Requests</h4><p>If uncertain whether a service falls within scope, submit a written request. Moonraker will respond within 2 business days to confirm whether it is included or requires a separate agreement.</p>
+<h4>Ownership</h4><p>The Client warrants ownership of all materials provided to Moonraker and shall indemnify Moonraker against third-party claims related to such materials.</p>
+<h4>Alteration</h4><p>Terms are renegotiable after 90 days. After 12 months, rates are subject to change. Any scope changes will be agreed upon by both parties with new paperwork issued.</p>
+<h4>Intellectual Property</h4><p><strong>Client Ownership:</strong> Upon completion and full payment, the Client owns all deliverables created specifically for them. <strong>Moonraker's Proprietary Methods:</strong> Moonraker retains all rights to its proprietary processes, methodologies, tools, software, and frameworks.</p>
+<h4>Mutual Confidentiality</h4><p>Both parties agree to protect each other's proprietary information and treat it as strictly confidential. This provision continues after termination of the Agreement.</p>
+<h4>Independent Contractor</h4><p>Moonraker is an independent contractor and shall not be deemed an employee of the Client.</p>
+<h4>Warranty</h4><p>Moonraker warrants that it has the right and power to enter into and perform the Agreement and is not aware of any claims of infringement related to the Services.</p>
+<h4>Limitation of Liability</h4><p>Under no circumstances shall either party be liable for indirect, incidental, consequential, special, or exemplary damages arising from any provision of the Agreement.</p>
+<h4>Indemnity</h4><p>Each party agrees to defend, indemnify, and hold harmless the other party from third-party claims resulting from material breach of this agreement.</p>
+<h4>Legal Notice</h4><p>Neither Moonraker nor its agents warrants that the Services will be uninterrupted or error-free. The entire risk as to quality and performance is with the Client.</p>
+<h4>Account Access</h4><p><strong>Client Ownership:</strong> The Client retains primary ownership of all accounts and digital assets and agrees to grant Moonraker administrator-level access. <strong>Access Stability:</strong> Both parties agree not to modify credentials or revoke access without 48-hour written notice. <strong>Third-Party Access:</strong> The Client will notify Moonraker before granting access to third parties. <strong>Service Interference:</strong> If actions by the Client or third parties interfere with Moonraker's ability to perform, the Client assumes full responsibility.</p>
+<h4>Communication</h4><p>Moonraker will reply to inquiries within 24-72 hours except during previously notified periods of limited availability.</p>
+<h4>Ethics</h4><p>Any requests for black hat or unethical tactics may result in immediate cancellation of the Agreement.</p>
+<h4>Termination</h4><p>Moonraker may terminate if the Client violates ethical or legal standards. The Agreement otherwise terminates upon completion of the Services.</p>
+<h4>Termination on Default</h4><p>If the Client defaults (including failure to make payment), Moonraker may terminate with notice. The Client has 15 days to cure the default. Moonraker is owed in full for any Termination on Default.</p>
+<h4>Governing Forum</h4><p>The Agreement shall be construed under the laws of Hampshire County, Massachusetts. All disputes will be settled through mediation.</p>
+<h4>Complete Contract / Amendment</h4><p>This Agreement supersedes all prior agreements. Prices are honored for 12 months after signing. Continuation requires a new agreement.</p>
+<h4>Payment Terms</h4><p>All payments shall be made digitally. Credit card and eCheck payments include processing fees. All payments are final. The Client is responsible for all third-party fees in addition to Moonraker's fees.</p>
+<h4>Service Fees</h4><p>Fees must be paid in full at the start of each payment term (the Effective Date). Fees are determined by the campaign scope and payment term chosen. If payment is not received, Moonraker may withhold Services.</p>
+<h4>Performance Guarantee</h4><p>Available for 12-month payment terms. The specific goal is determined collaboratively and confirmed in writing. If not achieved, Moonraker continues Services at no cost until the goal is met.</p>
+<h4>Additional Fees</h4><p>Additional services beyond the Agreement will result in additional fees. Excessive work orders may also incur additional charges.</p>
+<h4>Cancellation of Services</h4><p>The Client may cancel in writing at any time. Moonraker will complete deliverables for the current billing cycle before offboarding.</p>
+<h4>Refund Policy</h4><p>The Client acknowledges and agrees that no refunds will be provided by Moonraker for any work completed in accordance with the Agreement. All payments are final and non-refundable, regardless of satisfaction with outcomes.</p>
+<h4>Statement of Work</h4><p>The following services are included in the CORE Marketing Campaign:</p><ul><li>Project setup, tracking, and baseline reporting</li><li>Google Assets configuration (GBP, GA4, GSC, GTM)</li><li>Keyword and entities research</li><li>Website speed, security, and technical optimization</li><li>Conversion rate optimization (Hero section)</li><li>Up to 5 new and optimized website pages with custom HTML and schema</li><li>Bio page creation for each therapist</li><li>General FAQ page</li><li>Google Business Profile optimization</li><li>Citation audit and directory listings management (15 citations + 5 data aggregators)</li><li>Press release syndication (1 included, additional at $300/ea)</li><li>LiveDrive local signal deployment</li><li>Rising Tide social profile buildout and content distribution</li><li>2 posts per month on 4 platforms (GBP, Facebook, LinkedIn, Quora)</li><li>NEO image creation and distribution</li><li>Monthly campaign reporting with AI-powered insights</li></ul>
+<h4>Campaign Communications</h4><p><strong>Month 1:</strong> Reporting on all completed deliverables, content approval request, weekly campaign updates, video progress update.</p><p><strong>Month 2 Onward:</strong> Monthly video progress updates to report on analytics and deliverables.</p>
+<h4>Client Responsibilities</h4><ul><li><strong>Complete Campaign Onboarding:</strong> Provide all requested information thoroughly so Moonraker can launch without delay.</li><li><strong>Provide Access:</strong> Provide access to your website, GBP, GA4, GSC, and GTM, if available.</li><li><strong>Historical SEO Data:</strong> Provide access to previous SEO tools or accounts for analysis.</li><li><strong>Approve Content Promptly:</strong> Respond to approval requests within 48 hours. After 7 days, Moonraker may publish on the Client's behalf.</li></ul>
 </div>
-
+<div class="csa-note"><p>This is a reference copy. A personalized version will be provided for electronic signature during onboarding.<br>Questions? <a href="https://msg.moonraker.ai/widget/bookings/scott-pope-calendar" target="_blank">Book a call with Scott</a> or email <a href="mailto:support@moonraker.ai">support@moonraker.ai</a></p></div>
+</div>
 <div class="confidential"><div class="container">&copy; 2026 Moonraker AI &middot; moonraker.ai</div></div>
 <footer class="footer"><div class="container"><img src="https://moonraker.ai/wp-content/uploads/2023/10/Moonraker-Logo-Transparent.png" alt="Moonraker"><br><a href="https://moonraker.ai">moonraker.ai</a></div></footer>
-
 <script>
-(function() {
-  var themeBtn = document.getElementById('themeBtn');
-  if (themeBtn) {
-    themeBtn.addEventListener('click', function() {
-      var h = document.documentElement;
-      if (h.getAttribute('data-theme') === 'light') {
-        h.setAttribute('data-theme', 'dark');
-        themeBtn.innerHTML = '&#9728;&#65039;';
-        try{localStorage.setItem('moonraker-theme','dark')}catch(e){}
-      } else {
-        h.setAttribute('data-theme', 'light');
-        themeBtn.innerHTML = '&#x1F319;';
-        try{localStorage.setItem('moonraker-theme','light')}catch(e){}
-      }
-    });
-  }
-  var pb = document.getElementById('progressBar');
-  window.addEventListener('scroll', function() {
-    var st = window.scrollY, dh = document.documentElement.scrollHeight - window.innerHeight;
-    pb.style.width = (dh > 0 ? (st / dh) * 100 : 0) + '%';
-  });
-})();
+(function(){var b=document.getElementById('themeBtn');if(b){b.addEventListener('click',function(){var h=document.documentElement;if(h.getAttribute('data-theme')==='light'){h.setAttribute('data-theme','dark');b.innerHTML='&#9728;&#65039;';try{localStorage.setItem('moonraker-theme','dark')}catch(e){}}else{h.setAttribute('data-theme','light');b.innerHTML='&#x1F319;';try{localStorage.setItem('moonraker-theme','light')}catch(e){}}})}var pb=document.getElementById('progressBar');window.addEventListener('scroll',function(){var s=window.scrollY,d=document.documentElement.scrollHeight-window.innerHeight;pb.style.width=(d>0?(s/d)*100:0)+'%'})})();
 </script>
 </body>
 </html>
