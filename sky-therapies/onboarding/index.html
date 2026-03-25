@@ -363,13 +363,50 @@ strong { font-weight: 600; color: var(--color-heading); }
 
       <div class="step-actions">
         <button class="btn btn-outline" onclick="goToStep(1)">&#8592; Back</button>
-        <button class="btn btn-primary" onclick="goToStep(3)">Next: Practice Details &#8594;</button>
+        <button class="btn btn-primary" onclick="goToStep(3)">Next: Connect Accounts &#8594;</button>
       </div>
     </div>
 
-    <!-- STEP 4: Practice Details -->
-    <div class="step-panel" data-step="practice_details">
+    <!-- STEP 6: Connect Accounts (Leadsie) -->
+    <div class="step-panel" data-step="connect_accounts">
       <span class="step-badge">Step 4 of 8</span>
+      <h1>Connect Your Accounts</h1>
+      <p style="color:var(--color-muted)">We use a secure tool called Leadsie to connect to your website and Google properties. Click through the steps below to grant access to your accounts. This process takes about 5 minutes.</p>
+
+      <div id="accessAlreadyDone" class="status-signed" style="display:none;">
+        <h4>&#10003; Access Granted</h4>
+        <p style="margin:0;font-size:.875rem;">We have received your access grants. Our team will confirm everything is connected.</p>
+      </div>
+
+      <div id="leadsieEmbed">
+        <div class="embed-container">
+          <iframe src="https://app.leadsie.com/embed/connect/to/digital-access-partners/core-marketing-system" scrolling="auto" style="height:1000px;"></iframe>
+        </div>
+        <div class="embed-note">
+          <strong>Having trouble with Leadsie?</strong> No worries. You can grant access manually using these video walkthroughs:
+          <div style="display:grid;grid-template-columns:1fr 1fr;gap:.5rem;margin-top:.75rem;">
+            <a href="https://customer-dmmj9ibzv6vjzqlm.cloudflarestream.com/f607674dec2c6566cd6b422e251929e9/watch" target="_blank" style="display:flex;align-items:center;gap:.5rem;padding:.5rem .75rem;background:var(--color-bg);border:1px solid var(--color-border);border-radius:8px;font-size:.8125rem;font-weight:500;color:var(--color-heading);text-decoration:none;transition:border-color .2s;" onmouseover="this.style.borderColor='var(--color-primary)'" onmouseout="this.style.borderColor='var(--color-border)'">&#9654; WordPress Access</a>
+            <a href="https://customer-dmmj9ibzv6vjzqlm.cloudflarestream.com/168cb629a4c9d181d5086ce445a13007/watch" target="_blank" style="display:flex;align-items:center;gap:.5rem;padding:.5rem .75rem;background:var(--color-bg);border:1px solid var(--color-border);border-radius:8px;font-size:.8125rem;font-weight:500;color:var(--color-heading);text-decoration:none;transition:border-color .2s;" onmouseover="this.style.borderColor='var(--color-primary)'" onmouseout="this.style.borderColor='var(--color-border)'">&#9654; Squarespace Access</a>
+            <a href="https://customer-dmmj9ibzv6vjzqlm.cloudflarestream.com/198ae2d09c7296e1152e35291606d21a/watch" target="_blank" style="display:flex;align-items:center;gap:.5rem;padding:.5rem .75rem;background:var(--color-bg);border:1px solid var(--color-border);border-radius:8px;font-size:.8125rem;font-weight:500;color:var(--color-heading);text-decoration:none;transition:border-color .2s;" onmouseover="this.style.borderColor='var(--color-primary)'" onmouseout="this.style.borderColor='var(--color-border)'">&#9654; Wix Access</a>
+            <a href="https://customer-dmmj9ibzv6vjzqlm.cloudflarestream.com/9e696e8222b130283ddb8ed50a77fbe3/watch" target="_blank" style="display:flex;align-items:center;gap:.5rem;padding:.5rem .75rem;background:var(--color-bg);border:1px solid var(--color-border);border-radius:8px;font-size:.8125rem;font-weight:500;color:var(--color-heading);text-decoration:none;transition:border-color .2s;" onmouseover="this.style.borderColor='var(--color-primary)'" onmouseout="this.style.borderColor='var(--color-border)'">&#9654; Google Business Profile</a>
+            <a href="https://customer-dmmj9ibzv6vjzqlm.cloudflarestream.com/18faebd5ab78038f054f6ebfbd50d259/watch" target="_blank" style="display:flex;align-items:center;gap:.5rem;padding:.5rem .75rem;background:var(--color-bg);border:1px solid var(--color-border);border-radius:8px;font-size:.8125rem;font-weight:500;color:var(--color-heading);text-decoration:none;transition:border-color .2s;" onmouseover="this.style.borderColor='var(--color-primary)'" onmouseout="this.style.borderColor='var(--color-border)'">&#9654; Search Console</a>
+            <a href="https://customer-dmmj9ibzv6vjzqlm.cloudflarestream.com/e0a9b61076be15a379a032a39e380dc7/watch" target="_blank" style="display:flex;align-items:center;gap:.5rem;padding:.5rem .75rem;background:var(--color-bg);border:1px solid var(--color-border);border-radius:8px;font-size:.8125rem;font-weight:500;color:var(--color-heading);text-decoration:none;transition:border-color .2s;" onmouseover="this.style.borderColor='var(--color-primary)'" onmouseout="this.style.borderColor='var(--color-border)'">&#9654; Google Analytics</a>
+            <a href="https://customer-dmmj9ibzv6vjzqlm.cloudflarestream.com/6f2da151c2166021217e40d76eaddcef/watch" target="_blank" style="display:flex;align-items:center;gap:.5rem;padding:.5rem .75rem;background:var(--color-bg);border:1px solid var(--color-border);border-radius:8px;font-size:.8125rem;font-weight:500;color:var(--color-heading);text-decoration:none;transition:border-color .2s;" onmouseover="this.style.borderColor='var(--color-primary)'" onmouseout="this.style.borderColor='var(--color-border)'">&#9654; Tag Manager</a>
+          </div>
+          <p style="margin:.75rem 0 0;font-size:.8125rem;">Or email us at <a href="mailto:support@moonraker.ai">support@moonraker.ai</a> and we will help you through it.</p>
+        </div>
+        <button class="btn btn-success" style="margin-top:1rem;" onclick="completeStep('connect_accounts')">I've Completed Leadsie &#10003;</button>
+      </div>
+
+      <div class="step-actions">
+        <button class="btn btn-outline" onclick="goToStep(2)">&#8592; Back</button>
+        <button class="btn btn-primary" onclick="goToStep(4)">Next: Practice Details &#8594;</button>
+      </div>
+    </div>
+
+    <!-- STEP 4: Connect Accounts -->
+    <div class="step-panel" data-step="practice_details">
+      <span class="step-badge">Step 5 of 8</span>
       <h1>Practice &amp; Clinical Details</h1>
       <p style="color:var(--color-muted)">This information helps us build your service pages, write content in your voice, and target the right audience. Separate multiple items with commas.</p>
 
@@ -438,14 +475,14 @@ strong { font-weight: 600; color: var(--color-heading); }
       <div class="save-note" id="pd_saved">&#10003; Practice details saved</div>
 
       <div class="step-actions">
-        <button class="btn btn-outline" onclick="goToStep(2)">&#8592; Back</button>
-        <button class="btn btn-primary" onclick="goToStep(4)">Next: Bio Materials &#8594;</button>
+        <button class="btn btn-outline" onclick="goToStep(3)">&#8592; Back</button>
+        <button class="btn btn-primary" onclick="goToStep(5)">Next: Bio Materials &#8594;</button>
       </div>
     </div>
 
-    <!-- STEP 5: Bio Materials -->
+    <!-- STEP 6: Bio Materials -->
     <div class="step-panel" data-step="bio_materials">
-      <span class="step-badge">Step 5 of 8</span>
+      <span class="step-badge">Step 6 of 8</span>
       <h1>Bio Page Materials</h1>
       <p style="color:var(--color-muted)">We build a detailed bio page for each therapist at your practice. This info feeds directly into your bio page, schema markup, and AI visibility. Start with the primary therapist and we can add more later.</p>
 
@@ -481,6 +518,12 @@ strong { font-weight: 600; color: var(--color-heading); }
         <div class="form-group"><label>Awards &amp; Recognitions</label><input type="text" id="bio_awards" placeholder="Any awards, recognitions, or media features"></div>
       </div>
 
+      <div class="form-section">
+        <h3>Media &amp; Publications</h3>
+        <p style="color:var(--color-muted);font-size:.875rem;">Have you been featured anywhere? Books, podcasts, webinars, YouTube videos, news articles, blog features - any third-party media helps AI systems recognize you as an authority.</p>
+        <div class="form-group"><label>Media Appearances &amp; Features</label><textarea id="bio_media" style="min-height:100px;" placeholder="e.g. Guest on The Therapy Chat Podcast, Episode 142, https://...&#10;Featured in Psychology Today article on EMDR, https://...&#10;Speaker at EMDRIA 2025 Conference&#10;Chapter contributor: Healing Trauma in First Responders (2024)"></textarea><div class="help-text">One per line. Include links where available.</div></div>
+      </div>
+
 
 
       <button class="btn btn-primary" onclick="saveBioMaterials()">Save &amp; Continue &#8594;</button>
@@ -492,34 +535,7 @@ strong { font-weight: 600; color: var(--color-heading); }
       </div>
     </div>
 
-    <!-- STEP 6: Connect Accounts (Leadsie) -->
-    <div class="step-panel" data-step="connect_accounts">
-      <span class="step-badge">Step 6 of 8</span>
-      <h1>Connect Your Accounts</h1>
-      <p style="color:var(--color-muted)">We use a secure tool called Leadsie to connect to your website and Google properties. Click through the steps below to grant access to your accounts. This process takes about 5 minutes.</p>
-
-      <div id="accessAlreadyDone" class="status-signed" style="display:none;">
-        <h4>&#10003; Access Granted</h4>
-        <p style="margin:0;font-size:.875rem;">We have received your access grants. Our team will confirm everything is connected.</p>
-      </div>
-
-      <div id="leadsieEmbed">
-        <div class="embed-container">
-          <iframe src="https://app.leadsie.com/embed/connect/to/digital-access-partners/core-marketing-system" scrolling="auto" style="height:1000px;"></iframe>
-        </div>
-        <div class="embed-note">
-          <strong>Having trouble with Leadsie?</strong> No worries. We can also set up access manually. Just let us know at <a href="mailto:support@moonraker.ai">support@moonraker.ai</a> and we will send you step-by-step instructions.
-        </div>
-        <button class="btn btn-success" style="margin-top:1rem;" onclick="completeStep('connect_accounts')">I've Completed Leadsie &#10003;</button>
-      </div>
-
-      <div class="step-actions">
-        <button class="btn btn-outline" onclick="goToStep(4)">&#8592; Back</button>
-        <button class="btn btn-primary" onclick="goToStep(6)">Next: Social Profiles &#8594;</button>
-      </div>
-    </div>
-
-    <!-- STEP 7: Social Profiles -->
+    <!-- STEP 5: Practice Details -->
     <div class="step-panel" data-step="social_profiles">
       <span class="step-badge">Step 7 of 8</span>
       <h1>Social Profiles</h1>
@@ -568,12 +584,11 @@ strong { font-weight: 600; color: var(--color-heading); }
       <p style="color:var(--color-muted)">Your shared Google Drive folder is where you can upload creative assets, documents, and images for your campaign. We check this folder regularly.</p>
 
       <div id="driveFolderSection">
-        <div class="drive-card" style="margin-bottom:2rem;">
-          <div class="drive-icon">&#128194;</div>
+        <a id="driveFolderLink" href="#" target="_blank" class="drive-card" style="margin-bottom:2rem;display:block;text-decoration:none;cursor:pointer;transition:transform .2s,box-shadow .2s;" onmouseover="this.style.transform='translateY(-3px)';this.style.boxShadow='0 8px 28px rgba(0,0,0,.07)'" onmouseout="this.style.transform='';this.style.boxShadow=''">
+          <img src="https://upload.wikimedia.org/wikipedia/commons/1/12/Google_Drive_icon_%282020%29.svg" alt="Google Drive" style="width:48px;height:48px;margin:0 auto .75rem;display:block;">
           <h4>Open Your Shared Folder</h4>
-          <p style="color:var(--color-muted);font-size:.875rem;margin-bottom:1rem;">This folder is shared between you and our team. Anything you upload here will be available for us to use in your campaign.</p>
-          <p id="driveFolderLink" style="margin:0;font-size:1rem;">Your Drive folder link will appear here once created.</p>
-        </div>
+          <p style="color:var(--color-muted);font-size:.875rem;margin:0;">Tap here to open your shared Google Drive folder</p>
+        </a>
       </div>
 
       <div class="form-section">
@@ -632,9 +647,9 @@ strong { font-weight: 600; color: var(--color-heading); }
     { key: 'confirm_info', label: 'Confirm Info', num: 1 },
     { key: 'sign_agreement', label: 'Sign Agreement', num: 2 },
     { key: 'book_intro_call', label: 'Book Intro Call', num: 3 },
-    { key: 'practice_details', label: 'Practice Details', num: 4 },
-    { key: 'bio_materials', label: 'Bio Materials', num: 5 },
-    { key: 'connect_accounts', label: 'Connect Accounts', num: 6 },
+    { key: 'connect_accounts', label: 'Connect Accounts', num: 4 },
+    { key: 'practice_details', label: 'Practice Details', num: 5 },
+    { key: 'bio_materials', label: 'Bio Materials', num: 6 },
     { key: 'social_profiles', label: 'Social Profiles', num: 7 },
     { key: 'checkins_and_drive', label: 'Google Drive', num: 8 }
   ];
@@ -1089,7 +1104,8 @@ strong { font-weight: 600; color: var(--color-heading); }
 
     // Step 8: Drive folder link
     if (contact.drive_folder_url) {
-      document.getElementById('driveFolderLink').innerHTML = '<a href="' + contact.drive_folder_url + '" target="_blank" style="font-size:1rem;">Open Your Drive Folder &#8599;</a>';
+      var driveLink = document.getElementById('driveFolderLink');
+      if (driveLink) { driveLink.href = contact.drive_folder_url; }
     }
 
 
