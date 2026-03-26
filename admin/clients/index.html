@@ -593,29 +593,45 @@ strong { font-weight: 600; color: var(--color-heading); }
   }
 
   function loadDetailData() {
+    // Step 1: Get the contact + all contacts for search
     Promise.all([
       sb('contacts?slug=eq.' + slug + '&limit=1'),
-      sb('practice_details?select=*&contact_id=eq.(select id from contacts where slug=eq.' + slug + ')').catch(function() { return []; }),
-      sb('onboarding_steps?select=*&order=sort_order&contact_id=eq.(select id from contacts where slug=eq.' + slug + ')').catch(function() { return []; }),
-      sb('checklist_items?select=*&client_slug=eq.' + slug + '&order=sort_order'),
-      sb('audit_scores?select=*&client_slug=eq.' + slug + '&order=audit_date.desc&limit=1'),
-      sb('deliverables?select=*&order=created_at.desc&contact_id=eq.(select id from contacts where slug=eq.' + slug + ')').catch(function() { return []; }),
-      sb('report_configs?select=*&client_slug=eq.' + slug + '&limit=1').catch(function() { return []; }),
-      sb('report_snapshots?select=*&client_slug=eq.' + slug + '&order=created_at.desc&limit=20').catch(function() { return []; }),
-      sb('signed_agreements?select=*&contact_id=eq.(select id from contacts where slug=eq.' + slug + ')&limit=1').catch(function() { return []; }),
-      // Also load all contacts for the search
       sb('contacts?select=id,slug,status,practice_name,email,first_name,last_name')
-    ]).then(function(res) {
-      state.contact = (res[0] && res[0][0]) || null;
-      state.practice = (res[1] && res[1][0]) || null;
-      state.onboarding = res[2] || [];
-      state.tasks = res[3] || [];
-      state.scores = (res[4] && res[4][0]) || null;
-      state.deliverables = res[5] || [];
-      state.reportConfig = (res[6] && res[6][0]) || null;
-      state.snapshots = res[7] || [];
-      state.signed = (res[8] && res[8][0]) || null;
-      state.contacts = res[9] || [];
+    ]).then(function(first) {
+      state.contact = (first[0] && first[0][0]) || null;
+      state.contacts = first[1] || [];
+
+      if (!state.contact) {
+        document.getElementById('loadingState').style.display = 'none';
+        document.getElementById('detailView').style.display = 'block';
+        document.getElementById('detailView').innerHTML = '<div class="empty-state"><p>Client not found: <strong>' + esc(slug) + '</strong></p><p style="margin-top:.5rem;"><a href="/admin/clients">Back to directory</a></p></div>';
+        return;
+      }
+
+      var cid = state.contact.id;
+
+      // Step 2: Load all related data using the contact ID
+      return Promise.all([
+        sb('practice_details?select=*&contact_id=eq.' + cid).catch(function() { return []; }),
+        sb('onboarding_steps?select=*&order=sort_order&contact_id=eq.' + cid).catch(function() { return []; }),
+        sb('checklist_items?select=*&client_slug=eq.' + slug + '&order=sort_order'),
+        sb('audit_scores?select=*&client_slug=eq.' + slug + '&order=audit_date.desc&limit=1'),
+        sb('deliverables?select=*&order=created_at.desc&contact_id=eq.' + cid).catch(function() { return []; }),
+        sb('report_configs?select=*&client_slug=eq.' + slug + '&limit=1').catch(function() { return []; }),
+        sb('report_snapshots?select=*&client_slug=eq.' + slug + '&order=created_at.desc&limit=20').catch(function() { return []; }),
+        sb('signed_agreements?select=*&contact_id=eq.' + cid + '&limit=1').catch(function() { return []; })
+      ]);
+    }).then(function(res) {
+      if (!res) return; // Contact not found, already handled
+
+      state.practice = (res[0] && res[0][0]) || null;
+      state.onboarding = res[1] || [];
+      state.tasks = res[2] || [];
+      state.scores = (res[3] && res[3][0]) || null;
+      state.deliverables = res[4] || [];
+      state.reportConfig = (res[5] && res[5][0]) || null;
+      state.snapshots = res[6] || [];
+      state.signed = (res[7] && res[7][0]) || null;
 
       document.getElementById('loadingState').style.display = 'none';
 
