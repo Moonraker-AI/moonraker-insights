@@ -20,11 +20,11 @@ strong{font-weight:600;color:var(--color-heading)}
 .theme-toggle{position:fixed;top:1.25rem;right:1.25rem;z-index:200;background:var(--color-surface);border:1px solid var(--color-border);border-radius:50%;width:40px;height:40px;cursor:pointer;display:flex;align-items:center;justify-content:center;font-size:1.15rem;transition:all .25s;box-shadow:0 2px 8px rgba(0,0,0,.06)}.theme-toggle:hover{border-color:var(--color-primary)}
 .header{background:var(--color-navy);padding:2rem 0;position:relative;overflow:hidden}
 .header::before{content:'';position:absolute;top:-60%;right:-10%;width:500px;height:500px;background:radial-gradient(circle,rgba(0,212,126,.08) 0%,transparent 70%);pointer-events:none}
-.header-inner{max-width:800px;margin:0 auto;padding:0 2rem;display:flex;justify-content:space-between;align-items:center}
+.header-inner{max-width:1060px;margin:0 auto;padding:0 2rem;display:flex;justify-content:space-between;align-items:center}
 .header img{height:36px}
 .header-meta p{margin:0;font-size:.8125rem;color:rgba(232,245,239,.45)}
 .header-meta .name{color:#E8F5EF;font-weight:600;font-size:.9375rem}
-.container{max-width:800px;margin:0 auto;padding:0 2rem}
+.container{max-width:1060px;margin:0 auto;padding:0 2rem}
 .hero{padding:3.5rem 0 2rem;text-align:center}
 .hero h1{font-size:2rem;margin-bottom:.5rem;letter-spacing:-0.02em}
 .hero .subtitle{color:var(--color-muted);font-size:1rem;max-width:520px;margin:0 auto}
@@ -66,8 +66,12 @@ strong{font-weight:600;color:var(--color-heading)}
 .faq-item.open .faq-q::after{content:'-'}
 .faq-a{font-size:.8125rem;color:var(--color-muted);line-height:1.7;max-height:0;overflow:hidden;transition:max-height .3s,margin .3s}
 .faq-item.open .faq-a{max-height:200px;margin-top:.5rem}
-.csa-link{text-align:center;padding:0 0 1rem;font-size:.8125rem}
-.csa-link a{color:var(--color-muted);text-decoration:underline;text-underline-offset:3px}
+.csa-banner{background:var(--color-surface);border:1px solid var(--color-border);border-radius:12px;padding:1.25rem 1.5rem;margin:1.5rem 0 2rem;display:flex;align-items:center;justify-content:space-between;gap:1rem;transition:border-color .2s}
+.csa-banner:hover{border-color:var(--color-primary)}
+.csa-banner .csa-text{font-size:.9375rem;color:var(--color-heading);font-weight:600}
+.csa-banner .csa-desc{font-size:.8125rem;color:var(--color-muted);margin-top:.15rem;font-weight:400}
+.csa-banner .csa-link{font-family:'Outfit',sans-serif;font-weight:700;font-size:.875rem;color:var(--color-primary);white-space:nowrap;text-decoration:none;display:flex;align-items:center;gap:.35rem}
+.csa-banner .csa-link:hover{color:var(--color-primary-hover)}
 .confidential{text-align:center;padding:1.5rem 0;color:var(--color-muted);font-size:.8125rem;letter-spacing:.04em}
 .footer{background:var(--color-navy);padding:3rem 0;text-align:center;color:rgba(232,245,239,.4);font-size:.8125rem}
 .footer img{height:28px;margin-bottom:.75rem;opacity:.6}
@@ -141,7 +145,13 @@ strong{font-weight:600;color:var(--color-heading)}
     <button class="checkout-cta" id="checkoutBtn" onclick="goToCheckout()">Proceed to Secure Payment &#8594;</button>
   </div>
 
-  <div class="csa-link"><a href="/agreement" target="_blank">Review our Client Service Agreement</a></div>
+  <div class="csa-banner">
+    <div>
+      <div class="csa-text">Client Service Agreement</div>
+      <div class="csa-desc">Review the full terms of our partnership before getting started</div>
+    </div>
+    <a href="/agreement" target="_blank" class="csa-link">Review Agreement &#8594;</a>
+  </div>
 
   <!-- Performance Guarantee -->
   <div id="guaranteeBanner" class="guarantee hidden">
