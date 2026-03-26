@@ -1,0 +1,586 @@
+<!DOCTYPE html>
+<html lang="en" data-theme="light">
+<script>try{var st=localStorage.getItem('moonraker-theme');if(st){document.documentElement.setAttribute('data-theme',st)}}catch(e){}</script>
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Admin - Moonraker Client HQ</title>
+<style>
+@import url('https://fonts.googleapis.com/css2?family=Outfit:wght@400;600;700&display=swap');
+@import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600&display=swap');
+
+/* ============================================================
+   MOONRAKER ADMIN DESIGN SYSTEM
+   Shared across all /admin/* pages
+   ============================================================ */
+:root, [data-theme="light"] {
+  --color-primary: #00D47E;
+  --color-primary-hover: #00b86c;
+  --color-primary-light: #B4EEE0;
+  --color-primary-subtle: #DDF8F2;
+  --color-bg: #F7FDFB;
+  --color-surface: #FFFFFF;
+  --color-border: #E2E8F0;
+  --color-heading: #1E2A5E;
+  --color-body: #333F70;
+  --color-muted: #6B7599;
+  --color-navy: #141C3A;
+  --color-success: #00D47E;
+  --color-warning: #F59E0B;
+  --color-danger: #EF4444;
+  --color-info: #3B82F6;
+  --sidebar-bg: #FAFDFB;
+  --sidebar-border: #E8F0EC;
+  --sidebar-hover: #EEF8F3;
+}
+[data-theme="dark"] {
+  --color-primary: #00D47E;
+  --color-primary-hover: #00f598;
+  --color-primary-light: #1A4A38;
+  --color-primary-subtle: #0D2E22;
+  --color-bg: #080F0B;
+  --color-surface: #0E1A14;
+  --color-border: #1E3530;
+  --color-heading: #E8F5EF;
+  --color-body: #C8D8D0;
+  --color-muted: #5A7A6E;
+  --color-navy: #0A1630;
+  --color-success: #00D47E;
+  --color-warning: #F59E0B;
+  --color-danger: #FF6B6B;
+  --color-info: #60A5FA;
+  --sidebar-bg: #0A120E;
+  --sidebar-border: #162820;
+  --sidebar-hover: #12201A;
+}
+
+*, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+html { font-size: 16px; }
+body { font-family: 'Inter', -apple-system, BlinkMacSystemFont, sans-serif; font-weight: 400; color: var(--color-body); background: var(--color-bg); line-height: 1.6; -webkit-font-smoothing: antialiased; transition: background .3s, color .3s; overflow-x: hidden; }
+h1,h2,h3,h4 { font-family: 'Outfit', sans-serif; font-weight: 700; color: var(--color-heading); line-height: 1.2; }
+a { color: var(--color-primary); text-decoration: none; }
+a:hover { color: var(--color-primary-hover); }
+strong { font-weight: 600; color: var(--color-heading); }
+
+/* ---- LAYOUT ---- */
+.admin-layout { display: flex; min-height: 100vh; }
+
+/* ---- SIDEBAR ---- */
+.sidebar { width: 240px; background: var(--sidebar-bg); border-right: 1px solid var(--sidebar-border); position: fixed; top: 0; left: 0; bottom: 0; z-index: 200; display: flex; flex-direction: column; transition: transform .25s ease; }
+.sidebar-header { padding: 1.25rem 1.25rem .75rem; display: flex; align-items: center; gap: .75rem; }
+.sidebar-header img { height: 22px; opacity: .7; }
+.sidebar-header span { font-family: 'Outfit', sans-serif; font-weight: 600; font-size: .85rem; color: var(--color-heading); }
+.sidebar-nav { flex: 1; padding: .5rem .75rem; display: flex; flex-direction: column; gap: 2px; }
+.sidebar-nav a, .sidebar-nav button { display: flex; align-items: center; gap: .65rem; padding: .55rem .75rem; border-radius: 8px; font-size: .82rem; font-weight: 500; color: var(--color-muted); text-decoration: none; transition: all .15s; border: none; background: none; cursor: pointer; width: 100%; text-align: left; font-family: inherit; }
+.sidebar-nav a:hover, .sidebar-nav button:hover { background: var(--sidebar-hover); color: var(--color-heading); }
+.sidebar-nav a.active { background: var(--color-primary-subtle); color: var(--color-primary); font-weight: 600; }
+.sidebar-nav .nav-icon { width: 18px; height: 18px; display: flex; align-items: center; justify-content: center; font-size: .95rem; flex-shrink: 0; opacity: .7; }
+.sidebar-nav a.active .nav-icon { opacity: 1; }
+.nav-section { font-size: .65rem; font-weight: 600; text-transform: uppercase; letter-spacing: .08em; color: var(--color-muted); padding: .75rem .75rem .25rem; opacity: .6; }
+.sidebar-footer { padding: .75rem 1rem; border-top: 1px solid var(--sidebar-border); }
+
+/* ---- MAIN ---- */
+.main { flex: 1; margin-left: 240px; min-width: 0; }
+
+/* ---- TOP BAR ---- */
+.topbar { position: sticky; top: 0; z-index: 100; background: var(--color-surface); border-bottom: 1px solid var(--color-border); padding: 0 2rem; height: 56px; display: flex; align-items: center; gap: 1rem; }
+.search-box { flex: 1; max-width: 480px; position: relative; }
+.search-box input { width: 100%; padding: .45rem .75rem .45rem 2.25rem; border: 1px solid var(--color-border); border-radius: 8px; font-size: .82rem; font-family: inherit; color: var(--color-body); background: var(--color-bg); transition: border-color .2s, box-shadow .2s; }
+.search-box input:focus { outline: none; border-color: var(--color-primary); box-shadow: 0 0 0 3px rgba(0,212,126,.1); }
+.search-box input::placeholder { color: var(--color-muted); }
+.search-box .search-icon { position: absolute; left: .75rem; top: 50%; transform: translateY(-50%); color: var(--color-muted); font-size: .85rem; pointer-events: none; }
+.search-box .search-kbd { position: absolute; right: .6rem; top: 50%; transform: translateY(-50%); font-size: .65rem; padding: .1rem .35rem; border-radius: 4px; border: 1px solid var(--color-border); color: var(--color-muted); background: var(--color-bg); pointer-events: none; }
+.search-results { position: absolute; top: 100%; left: 0; right: 0; margin-top: 4px; background: var(--color-surface); border: 1px solid var(--color-border); border-radius: 10px; box-shadow: 0 8px 30px rgba(0,0,0,.12); max-height: 320px; overflow-y: auto; display: none; z-index: 500; }
+.search-results.open { display: block; }
+.search-result { display: flex; align-items: center; gap: .75rem; padding: .6rem 1rem; cursor: pointer; transition: background .1s; }
+.search-result:hover, .search-result.focused { background: var(--color-primary-subtle); }
+.search-result .result-name { font-weight: 500; font-size: .85rem; color: var(--color-heading); }
+.search-result .result-slug { font-size: .75rem; color: var(--color-muted); }
+.search-result .result-status { margin-left: auto; }
+.topbar-right { display: flex; align-items: center; gap: .5rem; margin-left: auto; }
+
+/* ---- CONTENT ---- */
+.content { padding: 2rem; max-width: 1400px; }
+@media (max-width: 1024px) { .content { padding: 1.5rem; } }
+
+/* ---- BUTTONS ---- */
+.btn { display: inline-flex; align-items: center; gap: .4rem; padding: .45rem .85rem; border-radius: 8px; font-size: .82rem; font-weight: 500; border: none; cursor: pointer; transition: all .2s; font-family: inherit; }
+.btn-primary { background: var(--color-primary); color: #fff; }
+.btn-primary:hover { background: var(--color-primary-hover); }
+.btn-ghost { background: none; color: var(--color-muted); padding: .35rem .5rem; }
+.btn-ghost:hover { color: var(--color-heading); background: var(--sidebar-hover); }
+.btn-sm { padding: .3rem .6rem; font-size: .78rem; }
+
+/* ---- STAT CARDS ---- */
+.stat-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(180px, 1fr)); gap: 1rem; margin-bottom: 2rem; }
+.stat-card { background: var(--color-surface); border: 1px solid var(--color-border); border-radius: 12px; padding: 1.25rem; transition: border-color .2s; }
+.stat-card:hover { border-color: rgba(0,212,126,.25); }
+.stat-card .stat-label { font-size: .72rem; font-weight: 600; text-transform: uppercase; letter-spacing: .05em; color: var(--color-muted); margin-bottom: .35rem; }
+.stat-card .stat-value { font-family: 'Outfit', sans-serif; font-size: 2rem; font-weight: 700; color: var(--color-heading); line-height: 1; }
+.stat-card .stat-sub { font-size: .75rem; color: var(--color-muted); margin-top: .35rem; }
+
+/* ---- TAGS ---- */
+.tag { display: inline-flex; align-items: center; gap: .3rem; padding: .15rem .5rem; border-radius: 6px; font-size: .72rem; font-weight: 500; white-space: nowrap; }
+.tag-active { background: rgba(0,212,126,.1); color: var(--color-success); }
+.tag-onboarding { background: rgba(59,130,246,.08); color: var(--color-info); }
+.tag-prospect { background: rgba(245,158,11,.08); color: var(--color-warning); }
+.tag-lead { background: rgba(107,117,153,.08); color: var(--color-muted); }
+
+/* ---- STATUS DOT ---- */
+.dot { width: 7px; height: 7px; border-radius: 50%; display: inline-block; flex-shrink: 0; }
+.dot-green { background: var(--color-success); box-shadow: 0 0 5px rgba(0,212,126,.35); }
+.dot-blue { background: var(--color-info); box-shadow: 0 0 5px rgba(59,130,246,.35); }
+.dot-yellow { background: var(--color-warning); box-shadow: 0 0 5px rgba(245,158,11,.35); }
+.dot-gray { background: var(--color-muted); }
+
+/* ---- FILTER TABS ---- */
+.filter-bar { display: flex; align-items: center; gap: .25rem; margin-bottom: 1.25rem; border-bottom: 1px solid var(--color-border); }
+.filter-tab { padding: .55rem 1rem; font-size: .82rem; font-weight: 500; color: var(--color-muted); cursor: pointer; border: none; background: none; border-bottom: 2px solid transparent; font-family: inherit; transition: all .15s; }
+.filter-tab:hover { color: var(--color-heading); }
+.filter-tab.active { color: var(--color-primary); border-bottom-color: var(--color-primary); }
+.filter-tab .count { font-size: .7rem; padding: .05rem .4rem; border-radius: 4px; background: var(--color-bg); margin-left: .3rem; }
+.filter-tab.active .count { background: var(--color-primary-subtle); }
+
+/* ---- CLIENT TABLE ---- */
+.client-table { width: 100%; border-collapse: separate; border-spacing: 0; }
+.client-table th { text-align: left; padding: .5rem .75rem; font-size: .7rem; font-weight: 600; text-transform: uppercase; letter-spacing: .05em; color: var(--color-muted); border-bottom: 1px solid var(--color-border); }
+.client-table td { padding: .65rem .75rem; border-bottom: 1px solid var(--color-border); font-size: .84rem; vertical-align: middle; }
+.client-table tr { cursor: pointer; transition: background .1s; }
+.client-table tbody tr:hover { background: var(--sidebar-hover); }
+.client-table .client-cell { display: flex; align-items: center; gap: .65rem; }
+.client-table .client-avatar { width: 32px; height: 32px; border-radius: 8px; background: var(--color-primary-subtle); color: var(--color-primary); display: flex; align-items: center; justify-content: center; font-weight: 600; font-size: .75rem; flex-shrink: 0; }
+.client-table .client-name { font-weight: 500; color: var(--color-heading); }
+.client-table .client-email { font-size: .75rem; color: var(--color-muted); }
+
+/* ---- PROGRESS BAR (MINI) ---- */
+.progress-mini { display: flex; align-items: center; gap: .5rem; }
+.progress-mini .bar { flex: 1; height: 5px; background: var(--color-bg); border-radius: 3px; overflow: hidden; min-width: 50px; }
+.progress-mini .bar-fill { height: 100%; background: var(--color-primary); border-radius: 3px; transition: width .3s; }
+.progress-mini .bar-label { font-size: .75rem; color: var(--color-muted); white-space: nowrap; }
+
+/* ---- THEME TOGGLE ---- */
+.theme-toggle { background: var(--color-surface); border: 1px solid var(--color-border); border-radius: 50%; width: 32px; height: 32px; cursor: pointer; display: flex; align-items: center; justify-content: center; font-size: .9rem; transition: all .2s; }
+.theme-toggle:hover { border-color: var(--color-primary); }
+
+/* ---- TOAST ---- */
+.toast { position: fixed; bottom: 1.5rem; right: 1.5rem; padding: .65rem 1.1rem; border-radius: 10px; font-size: .82rem; font-weight: 500; z-index: 1000; transform: translateY(120%); transition: transform .3s; }
+.toast.show { transform: translateY(0); }
+.toast.success { background: var(--color-primary); color: #fff; }
+.toast.error { background: var(--color-danger); color: #fff; }
+
+/* ---- EMPTY ---- */
+.empty-state { text-align: center; padding: 3rem; color: var(--color-muted); }
+.empty-state p { font-size: .85rem; }
+
+/* ---- SPINNER ---- */
+.spinner { width: 16px; height: 16px; border: 2px solid var(--color-border); border-top-color: var(--color-primary); border-radius: 50%; animation: spin .6s linear infinite; display: inline-block; }
+@keyframes spin { to { transform: rotate(360deg); } }
+
+/* ---- SECTION HEADER ---- */
+.section-header { display: flex; align-items: center; justify-content: space-between; margin-bottom: .25rem; }
+.section-header h2 { font-size: 1.35rem; margin: 0; }
+.section-desc { font-size: .84rem; color: var(--color-muted); margin-bottom: 1.5rem; }
+
+/* ---- MOBILE ---- */
+.mobile-toggle { display: none; background: none; border: none; color: var(--color-heading); font-size: 1.25rem; cursor: pointer; padding: .25rem; }
+@media (max-width: 860px) {
+  .sidebar { transform: translateX(-100%); }
+  .sidebar.open { transform: translateX(0); box-shadow: 4px 0 20px rgba(0,0,0,.15); }
+  .main { margin-left: 0; }
+  .mobile-toggle { display: block; }
+  .stat-grid { grid-template-columns: repeat(2, 1fr); }
+  .client-table { font-size: .78rem; }
+  .client-table .hide-mobile { display: none; }
+}
+@media (max-width: 560px) {
+  .stat-grid { grid-template-columns: 1fr 1fr; }
+  .content { padding: 1rem; }
+  .topbar { padding: 0 1rem; }
+}
+</style>
+</head>
+<body>
+
+<!-- SIDEBAR -->
+<aside class="sidebar" id="sidebar">
+  <div class="sidebar-header">
+    <img src="https://moonraker.ai/wp-content/uploads/2023/10/Moonraker-Logo-Transparent.png" alt="Moonraker">
+    <span>Client HQ</span>
+  </div>
+  <nav class="sidebar-nav">
+    <div class="nav-section">Overview</div>
+    <a href="/admin" class="active"><span class="nav-icon">&#9632;</span> Dashboard</a>
+    <a href="/admin/clients"><span class="nav-icon">&#9823;</span> Clients</a>
+
+    <div class="nav-section">Workflows</div>
+    <a href="/admin/onboarding"><span class="nav-icon">&#9654;</span> Onboarding</a>
+    <a href="/admin/audits"><span class="nav-icon">&#9881;</span> Audits</a>
+    <a href="/admin/deliverables"><span class="nav-icon">&#9744;</span> Deliverables</a>
+    <a href="/admin/reports"><span class="nav-icon">&#9636;</span> Reports</a>
+  </nav>
+  <div class="sidebar-footer">
+    <button class="theme-toggle" id="themeBtn" aria-label="Toggle theme">&#x1F319;</button>
+  </div>
+</aside>
+
+<!-- MAIN -->
+<div class="main">
+  <!-- TOP BAR -->
+  <div class="topbar">
+    <button class="mobile-toggle" id="mobileToggle" aria-label="Menu">&#9776;</button>
+    <div class="search-box" id="searchBox">
+      <span class="search-icon">&#128269;</span>
+      <input type="text" id="searchInput" placeholder="Search clients..." autocomplete="off">
+      <span class="search-kbd" id="searchKbd">&#8984;K</span>
+      <div class="search-results" id="searchResults"></div>
+    </div>
+    <div class="topbar-right">
+      <span style="font-size:.78rem;color:var(--color-muted);" id="lastRefresh"></span>
+    </div>
+  </div>
+
+  <!-- CONTENT -->
+  <div class="content">
+    <!-- STATS -->
+    <div class="stat-grid" id="statGrid">
+      <div class="stat-card"><div class="stat-label">Total Clients</div><div class="stat-value" id="sTotal">-</div><div class="stat-sub" id="sTotalSub"></div></div>
+      <div class="stat-card"><div class="stat-label">Active</div><div class="stat-value" id="sActive">-</div><div class="stat-sub">Campaigns running</div></div>
+      <div class="stat-card"><div class="stat-label">Onboarding</div><div class="stat-value" id="sOnboarding">-</div><div class="stat-sub" id="sOnboardingSub"></div></div>
+      <div class="stat-card"><div class="stat-label">Prospects</div><div class="stat-value" id="sProspects">-</div><div class="stat-sub">In pipeline</div></div>
+      <div class="stat-card"><div class="stat-label">Audit Tasks</div><div class="stat-value" id="sTasks">-</div><div class="stat-sub" id="sTasksSub"></div></div>
+      <div class="stat-card"><div class="stat-label">Reports This Month</div><div class="stat-value" id="sReports">-</div><div class="stat-sub" id="sReportsSub"></div></div>
+    </div>
+
+    <!-- CLIENT TABLE -->
+    <div class="section-header">
+      <h2>Client Pipeline</h2>
+    </div>
+    <p class="section-desc">All clients across the pipeline. Click any row to open the client deep-dive.</p>
+
+    <div class="filter-bar" id="filterBar">
+      <button class="filter-tab active" data-filter="all">All</button>
+      <button class="filter-tab" data-filter="active">Active</button>
+      <button class="filter-tab" data-filter="onboarding">Onboarding</button>
+      <button class="filter-tab" data-filter="prospect">Prospects</button>
+      <button class="filter-tab" data-filter="lead">Leads</button>
+    </div>
+
+    <div id="tableWrap">
+      <table class="client-table">
+        <thead>
+          <tr>
+            <th>Client</th>
+            <th>Status</th>
+            <th class="hide-mobile">Onboarding</th>
+            <th class="hide-mobile">Audit Progress</th>
+            <th class="hide-mobile">Last Report</th>
+            <th></th>
+          </tr>
+        </thead>
+        <tbody id="clientBody">
+          <tr><td colspan="6"><div class="empty-state"><div class="spinner" style="margin:0 auto 1rem;"></div><p>Loading clients...</p></div></td></tr>
+        </tbody>
+      </table>
+    </div>
+  </div>
+</div>
+
+<div class="toast" id="toast"></div>
+
+<script>
+(function() {
+  'use strict';
+
+  // ============================================================
+  // CONFIG
+  // ============================================================
+  var SB = 'https://ofmmwcjhdrhvxxkhcuww.supabase.co';
+  var SK = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6Im9mbW13Y2poZHJodnh4a2hjdXd3Iiwicm9sZSI6InNlcnZpY2Vfcm9sZSIsImlhdCI6MTc3NDMyMzU1NywiZXhwIjoyMDg5ODk5NTU3fQ.EyEyVh6er79xjWGgMIgKaF2pErkDz0fOxQsrNSup2fk';
+
+  var state = { contacts: [], onboarding: {}, tasks: {}, configs: {}, snapshots: {}, filter: 'all' };
+
+  // ============================================================
+  // SUPABASE
+  // ============================================================
+  function sb(path) {
+    return fetch(SB + '/rest/v1/' + path, {
+      headers: { 'apikey': SK, 'Authorization': 'Bearer ' + SK }
+    }).then(function(r) { return r.json(); });
+  }
+
+  // ============================================================
+  // LOAD ALL DATA
+  // ============================================================
+  function loadAll() {
+    Promise.all([
+      sb('contacts?select=id,slug,status,practice_name,email,first_name,last_name,campaign_start,website_url,phone,state_province,city,team_size&order=practice_name'),
+      sb('onboarding_steps?select=contact_id,step_key,status&order=contact_id,sort_order'),
+      sb('checklist_items?select=client_slug,status'),
+      sb('report_configs?select=client_slug,active,last_compiled_at,last_compiled_status'),
+      sb('report_snapshots?select=client_slug,report_month,report_status,created_at&order=created_at.desc&limit=100')
+    ]).then(function(res) {
+      state.contacts = res[0] || [];
+
+      // Index onboarding by contact_id
+      state.onboarding = {};
+      (res[1] || []).forEach(function(s) {
+        if (!state.onboarding[s.contact_id]) state.onboarding[s.contact_id] = [];
+        state.onboarding[s.contact_id].push(s);
+      });
+
+      // Index tasks by client_slug
+      state.tasks = {};
+      (res[2] || []).forEach(function(t) {
+        if (!state.tasks[t.client_slug]) state.tasks[t.client_slug] = { total: 0, complete: 0 };
+        state.tasks[t.client_slug].total++;
+        if (t.status === 'complete') state.tasks[t.client_slug].complete++;
+      });
+
+      // Index configs
+      state.configs = {};
+      (res[3] || []).forEach(function(c) { state.configs[c.client_slug] = c; });
+
+      // Index latest snapshot per client
+      state.snapshots = {};
+      (res[4] || []).forEach(function(s) {
+        if (!state.snapshots[s.client_slug]) state.snapshots[s.client_slug] = s;
+      });
+
+      render();
+      document.getElementById('lastRefresh').textContent = 'Updated ' + new Date().toLocaleTimeString();
+    });
+  }
+
+  // ============================================================
+  // RENDER
+  // ============================================================
+  function render() {
+    var contacts = state.contacts;
+    var counts = { all: contacts.length, active: 0, onboarding: 0, prospect: 0, lead: 0 };
+    contacts.forEach(function(c) { counts[c.status] = (counts[c.status] || 0) + 1; });
+
+    // Stats
+    document.getElementById('sTotal').textContent = contacts.length;
+    document.getElementById('sTotalSub').textContent = counts.active + ' active, ' + counts.onboarding + ' onboarding';
+    document.getElementById('sActive').textContent = counts.active;
+    document.getElementById('sOnboarding').textContent = counts.onboarding;
+    document.getElementById('sProspects').textContent = counts.prospect + (counts.lead || 0);
+
+    // Count stuck onboarding
+    var stuckCount = 0;
+    contacts.forEach(function(c) {
+      if (c.status === 'onboarding') {
+        var steps = state.onboarding[c.id] || [];
+        var complete = steps.filter(function(s) { return s.status === 'complete'; }).length;
+        if (complete < steps.length && steps.length > 0) stuckCount++;
+      }
+    });
+    document.getElementById('sOnboardingSub').textContent = stuckCount ? stuckCount + ' need attention' : 'All on track';
+
+    // Tasks
+    var totalTasks = 0, completeTasks = 0;
+    Object.values(state.tasks).forEach(function(t) { totalTasks += t.total; completeTasks += t.complete; });
+    document.getElementById('sTasks').textContent = completeTasks + '/' + totalTasks;
+    document.getElementById('sTasksSub').textContent = totalTasks > 0 ? Math.round(completeTasks / totalTasks * 100) + '% complete' : 'No tasks yet';
+
+    // Reports
+    var now = new Date();
+    var thisMonth = now.getFullYear() + '-' + String(now.getMonth() + 1).padStart(2, '0');
+    var reportCount = 0;
+    Object.values(state.snapshots).forEach(function(s) {
+      if (s.report_month && s.report_month.substring(0, 7) === thisMonth) reportCount++;
+    });
+    document.getElementById('sReports').textContent = reportCount + '/' + counts.active;
+    document.getElementById('sReportsSub').textContent = (counts.active - reportCount) + ' remaining';
+
+    // Filter tabs
+    document.querySelectorAll('.filter-tab').forEach(function(tab) {
+      var f = tab.dataset.filter;
+      var c = counts[f] || 0;
+      var existing = tab.querySelector('.count');
+      if (existing) existing.textContent = c;
+      else {
+        var span = document.createElement('span');
+        span.className = 'count';
+        span.textContent = c;
+        tab.appendChild(span);
+      }
+    });
+
+    // Table
+    var filtered = state.filter === 'all' ? contacts : contacts.filter(function(c) { return c.status === state.filter; });
+    var tbody = document.getElementById('clientBody');
+
+    if (filtered.length === 0) {
+      tbody.innerHTML = '<tr><td colspan="6"><div class="empty-state"><p>No clients match this filter.</p></div></td></tr>';
+      return;
+    }
+
+    var html = '';
+    filtered.forEach(function(c) {
+      var initials = ((c.first_name || '')[0] || '') + ((c.last_name || '')[0] || '') || c.slug[0].toUpperCase();
+      var statusTag = '<span class="tag tag-' + c.status + '">' + c.status + '</span>';
+
+      // Onboarding
+      var steps = state.onboarding[c.id] || [];
+      var obComplete = steps.filter(function(s) { return s.status === 'complete'; }).length;
+      var obTotal = steps.length;
+      var obPct = obTotal > 0 ? Math.round(obComplete / obTotal * 100) : 0;
+      var obHtml = obTotal > 0
+        ? '<div class="progress-mini"><div class="bar"><div class="bar-fill" style="width:' + obPct + '%"></div></div><span class="bar-label">' + obComplete + '/' + obTotal + '</span></div>'
+        : '<span style="color:var(--color-muted);font-size:.78rem;">--</span>';
+
+      // Audit tasks
+      var tasks = state.tasks[c.slug] || { total: 0, complete: 0 };
+      var taskPct = tasks.total > 0 ? Math.round(tasks.complete / tasks.total * 100) : 0;
+      var taskHtml = tasks.total > 0
+        ? '<div class="progress-mini"><div class="bar"><div class="bar-fill" style="width:' + taskPct + '%"></div></div><span class="bar-label">' + tasks.complete + '/' + tasks.total + '</span></div>'
+        : '<span style="color:var(--color-muted);font-size:.78rem;">--</span>';
+
+      // Last report
+      var snap = state.snapshots[c.slug];
+      var reportHtml = snap
+        ? '<span style="font-size:.78rem;">' + esc(snap.report_month ? snap.report_month.substring(0, 7) : '') + ' <span class="tag tag-' + (snap.report_status === 'published' ? 'active' : 'onboarding') + '">' + esc(snap.report_status) + '</span></span>'
+        : '<span style="color:var(--color-muted);font-size:.78rem;">--</span>';
+
+      html += '<tr onclick="window._openClient(\'' + c.slug + '\')">';
+      html += '<td><div class="client-cell"><div class="client-avatar">' + esc(initials.toUpperCase()) + '</div><div><div class="client-name">' + esc(c.practice_name || c.slug) + '</div><div class="client-email">' + esc(c.slug) + (c.city ? ' &middot; ' + esc(c.city) + (c.state_province ? ', ' + esc(c.state_province) : '') : '') + '</div></div></div></td>';
+      html += '<td>' + statusTag + '</td>';
+      html += '<td class="hide-mobile">' + obHtml + '</td>';
+      html += '<td class="hide-mobile">' + taskHtml + '</td>';
+      html += '<td class="hide-mobile">' + reportHtml + '</td>';
+      html += '<td style="text-align:right;"><span style="color:var(--color-muted);font-size:.8rem;">&#8250;</span></td>';
+      html += '</tr>';
+    });
+
+    tbody.innerHTML = html;
+  }
+
+  // ============================================================
+  // SEARCH
+  // ============================================================
+  var searchInput = document.getElementById('searchInput');
+  var searchResults = document.getElementById('searchResults');
+  var focusedIdx = -1;
+
+  searchInput.addEventListener('input', function() {
+    var q = this.value.toLowerCase().trim();
+    if (q.length < 1) { searchResults.classList.remove('open'); return; }
+
+    var matches = state.contacts.filter(function(c) {
+      return (c.practice_name || '').toLowerCase().includes(q) ||
+             c.slug.toLowerCase().includes(q) ||
+             (c.email || '').toLowerCase().includes(q) ||
+             (c.first_name || '').toLowerCase().includes(q) ||
+             (c.last_name || '').toLowerCase().includes(q);
+    }).slice(0, 8);
+
+    if (matches.length === 0) {
+      searchResults.innerHTML = '<div style="padding:.75rem 1rem;font-size:.82rem;color:var(--color-muted);">No results</div>';
+    } else {
+      searchResults.innerHTML = matches.map(function(c, i) {
+        var statusClass = 'tag-' + c.status;
+        return '<div class="search-result" data-slug="' + c.slug + '" onclick="window._openClient(\'' + c.slug + '\')">' +
+          '<div><div class="result-name">' + esc(c.practice_name || c.slug) + '</div><div class="result-slug">' + esc(c.slug) + '</div></div>' +
+          '<span class="result-status"><span class="tag ' + statusClass + '">' + c.status + '</span></span></div>';
+      }).join('');
+    }
+    focusedIdx = -1;
+    searchResults.classList.add('open');
+  });
+
+  searchInput.addEventListener('keydown', function(e) {
+    var items = searchResults.querySelectorAll('.search-result');
+    if (e.key === 'ArrowDown') { e.preventDefault(); focusedIdx = Math.min(focusedIdx + 1, items.length - 1); updateFocus(items); }
+    else if (e.key === 'ArrowUp') { e.preventDefault(); focusedIdx = Math.max(focusedIdx - 1, 0); updateFocus(items); }
+    else if (e.key === 'Enter' && focusedIdx >= 0 && items[focusedIdx]) {
+      e.preventDefault();
+      window._openClient(items[focusedIdx].dataset.slug);
+    }
+    else if (e.key === 'Escape') { searchResults.classList.remove('open'); searchInput.blur(); }
+  });
+
+  function updateFocus(items) {
+    items.forEach(function(el, i) { el.classList.toggle('focused', i === focusedIdx); });
+  }
+
+  document.addEventListener('click', function(e) {
+    if (!document.getElementById('searchBox').contains(e.target)) searchResults.classList.remove('open');
+  });
+
+  // Cmd+K shortcut
+  document.addEventListener('keydown', function(e) {
+    if ((e.metaKey || e.ctrlKey) && e.key === 'k') { e.preventDefault(); searchInput.focus(); searchInput.select(); }
+  });
+
+  // Detect OS for shortcut hint
+  if (navigator.platform && navigator.platform.indexOf('Mac') === -1) {
+    document.getElementById('searchKbd').innerHTML = 'Ctrl+K';
+  }
+
+  // ============================================================
+  // FILTERS
+  // ============================================================
+  document.getElementById('filterBar').addEventListener('click', function(e) {
+    var tab = e.target.closest('.filter-tab');
+    if (!tab) return;
+    document.querySelectorAll('.filter-tab').forEach(function(t) { t.classList.remove('active'); });
+    tab.classList.add('active');
+    state.filter = tab.dataset.filter;
+    render();
+  });
+
+  // ============================================================
+  // NAVIGATION
+  // ============================================================
+  window._openClient = function(slug) {
+    // Save to recent clients
+    try {
+      var recent = JSON.parse(localStorage.getItem('moonraker-recent-clients') || '[]');
+      recent = recent.filter(function(s) { return s !== slug; });
+      recent.unshift(slug);
+      if (recent.length > 10) recent = recent.slice(0, 10);
+      localStorage.setItem('moonraker-recent-clients', JSON.stringify(recent));
+    } catch(e) {}
+    window.location.href = '/admin/clients?slug=' + slug;
+  };
+
+  // ============================================================
+  // MOBILE SIDEBAR
+  // ============================================================
+  document.getElementById('mobileToggle').addEventListener('click', function() {
+    document.getElementById('sidebar').classList.toggle('open');
+  });
+
+  // ============================================================
+  // THEME
+  // ============================================================
+  var themeBtn = document.getElementById('themeBtn');
+  var cur = document.documentElement.getAttribute('data-theme');
+  themeBtn.innerHTML = cur === 'dark' ? '&#9728;&#65039;' : '&#x1F319;';
+  themeBtn.addEventListener('click', function() {
+    var h = document.documentElement;
+    if (h.getAttribute('data-theme') === 'light') {
+      h.setAttribute('data-theme', 'dark');
+      themeBtn.innerHTML = '&#9728;&#65039;';
+      try { localStorage.setItem('moonraker-theme', 'dark'); } catch(e) {}
+    } else {
+      h.setAttribute('data-theme', 'light');
+      themeBtn.innerHTML = '&#x1F319;';
+      try { localStorage.setItem('moonraker-theme', 'light'); } catch(e) {}
+    }
+  });
+
+  // ============================================================
+  // HELPERS
+  // ============================================================
+  function esc(s) { if (!s) return ''; var d = document.createElement('div'); d.textContent = s; return d.innerHTML; }
+
+  // ============================================================
+  // INIT
+  // ============================================================
+  loadAll();
+})();
+</script>
+</body>
+</html>
