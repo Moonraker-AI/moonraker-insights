@@ -59,15 +59,16 @@
       display: flex; align-items: center; justify-content: center;
     }
     .mr-chat-header-icon svg { width: 18px; height: 18px; fill: var(--color-primary, #00D47E); }
+    .mr-chat-header-info { flex: 1; min-width: 0; }
     .mr-chat-header-title {
       font-family: 'Outfit', sans-serif; font-weight: 600;
       font-size: .9rem; color: var(--color-heading, #E8F5EF);
-      flex: 1;
     }
     .mr-chat-header-sub {
       font-size: .7rem; color: var(--color-muted, #5A7A6E);
       font-weight: 400;
     }
+    .mr-chat-header-actions { display: flex; align-items: center; gap: .35rem; flex-shrink: 0; }
     .mr-chat-clear {
       width: 28px; height: 28px; border-radius: 6px;
       border: none; cursor: pointer;
@@ -107,6 +108,41 @@
     .mr-msg code {
       background: var(--color-bg, #080F0B); padding: .1rem .35rem;
       border-radius: 4px; font-size: .78rem;
+    }
+    .mr-msg pre {
+      background: var(--color-bg, #080F0B); padding: .6rem .75rem;
+      border-radius: 6px; overflow-x: auto; margin: .4rem 0;
+      border: 1px solid var(--color-border, #1E3530);
+    }
+    .mr-msg pre code { background: none; padding: 0; font-size: .76rem; }
+    .mr-msg h1, .mr-msg h2, .mr-msg h3 {
+      font-family: 'Outfit', sans-serif; color: var(--color-heading, #E8F5EF);
+      margin: .6rem 0 .3rem; line-height: 1.3;
+    }
+    .mr-msg h1 { font-size: 1.05rem; font-weight: 700; }
+    .mr-msg h2 { font-size: .95rem; font-weight: 600; }
+    .mr-msg h3 { font-size: .88rem; font-weight: 600; }
+    .mr-msg ul, .mr-msg ol { margin: .3rem 0 .3rem 1.2rem; padding: 0; }
+    .mr-msg li { margin: .15rem 0; }
+    .mr-msg hr {
+      border: none; border-top: 1px solid var(--color-border, #1E3530);
+      margin: .6rem 0;
+    }
+    .mr-msg blockquote {
+      border-left: 3px solid var(--color-primary, #00D47E);
+      padding: .3rem .6rem; margin: .4rem 0;
+      color: var(--color-muted, #5A7A6E);
+    }
+    .mr-msg table {
+      border-collapse: collapse; width: 100%; margin: .4rem 0; font-size: .78rem;
+    }
+    .mr-msg th, .mr-msg td {
+      border: 1px solid var(--color-border, #1E3530);
+      padding: .3rem .5rem; text-align: left;
+    }
+    .mr-msg th {
+      background: var(--color-bg, #080F0B);
+      font-weight: 600; color: var(--color-heading, #E8F5EF);
     }
     .mr-msg-user {
       align-self: flex-end;
@@ -309,12 +345,14 @@
       <div class="mr-chat-header-icon">
         <svg viewBox="0 0 24 24"><path d="M20 2H4c-1.1 0-2 .9-2 2v18l4-4h14c1.1 0 2-.9 2-2V4c0-1.1-.9-2-2-2zm0 14H5.2L4 17.2V4h16v12z"/><path d="M7 9h2v2H7zm4 0h2v2h-2zm4 0h2v2h-2z"/></svg>
       </div>
-      <div>
+      <div class="mr-chat-header-info">
         <div class="mr-chat-header-title">Moonraker AI</div>
         <div class="mr-chat-header-sub">Claude Opus 4.6</div>
       </div>
-      <button class="mr-chat-clear" title="Clear history" id="mrChatClear">&#8635;</button>
-      <button class="mr-chat-close" title="Close" id="mrChatClose">&times;</button>
+      <div class="mr-chat-header-actions">
+        <button class="mr-chat-clear" title="Clear history" id="mrChatClear">&#8635;</button>
+        <button class="mr-chat-close" title="Close" id="mrChatClose">&times;</button>
+      </div>
     </div>
     <div class="mr-chat-messages" id="mrChatMessages"></div>
     <div class="mr-chat-input-area">
@@ -509,16 +547,145 @@
 
   function formatMarkdown(text) {
     if (!text) return '';
+
+    // Extract code blocks first to protect them
+    var codeBlocks = [];
+    text = text.replace(/```(\w*)\n?([\s\S]*?)```/g, function(m, lang, code) {
+      codeBlocks.push('<pre><code>' + esc(code.trim()) + '</code></pre>');
+      return '\x00CB' + (codeBlocks.length - 1) + '\x00';
+    });
+
+    // Split into lines for block-level processing
+    var lines = text.split('\n');
+    var html = '';
+    var inList = false;
+    var listType = '';
+    var inTable = false;
+    var tableRows = [];
+
+    for (var i = 0; i < lines.length; i++) {
+      var line = lines[i];
+
+      // Code block placeholder
+      var cbMatch = line.match(/\x00CB(\d+)\x00/);
+      if (cbMatch) {
+        if (inList) { html += '</' + listType + '>'; inList = false; }
+        if (inTable) { html += renderTable(tableRows); inTable = false; tableRows = []; }
+        html += codeBlocks[parseInt(cbMatch[1])];
+        continue;
+      }
+
+      // Horizontal rule
+      if (/^---+$/.test(line.trim())) {
+        if (inList) { html += '</' + listType + '>'; inList = false; }
+        if (inTable) { html += renderTable(tableRows); inTable = false; tableRows = []; }
+        html += '<hr>';
+        continue;
+      }
+
+      // Headers
+      var hMatch = line.match(/^(#{1,3})\s+(.+)/);
+      if (hMatch) {
+        if (inList) { html += '</' + listType + '>'; inList = false; }
+        if (inTable) { html += renderTable(tableRows); inTable = false; tableRows = []; }
+        var level = hMatch[1].length;
+        html += '<h' + level + '>' + inlineFmt(hMatch[2]) + '</h' + level + '>';
+        continue;
+      }
+
+      // Table row
+      if (line.trim().indexOf('|') === 0 && line.trim().lastIndexOf('|') === line.trim().length - 1) {
+        if (inList) { html += '</' + listType + '>'; inList = false; }
+        // Skip separator rows
+        if (/^\|[\s\-:|]+\|$/.test(line.trim())) { continue; }
+        inTable = true;
+        tableRows.push(line.trim());
+        continue;
+      } else if (inTable) {
+        html += renderTable(tableRows);
+        inTable = false;
+        tableRows = [];
+      }
+
+      // Blockquote
+      if (line.match(/^>\s?(.*)$/)) {
+        if (inList) { html += '</' + listType + '>'; inList = false; }
+        html += '<blockquote>' + inlineFmt(line.replace(/^>\s?/, '')) + '</blockquote>';
+        continue;
+      }
+
+      // Unordered list
+      if (line.match(/^\s*[-*]\s+/)) {
+        if (!inList || listType !== 'ul') {
+          if (inList) html += '</' + listType + '>';
+          html += '<ul>';
+          inList = true;
+          listType = 'ul';
+        }
+        html += '<li>' + inlineFmt(line.replace(/^\s*[-*]\s+/, '')) + '</li>';
+        continue;
+      }
+
+      // Ordered list
+      if (line.match(/^\s*\d+\.\s+/)) {
+        if (!inList || listType !== 'ol') {
+          if (inList) html += '</' + listType + '>';
+          html += '<ol>';
+          inList = true;
+          listType = 'ol';
+        }
+        html += '<li>' + inlineFmt(line.replace(/^\s*\d+\.\s+/, '')) + '</li>';
+        continue;
+      }
+
+      // Close list if we hit a non-list line
+      if (inList) {
+        html += '</' + listType + '>';
+        inList = false;
+      }
+
+      // Empty line = paragraph break
+      if (line.trim() === '') {
+        html += '<br>';
+        continue;
+      }
+
+      // Regular text
+      html += inlineFmt(line) + '<br>';
+    }
+
+    if (inList) html += '</' + listType + '>';
+    if (inTable) html += renderTable(tableRows);
+
+    // Clean up double breaks
+    html = html.replace(/<br><br><br>/g, '<br><br>');
+
+    return html;
+  }
+
+  function inlineFmt(text) {
     var h = esc(text);
-    // Bold
     h = h.replace(/\*\*(.*?)\*\*/g, '<strong>$1</strong>');
-    // Inline code
+    h = h.replace(/\*(.*?)\*/g, '<em>$1</em>');
     h = h.replace(/`([^`]+)`/g, '<code>$1</code>');
-    // Links
     h = h.replace(/\[([^\]]+)\]\(([^)]+)\)/g, '<a href="$2" target="_blank">$1</a>');
-    // Line breaks
-    h = h.replace(/\n/g, '<br>');
     return h;
+  }
+
+  function renderTable(rows) {
+    if (rows.length === 0) return '';
+    var html = '<table>';
+    rows.forEach(function(row, idx) {
+      var cells = row.split('|').filter(function(c) { return c.trim() !== ''; });
+      var tag = idx === 0 ? 'th' : 'td';
+      html += '<tr>';
+      cells.forEach(function(cell) {
+        html += '<' + tag + '>' + inlineFmt(cell.trim()) + '</' + tag + '>';
+      });
+      html += '</tr>';
+    });
+    html += '</table>';
+    return html;
   }
 
   function renderActionCard(actionData, cardId) {
@@ -818,5 +985,6 @@
   };
 
 })();
+
 
 
