@@ -349,7 +349,7 @@ a:hover { color: var(--color-primary-hover); }
       html += '<div class="audit-card">';
 
       // Header
-      html += '<div class="audit-card-header" onclick="window.location.href=\'/admin/clients?slug=' + slug + '\'">';
+      html += '<div class="audit-card-header" onclick="window.location.href=\'/admin/clients?slug=' + slug + '&tab=audit\'">';
       html += '<div class="audit-avatar">' + esc(initials.toUpperCase()) + '</div>';
       html += '<div class="audit-card-info"><div class="audit-card-name">' + esc(c.practice_name || slug) + '</div>';
       html += '<div class="audit-card-meta"><span class="tag tag-' + (c.status || 'lead') + '">' + (c.status || 'unknown') + '</span>';
@@ -459,5 +459,6 @@ a:hover { color: var(--color-primary-hover); }
 <script src="/shared/chat-panel.js"></script>
 </body>
 </html>
+
 
 
