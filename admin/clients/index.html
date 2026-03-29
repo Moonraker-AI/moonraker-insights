@@ -216,7 +216,39 @@ strong { font-weight: 600; color: var(--color-heading); }
 .task-filter.active { background: var(--color-primary-subtle); border-color: var(--color-primary); color: var(--color-primary); }
 
 .task-row { display: flex; align-items: flex-start; gap: .75rem; padding: .65rem .75rem; border-bottom: 1px solid var(--color-border); font-size: .84rem; transition: background .1s; }
-.task-row:hover { background: var(--sidebar-hover); }
+.task-row:hover { background: var(--sidebar-hover); cursor: pointer; }
+.task-row.expanded { background: var(--color-bg); }
+.task-expand-desc {
+  padding: .5rem .75rem .75rem 2.75rem; font-size: .82rem; color: var(--color-body);
+  line-height: 1.6; border-bottom: 1px solid var(--color-border);
+  background: var(--color-bg); display: none; white-space: pre-wrap;
+}
+.task-expand-desc.show { display: block; }
+.task-expand-desc .desc-edit { cursor: pointer; padding: .35rem; margin: -.35rem; border-radius: 4px; border: 1px solid transparent; min-height: 1.5em; }
+.task-expand-desc .desc-edit:hover { background: var(--color-surface); border-color: var(--color-border); }
+.task-expand-desc textarea { width: 100%; min-height: 60px; padding: .4rem; border-radius: 6px; border: 1px solid var(--color-primary); background: var(--color-surface); color: var(--color-body); font-family: inherit; font-size: .82rem; resize: vertical; outline: none; }
+.task-status-select {
+  padding: .2rem .35rem; border-radius: 5px; font-size: .7rem; font-weight: 500;
+  font-family: inherit; cursor: pointer; border: 1px solid transparent; transition: border-color .15s;
+}
+.task-status-select:hover { border-color: var(--color-border); }
+.task-status-select option { background: var(--color-surface); color: var(--color-body); }
+.task-status-select.st-not-started { background: rgba(107,117,153,.1); color: var(--color-muted); }
+.task-status-select.st-in-progress { background: rgba(59,130,246,.1); color: #3B82F6; }
+.task-status-select.st-internal-review { background: rgba(139,92,246,.1); color: #8B5CF6; }
+.task-status-select.st-waiting-on-client { background: rgba(245,158,11,.1); color: #D97706; }
+.task-status-select.st-complete { background: rgba(0,212,126,.1); color: #00b86c; }
+.task-owner-select {
+  padding: .2rem .35rem; border-radius: 5px; font-size: .7rem; font-weight: 500;
+  font-family: inherit; cursor: pointer; border: 1px solid transparent; transition: border-color .15s;
+}
+.task-owner-select:hover { border-color: var(--color-border); }
+.task-owner-select option { background: var(--color-surface); }
+.task-owner-select.ow-moonraker { background: rgba(0,212,126,.12); color: #00b86c; }
+.task-owner-select.ow-client { background: rgba(59,130,246,.1); color: #3B82F6; }
+.task-owner-select.ow-collaboration { background: rgba(245,158,11,.1); color: #D97706; }
+.task-expand-icon { font-size: .65rem; color: var(--color-muted); transition: transform .2s; }
+.task-row.expanded .task-expand-icon { transform: rotate(90deg); }
 .task-num { font-size: .72rem; font-weight: 600; color: var(--color-muted); min-width: 28px; padding-top: .1rem; }
 .task-content { flex: 1; min-width: 0; }
 .task-title { font-weight: 500; color: var(--color-heading); }
@@ -1077,9 +1109,13 @@ strong { font-weight: 600; color: var(--color-heading); }
 
     // Stats
     if (tasks.length > 0) {
-      var tc = tasks.filter(function(t) { return t.status === 'complete'; }).length;
-      var tip = tasks.filter(function(t) { return t.status === 'in-progress'; }).length;
-      var tns = tasks.filter(function(t) { return t.status === 'not-started'; }).length;
+      var statusCounts = {};
+      tasks.forEach(function(t) { statusCounts[t.status] = (statusCounts[t.status] || 0) + 1; });
+      var tc = statusCounts['complete'] || 0;
+      var tip = statusCounts['in-progress'] || 0;
+      var tns = statusCounts['not-started'] || 0;
+      var tir = statusCounts['internal-review'] || 0;
+      var twc = statusCounts['waiting-on-client'] || 0;
       var pct = Math.round(tc / tasks.length * 100);
 
       document.getElementById('auditStats').innerHTML =
@@ -1094,6 +1130,8 @@ strong { font-weight: 600; color: var(--color-heading); }
       var fHtml = '<button class="task-filter active" data-status="all">All (' + tasks.length + ')</button>';
       fHtml += '<button class="task-filter" data-status="not-started">Not Started (' + tns + ')</button>';
       fHtml += '<button class="task-filter" data-status="in-progress">In Progress (' + tip + ')</button>';
+      if (tir > 0) fHtml += '<button class="task-filter" data-status="internal-review">Review (' + tir + ')</button>';
+      if (twc > 0) fHtml += '<button class="task-filter" data-status="waiting-on-client">Waiting (' + twc + ')</button>';
       fHtml += '<button class="task-filter" data-status="complete">Complete (' + tc + ')</button>';
       fHtml += '<span style="width:1px;height:20px;background:var(--color-border);margin:0 .25rem;"></span>';
       Object.keys(owners).forEach(function(o) {
@@ -1103,6 +1141,66 @@ strong { font-weight: 600; color: var(--color-heading); }
 
       renderTasks();
     }
+  }
+
+  window.setTaskStatus = function setTaskStatus(taskId, newStatus, evt) {
+    if (evt) evt.stopPropagation();
+    var task = state.tasks.find(function(t) { return t.id === taskId; });
+    if (!task || task.status === newStatus) return;
+    var oldStatus = task.status;
+    task.status = newStatus;
+    renderAudit();
+    fetch('/api/action', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ action: 'update_record', table: 'checklist_items', filters: { id: taskId }, data: { status: newStatus } })
+    }).then(function(r) { return r.json(); }).then(function(res) {
+      if (!res.success) { task.status = oldStatus; renderAudit(); }
+    }).catch(function() { task.status = oldStatus; renderAudit(); });
+  }
+
+  window.setTaskOwner = function setTaskOwner(taskId, newOwner, evt) {
+    if (evt) evt.stopPropagation();
+    var task = state.tasks.find(function(t) { return t.id === taskId; });
+    if (!task || task.owner === newOwner) return;
+    var oldOwner = task.owner;
+    task.owner = newOwner;
+    renderAudit();
+    fetch('/api/action', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ action: 'update_record', table: 'checklist_items', filters: { id: taskId }, data: { owner: newOwner } })
+    }).then(function(r) { return r.json(); }).then(function(res) {
+      if (!res.success) { task.owner = oldOwner; renderAudit(); }
+    }).catch(function() { task.owner = oldOwner; renderAudit(); });
+  }
+
+  var expandedTaskId = null;
+  window.toggleTaskExpand = function toggleTaskExpand(taskId) {
+    expandedTaskId = (expandedTaskId === taskId) ? null : taskId;
+    renderTasks();
+  }
+
+  window.editTaskDesc = function editTaskDesc(taskId) {
+    var el = document.getElementById('task-desc-' + taskId);
+    if (!el || el.querySelector('textarea')) return;
+    var task = state.tasks.find(function(t) { return t.id === taskId; });
+    var current = (task && task.description) || '';
+    el.innerHTML = '<textarea>' + esc(current) + '</textarea>';
+    var ta = el.querySelector('textarea');
+    ta.focus();
+    function save() {
+      var newVal = ta.value.trim() || null;
+      if (task) task.description = newVal;
+      renderTasks();
+      fetch('/api/action', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ action: 'update_record', table: 'checklist_items', filters: { id: taskId }, data: { description: newVal } })
+      });
+    }
+    ta.addEventListener('blur', save);
+    ta.addEventListener('keydown', function(e) { if (e.key === 'Escape') { renderTasks(); } });
   }
 
   function renderTasks() {
@@ -1121,21 +1219,52 @@ strong { font-weight: 600; color: var(--color-heading); }
       return;
     }
 
+    var TASK_STATUSES = [
+      {v:'not-started',l:'Not Started'},{v:'in-progress',l:'In Progress'},
+      {v:'internal-review',l:'Internal Review'},{v:'waiting-on-client',l:'Waiting on Client'},
+      {v:'complete',l:'Complete'}
+    ];
+    var TASK_OWNERS = ['Moonraker','Client','Collaboration'];
+
     var html = '';
     filtered.forEach(function(t, i) {
-      var statusClass = (t.status || 'not-started').replace(/\s+/g, '-');
-      var ownerClass = 'tag-' + (t.owner || '').toLowerCase().replace(/\s+/g, '-');
-      html += '<div class="task-row">';
+      var isExpanded = expandedTaskId === t.id;
+      var st = t.status || 'not-started';
+      var owClass = 'ow-' + (t.owner || '').toLowerCase();
+
+      html += '<div class="task-row' + (isExpanded ? ' expanded' : '') + '" onclick="toggleTaskExpand(\'' + t.id + '\')">';
+      html += '<div class="task-expand-icon">&#9654;</div>';
       html += '<div class="task-num">' + (t.sort_order || (i + 1)) + '</div>';
-      html += '<div class="task-content">';
+      html += '<div class="task-content" style="flex:1;min-width:0;">';
       html += '<div class="task-title">' + esc(t.title) + '</div>';
-      if (t.description) html += '<div class="task-desc">' + esc(t.description) + '</div>';
-      html += '<div class="task-meta">';
-      html += '<span class="task-status ' + statusClass + '">' + esc((t.status || 'not-started').replace(/-/g, ' ')) + '</span>';
-      if (t.owner) html += '<span class="tag ' + ownerClass + '">' + esc(t.owner) + '</span>';
+      html += '<div class="task-meta" style="margin-top:.25rem;">';
       if (t.priority) html += '<span style="font-size:.68rem;color:var(--color-muted);">' + esc(t.priority) + '</span>';
       if (t.category) html += '<span style="font-size:.68rem;color:var(--color-muted);">' + esc(t.category) + '</span>';
-      html += '</div></div></div>';
+      html += '</div></div>';
+
+      // Owner dropdown
+      html += '<select class="task-owner-select ' + owClass + '" onchange="setTaskOwner(\'' + t.id + '\', this.value, event)" onclick="event.stopPropagation()">';
+      TASK_OWNERS.forEach(function(o) {
+        html += '<option value="' + o + '"' + (t.owner === o ? ' selected' : '') + '>' + o + '</option>';
+      });
+      html += '</select>';
+
+      // Status dropdown
+      html += '<select class="task-status-select st-' + st + '" onchange="setTaskStatus(\'' + t.id + '\', this.value, event)" onclick="event.stopPropagation()">';
+      TASK_STATUSES.forEach(function(s) {
+        html += '<option value="' + s.v + '"' + (st === s.v ? ' selected' : '') + '>' + s.l + '</option>';
+      });
+      html += '</select>';
+      html += '</div>';
+
+      // Expandable description
+      html += '<div class="task-expand-desc' + (isExpanded ? ' show' : '') + '" id="task-desc-' + t.id + '">';
+      if (t.description) {
+        html += '<div class="desc-edit" onclick="event.stopPropagation(); editTaskDesc(\'' + t.id + '\')" title="Click to edit">' + esc(t.description) + '</div>';
+      } else {
+        html += '<div class="desc-edit" onclick="event.stopPropagation(); editTaskDesc(\'' + t.id + '\')" style="color:var(--color-muted);font-style:italic;">Click to add instructions...</div>';
+      }
+      html += '</div>';
     });
     document.getElementById('taskList').innerHTML = html;
   }
