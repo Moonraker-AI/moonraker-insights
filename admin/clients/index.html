@@ -249,7 +249,9 @@ strong { font-weight: 600; color: var(--color-heading); }
 .del-status-select:hover { border-color: var(--color-border); }
 .del-status-select option { background: var(--color-surface); color: var(--color-body); }
 .del-status-select.st-not_started { background: rgba(107,117,153,.1); color: var(--color-muted); }
-.del-status-select.st-in_progress { background: rgba(245,158,11,.1); color: #D97706; }
+.del-status-select.st-in_progress { background: rgba(59,130,246,.1); color: #3B82F6; }
+.del-status-select.st-internal_review { background: rgba(139,92,246,.1); color: #8B5CF6; }
+.del-status-select.st-waiting_on_client { background: rgba(245,158,11,.1); color: #D97706; }
 .del-status-select.st-delivered { background: rgba(0,212,126,.1); color: #00b86c; }
 .urgency-dot { width: 8px; height: 8px; border-radius: 50%; flex-shrink: 0; }
 .urgency-dot.high { background: var(--color-danger); }
@@ -1157,7 +1159,7 @@ strong { font-weight: 600; color: var(--color-heading); }
     if (!del || del.status === newStatus) return;
     var data = { status: newStatus };
     if (newStatus === 'delivered') data.delivered_at = new Date().toISOString();
-    else data.delivered_at = null;
+    else if (del.status === 'delivered') data.delivered_at = null;
     fetch('/api/action', {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
@@ -1217,7 +1219,42 @@ strong { font-weight: 600; color: var(--color-heading); }
 
     if (dels.length === 0) {
       document.getElementById('delEmpty').style.display = 'block';
+      document.getElementById('delPhaseBar').innerHTML = '';
       return;
+    }
+    document.getElementById('delEmpty').style.display = 'none';
+
+    // Phase category filter bar
+    var phaseMap = {
+      setup: ['gsc_setup','ga4_setup','gtm_setup','gbp_setup','instant_page','onboarding'],
+      content: ['surge_entity','surge_page','surge_sitewide','target_page','bio_page','faq_page','location_page','schema','audit_diagnosis','audit_action_plan','audit_progress'],
+      offpage: ['press_release','citations','gbp_optimization','social_profiles','entity_veracity_hub'],
+      ongoing: ['social_posts','neo_images','neo_distribution','livedrive','youtube_video','endorsement','report']
+    };
+    var phaseLabels = [
+      {key:'all',label:'All'}, {key:'setup',label:'Setup'}, {key:'content',label:'Content & Audits'},
+      {key:'offpage',label:'Off-Page'}, {key:'ongoing',label:'Ongoing'},
+      {key:'not_started',label:'Not Started'}, {key:'in_progress',label:'In Progress'},
+      {key:'waiting_on_client',label:'Waiting on Client'}, {key:'delivered',label:'Delivered'}
+    ];
+    var phaseHtml = '<div class="del-phase-bar">';
+    phaseLabels.forEach(function(p) {
+      var cnt = 0;
+      if (p.key === 'all') cnt = dels.length;
+      else if (p.key === 'delivered' || p.key === 'not_started' || p.key === 'in_progress' || p.key === 'waiting_on_client' || p.key === 'internal_review') cnt = dels.filter(function(dd) { return dd.status === p.key; }).length;
+      else if (phaseMap[p.key]) cnt = dels.filter(function(dd) { return phaseMap[p.key].indexOf(dd.deliverable_type) !== -1; }).length;
+      if (p.key !== 'all' && cnt === 0) return;
+      phaseHtml += '<button class="del-phase-pill' + (delPhaseFilter === p.key ? ' active' : '') + '" onclick="setDelPhase(\'' + p.key + '\')">' + p.label + ' <span style="opacity:.5;">' + cnt + '</span></button>';
+    });
+    phaseHtml += '</div>';
+    document.getElementById('delPhaseBar').innerHTML = phaseHtml;
+
+    // Apply filter
+    var filtered = dels;
+    if (delPhaseFilter === 'delivered' || delPhaseFilter === 'not_started' || delPhaseFilter === 'in_progress' || delPhaseFilter === 'waiting_on_client' || delPhaseFilter === 'internal_review') {
+      filtered = dels.filter(function(dd) { return dd.status === delPhaseFilter; });
+    } else if (phaseMap[delPhaseFilter]) {
+      filtered = dels.filter(function(dd) { return phaseMap[delPhaseFilter].indexOf(dd.deliverable_type) !== -1; });
     }
 
     var typeIcons = {
@@ -1235,11 +1272,16 @@ strong { font-weight: 600; color: var(--color-heading); }
     };
 
     // Sort by urgency (highest first)
-    var sorted = dels.slice().sort(function(a, b) {
+    var sorted = filtered.slice().sort(function(a, b) {
       return getUrgency(b).score - getUrgency(a).score;
     });
 
     var html = '';
+    if (sorted.length === 0) {
+      html = '<div style="padding:1rem;text-align:center;color:var(--color-muted);font-size:.84rem;">No deliverables match this filter.</div>';
+      document.getElementById('delList').innerHTML = html;
+      return;
+    }
     sorted.forEach(function(d) {
       var icon = typeIcons[d.deliverable_type] || '&#128196;';
       // Status dropdown instead of tag
@@ -1250,9 +1292,11 @@ strong { font-weight: 600; color: var(--color-heading); }
       html += '<div class="del-icon">' + icon + '</div>';
       html += '<div class="del-info"><div class="del-title">' + esc(d.title) + '</div>';
       html += '<div class="del-date">' + (d.delivered_at ? formatDate(d.delivered_at) : 'Pending') + (d.notes ? ' - ' + esc(d.notes.substring(0, 60)) : '') + '</div></div>';
-      html += '<select class="del-status-select st-' + d.status + '" onchange="setDelStatus(\'' + d.id + '\', this.value)">';
+      html += '<select class="del-status-select st-' + (d.status || 'not_started') + '" onchange="setDelStatus(\'' + d.id + '\', this.value)">';
       html += '<option value="not_started"' + (d.status === 'not_started' ? ' selected' : '') + '>Not Started</option>';
       html += '<option value="in_progress"' + (d.status === 'in_progress' ? ' selected' : '') + '>In Progress</option>';
+      html += '<option value="internal_review"' + (d.status === 'internal_review' ? ' selected' : '') + '>Internal Review</option>';
+      html += '<option value="waiting_on_client"' + (d.status === 'waiting_on_client' ? ' selected' : '') + '>Waiting on Client</option>';
       html += '<option value="delivered"' + (d.status === 'delivered' ? ' selected' : '') + '>Delivered</option>';
       html += '</select>';
       html += '<div class="del-actions">';
@@ -1294,7 +1338,7 @@ strong { font-weight: 600; color: var(--color-heading); }
       html += '<div class="rpt-month">' + esc(s.report_month || '--') + '</div>';
       html += '<div style="flex:1;font-size:.78rem;color:var(--color-muted);">' + formatDateTime(s.created_at) + '</div>';
       html += statusTag;
-      html += '<a href="/' + esc(slug) + '/reports" target="_blank" class="btn btn-ghost btn-sm" title="View report" style="margin-left:.5rem;">&#128279; View</a>';
+      html += '<a href="/' + esc(slug) + '/reports#' + esc(s.report_month) + '" target="_blank" class="btn btn-ghost btn-sm" title="View report" style="margin-left:.5rem;">&#128279; View</a>';
       html += '</div>';
     });
     document.getElementById('rptList').innerHTML = html;
@@ -1525,6 +1569,7 @@ strong { font-weight: 600; color: var(--color-heading); }
 <script src="/shared/chat-panel.js"></script>
 </body>
 </html>
+
 
 
 
