@@ -1148,7 +1148,7 @@ strong { font-weight: 600; color: var(--color-heading); }
     }
     var phaseEnd = {1:2, 2:3, 3:3, 4:4}[phase] || 3;
     var gap = Math.max(0, monthsIn - phaseEnd);
-    var staleMulti = d.status === 'not_started' ? 0.6 : 0.3;
+    var staleMulti = d.status === 'not_started' ? 0.6 : d.status === 'waiting_on_client' ? 0.5 : 0.3;
     var score = baseWeight * (1 + gap * staleMulti);
     var level = score >= 10 ? 'high' : score >= 5 ? 'medium' : 'low';
     return { score: Math.round(score * 10) / 10, level: level };
@@ -1157,20 +1157,29 @@ strong { font-weight: 600; color: var(--color-heading); }
   window.setDelStatus = function setDelStatus(delId, newStatus) {
     var del = state.deliverables.find(function(d) { return d.id === delId; });
     if (!del || del.status === newStatus) return;
+    var oldStatus = del.status;
     var data = { status: newStatus };
     if (newStatus === 'delivered') data.delivered_at = new Date().toISOString();
-    else if (del.status === 'delivered') data.delivered_at = null;
+    if (oldStatus === 'delivered' && newStatus !== 'delivered') data.delivered_at = null;
+
+    // Optimistic update - change locally first for instant UI feedback
+    del.status = newStatus;
+    if (data.delivered_at !== undefined) del.delivered_at = data.delivered_at;
+    renderDeliverables();
+
     fetch('/api/action', {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({ action: 'update_record', table: 'deliverables', filters: { id: delId }, data: data })
     }).then(function(r) { return r.json(); }).then(function(res) {
-      if (res.success) {
-        del.status = newStatus;
-        del.delivered_at = data.delivered_at;
+      if (!res.success) {
+        // Revert on failure
+        del.status = oldStatus;
         renderDeliverables();
-        setTabCount('deliverables', state.deliverables.length);
       }
+    }).catch(function() {
+      del.status = oldStatus;
+      renderDeliverables();
     });
   }
 
@@ -1569,6 +1578,7 @@ strong { font-weight: 600; color: var(--color-heading); }
 <script src="/shared/chat-panel.js"></script>
 </body>
 </html>
+
 
 
 
