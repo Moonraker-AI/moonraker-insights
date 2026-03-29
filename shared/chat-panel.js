@@ -70,15 +70,15 @@
     }
     .mr-chat-header-actions { display: flex; align-items: center; gap: .35rem; flex-shrink: 0; }
     .mr-chat-clear {
-      width: 28px; height: 28px; border-radius: 6px;
+      width: 36px; height: 36px; border-radius: 8px;
       border: none; cursor: pointer;
-      background: transparent; color: var(--color-muted, #5A7A6E);
+      background: var(--color-bg, #080F0B); color: var(--color-muted, #5A7A6E);
       display: flex; align-items: center; justify-content: center;
-      font-size: .85rem; transition: background .1s, color .1s;
+      font-size: 1rem; font-weight: 600; transition: background .1s, color .1s;
     }
     .mr-chat-clear:hover {
-      background: var(--color-bg, #080F0B);
-      color: var(--color-heading, #E8F5EF);
+      background: var(--color-warning, #F59E0B);
+      color: #fff;
     }
     .mr-chat-close {
       width: 36px; height: 36px; border-radius: 8px;
@@ -985,6 +985,7 @@
   };
 
 })();
+
 
 
 
