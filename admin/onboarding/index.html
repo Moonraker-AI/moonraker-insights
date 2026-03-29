@@ -465,12 +465,12 @@ a:hover { color: var(--color-primary-hover); }
       var completePct = d.total > 0 ? Math.round(d.complete / d.total * 100) : 0;
       var ipPct = d.total > 0 ? Math.round((d.complete + d.inProgress) / d.total * 100) : 0;
 
-      html += '<div class="ob-card" onclick="window.location.href=\'/admin/clients?slug=' + c.slug + '\'">';
+      html += '<div class="ob-card">';
       html += '<div class="ob-card-header">';
       html += '<div class="ob-card-avatar">' + esc(initials.toUpperCase()) + '</div>';
       html += '<div class="ob-card-info"><div class="ob-card-name">' + esc(c.practice_name || c.slug) + '</div>';
       html += '<div class="ob-card-email">' + esc(c.email || '') + ' ' + statusTag + '</div></div>';
-      html += '<div class="ob-card-pct">' + d.pct + '%</div>';
+      html += '<div style="display:flex;align-items:center;gap:.5rem;"><div class="ob-card-pct">' + d.pct + '%</div><a href="/admin/clients?slug=' + c.slug + '" class="btn btn-ghost btn-sm" style="font-size:.68rem;padding:.2rem .4rem;" title="View client">&#8599;</a></div>';
       html += '</div>';
 
       // Stacked progress bar
@@ -532,7 +532,7 @@ a:hover { color: var(--color-primary-hover); }
       var stepMap = {};
       d.steps.forEach(function(s) { stepMap[s.step_key] = s.status; });
 
-      html += '<tr onclick="window.location.href=\'/admin/clients?slug=' + c.slug + '\'">';
+      html += '<tr>';
       html += '<td><div class="matrix-client"><div class="matrix-avatar">' + esc(initials.toUpperCase()) + '</div><div><div class="matrix-name">' + esc(c.practice_name || c.slug) + '</div><div class="matrix-sub">' + esc(c.email || '') + '</div></div></div></td>';
 
       STEP_ORDER.forEach(function(key, i) {
@@ -607,6 +607,7 @@ a:hover { color: var(--color-primary-hover); }
 <script src="/shared/chat-panel.js"></script>
 </body>
 </html>
+
 
 
 
