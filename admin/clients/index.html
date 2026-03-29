@@ -241,6 +241,24 @@ strong { font-weight: 600; color: var(--color-heading); }
 /* ---- DELIVERABLE ROW ---- */
 .del-row { display: flex; align-items: center; gap: .75rem; padding: .65rem .75rem; border-bottom: 1px solid var(--color-border); font-size: .84rem; }
 .del-row:hover { background: var(--sidebar-hover); }
+.del-status-btn { cursor: pointer; transition: transform .1s; user-select: none; }
+.del-status-btn:hover { transform: scale(1.05); }
+.del-status-btn:active { transform: scale(.95); }
+.urgency-dot { width: 8px; height: 8px; border-radius: 50%; flex-shrink: 0; }
+.urgency-dot.high { background: var(--color-danger); }
+.urgency-dot.medium { background: var(--color-warning); }
+.urgency-dot.low { background: var(--color-primary); }
+.urgency-dot.none { background: transparent; }
+.ob-step-link { text-decoration: none; color: inherit; display: flex; align-items: center; gap: .75rem; width: 100%; }
+.ob-step-link:hover .ob-label { color: var(--color-primary); }
+.ob-step .link-arrow { font-size: .75rem; color: var(--color-muted); transition: color .15s; }
+.ob-step:hover .link-arrow { color: var(--color-primary); }
+.add-del-bar { display: flex; gap: .5rem; align-items: center; margin-bottom: 1rem; }
+.add-del-bar select, .add-del-bar input { padding: .4rem .6rem; border-radius: 6px; border: 1px solid var(--color-border); background: var(--color-surface); color: var(--color-body); font-size: .8rem; font-family: inherit; }
+.add-del-bar select { min-width: 180px; }
+.add-del-bar input { flex: 1; min-width: 120px; }
+.add-del-bar .btn-add { padding: .4rem .75rem; border-radius: 6px; background: var(--color-primary); color: #0a1e14; border: none; cursor: pointer; font-size: .8rem; font-weight: 500; font-family: inherit; }
+.add-del-bar .btn-add:hover { background: var(--color-primary-hover); }
 .del-icon { font-size: 1rem; opacity: .5; width: 24px; text-align: center; }
 .del-info { flex: 1; min-width: 0; }
 .del-title { font-weight: 500; color: var(--color-heading); }
@@ -525,6 +543,7 @@ strong { font-weight: 600; color: var(--color-heading); }
 
       <!-- TAB: Deliverables -->
       <div class="tab-panel" id="tab-deliverables">
+        <div id="delForm"></div>
         <div id="delList"></div>
         <div class="empty-state" id="delEmpty" style="display:none;"><p>No deliverables tracked yet.</p></div>
       </div>
@@ -965,15 +984,20 @@ strong { font-weight: 600; color: var(--color-heading); }
       pending: '&#9711;'
     };
 
+    var stepIndex = { confirm_info: 1, sign_agreement: 2, book_intro_call: 3, connect_accounts: 4, practice_details: 5, bio_materials: 6, social_profiles: 7, checkins_and_drive: 8 };
+
     var html = '';
     steps.forEach(function(s) {
       var label = stepLabels[s.step_key] || s.step_key;
       var statusText = s.status.replace(/_/g, ' ');
+      var stepNum = stepIndex[s.step_key] || 1;
       html += '<div class="ob-step ' + s.status + '">';
+      html += '<a href="/' + esc(slug) + '/onboarding#step-' + stepNum + '" target="_blank" class="ob-step-link">';
       html += '<div class="ob-icon">' + (icons[s.status] || '&#9711;') + '</div>';
       html += '<div class="ob-label">' + esc(label) + '</div>';
       html += '<div class="ob-status">' + esc(statusText) + '</div>';
-      html += '</div>';
+      html += '<div class="link-arrow">&#8599;</div>';
+      html += '</a></div>';
     });
     document.getElementById('obSteps').innerHTML = html;
   }
@@ -1080,8 +1104,100 @@ strong { font-weight: 600; color: var(--color-heading); }
   }
 
   // ---- DELIVERABLES TAB ----
+  var DEL_TYPES = [
+    {v:'target_page',l:'Target Page'},{v:'bio_page',l:'Bio Page'},{v:'faq_page',l:'FAQ Page'},
+    {v:'location_page',l:'Location Page'},{v:'schema',l:'Schema Implementation'},
+    {v:'press_release',l:'Press Release'},{v:'citations',l:'Citations'},
+    {v:'gbp_optimization',l:'GBP Optimization'},{v:'social_profiles',l:'Social Profiles'},
+    {v:'entity_veracity_hub',l:'VHub Activation'},{v:'neo_images',l:'NEO Images'},
+    {v:'social_posts',l:'Social Content'},{v:'neo_distribution',l:'NEO Distribution'},
+    {v:'livedrive',l:'LiveDrive'},{v:'youtube_video',l:'YouTube Video'},
+    {v:'endorsement',l:'Endorsements'},{v:'surge_page',l:'Surge Page Audit'},
+    {v:'surge_entity',l:'Surge Entity Audit'},{v:'gsc_setup',l:'GSC Setup'},
+    {v:'ga4_setup',l:'GA4 Setup'},{v:'gtm_setup',l:'GTM Setup'},{v:'gbp_setup',l:'GBP Setup'},
+    {v:'instant_page',l:'instant.page'},{v:'report',l:'Monthly Report'}
+  ];
+  var DEL_PHASE = {
+    gsc_setup:1,ga4_setup:1,gtm_setup:1,gbp_setup:1,instant_page:1,
+    surge_entity:2,surge_page:2,surge_sitewide:2,target_page:2,bio_page:2,faq_page:2,location_page:2,schema:2,
+    press_release:3,citations:3,gbp_optimization:3,social_profiles:3,entity_veracity_hub:3,
+    social_posts:4,neo_images:4,neo_distribution:4,livedrive:4,youtube_video:4,endorsement:4
+  };
+
+  function getUrgency(d) {
+    if (d.status === 'delivered') return { score: 0, level: 'none' };
+    var phase = DEL_PHASE[d.deliverable_type] || 3;
+    var baseWeight = {1:10, 2:8, 3:6, 4:3}[phase] || 3;
+    var monthsIn = 0;
+    if (state.contact && state.contact.campaign_start) {
+      var start = new Date(state.contact.campaign_start);
+      monthsIn = Math.max(0, (Date.now() - start) / (1000*60*60*24*30));
+    }
+    var phaseEnd = {1:2, 2:3, 3:3, 4:4}[phase] || 3;
+    var gap = Math.max(0, monthsIn - phaseEnd);
+    var staleMulti = d.status === 'not_started' ? 0.6 : 0.3;
+    var score = baseWeight * (1 + gap * staleMulti);
+    var level = score >= 10 ? 'high' : score >= 5 ? 'medium' : 'low';
+    return { score: Math.round(score * 10) / 10, level: level };
+  }
+
+  function cycleDelStatus(delId) {
+    var del = state.deliverables.find(function(d) { return d.id === delId; });
+    if (!del) return;
+    var next = del.status === 'not_started' ? 'in_progress' : del.status === 'in_progress' ? 'delivered' : 'not_started';
+    var data = { status: next };
+    if (next === 'delivered') data.delivered_at = new Date().toISOString();
+    else data.delivered_at = null;
+    fetch('/api/action', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ action: 'update_record', table: 'deliverables', filters: { id: delId }, data: data })
+    }).then(function(r) { return r.json(); }).then(function(res) {
+      if (res.success) {
+        del.status = next;
+        del.delivered_at = data.delivered_at;
+        renderDeliverables();
+      }
+    });
+  }
+
+  function addDeliverable() {
+    var typeEl = document.getElementById('newDelType');
+    var titleEl = document.getElementById('newDelTitle');
+    if (!typeEl.value) return;
+    var typeLabel = DEL_TYPES.find(function(t) { return t.v === typeEl.value; });
+    var title = titleEl.value.trim() || (typeLabel ? typeLabel.l : typeEl.value);
+    var data = {
+      contact_id: state.contact.id,
+      deliverable_type: typeEl.value,
+      title: title,
+      status: 'not_started'
+    };
+    fetch('/api/action', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ action: 'create_record', table: 'deliverables', data: data })
+    }).then(function(r) { return r.json(); }).then(function(res) {
+      if (res.success && res.data && res.data[0]) {
+        state.deliverables.unshift(res.data[0]);
+        renderDeliverables();
+        setTabCount('deliverables', state.deliverables.length);
+        typeEl.value = '';
+        titleEl.value = '';
+      }
+    });
+  }
+
   function renderDeliverables() {
     var dels = state.deliverables;
+
+    // Always show the add form
+    var formHtml = '<div class="add-del-bar"><select id="newDelType"><option value="">Add deliverable...</option>';
+    DEL_TYPES.forEach(function(t) { formHtml += '<option value="' + t.v + '">' + t.l + '</option>'; });
+    formHtml += '</select><input type="text" id="newDelTitle" placeholder="Custom title (optional)">';
+    formHtml += '<button class="btn-add" onclick="addDeliverable()">+ Add</button></div>';
+    document.getElementById('delForm').innerHTML = formHtml;
+
     if (dels.length === 0) {
       document.getElementById('delEmpty').style.display = 'block';
       return;
@@ -1101,18 +1217,25 @@ strong { font-weight: 600; color: var(--color-heading); }
       video: '&#127909;'
     };
 
+    // Sort by urgency (highest first)
+    var sorted = dels.slice().sort(function(a, b) {
+      return getUrgency(b).score - getUrgency(a).score;
+    });
+
     var html = '';
-    dels.forEach(function(d) {
+    sorted.forEach(function(d) {
       var icon = typeIcons[d.deliverable_type] || '&#128196;';
       var statusTag = d.status === 'delivered' ? '<span class="tag tag-active">delivered</span>'
         : d.status === 'in_progress' ? '<span class="tag tag-onboarding">in progress</span>'
         : '<span class="tag tag-lead">' + esc(d.status) + '</span>';
 
+      var urg = getUrgency(d);
       html += '<div class="del-row">';
+      html += '<div class="urgency-dot ' + urg.level + '" title="Urgency: ' + urg.score + '"></div>';
       html += '<div class="del-icon">' + icon + '</div>';
       html += '<div class="del-info"><div class="del-title">' + esc(d.title) + '</div>';
       html += '<div class="del-date">' + (d.delivered_at ? formatDate(d.delivered_at) : 'Pending') + (d.notes ? ' - ' + esc(d.notes.substring(0, 60)) : '') + '</div></div>';
-      html += statusTag;
+      html += '<span class="del-status-btn" onclick="cycleDelStatus(\'' + d.id + '\')" title="Click to change status">' + statusTag + '</span>';
       html += '<div class="del-actions">';
       if (d.page_url) html += '<a href="' + esc(d.page_url) + '" target="_blank" class="btn btn-ghost btn-sm" title="View">&#128279;</a>';
       if (d.drive_url) html += '<a href="' + esc(d.drive_url) + '" target="_blank" class="btn btn-ghost btn-sm" title="Drive">&#128193;</a>';
@@ -1382,5 +1505,6 @@ strong { font-weight: 600; color: var(--color-heading); }
 <script src="/shared/chat-panel.js"></script>
 </body>
 </html>
+
 
 
