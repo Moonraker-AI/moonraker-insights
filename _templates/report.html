@@ -793,6 +793,7 @@ section { padding: 4.5rem 0; }
           var found = months.find(function(m) { return m.report_month === hashMonth; });
           if (found) targetMonth = found.report_month;
         }
+        select.value = targetMonth;
         loadMonth(targetMonth);
       })
       .catch(function(err) {
