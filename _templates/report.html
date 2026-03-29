@@ -786,7 +786,14 @@ section { padding: 4.5rem 0; }
         });
 
         // Load the most recent month
-        loadMonth(months[0].report_month);
+        // Check for hash deep link (e.g., #2026-01-01)
+        var hashMonth = window.location.hash ? window.location.hash.substring(1) : null;
+        var targetMonth = months[0].report_month;
+        if (hashMonth) {
+          var found = months.find(function(m) { return m.report_month === hashMonth; });
+          if (found) targetMonth = found.report_month;
+        }
+        loadMonth(targetMonth);
       })
       .catch(function(err) {
         console.error('Failed to fetch months:', err);
@@ -845,3 +852,4 @@ section { padding: 4.5rem 0; }
 </script>
 </body>
 </html>
+
