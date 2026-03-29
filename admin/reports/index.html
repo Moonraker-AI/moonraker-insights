@@ -399,6 +399,17 @@ strong { font-weight: 600; color: var(--color-heading); }
       });
       render();
       document.getElementById('refreshBtn').disabled = false;
+
+      // Wire up chat panel context
+      if (window.MoonrakerChat) {
+        window.MoonrakerChat.setContext({
+          clientData: {
+            clients: state.clients,
+            configs: state.configs,
+            snapshots: state.snapshots
+          }
+        });
+      }
     }).catch(function(err) {
       console.error('Load error:', err);
       showToast('Failed to load data', 'error');
@@ -820,4 +831,5 @@ strong { font-weight: 600; color: var(--color-heading); }
 <script src="/shared/chat-panel.js"></script>
 </body>
 </html>
+
 
