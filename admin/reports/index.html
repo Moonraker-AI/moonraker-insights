@@ -304,6 +304,15 @@ strong { font-weight: 600; color: var(--color-heading); }
   </div>
   <div class="content" style="padding: 2rem; max-width: 1400px;">
 
+<!-- Tab Bar -->
+<div class="report-tabs">
+  <button class="report-tab active" onclick="switchReportTab('clients')">Client Reports</button>
+  <button class="report-tab" onclick="switchReportTab('digest')">Team Digest</button>
+</div>
+
+<!-- TAB: Client Reports -->
+<div class="tab-panel active" id="tab-clients">
+
 <!-- Stats Summary -->
 <div class="stats-bar">
     <div class="stat">
@@ -336,6 +345,88 @@ strong { font-weight: 600; color: var(--color-heading); }
     </div>
   </div>
 </div>
+</div><!-- end tab-clients -->
+
+<!-- TAB: Team Digest -->
+<div class="tab-panel" id="tab-digest">
+  <div class="digest-layout">
+    <div>
+      <div class="digest-config">
+        <h3>Digest Settings</h3>
+        <div class="digest-field">
+          <label>Recipients (comma-separated)</label>
+          <input type="text" id="dgRecipients" placeholder="chris@moonraker.ai, scott@moonraker.ai">
+        </div>
+        <div class="digest-field">
+          <label>Schedule</label>
+          <div style="display:flex;gap:.5rem;">
+            <select id="dgDay" style="flex:1;">
+              <option value="monday">Monday</option>
+              <option value="tuesday">Tuesday</option>
+              <option value="wednesday">Wednesday</option>
+              <option value="thursday">Thursday</option>
+              <option value="friday" selected>Friday</option>
+              <option value="saturday">Saturday</option>
+              <option value="sunday">Sunday</option>
+            </select>
+            <select id="dgHour" style="width:90px;">
+              <option value="7">7:00 AM</option>
+              <option value="8">8:00 AM</option>
+              <option value="9" selected>9:00 AM</option>
+              <option value="10">10:00 AM</option>
+              <option value="12">12:00 PM</option>
+              <option value="17">5:00 PM</option>
+            </select>
+          </div>
+        </div>
+        <div style="margin: .75rem 0; padding: .5rem 0; border-top: 1px solid var(--color-border); border-bottom: 1px solid var(--color-border);">
+          <div style="font-size:.72rem;font-weight:600;text-transform:uppercase;letter-spacing:.04em;color:var(--color-muted);margin-bottom:.35rem;">Include</div>
+          <div class="digest-toggle"><span>Deliverable changes</span><input type="checkbox" id="dgDeliverables" checked></div>
+          <div class="digest-toggle"><span>Audit task changes</span><input type="checkbox" id="dgAudit" checked></div>
+          <div class="digest-toggle"><span>Onboarding progress</span><input type="checkbox" id="dgOnboarding" checked></div>
+          <div class="digest-toggle"><span>New clients added</span><input type="checkbox" id="dgNewClients" checked></div>
+          <div class="digest-toggle"><span>CRM activity</span><input type="checkbox" id="dgCRM" checked></div>
+        </div>
+        <div class="digest-toggle" style="font-weight:500;">
+          <span>Digest active</span>
+          <input type="checkbox" id="dgActive" checked>
+        </div>
+        <div style="margin-top:.75rem;">
+          <button class="btn btn-primary btn-sm" onclick="saveDigestConfig()" style="width:100%;">Save Settings</button>
+        </div>
+      </div>
+
+      <div class="digest-config" style="margin-top:1rem;">
+        <h3>Send Digest</h3>
+        <p style="font-size:.78rem;color:var(--color-muted);margin-bottom:.75rem;">Preview and send a digest for any date range.</p>
+        <div class="digest-date-range">
+          <input type="date" id="dgFrom">
+          <span>to</span>
+          <input type="date" id="dgTo">
+        </div>
+        <div style="display:flex;gap:.5rem;margin-top:.5rem;">
+          <button class="btn btn-secondary btn-sm" onclick="setDigestRange('7d')">Last 7 days</button>
+          <button class="btn btn-secondary btn-sm" onclick="setDigestRange('14d')">14 days</button>
+          <button class="btn btn-secondary btn-sm" onclick="setDigestRange('30d')">30 days</button>
+        </div>
+        <div class="digest-actions">
+          <button class="btn-send" onclick="previewDigest()">Preview</button>
+          <button class="btn-send" id="dgSendBtn" onclick="sendDigest()" style="background:var(--color-info);">Send Now</button>
+        </div>
+      </div>
+    </div>
+
+    <div class="digest-preview" id="dgPreview">
+      <h3>Digest Preview</h3>
+      <p class="preview-header">Select a date range and click Preview to see what the digest will include.</p>
+      <div id="dgPreviewContent">
+        <div class="empty-state" style="padding:2rem;"><p>No preview loaded yet.</p></div>
+      </div>
+    </div>
+  </div>
+</div><!-- end tab-digest -->
+
+</div><!-- end content -->
 
 <!-- Toast -->
 <div class="toast" id="toast"></div>
@@ -343,6 +434,194 @@ strong { font-weight: 600; color: var(--color-heading); }
 <script>
 (function() {
   'use strict';
+
+  var SB_URL = 'https://ofmmwcjhdrhvxxkhcuww.supabase.co/rest/v1';
+  var SB_ANON = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6Im9mbW13Y2poZHJodnh4a2hjdXd3Iiwicm9sZSI6ImFub24iLCJpYXQiOjE3NzQzMjM1NTcsImV4cCI6MjA4OTg5OTU1N30.zMMHW0Fk9ixWjORngyxJTIoPOfx7GFsD4wBV4Foqqms';
+
+  // Tab switching
+  window.switchReportTab = function(tabId) {
+    document.querySelectorAll('.report-tab').forEach(function(t) { t.classList.remove('active'); });
+    document.querySelectorAll('.tab-panel').forEach(function(p) { p.classList.remove('active'); });
+    document.getElementById('tab-' + tabId).classList.add('active');
+    event.target.classList.add('active');
+    if (tabId === 'digest' && !digestLoaded) loadDigestConfig();
+  };
+
+  // Digest config
+  var digestLoaded = false;
+  var digestConfig = {};
+
+  function sbGet(path) {
+    return fetch(SB_URL + '/' + path, { headers: { 'apikey': SB_ANON, 'Authorization': 'Bearer ' + SB_ANON } }).then(function(r) { return r.json(); });
+  }
+
+  function loadDigestConfig() {
+    digestLoaded = true;
+    sbGet('settings?key=eq.team_digest&select=value').then(function(rows) {
+      if (rows.length > 0) {
+        digestConfig = rows[0].value;
+        document.getElementById('dgRecipients').value = (digestConfig.recipients || []).join(', ');
+        document.getElementById('dgDay').value = digestConfig.schedule_day || 'friday';
+        document.getElementById('dgHour').value = String(digestConfig.schedule_hour || 9);
+        document.getElementById('dgActive').checked = digestConfig.active !== false;
+        document.getElementById('dgDeliverables').checked = digestConfig.include_deliverables !== false;
+        document.getElementById('dgAudit').checked = digestConfig.include_audit_tasks !== false;
+        document.getElementById('dgOnboarding').checked = digestConfig.include_onboarding !== false;
+        document.getElementById('dgNewClients').checked = digestConfig.include_new_clients !== false;
+        document.getElementById('dgCRM').checked = digestConfig.include_crm !== false;
+      }
+    });
+    // Set default date range to last 7 days
+    setDigestRange('7d');
+  }
+
+  window.saveDigestConfig = function() {
+    var config = {
+      recipients: document.getElementById('dgRecipients').value.split(',').map(function(e) { return e.trim(); }).filter(Boolean),
+      schedule_day: document.getElementById('dgDay').value,
+      schedule_hour: parseInt(document.getElementById('dgHour').value),
+      active: document.getElementById('dgActive').checked,
+      include_deliverables: document.getElementById('dgDeliverables').checked,
+      include_audit_tasks: document.getElementById('dgAudit').checked,
+      include_onboarding: document.getElementById('dgOnboarding').checked,
+      include_new_clients: document.getElementById('dgNewClients').checked,
+      include_crm: document.getElementById('dgCRM').checked
+    };
+    fetch('/api/action', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ action: 'update_record', table: 'settings', filters: { key: 'team_digest' }, data: { value: config, updated_at: new Date().toISOString() } })
+    }).then(function(r) { return r.json(); }).then(function(res) {
+      toast(res.success ? 'Settings saved' : 'Save failed', res.success ? 'success' : 'error');
+    });
+  };
+
+  window.setDigestRange = function(range) {
+    var to = new Date();
+    var from = new Date();
+    if (range === '7d') from.setDate(to.getDate() - 7);
+    else if (range === '14d') from.setDate(to.getDate() - 14);
+    else if (range === '30d') from.setDate(to.getDate() - 30);
+    document.getElementById('dgFrom').value = from.toISOString().split('T')[0];
+    document.getElementById('dgTo').value = to.toISOString().split('T')[0];
+  };
+
+  window.previewDigest = function() {
+    var from = document.getElementById('dgFrom').value;
+    var to = document.getElementById('dgTo').value;
+    if (!from || !to) { toast('Set a date range first', 'error'); return; }
+
+    var container = document.getElementById('dgPreviewContent');
+    container.innerHTML = '<div class="empty-state"><div class="spinner" style="margin:0 auto 1rem;"></div><p>Loading activity...</p></div>';
+
+    var toEnd = to + 'T23:59:59Z';
+    var fromStart = from + 'T00:00:00Z';
+
+    Promise.all([
+      sbGet('activity_log?select=*&created_at=gte.' + fromStart + '&created_at=lte.' + toEnd + '&order=created_at.desc&limit=500'),
+      sbGet('contacts?select=id,slug,practice_name,status,created_at&order=practice_name')
+    ]).then(function(results) {
+      var logs = results[0];
+      var clients = results[1];
+      var clientMap = {};
+      clients.forEach(function(cl) { clientMap[cl.id] = cl; clientMap[cl.slug] = cl; });
+
+      // Group by client
+      var byClient = {};
+      logs.forEach(function(log) {
+        var slug = log.client_slug || 'unknown';
+        if (!byClient[slug]) byClient[slug] = [];
+        byClient[slug].push(log);
+      });
+
+      // Check for new clients in range
+      var newClients = clients.filter(function(cl) { return cl.created_at >= fromStart && cl.created_at <= toEnd; });
+
+      // Stats
+      var totalChanges = logs.length;
+      var delCompleted = logs.filter(function(l) { return l.table_name === 'deliverables' && l.new_value === 'delivered'; }).length;
+      var tasksCompleted = logs.filter(function(l) { return l.table_name === 'checklist_items' && l.new_value === 'complete'; }).length;
+
+      var html = '';
+
+      // Stats bar
+      html += '<div class="digest-stats">';
+      html += '<div class="digest-stat"><div class="ds-val">' + totalChanges + '</div><div class="ds-label">Total Changes</div></div>';
+      html += '<div class="digest-stat"><div class="ds-val">' + delCompleted + '</div><div class="ds-label">Delivered</div></div>';
+      html += '<div class="digest-stat"><div class="ds-val">' + tasksCompleted + '</div><div class="ds-label">Tasks Done</div></div>';
+      html += '<div class="digest-stat"><div class="ds-val">' + Object.keys(byClient).length + '</div><div class="ds-label">Clients Active</div></div>';
+      html += '<div class="digest-stat"><div class="ds-val">' + newClients.length + '</div><div class="ds-label">New Clients</div></div>';
+      html += '</div>';
+
+      html += '<div style="font-size:.75rem;color:var(--color-muted);margin-bottom:1rem;">' + from + ' to ' + to + ' &middot; ' + totalChanges + ' activities</div>';
+
+      if (totalChanges === 0 && newClients.length === 0) {
+        html += '<div class="empty-state" style="padding:1.5rem;"><p>No activity in this date range.</p></div>';
+      }
+
+      // New clients
+      if (newClients.length > 0) {
+        html += '<div class="digest-client"><h4>New Clients</h4>';
+        newClients.forEach(function(cl) {
+          html += '<div class="digest-entry"><span class="de-badge contacts">new</span><span>' + esc(cl.practice_name || cl.slug) + ' (' + cl.status + ')</span></div>';
+        });
+        html += '</div>';
+      }
+
+      // Per-client activity
+      var slugs = Object.keys(byClient).sort();
+      slugs.forEach(function(slug) {
+        var entries = byClient[slug];
+        var cl = clientMap[slug];
+        var name = cl ? (cl.practice_name || slug) : slug;
+        html += '<div class="digest-client"><h4>' + esc(name) + ' <span style="font-size:.7rem;font-weight:400;color:var(--color-muted);">(' + entries.length + ' changes)</span></h4>';
+        entries.forEach(function(log) {
+          var time = new Date(log.created_at).toLocaleDateString('en-US', {month:'short',day:'numeric'});
+          html += '<div class="digest-entry">';
+          html += '<span class="de-time">' + time + '</span>';
+          html += '<span class="de-badge ' + esc(log.table_name) + '">' + esc(log.table_name.replace('_',' ')) + '</span>';
+          html += '<span>' + esc(log.field_name) + ': ' + esc(log.old_value || '-') + ' &rarr; ' + esc(log.new_value || '-') + '</span>';
+          html += '</div>';
+        });
+        html += '</div>';
+      });
+
+      container.innerHTML = html;
+    });
+  };
+
+  window.sendDigest = function() {
+    var from = document.getElementById('dgFrom').value;
+    var to = document.getElementById('dgTo').value;
+    var recipients = document.getElementById('dgRecipients').value.split(',').map(function(e) { return e.trim(); }).filter(Boolean);
+    if (!from || !to) { toast('Set a date range first', 'error'); return; }
+    if (recipients.length === 0) { toast('Add recipients first', 'error'); return; }
+
+    var btn = document.getElementById('dgSendBtn');
+    btn.disabled = true;
+    btn.textContent = 'Sending...';
+
+    fetch('/api/digest', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ from: from, to: to, recipients: recipients })
+    }).then(function(r) { return r.json(); }).then(function(res) {
+      btn.disabled = false;
+      btn.textContent = 'Send Now';
+      if (res.success) {
+        toast('Digest sent to ' + recipients.length + ' recipient(s)', 'success');
+      } else {
+        toast('Failed: ' + (res.error || 'Unknown'), 'error');
+      }
+    }).catch(function(err) {
+      btn.disabled = false;
+      btn.textContent = 'Send Now';
+      toast('Error: ' + err.message, 'error');
+    });
+  };
+
+  function esc(s) { if (!s) return ''; var d = document.createElement('div'); d.textContent = s; return d.innerHTML; }
+
 
   // ============================================================
   // CONFIG
@@ -832,6 +1111,7 @@ strong { font-weight: 600; color: var(--color-heading); }
 <script src="/shared/chat-panel.js"></script>
 </body>
 </html>
+
 
 
 
