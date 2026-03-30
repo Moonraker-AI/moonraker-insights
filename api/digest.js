@@ -135,7 +135,7 @@ function generateInsights(curr, prev, leads, proposals, signups, byClient) {
     else if (pct < 0) insights.push('Activity is down ' + Math.abs(pct) + '% compared to the previous period (' + curr.totalChanges + ' vs ' + prev.totalChanges + ' changes).');
     else insights.push('Activity held steady at ' + curr.totalChanges + ' changes, same as last period.');
   } else if (curr.totalChanges > 0) {
-    insights.push(curr.totalChanges + ' total changes this period (no previous period data to compare).');
+    insights.push(curr.totalChanges + ' total change' + (curr.totalChanges !== 1 ? 's' : '') + ' this period (no previous period data to compare).');
   }
 
   if (curr.delCompleted > 0) {
