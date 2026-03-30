@@ -164,11 +164,7 @@ strong { font-weight: 600; color: var(--color-heading); }
 .stat-label { font-size: .75rem; color: var(--color-muted); text-transform: uppercase; letter-spacing: .04em; }
 
 /* Toast */
-.toast { position: fixed; bottom: 2rem; right: 2rem; padding: .75rem 1.25rem; border-radius: 10px; font-size: .85rem; font-weight: 500; z-index: 1000; transform: translateY(120%); transition: transform .3s ease; }
-.toast.show { transform: translateY(0); }
-.toast.success { background: var(--color-primary); color: #fff; }
-.toast.error { background: var(--color-danger); color: #fff; }
-.toast.info { background: var(--color-info); color: #fff; }
+/* toast CSS moved to digest section */
 
 /* Empty state */
 .empty-state { text-align: center; padding: 3rem; color: var(--color-muted); }
@@ -306,7 +302,7 @@ strong { font-weight: 600; color: var(--color-heading); }
 .digest-quick-btn { padding: .3rem .65rem; border-radius: 6px; font-size: .75rem; font-weight: 500; border: 1px solid var(--color-border); background: transparent; color: var(--color-muted); cursor: pointer; font-family: inherit; transition: all .15s; }
 .digest-quick-btn:hover { border-color: var(--color-primary); color: var(--color-primary); }
 
-.digest-actions { display: flex; gap: .5rem; }
+.digest-actions { display: flex; gap: .5rem; margin-top: .75rem; }
 .digest-actions .btn { font-family: inherit; }
 
 /* Preview area */
@@ -339,6 +335,8 @@ strong { font-weight: 600; color: var(--color-heading); }
 /* ---- DIGEST BUTTONS ---- */
 .btn-send { padding: .45rem 1rem; border-radius: 8px; border: 1px solid var(--color-border); background: var(--color-surface); color: var(--color-heading); cursor: pointer; font-family: inherit; font-size: .82rem; font-weight: 500; transition: all .15s; }
 .btn-send:hover { border-color: var(--color-primary); color: var(--color-primary); }
+.btn-send-primary { background: var(--color-primary); color: #fff; border-color: var(--color-primary); }
+.btn-send-primary:hover { background: var(--color-primary-hover); color: #fff; border-color: var(--color-primary-hover); }
 
 </style>
 </head>
@@ -483,7 +481,7 @@ strong { font-weight: 600; color: var(--color-heading); }
         </div>
         <div class="digest-actions">
           <button class="btn-send" onclick="previewDigest()">Preview</button>
-          <button class="btn-send" id="dgSendBtn" onclick="sendDigest()" style="background:var(--color-info);">Send Now</button>
+          <button class="btn-send btn-send-primary" id="dgSendBtn" onclick="sendDigest()">Send Now</button>
         </div>
       </div>
     </div>
@@ -1192,6 +1190,7 @@ strong { font-weight: 600; color: var(--color-heading); }
 <script src="/shared/chat-panel.js"></script>
 </body>
 </html>
+
 
 
 
