@@ -233,10 +233,10 @@ strong { font-weight: 600; color: var(--color-heading); }
 }
 .task-status-select:hover { border-color: var(--color-border); }
 .task-status-select option { background: var(--color-surface); color: var(--color-body); }
-.task-status-select.st-not-started { background: rgba(107,117,153,.1); color: var(--color-muted); }
-.task-status-select.st-in-progress { background: rgba(59,130,246,.1); color: #3B82F6; }
-.task-status-select.st-internal-review { background: rgba(139,92,246,.1); color: #8B5CF6; }
-.task-status-select.st-waiting-on-client { background: rgba(245,158,11,.1); color: #D97706; }
+.task-status-select.st-not_started { background: rgba(107,117,153,.1); color: var(--color-muted); }
+.task-status-select.st-in_progress { background: rgba(59,130,246,.1); color: #3B82F6; }
+.task-status-select.st-internal_review { background: rgba(139,92,246,.1); color: #8B5CF6; }
+.task-status-select.st-waiting_on_client { background: rgba(245,158,11,.1); color: #D97706; }
 .task-status-select.st-complete { background: rgba(0,212,126,.1); color: #00b86c; }
 .task-owner-select {
   padding: .2rem .35rem; border-radius: 5px; font-size: .7rem; font-weight: 500;
@@ -256,8 +256,8 @@ strong { font-weight: 600; color: var(--color-heading); }
 .task-meta { display: flex; gap: .5rem; margin-top: .3rem; align-items: center; flex-wrap: wrap; }
 .task-status { display: inline-flex; align-items: center; gap: .3rem; padding: .12rem .45rem; border-radius: 5px; font-size: .68rem; font-weight: 500; }
 .task-status.complete { background: rgba(0,212,126,.1); color: var(--color-success); }
-.task-status.in-progress { background: rgba(59,130,246,.08); color: var(--color-info); }
-.task-status.not-started { background: var(--color-bg); color: var(--color-muted); }
+.task-status.in_progress { background: rgba(59,130,246,.08); color: var(--color-info); }
+.task-status.not_started { background: var(--color-bg); color: var(--color-muted); }
 
 /* ---- CORE SCORE RINGS ---- */
 .score-grid { display: grid; grid-template-columns: repeat(4, 1fr); gap: 1rem; }
@@ -1112,10 +1112,10 @@ strong { font-weight: 600; color: var(--color-heading); }
       var statusCounts = {};
       tasks.forEach(function(t) { statusCounts[t.status] = (statusCounts[t.status] || 0) + 1; });
       var tc = statusCounts['complete'] || 0;
-      var tip = statusCounts['in-progress'] || 0;
-      var tns = statusCounts['not-started'] || 0;
-      var tir = statusCounts['internal-review'] || 0;
-      var twc = statusCounts['waiting-on-client'] || 0;
+      var tip = statusCounts['in_progress'] || 0;
+      var tns = statusCounts['not_started'] || 0;
+      var tir = statusCounts['internal_review'] || 0;
+      var twc = statusCounts['waiting_on_client'] || 0;
       var pct = Math.round(tc / tasks.length * 100);
 
       document.getElementById('auditStats').innerHTML =
@@ -1130,10 +1130,10 @@ strong { font-weight: 600; color: var(--color-heading); }
       var owners = {};
       tasks.forEach(function(t) { if (t.owner) owners[t.owner] = (owners[t.owner] || 0) + 1; });
       var fHtml = '<button class="task-filter active" data-status="all">All (' + tasks.length + ')</button>';
-      fHtml += '<button class="task-filter" data-status="not-started">Not Started (' + tns + ')</button>';
-      fHtml += '<button class="task-filter" data-status="in-progress">In Progress (' + tip + ')</button>';
-      if (tir > 0) fHtml += '<button class="task-filter" data-status="internal-review">Review (' + tir + ')</button>';
-      if (twc > 0) fHtml += '<button class="task-filter" data-status="waiting-on-client">Waiting (' + twc + ')</button>';
+      fHtml += '<button class="task-filter" data-status="not_started">Not Started (' + tns + ')</button>';
+      fHtml += '<button class="task-filter" data-status="in_progress">In Progress (' + tip + ')</button>';
+      if (tir > 0) fHtml += '<button class="task-filter" data-status="internal_review">Review (' + tir + ')</button>';
+      if (twc > 0) fHtml += '<button class="task-filter" data-status="waiting_on_client">Waiting (' + twc + ')</button>';
       fHtml += '<button class="task-filter" data-status="complete">Complete (' + tc + ')</button>';
       fHtml += '<span style="width:1px;height:20px;background:var(--color-border);margin:0 .25rem;"></span>';
       Object.keys(owners).forEach(function(o) {
@@ -1222,8 +1222,8 @@ strong { font-weight: 600; color: var(--color-heading); }
     }
 
     var TASK_STATUSES = [
-      {v:'not-started',l:'Not Started'},{v:'in-progress',l:'In Progress'},
-      {v:'internal-review',l:'Internal Review'},{v:'waiting-on-client',l:'Waiting on Client'},
+      {v:'not_started',l:'Not Started'},{v:'in_progress',l:'In Progress'},
+      {v:'internal_review',l:'Internal Review'},{v:'waiting_on_client',l:'Waiting on Client'},
       {v:'complete',l:'Complete'}
     ];
     var TASK_OWNERS = ['Moonraker','Client','Collaboration'];
@@ -1231,7 +1231,7 @@ strong { font-weight: 600; color: var(--color-heading); }
     var html = '';
     filtered.forEach(function(t, i) {
       var isExpanded = expandedTaskId === t.id;
-      var st = t.status || 'not-started';
+      var st = t.status || 'not_started';
       var owClass = 'ow-' + (t.owner || '').toLowerCase();
 
       html += '<div class="task-row' + (isExpanded ? ' expanded' : '') + '" onclick="toggleTaskExpand(\'' + t.id + '\')">';
@@ -1890,6 +1890,7 @@ strong { font-weight: 600; color: var(--color-heading); }
 <script src="/shared/chat-panel.js"></script>
 </body>
 </html>
+
 
 
 
