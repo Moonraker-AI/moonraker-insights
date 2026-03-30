@@ -57,8 +57,9 @@ module.exports = async function handler(req, res) {
     var stats = computeStats(actRes);
     var prevStats = computeStats(prevActRes);
 
-    // Classify new contacts
-    var proposals = newCtRes.filter(function(c) { return c.status === 'prospect' || c.status === 'lead'; });
+    // Classify new contacts - three-tier pipeline
+    var leads = newCtRes.filter(function(c) { return c.status === 'lead'; });
+    var proposals = newCtRes.filter(function(c) { return c.status === 'prospect'; });
     var signups = newCtRes.filter(function(c) { return c.status === 'onboarding' || c.status === 'active'; });
 
     // Group activities by client
@@ -70,12 +71,12 @@ module.exports = async function handler(req, res) {
     });
 
     // Generate insights
-    var insights = generateInsights(stats, prevStats, proposals, signups, byClient);
+    var insights = generateInsights(stats, prevStats, leads, proposals, signups, byClient);
 
     // Build HTML email
     var html = buildDigestEmail({
       from: from, to: to, stats: stats, prevStats: prevStats,
-      proposals: proposals, signups: signups, byClient: byClient,
+      leads: leads, proposals: proposals, signups: signups, byClient: byClient,
       contactMap: contactMap, insights: insights
     });
 
@@ -102,7 +103,7 @@ module.exports = async function handler(req, res) {
 
     return res.status(200).json({
       success: true, messageId: sendResult.id,
-      stats: { total: stats.totalChanges, deliverables: stats.delCompleted, tasks: stats.tasksCompleted, proposals: proposals.length, signups: signups.length }
+      stats: { total: stats.totalChanges, deliverables: stats.delCompleted, tasks: stats.tasksCompleted, leads: leads.length, proposals: proposals.length, signups: signups.length }
     });
 
   } catch (err) {
@@ -125,7 +126,7 @@ function computeStats(activities) {
   };
 }
 
-function generateInsights(curr, prev, proposals, signups, byClient) {
+function generateInsights(curr, prev, leads, proposals, signups, byClient) {
   var insights = [];
 
   if (prev.totalChanges > 0) {
@@ -149,7 +150,8 @@ function generateInsights(curr, prev, proposals, signups, byClient) {
     insights.push(t);
   }
 
-  if (proposals.length > 0) insights.push(proposals.length + ' new proposal' + (proposals.length !== 1 ? 's' : '') + ' sent.');
+  if (leads.length > 0) insights.push(leads.length + ' new lead' + (leads.length !== 1 ? 's' : '') + ' added to the pipeline.');
+  if (proposals.length > 0) insights.push(proposals.length + ' proposal' + (proposals.length !== 1 ? 's' : '') + ' sent.');
   if (signups.length > 0) insights.push(signups.length + ' new client' + (signups.length !== 1 ? 's' : '') + ' signed up!');
 
   var topSlug = null, topCount = 0;
@@ -204,8 +206,8 @@ function buildDigestEmail(data) {
   });
   h += '</div>';
 
-  // Pipeline
-  if (data.signups.length > 0 || data.proposals.length > 0) {
+  // Pipeline - three tiers
+  if (data.signups.length > 0 || data.proposals.length > 0 || data.leads.length > 0) {
     h += '<div style="background:#fff;border:1px solid #E2E8F0;border-radius:10px;padding:16px;margin-bottom:16px;">';
     h += '<h3 style="font-size:15px;color:#1E2A5E;margin:0 0 12px;">Pipeline</h3>';
     if (data.signups.length > 0) {
@@ -213,12 +215,19 @@ function buildDigestEmail(data) {
       data.signups.forEach(function(c) {
         h += '<div style="padding:3px 0;font-size:13px;color:#333F70;"><span style="background:rgba(0,212,126,.1);color:#00b86c;font-size:10px;font-weight:600;padding:2px 6px;border-radius:3px;margin-right:6px;">SIGNED</span>' + esc(c.practice_name || c.slug) + '</div>';
       });
-      if (data.proposals.length > 0) h += '<div style="height:10px;"></div>';
+      h += '<div style="height:10px;"></div>';
     }
     if (data.proposals.length > 0) {
       h += '<div style="font-size:11px;font-weight:600;color:#3B82F6;text-transform:uppercase;letter-spacing:.5px;margin-bottom:6px;">Proposals Sent (' + data.proposals.length + ')</div>';
       data.proposals.forEach(function(c) {
         h += '<div style="padding:3px 0;font-size:13px;color:#333F70;"><span style="background:rgba(59,130,246,.1);color:#3B82F6;font-size:10px;font-weight:600;padding:2px 6px;border-radius:3px;margin-right:6px;">PROPOSAL</span>' + esc(c.practice_name || c.slug) + '</div>';
+      });
+      if (data.leads.length > 0) h += '<div style="height:10px;"></div>';
+    }
+    if (data.leads.length > 0) {
+      h += '<div style="font-size:11px;font-weight:600;color:#D97706;text-transform:uppercase;letter-spacing:.5px;margin-bottom:6px;">New Leads (' + data.leads.length + ')</div>';
+      data.leads.forEach(function(c) {
+        h += '<div style="padding:3px 0;font-size:13px;color:#333F70;"><span style="background:rgba(245,158,11,.1);color:#D97706;font-size:10px;font-weight:600;padding:2px 6px;border-radius:3px;margin-right:6px;">LEAD</span>' + esc(c.practice_name || c.slug) + '</div>';
       });
     }
     h += '</div>';
@@ -261,3 +270,4 @@ function esc(s) {
   if (!s) return '';
   return String(s).replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;').replace(/"/g, '&quot;');
 }
+
