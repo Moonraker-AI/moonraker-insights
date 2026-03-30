@@ -409,6 +409,13 @@
       Object.assign(ctx, window._mrChatContext);
     }
 
+    // Include lightweight client index for cross-client operations
+    if (clientIndex) {
+      ctx.clientIndex = clientIndex.map(function(c) {
+        return { slug: c.slug, name: c.practice_name, status: c.status, lost: c.lost, id: c.id };
+      });
+    }
+
     return ctx;
   }
 
@@ -1020,6 +1027,21 @@
   }
 
   // ============================================================
+  // ============================================================
+  // FETCH LIGHTWEIGHT CLIENT INDEX (all admin pages)
+  // ============================================================
+  var clientIndex = null;
+  (function fetchClientIndex() {
+    var SB_URL = 'https://ofmmwcjhdrhvxxkhcuww.supabase.co/rest/v1';
+    var SB_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6Im9mbW13Y2poZHJodnh4a2hjdXd3Iiwicm9sZSI6ImFub24iLCJpYXQiOjE3NzQzMjM1NTcsImV4cCI6MjA4OTg5OTU1N30.zMMHW0Fk9ixWjORngyxJTIoPOfx7GFsD4wBV4Foqqms';
+    fetch(SB_URL + '/contacts?select=id,slug,status,practice_name,first_name,last_name,email,lost&order=practice_name', {
+      headers: { 'apikey': SB_KEY, 'Authorization': 'Bearer ' + SB_KEY }
+    }).then(function(r) { return r.json(); }).then(function(data) {
+      clientIndex = data;
+      console.log('Chat: loaded client index (' + data.length + ' clients)');
+    }).catch(function(e) { console.warn('Chat: failed to load client index', e); });
+  })();
+
   // PUBLIC API - pages can set context
   // ============================================================
   window.MoonrakerChat = {
@@ -1036,6 +1058,7 @@
   };
 
 })();
+
 
 
 
