@@ -1254,7 +1254,8 @@ strong { font-weight: 600; color: var(--color-heading); }
           field_name: field,
           old_value: String(oldVal || ''),
           new_value: String(newVal || ''),
-          changed_by: 'admin'
+          changed_by: 'admin',
+          record_label: label || null
         }
       })
     }).catch(function() {}); // silent fail
