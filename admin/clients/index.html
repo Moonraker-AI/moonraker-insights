@@ -257,9 +257,10 @@ strong { font-weight: 600; color: var(--color-heading); }
 }
 .task-owner-select:hover { border-color: var(--color-border); }
 .task-owner-select option { background: var(--color-surface); }
-.task-owner-select.ow-moonraker, .task-owner-select.ow-client, .task-owner-select.ow-collaboration {
-  background: var(--color-bg); color: var(--color-body); border: 1px solid var(--color-border);
-}
+.task-owner-select.ow-moonraker { background: rgba(0,212,126,.12); color: #00b86c; }
+.task-owner-select.ow-client { background: rgba(59,130,246,.1); color: #3B82F6; }
+.task-owner-select.ow-collaboration { background: rgba(245,158,11,.1); color: #D97706; }
+.task-owner-select option { color: var(--color-body); background: var(--color-surface); }
 .task-delete { width: 24px; height: 24px; border-radius: 6px; border: none; background: transparent; color: var(--color-muted); cursor: pointer; font-size: .75rem; display: flex; align-items: center; justify-content: center; opacity: 0; transition: all .15s; flex-shrink: 0; }
 .task-row:hover .task-delete { opacity: .6; }
 .task-delete:hover { opacity: 1 !important; background: rgba(239,68,68,.1); color: var(--color-danger); }
@@ -399,8 +400,8 @@ strong { font-weight: 600; color: var(--color-heading); }
 .modal-actions .btn-create:disabled { opacity: .5; cursor: not-allowed; }
 
 /* ---- TOAST ---- */
-.toast { position: fixed; bottom: 1.5rem; right: 1.5rem; padding: .65rem 1.1rem; border-radius: 10px; font-size: .82rem; font-weight: 500; z-index: 1000; transform: translateY(120%); transition: transform .3s; }
-.toast.show { transform: translateY(0); }
+.toast { position: fixed; top: 1.25rem; left: 50%; transform: translateX(-50%) translateY(-120%); padding: .65rem 1.25rem; border-radius: 10px; font-size: .82rem; font-weight: 500; z-index: 1000; transition: transform .3s; box-shadow: 0 4px 16px rgba(0,0,0,.15); }
+.toast.show { transform: translateX(-50%) translateY(0); }
 .toast.success { background: var(--color-primary); color: #fff; }
 .toast.error { background: var(--color-danger); color: #fff; }
 
@@ -2135,6 +2136,7 @@ strong { font-weight: 600; color: var(--color-heading); }
 <script src="/shared/chat-panel.js"></script>
 </body>
 </html>
+
 
 
 
