@@ -703,12 +703,12 @@
     var data = actionData.data || {};
     var filters = actionData.filters || {};
 
-    // Auto-execute read actions - only ONE per turn, none during follow-up
+    // Auto-execute read actions - each cardId fires at most once ever
     if (action === 'read_records') {
-      if (isAutoReadFollowUp || readExecuted) {
+      if (isAutoReadFollowUp || executedReadIds[cardId]) {
         return '';
       }
-      readExecuted = true;
+      executedReadIds[cardId] = true;
       setTimeout(function() { autoExecuteRead(actionData, cardId); }, 100);
       return '<div class="mr-action-card" data-card-id="' + cardId + '" id="read-card-' + cardId + '">' +
         '<div class="mr-action-card-header">&#128269; READING ' + esc(table).toUpperCase() + '</div>' +
@@ -895,7 +895,6 @@
     sendBtn.disabled = true;
     currentStreamText = '';
     userScrolledUp = false;
-    readExecuted = false;
 
     // Add empty AI message placeholder
     var aiDiv = document.createElement('div');
@@ -1007,7 +1006,7 @@
 
   var displayedText = '';
   var isAutoReadFollowUp = false;
-  var readExecuted = false; // only one read per user turn
+  var executedReadIds = {}; // persistent map of read card IDs that have already fired
   var typewriterTimer = null;
   var TYPEWRITER_SPEED = 8; // ms per character - very fast but smooth
 
@@ -1047,7 +1046,6 @@
     isStreaming = false;
     isAutoReadFollowUp = false;
     sendBtn.disabled = false;
-    readExecuted = false;
 
     // Flush any remaining buffered text
     if (typewriterTimer) { clearInterval(typewriterTimer); typewriterTimer = null; }
@@ -1149,6 +1147,7 @@
   };
 
 })();
+
 
 
 
