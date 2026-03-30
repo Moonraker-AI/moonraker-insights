@@ -91,8 +91,8 @@ a:hover { color: var(--color-primary-hover); }
 .task-breakdown-item { display: flex; align-items: center; gap: .35rem; font-size: .75rem; }
 .task-breakdown-dot { width: 8px; height: 8px; border-radius: 2px; }
 .task-breakdown-dot.complete { background: var(--color-success); }
-.task-breakdown-dot.in-progress { background: var(--color-info); }
-.task-breakdown-dot.not-started { background: var(--color-border); }
+.task-breakdown-dot.in_progress { background: var(--color-info); }
+.task-breakdown-dot.not_started { background: var(--color-border); }
 
 /* Owner breakdown */
 .owner-breakdown { display: flex; gap: .75rem; flex-wrap: wrap; }
@@ -294,10 +294,10 @@ a:hover { color: var(--color-primary-hover); }
     Object.values(state.tasks).forEach(function(arr) { allTasks = allTasks.concat(arr); });
 
     var complete = allTasks.filter(function(t) { return t.status === 'complete'; }).length;
-    var ip = allTasks.filter(function(t) { return t.status === 'in-progress'; }).length;
-    var ir = allTasks.filter(function(t) { return t.status === 'internal-review'; }).length;
-    var wc = allTasks.filter(function(t) { return t.status === 'waiting-on-client'; }).length;
-    var ns = allTasks.filter(function(t) { return t.status === 'not-started'; }).length;
+    var ip = allTasks.filter(function(t) { return t.status === 'in_progress'; }).length;
+    var ir = allTasks.filter(function(t) { return t.status === 'internal_review'; }).length;
+    var wc = allTasks.filter(function(t) { return t.status === 'waiting_on_client'; }).length;
+    var ns = allTasks.filter(function(t) { return t.status === 'not_started'; }).length;
     var clientCount = Object.keys(state.tasks).length;
     var pct = allTasks.length > 0 ? Math.round(complete / allTasks.length * 100) : 0;
 
@@ -342,8 +342,8 @@ a:hover { color: var(--color-primary-hover); }
       var initials = ((c.first_name || '')[0] || '') + ((c.last_name || '')[0] || '') || slug[0].toUpperCase();
 
       var complete = tasks.filter(function(t) { return t.status === 'complete'; }).length;
-      var ip = tasks.filter(function(t) { return t.status === 'in-progress'; }).length;
-      var ns = tasks.filter(function(t) { return t.status === 'not-started'; }).length;
+      var ip = tasks.filter(function(t) { return t.status === 'in_progress'; }).length;
+      var ns = tasks.filter(function(t) { return t.status === 'not_started'; }).length;
       var pct = Math.round(complete / tasks.length * 100);
 
       var owners = {};
@@ -393,8 +393,8 @@ a:hover { color: var(--color-primary-hover); }
       // Task breakdown
       html += '<div class="task-breakdown">';
       html += '<div class="task-breakdown-item"><span class="task-breakdown-dot complete"></span> ' + complete + ' complete</div>';
-      html += '<div class="task-breakdown-item"><span class="task-breakdown-dot in-progress"></span> ' + ip + ' in progress</div>';
-      html += '<div class="task-breakdown-item"><span class="task-breakdown-dot not-started"></span> ' + ns + ' not started</div>';
+      html += '<div class="task-breakdown-item"><span class="task-breakdown-dot in_progress"></span> ' + ip + ' in progress</div>';
+      html += '<div class="task-breakdown-item"><span class="task-breakdown-dot not_started"></span> ' + ns + ' not started</div>';
       html += '</div>';
 
       // Owner breakdown
@@ -462,6 +462,7 @@ a:hover { color: var(--color-primary-hover); }
 <script src="/shared/chat-panel.js"></script>
 </body>
 </html>
+
 
 
 
