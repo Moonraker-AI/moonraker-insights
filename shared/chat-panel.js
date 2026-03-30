@@ -762,35 +762,63 @@
     .then(function(r) { return r.json(); })
     .then(function(result) {
       var card = document.getElementById('read-card-' + cardId);
-      if (!card) return;
       if (result.success && result.data) {
-        var count = result.data.length || 0;
-        var preview = '';
-        if (count === 0) {
-          preview = '<em>No records found.</em>';
-        } else {
-          // Show compact summary
-          preview = '<strong>' + count + ' record' + (count !== 1 ? 's' : '') + ' found</strong>';
-          result.data.slice(0, 5).forEach(function(row) {
-            var summary = Object.keys(row).slice(0, 4).map(function(k) {
-              var v = row[k];
-              if (v === null || v === undefined) return '';
-              if (typeof v === 'object') v = JSON.stringify(v);
-              return '<strong>' + esc(k) + ':</strong> ' + esc(String(v).substring(0, 40));
-            }).filter(Boolean).join(' | ');
-            preview += '<div style="margin-top:.3rem;font-size:.72rem;padding:.25rem .4rem;background:var(--color-bg);border-radius:4px;">' + summary + '</div>';
-          });
-          if (count > 5) preview += '<div style="font-size:.7rem;color:var(--color-muted);margin-top:.25rem;">...and ' + (count - 5) + ' more</div>';
-        }
-        card.querySelector('.mr-action-card-header').innerHTML = '&#9889; DATA LOADED';
-        card.querySelector('.mr-action-card-body').innerHTML = preview;
-        card.style.borderColor = 'rgba(0,212,126,.3)';
+        // Remove the loading card - the AI follow-up will present the data conversationally
+        if (card) card.remove();
 
-        // Feed result back as context for follow-up questions
-        if (!window._mrReadResults) window._mrReadResults = {};
-        window._mrReadResults[cardId] = result.data;
+        // Inject results as a hidden assistant message and auto-trigger follow-up
+        var dataStr = JSON.stringify(result.data, null, 2);
+        // Truncate if too large
+        if (dataStr.length > 4000) dataStr = dataStr.substring(0, 4000) + '\n... (truncated)';
+
+        // Add result as context in conversation history
+        messages.push({
+          role: 'assistant',
+          content: 'I fetched the data. Here are the results from ' + (actionData.table || 'the database') + ':\n```json\n' + dataStr + '\n```\nLet me summarize this for you.'
+        });
+
+        // Auto-trigger a follow-up to get a conversational summary
+        messages.push({
+          role: 'user',
+          content: '[System: The data above was auto-fetched. Please provide a concise, conversational summary of what you found. Do not output another read_records action. Just interpret the data naturally.]'
+        });
+
+        // Trigger the AI to respond
+        isStreaming = true;
+        sendBtn.disabled = true;
+        currentStreamText = '';
+        displayedText = '';
+
+        var aiDiv = document.createElement('div');
+        aiDiv.className = 'mr-msg mr-msg-ai streaming';
+        aiDiv.innerHTML = '<div class="mr-msg-label">Moonraker AI</div>';
+        messagesEl.appendChild(aiDiv);
+        currentStreamEl = aiDiv;
+        scrollToBottom(true);
+
+        var apiMessages = messages.filter(function(m) {
+          return m.role === 'user' || m.role === 'assistant';
+        }).map(function(m) {
+          return { role: m.role, content: m.content };
+        });
+
+        var ctx = getPageContext();
+
+        fetch(CHAT_API, {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ messages: apiMessages, context: ctx })
+        })
+        .then(function(response) {
+          if (!response.ok) throw new Error('API error: ' + response.status);
+          return readStream(response.body);
+        })
+        .catch(function(err) {
+          finishStream();
+          addSystemMessage('Error: ' + err.message);
+        });
       } else {
-        card.querySelector('.mr-action-card-body').innerHTML = '<span style="color:var(--color-danger);">Failed: ' + esc(result.error || 'Unknown') + '</span>';
+        if (card) card.querySelector('.mr-action-card-body').innerHTML = '<span style="color:var(--color-danger);">Failed: ' + esc((result && result.error) || 'Unknown') + '</span>';
       }
     })
     .catch(function(err) {
