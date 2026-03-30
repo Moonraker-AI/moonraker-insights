@@ -165,6 +165,12 @@ function buildSystemPrompt(ctx) {
     parts.push('\n\n## Live Data From Page\n```json\n' + JSON.stringify(clientData, null, 2) + '\n```');
   }
 
+  // Include lightweight client index for cross-client operations
+  var clientIndex = ctx.clientIndex || null;
+  if (clientIndex && clientIndex.length > 0) {
+    parts.push('\n\n## Client Index (' + clientIndex.length + ' clients)\n```json\n' + JSON.stringify(clientIndex) + '\n```');
+  }
+
   return parts.join('\n');
 }
 
@@ -218,11 +224,11 @@ Rules for actions:
 
 ## Supabase Schema
 
-- contacts: id, slug, status (lead/prospect/onboarding/active), first_name, last_name, email, phone, practice_name, website_url, campaign_start, campaign_end, plan_type, credentials, city, state_province, country, gsc_property, ga4_property, gbp_url, gbp_place_id, stripe_customer_id, drive_folder_url, youtube_url, linkedin_url, facebook_url, instagram_url, tiktok_url, pinterest_url, quora_url, x_url, notes
+- contacts: id, slug, status (lead/prospect/onboarding/active), lost (boolean), lost_reason, lost_at, follow_up_date, follow_up_notes, first_name, last_name, email, phone, practice_name, website_url, campaign_start, campaign_end, plan_type, credentials, city, state_province, country, gsc_property, ga4_property, gbp_url, gbp_place_id, stripe_customer_id, drive_folder_url, youtube_url, linkedin_url, facebook_url, instagram_url, tiktok_url, pinterest_url, quora_url, x_url, notes
 - practice_details: id, contact_id, practice_type, num_therapists, specialties[], modalities[], populations[], issues_treated, licensed_states[], insurance_or_private_pay, differentiators, campaign_goals[], campaign_objectives, target_keywords[], offers_consultation, ideal_client
 - onboarding_steps: id, contact_id, step_key, status (pending/in_progress/complete), sort_order
-- deliverables: id, contact_id, deliverable_type, title, status (not_started/in_progress/delivered), page_url, drive_url, notes, delivered_at, approved_at
-- checklist_items: id, client_slug, task_id, priority, category, scope, title, description, owner (Moonraker/Client/Collaboration), status (not-started/in-progress/complete), notes, sort_order, phase, audit_period
+- deliverables: id, contact_id, deliverable_type, title, status (not_started/in_progress/internal_review/waiting_on_client/delivered), page_url, drive_url, notes, delivered_at, approved_at
+- checklist_items: id, client_slug, task_id, priority, category, scope, title, description, owner (Moonraker/Client/Collaboration), status (not_started/in_progress/internal_review/waiting_on_client/complete), notes, sort_order, phase, audit_period
 - audit_scores: id, client_slug, audit_period, variance_score, score_credibility, score_optimization, score_reputation, score_engagement + 30 individual metrics
 - report_snapshots: id, client_slug, report_month, report_status (draft/published), campaign_month, gsc_clicks, gsc_impressions, ga4_sessions, ga4_users, gbp_calls, gbp_website_clicks + JSONB detail columns
 - report_configs: id, client_slug, gsc_property, ga4_property, lbm_location_id, lbm_report_id, tracked_queries[], active, report_day
@@ -236,6 +242,25 @@ Moonraker's CORE framework structures all campaign work:
 - **O - Optimization:** Teach AI about services (target pages, location pages, schema, FAQs, bio pages, technical SEO)
 - **R - Reputation:** Prove expertise (endorsements, GBP/social posts, YouTube, Quora, press releases)
 - **E - Engagement:** Guide visitors to book (Hero section, CTAs, booking calendar, Engage chatbot)
+
+## Cross-Client Operations
+
+You have access to a client index listing all clients in the system. You can reference any client by name or slug, not just the one currently on screen.
+
+When the user asks about a different client than the one currently shown:
+1. Look up the client in the clientIndex (provided in context)
+2. Use their id or slug to query Supabase via the action system
+3. You can propose actions for ANY client from ANY page
+
+Examples:
+- "What's Bree Anthony's onboarding status?" → Look up bree-anthony in clientIndex, propose a read query
+- "Mark Sky Therapies' GBP as delivered" → Find Sky Therapies' contact_id from index, propose update on deliverables table
+- "Create a deliverable for Rebecca Branda" → Use her id from the index in the create_record action
+
+For read operations on other clients, use this pattern:
+\`\`\`action
+{"action":"read_records","table":"TABLE_NAME","filters":{"contact_id":"UUID_FROM_INDEX"},"select":"columns"}
+\`\`\`
 
 ## Style
 - Be concise. No fluff.
@@ -527,5 +552,6 @@ We don't: Design/branding, booking calendar configuration, email provider migrat
 - Entity Veracity Hub (VHub): Rising Tide social strategy, cryptographic entity grounding
 - Client HQ: This platform - payment, onboarding, task management
 - Engage: HIPAA-compliant AI chatbot for therapy practices`;
+
 
 
