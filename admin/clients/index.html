@@ -1236,17 +1236,45 @@ strong { font-weight: 600; color: var(--color-heading); }
     });
   }
 
+  // Activity log - fire-and-forget, never blocks the UI
+  function logActivity(tableName, recordId, field, oldVal, newVal, label) {
+    var contactId = state.contact ? state.contact.id : null;
+    var slug = state.contact ? state.contact.slug : null;
+    fetch('/api/action', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({
+        action: 'create_record',
+        table: 'activity_log',
+        data: {
+          contact_id: contactId,
+          client_slug: slug,
+          table_name: tableName,
+          record_id: recordId,
+          field_name: field,
+          old_value: String(oldVal || ''),
+          new_value: String(newVal || ''),
+          changed_by: 'admin'
+        }
+      })
+    }).catch(function() {}); // silent fail
+  }
+
   window.setTaskStatus = function setTaskStatus(taskId, newStatus, evt) {
     if (evt) evt.stopPropagation();
     var task = state.tasks.find(function(t) { return t.id === taskId; });
     if (!task || task.status === newStatus) return;
     var oldStatus = task.status;
+    var data = { status: newStatus };
+    if (newStatus === 'complete') data.completed_at = new Date().toISOString();
+    if (oldStatus === 'complete' && newStatus !== 'complete') data.completed_at = null;
     task.status = newStatus;
     renderAudit();
+    logActivity('checklist_items', taskId, 'status', oldStatus, newStatus, task.title);
     fetch('/api/action', {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ action: 'update_record', table: 'checklist_items', filters: { id: taskId }, data: { status: newStatus } })
+      body: JSON.stringify({ action: 'update_record', table: 'checklist_items', filters: { id: taskId }, data: data })
     }).then(function(r) { return r.json(); }).then(function(res) {
       if (!res.success) { task.status = oldStatus; renderAudit(); }
     }).catch(function() { task.status = oldStatus; renderAudit(); });
@@ -1259,6 +1287,7 @@ strong { font-weight: 600; color: var(--color-heading); }
     var oldOwner = task.owner;
     task.owner = newOwner;
     renderAudit();
+    logActivity('checklist_items', taskId, 'owner', oldOwner, newOwner, task.title);
     fetch('/api/action', {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
@@ -1417,6 +1446,7 @@ strong { font-weight: 600; color: var(--color-heading); }
     del.status = newStatus;
     if (data.delivered_at !== undefined) del.delivered_at = data.delivered_at;
     renderDeliverables();
+    logActivity('deliverables', delId, 'status', oldStatus, newStatus, del.title);
 
     fetch('/api/action', {
       method: 'POST',
@@ -2136,6 +2166,7 @@ strong { font-weight: 600; color: var(--color-heading); }
 <script src="/shared/chat-panel.js"></script>
 </body>
 </html>
+
 
 
 
