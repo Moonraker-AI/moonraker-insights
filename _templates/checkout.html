@@ -346,8 +346,10 @@ strong{font-weight:600;color:var(--color-heading)}
     themeBtn.innerHTML = ct === 'dark' ? '&#9728;&#65039;' : '&#x1F319;';
     themeBtn.addEventListener('click', function() {
       var h = document.documentElement;
+      h.classList.add('theme-transition');
       if (h.getAttribute('data-theme') === 'light') { h.setAttribute('data-theme', 'dark'); themeBtn.innerHTML = '&#9728;&#65039;'; try { localStorage.setItem('moonraker-theme', 'dark'); } catch(e) {} }
       else { h.setAttribute('data-theme', 'light'); themeBtn.innerHTML = '&#x1F319;'; try { localStorage.setItem('moonraker-theme', 'light'); } catch(e) {} }
+      setTimeout(function(){h.classList.remove('theme-transition')},400);
     });
   }
   init();
