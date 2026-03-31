@@ -31,8 +31,9 @@
       "maxDuration": 60
     },
     "api/compile-report.js": {
-      "maxDuration": 120,
+      "maxDuration": 300,
       "memory": 1024
     }
   }
 }
+
