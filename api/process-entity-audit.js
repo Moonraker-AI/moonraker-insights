@@ -202,6 +202,37 @@ ${surgeData}`;
     });
 
     // ============================================================
+    // STEP 4b: Deploy checkout page from template to GitHub
+    // ============================================================
+    var checkoutDeployed = false;
+    var checkoutTmplResp = await fetch('https://api.github.com/repos/' + REPO + '/contents/_templates/entity-audit-checkout.html?ref=' + BRANCH, {
+      headers: ghHeaders
+    });
+    if (checkoutTmplResp.ok) {
+      var checkoutTmplData = await checkoutTmplResp.json();
+      var checkoutPath = slug + '/entity-audit-checkout/index.html';
+      var checkoutSha = null;
+      var checkoutCheck = await fetch('https://api.github.com/repos/' + REPO + '/contents/' + checkoutPath + '?ref=' + BRANCH, {
+        headers: ghHeaders
+      });
+      if (checkoutCheck.ok) {
+        checkoutSha = (await checkoutCheck.json()).sha;
+      }
+      var checkoutPush = {
+        message: 'Deploy entity audit checkout for ' + slug,
+        content: checkoutTmplData.content.replace(/\n/g, ''),
+        branch: BRANCH
+      };
+      if (checkoutSha) checkoutPush.sha = checkoutSha;
+      var checkoutPushResp = await fetch('https://api.github.com/repos/' + REPO + '/contents/' + checkoutPath, {
+        method: 'PUT',
+        headers: ghHeaders,
+        body: JSON.stringify(checkoutPush)
+      });
+      checkoutDeployed = checkoutPushResp.ok;
+    }
+
+    // ============================================================
     // STEP 5: Flip status to delivered
     // ============================================================
     await fetch(sbUrl + '/rest/v1/entity_audits?id=eq.' + auditId, {
@@ -220,7 +251,9 @@ ${surgeData}`;
         engagement: (parsed.tasks.engagement || []).length
       },
       scorecard_url: 'https://clients.moonraker.ai/' + slug + '/entity-audit',
-      github_deployed: pushResp.ok
+      checkout_url: 'https://clients.moonraker.ai/' + slug + '/entity-audit-checkout',
+      github_deployed: pushResp.ok,
+      checkout_deployed: checkoutDeployed
     });
 
   } catch (err) {
