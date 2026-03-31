@@ -29,6 +29,10 @@
     },
     "api/delete-client.js": {
       "maxDuration": 60
+    },
+    "api/compile-report.js": {
+      "maxDuration": 120,
+      "memory": 1024
     }
   }
 }
