@@ -179,6 +179,37 @@ a:hover { color: var(--color-primary-hover); }
   .sidebar.collapsed .nav-section { color: var(--color-muted); }
   .sidebar.collapsed .sidebar-footer { justify-content: space-between; }
 }
+/* Sub-tabs */
+.sub-tabs { display: flex; gap: .5rem; margin-bottom: 1.5rem; border-bottom: 1px solid var(--color-border); padding-bottom: 0; }
+.sub-tab { background: none; border: none; font-family: 'Outfit', sans-serif; font-weight: 600; font-size: .875rem; color: var(--color-muted); padding: .65rem 1.25rem; cursor: pointer; border-bottom: 2px solid transparent; margin-bottom: -1px; transition: all .2s; }
+.sub-tab:hover { color: var(--color-heading); }
+.sub-tab.active { color: var(--color-primary); border-bottom-color: var(--color-primary); }
+.sub-tab .tab-count { font-size: .75rem; font-weight: 400; opacity: .6; margin-left: .35rem; }
+.tab-content { display: none; }
+.tab-content.active { display: block; }
+
+/* Entity audit table */
+.ea-table-wrap { overflow-x: auto; border-radius: 10px; border: 1px solid var(--color-border); }
+.ea-table { width: 100%; border-collapse: collapse; font-size: .85rem; }
+.ea-table th { background: var(--color-surface); font-family: 'Outfit', sans-serif; font-weight: 600; font-size: .75rem; text-transform: uppercase; letter-spacing: .05em; color: var(--color-muted); padding: .65rem 1rem; text-align: left; border-bottom: 1px solid var(--color-border); white-space: nowrap; }
+.ea-table td { padding: .65rem 1rem; border-bottom: 1px solid var(--color-border); vertical-align: middle; }
+.ea-table tr:last-child td { border-bottom: none; }
+.ea-table tr:hover { background: var(--color-primary-subtle); cursor: pointer; }
+.tag-free { background: rgba(107,117,153,.08); color: var(--color-muted); }
+.tag-premium { background: rgba(139,92,246,.1); color: #8B5CF6; }
+.tag-pending { background: rgba(107,117,153,.08); color: var(--color-muted); }
+.tag-processing { background: rgba(59,130,246,.08); color: var(--color-info); }
+.tag-complete { background: rgba(245,158,11,.1); color: var(--color-warning); }
+.tag-delivered { background: rgba(0,212,126,.1); color: var(--color-success); }
+.loom-link { font-size: .78rem; color: var(--color-primary); text-decoration: underline; }
+.loom-input { font-size: .78rem; background: var(--color-surface); border: 1px solid var(--color-border); border-radius: 6px; padding: .3rem .5rem; width: 200px; font-family: 'Inter', sans-serif; color: var(--color-body); }
+.loom-input:focus { outline: none; border-color: var(--color-primary); }
+.loom-save { font-size: .72rem; background: var(--color-primary); color: #fff; border: none; border-radius: 4px; padding: .2rem .5rem; cursor: pointer; margin-left: .25rem; font-weight: 600; }
+.mini-core { display: inline-flex; gap: .35rem; }
+.mini-core-pill { font-size: .7rem; font-weight: 600; padding: .1rem .4rem; border-radius: 4px; }
+.ea-actions { display: flex; gap: .35rem; }
+.ea-btn { font-size: .72rem; font-weight: 600; padding: .25rem .5rem; border-radius: 6px; border: 1px solid var(--color-border); background: var(--color-surface); color: var(--color-body); cursor: pointer; white-space: nowrap; transition: all .15s; }
+.ea-btn:hover { border-color: var(--color-primary); color: var(--color-primary); }
 
 </style>
 </head>
@@ -217,8 +248,16 @@ a:hover { color: var(--color-primary-hover); }
 
   <div class="content">
     <div class="section-header">
-      <h2>Audit Tasks</h2>
+      <h2>Audits</h2>
     </div>
+
+    <div class="sub-tabs" id="subTabs">
+      <button class="sub-tab active" data-tab="campaign">Campaign Audits<span class="tab-count" id="campaignCount"></span></button>
+      <button class="sub-tab" data-tab="entity">Entity Audits<span class="tab-count" id="entityCount"></span></button>
+    </div>
+
+    <!-- CAMPAIGN AUDITS TAB (existing) -->
+    <div class="tab-content active" id="tab-campaign">
     <p class="section-desc">CORE audit task progress across all clients. Click any client to view their full audit details.</p>
 
     <div class="stat-grid" id="statGrid"></div>
@@ -232,6 +271,44 @@ a:hover { color: var(--color-primary-hover); }
     <div class="empty-state" id="emptyState" style="display:none;">
       <p>No audits found yet. Run a Surge audit to get started.</p>
     </div>
+    </div>
+
+    <!-- ENTITY AUDITS TAB (new) -->
+    <div class="tab-content" id="tab-entity">
+    <p class="section-desc">Entity audit scorecards for leads and prospects. Manage free and premium audits, add Loom URLs, and track delivery status.</p>
+
+    <div class="stat-grid" id="eaStatGrid"></div>
+
+    <div id="eaLoading" style="text-align:center;padding:4rem;">
+      <div class="spinner" style="width:24px;height:24px;"></div>
+      <p style="margin-top:.75rem;font-size:.85rem;color:var(--color-muted);">Loading entity audits...</p>
+    </div>
+
+    <div class="ea-table-wrap" id="eaTableWrap" style="display:none;">
+      <table class="ea-table">
+        <thead>
+          <tr>
+            <th>Contact</th>
+            <th>Practice</th>
+            <th>Tier</th>
+            <th>Status</th>
+            <th>Date</th>
+            <th>CORE</th>
+            <th>Loom</th>
+            <th>Source</th>
+            <th>Actions</th>
+          </tr>
+        </thead>
+        <tbody id="eaBody"></tbody>
+      </table>
+    </div>
+
+    <div class="empty-state" id="eaEmpty" style="display:none;">
+      <p>No entity audits yet. Share the intake form to start collecting leads.</p>
+      <p style="margin-top:.5rem;font-size:.85rem;"><a href="/entity-audit" target="_blank">View landing page &#8250;</a></p>
+    </div>
+    </div>
+
   </div>
 </div>
 
@@ -275,6 +352,7 @@ a:hover { color: var(--color-primary-hover); }
       renderStats();
       renderCards();
       document.getElementById('lastRefresh').textContent = 'Updated ' + new Date().toLocaleTimeString();
+      document.getElementById('campaignCount').textContent = Object.keys(state.tasks).length || '';
 
       // Wire up chat panel context
       if (window.MoonrakerChat) {
@@ -456,6 +534,162 @@ a:hover { color: var(--color-primary-hover); }
       }
     });
   }
+  // ============================================================
+  // SUB-TAB SWITCHING
+  // ============================================================
+  document.getElementById('subTabs').addEventListener('click', function(e) {
+    var btn = e.target.closest('.sub-tab');
+    if (!btn) return;
+    var tab = btn.dataset.tab;
+    document.querySelectorAll('.sub-tab').forEach(function(b) { b.classList.remove('active'); });
+    btn.classList.add('active');
+    document.querySelectorAll('.tab-content').forEach(function(t) { t.classList.remove('active'); });
+    document.getElementById('tab-' + tab).classList.add('active');
+    if (tab === 'entity' && !eaLoaded) loadEntityAudits();
+  });
+
+  // ============================================================
+  // ENTITY AUDITS TAB
+  // ============================================================
+  var eaLoaded = false;
+  var eaState = { audits: [], contacts: {} };
+
+  function loadEntityAudits() {
+    Promise.all([
+      sb('entity_audits?select=*&order=created_at.desc'),
+      sb('contacts?select=id,slug,first_name,last_name,practice_name,email,source,referral_code,audit_tier&order=practice_name')
+    ]).then(function(res) {
+      eaState.audits = res[0] || [];
+      (res[1] || []).forEach(function(c) { eaState.contacts[c.id] = c; });
+      eaLoaded = true;
+      document.getElementById('eaLoading').style.display = 'none';
+      document.getElementById('entityCount').textContent = eaState.audits.length || '';
+      if (eaState.audits.length === 0) {
+        document.getElementById('eaEmpty').style.display = 'block';
+      } else {
+        renderEntityStats();
+        renderEntityTable();
+        document.getElementById('eaTableWrap').style.display = 'block';
+      }
+    });
+  }
+
+  function renderEntityStats() {
+    var a = eaState.audits;
+    var free = a.filter(function(x) { return x.audit_tier === 'free'; }).length;
+    var premium = a.filter(function(x) { return x.audit_tier === 'premium'; }).length;
+    var pending = a.filter(function(x) { return x.status === 'pending'; }).length;
+    var processing = a.filter(function(x) { return x.status === 'processing'; }).length;
+    var delivered = a.filter(function(x) { return x.status === 'delivered'; }).length;
+    var withLoom = a.filter(function(x) { return x.loom_url; }).length;
+
+    document.getElementById('eaStatGrid').innerHTML =
+      '<div class="stat-card"><div class="stat-label">Total Audits</div><div class="stat-value">' + a.length + '</div><div class="stat-sub">' + free + ' free, ' + premium + ' premium</div></div>' +
+      '<div class="stat-card"><div class="stat-label">Pending</div><div class="stat-value">' + pending + '</div></div>' +
+      '<div class="stat-card"><div class="stat-label">Processing</div><div class="stat-value" style="color:var(--color-info);">' + processing + '</div></div>' +
+      '<div class="stat-card"><div class="stat-label">Delivered</div><div class="stat-value" style="color:var(--color-success);">' + delivered + '</div></div>' +
+      '<div class="stat-card"><div class="stat-label">Loom Videos</div><div class="stat-value">' + withLoom + '<span style="font-size:.75rem;opacity:.5">/' + premium + '</span></div></div>';
+  }
+
+  function renderEntityTable() {
+    var html = '';
+    eaState.audits.forEach(function(a) {
+      var c = eaState.contacts[a.contact_id] || {};
+      var name = (c.first_name || '') + ' ' + (c.last_name || '');
+      var practice = c.practice_name || c.slug || '--';
+      var scores = a.scores || {};
+
+      html += '<tr onclick="window.open(\'/' + esc(c.slug || '') + '/entity-audit\', \'_blank\')">';
+
+      // Contact
+      html += '<td><div style="font-weight:500;color:var(--color-heading);">' + esc(name.trim() || '--') + '</div><div style="font-size:.75rem;color:var(--color-muted);">' + esc(c.email || '') + '</div></td>';
+
+      // Practice
+      html += '<td>' + esc(practice) + '</td>';
+
+      // Tier badge
+      html += '<td><span class="tag tag-' + a.audit_tier + '">' + a.audit_tier + '</span></td>';
+
+      // Status badge
+      html += '<td><span class="tag tag-' + a.status + '">' + a.status.replace('_', ' ') + '</span></td>';
+
+      // Date
+      html += '<td style="font-size:.8rem;white-space:nowrap;">' + formatDate(a.audit_date) + '</td>';
+
+      // CORE mini scores
+      var coreHtml = '--';
+      if (scores.credibility != null) {
+        coreHtml = '<div class="mini-core">';
+        ['credibility','optimization','reputation','engagement'].forEach(function(p) {
+          var v = scores[p] || 0;
+          var color = v <= 3 ? 'rgba(239,68,68,.1);color:#EF4444' : v <= 6 ? 'rgba(245,158,11,.1);color:#D97706' : 'rgba(0,212,126,.1);color:#00b86c';
+          coreHtml += '<span class="mini-core-pill" style="background:' + color + '">' + v + '</span>';
+        });
+        coreHtml += '</div>';
+      }
+      html += '<td>' + coreHtml + '</td>';
+
+      // Loom
+      if (a.loom_url) {
+        html += '<td><a href="' + esc(a.loom_url) + '" target="_blank" class="loom-link" onclick="event.stopPropagation()">View</a></td>';
+      } else if (a.audit_tier === 'premium') {
+        html += '<td><input class="loom-input" placeholder="Paste Loom URL" data-audit-id="' + a.id + '" onclick="event.stopPropagation()"><button class="loom-save" onclick="event.stopPropagation();saveLoom(this)">Save</button></td>';
+      } else {
+        html += '<td><span style="color:var(--color-muted);font-size:.78rem;">--</span></td>';
+      }
+
+      // Source / Referral
+      var srcHtml = esc(c.source || '--');
+      if (c.referral_code) srcHtml += '<div style="font-size:.7rem;color:var(--color-primary);">ref: ' + esc(c.referral_code) + '</div>';
+      html += '<td style="font-size:.8rem;">' + srcHtml + '</td>';
+
+      // Actions
+      html += '<td><div class="ea-actions">';
+      html += '<button class="ea-btn" onclick="event.stopPropagation();updateEaStatus(\'' + a.id + '\')">Advance Status</button>';
+      html += '</div></td>';
+
+      html += '</tr>';
+    });
+
+    document.getElementById('eaBody').innerHTML = html;
+  }
+
+  window.saveLoom = function(btn) {
+    var input = btn.previousElementSibling;
+    var url = input.value.trim();
+    var auditId = input.dataset.auditId;
+    if (!url || !auditId) return;
+
+    fetch(SB + '/rest/v1/entity_audits?id=eq.' + auditId, {
+      method: 'PATCH',
+      headers: { 'apikey': SK, 'Authorization': 'Bearer ' + SK, 'Content-Type': 'application/json', 'Prefer': 'return=minimal' },
+      body: JSON.stringify({ loom_url: url, status: 'delivered' })
+    }).then(function(r) {
+      if (r.ok) {
+        btn.textContent = 'Saved!';
+        btn.style.background = 'var(--color-success)';
+        setTimeout(function() { eaLoaded = false; loadEntityAudits(); }, 1000);
+      }
+    });
+  };
+
+  window.updateEaStatus = function(auditId) {
+    var audit = eaState.audits.find(function(a) { return a.id === auditId; });
+    if (!audit) return;
+    var order = ['pending', 'processing', 'complete', 'delivered'];
+    var idx = order.indexOf(audit.status);
+    var next = order[Math.min(idx + 1, order.length - 1)];
+    if (next === audit.status) return;
+
+    fetch(SB + '/rest/v1/entity_audits?id=eq.' + auditId, {
+      method: 'PATCH',
+      headers: { 'apikey': SK, 'Authorization': 'Bearer ' + SK, 'Content-Type': 'application/json', 'Prefer': 'return=minimal' },
+      body: JSON.stringify({ status: next })
+    }).then(function(r) {
+      if (r.ok) { eaLoaded = false; loadEntityAudits(); }
+    });
+  };
+
   loadData();
 })();
 </script>
