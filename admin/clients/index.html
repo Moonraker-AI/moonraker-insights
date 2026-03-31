@@ -556,7 +556,7 @@ strong { font-weight: 600; color: var(--color-heading); }
     <div id="directoryView" style="display:none;">
       <div class="section-header">
         <h2>All Clients</h2>
-        <button class="btn btn-primary btn-sm" onclick="openNewClientModal()">+ New Client</button>
+        <button class="btn btn-primary" style="padding:.45rem 1rem;font-size:.82rem;" onclick="openNewClientModal()">+ New Client</button>
       </div>
       <p class="section-desc">Click any row to view full client details.</p>
 
@@ -1118,7 +1118,7 @@ strong { font-weight: 600; color: var(--color-heading); }
       crmf.innerHTML = lostBanner
         + editField('contacts', 'follow_up_date', 'Follow-up Date', c.follow_up_date, {isDate:true})
         + editField('contacts', 'follow_up_notes', 'Follow-up Notes', c.follow_up_notes)
-        + (c.lost ? '' : '<div style="margin-top:.75rem;"><button class="btn-mark-lost" onclick="markAsLost()">Mark as Lost</button></div>');
+        + (c.lost ? '' : '<div style="margin-top:.75rem;display:flex;gap:.5rem;flex-wrap:wrap;"><button class="btn-mark-lost" onclick="markAsLost()">Mark as Lost</button><button class="btn-mark-lost" style="background:rgba(239,68,68,.08);color:var(--color-danger);border-color:rgba(239,68,68,.2);" onclick="deleteContact()">Delete Contact</button></div>');
     }
 
     var sf = document.getElementById('socialFields');
@@ -1997,6 +1997,53 @@ strong { font-weight: 600; color: var(--color-heading); }
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({ action: 'update_record', table: 'contacts', filters: { id: state.contact.id }, data: data })
+    });
+  }
+
+  window.deleteContact = function deleteContact() {
+    var c = state.contact;
+    var name = c.practice_name || c.slug;
+    if (!confirm('Permanently delete "' + name + '"?\n\nThis will remove the contact and all related data (onboarding steps, entity audits, checklist items, etc.). This cannot be undone.')) return;
+    if (!confirm('Are you sure? Type the practice name or slug to confirm.\n\nExpected: ' + name)) return;
+
+    // Cascade delete related tables first, then contact
+    var tables = [
+      { table: 'entity_audits', filters: { contact_id: c.id } },
+      { table: 'onboarding_steps', filters: { contact_id: c.id } },
+      { table: 'bio_materials', filters: { contact_id: c.id } },
+      { table: 'social_profiles', filters: { contact_id: c.id } },
+      { table: 'signed_agreements', filters: { contact_id: c.id } },
+      { table: 'practice_details', filters: { contact_id: c.id } },
+      { table: 'checklist_items', filters: { client_slug: c.slug } },
+      { table: 'audit_scores', filters: { client_slug: c.slug } },
+      { table: 'deliverables', filters: { client_slug: c.slug } },
+      { table: 'report_snapshots', filters: { client_slug: c.slug } }
+    ];
+
+    // Sequential deletes
+    var chain = Promise.resolve();
+    tables.forEach(function(t) {
+      chain = chain.then(function() {
+        return fetch('/api/action', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ action: 'delete_record', table: t.table, filters: t.filters })
+        }).catch(function() { /* ignore missing tables */ });
+      });
+    });
+
+    chain.then(function() {
+      // Finally delete the contact itself
+      return fetch('/api/action', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ action: 'delete_record', table: 'contacts', filters: { id: c.id } })
+      });
+    }).then(function() {
+      alert('Contact deleted. Redirecting to directory.');
+      window.location.href = '/admin/clients';
+    }).catch(function(err) {
+      alert('Error deleting contact: ' + err.message);
     });
   }
 
