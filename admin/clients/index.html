@@ -133,6 +133,8 @@ strong { font-weight: 600; color: var(--color-heading); }
 .btn-restore { padding: .35rem .75rem; border-radius: 6px; font-size: .75rem; font-weight: 500; border: 1px solid var(--color-border); background: transparent; color: var(--color-muted); cursor: pointer; font-family: inherit; transition: all .15s; }
 .btn-restore:hover { background: var(--color-bg); color: var(--color-heading); }
 .tag-lead { background: rgba(107,117,153,.08); color: var(--color-muted); }
+.tag-free { background: rgba(107,117,153,.08); color: var(--color-muted); }
+.tag-premium { background: rgba(139,92,246,.1); color: #8B5CF6; }
 .tag-moonraker { background: rgba(0,212,126,.12); color: #00b86c; }
 .tag-client { background: rgba(59,130,246,.1); color: #3B82F6; }
 .tag-collab, .tag-collaboration { background: rgba(245,158,11,.1); color: #D97706; }
@@ -553,9 +555,9 @@ strong { font-weight: 600; color: var(--color-heading); }
             <th>Client</th>
             <th>Status</th>
             <th class="hide-mobile">Website</th>
-            <th class="hide-mobile">Campaign Start</th>
-            <th class="hide-mobile">Onboarding</th>
-            <th class="hide-mobile">Audit</th>
+            <th class="hide-mobile" id="th4">Campaign Start</th>
+            <th class="hide-mobile" id="th5">Onboarding</th>
+            <th class="hide-mobile" id="th6">Audit</th>
             <th></th>
           </tr>
         </thead>
@@ -748,7 +750,7 @@ strong { font-weight: 600; color: var(--color-heading); }
 
   function loadDirectoryData() {
     Promise.all([
-      sb('contacts?select=id,slug,status,practice_name,email,first_name,last_name,campaign_start,website_url,phone,state_province,city,team_size,lost,follow_up_date&order=practice_name'),
+      sb('contacts?select=id,slug,status,practice_name,email,first_name,last_name,campaign_start,website_url,phone,state_province,city,team_size,lost,follow_up_date,audit_tier,referral_code,source&order=practice_name'),
       sb('onboarding_steps?select=contact_id,step_key,status'),
       sb('checklist_items?select=client_slug,status')
     ]).then(function(res) {
@@ -893,6 +895,13 @@ strong { font-weight: 600; color: var(--color-heading); }
     } else {
       filtered = contacts.filter(function(c) { return c.status === state.filter && !c.lost; });
     }
+
+    // Swap table headers for leads view
+    var isLeads = state.filter === 'lead';
+    document.getElementById('th4').textContent = isLeads ? 'Source' : 'Campaign Start';
+    document.getElementById('th5').textContent = isLeads ? 'Audit Tier' : 'Onboarding';
+    document.getElementById('th6').textContent = isLeads ? 'Referral' : 'Audit';
+
     var tbody = document.getElementById('dirBody');
 
     if (filtered.length === 0) {
@@ -926,9 +935,23 @@ strong { font-weight: 600; color: var(--color-heading); }
       html += '<td><div class="client-cell"><div class="client-avatar">' + esc(initials.toUpperCase()) + '</div><div><div class="client-name">' + esc(c.practice_name || c.slug) + '</div><div class="client-email">' + esc(c.email || c.slug) + '</div></div></div></td>';
       html += '<td>' + statusTag + '</td>';
       html += '<td class="hide-mobile">' + website + '</td>';
+
+      // Columns 4-6: context-sensitive based on status
+      if (c.status === 'lead') {
+        // Source
+        var srcHtml = c.source ? '<span style="font-size:.78rem;">' + esc(c.source) + '</span>' : '<span style="color:var(--color-muted);font-size:.78rem;">--</span>';
+        html += '<td class="hide-mobile">' + srcHtml + '</td>';
+        // Audit tier
+        var tierHtml = c.audit_tier && c.audit_tier !== 'none' ? '<span class="tag tag-' + c.audit_tier + '">' + c.audit_tier + '</span>' : '<span style="color:var(--color-muted);font-size:.78rem;">--</span>';
+        html += '<td class="hide-mobile">' + tierHtml + '</td>';
+        // Referral
+        var refHtml = c.referral_code ? '<span style="font-size:.78rem;color:var(--color-primary);font-weight:500;">' + esc(c.referral_code) + '</span>' : '<span style="color:var(--color-muted);font-size:.78rem;">--</span>';
+        html += '<td class="hide-mobile">' + refHtml + '</td>';
+      } else {
       html += '<td class="hide-mobile">' + start + '</td>';
       html += '<td class="hide-mobile">' + obHtml + '</td>';
       html += '<td class="hide-mobile">' + tHtml + '</td>';
+      }
       var fuHtml = '';
       if (c.follow_up_date && !c.lost) {
         var fuDate = new Date(c.follow_up_date);
