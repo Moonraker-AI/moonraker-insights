@@ -329,12 +329,86 @@ module.exports = async function handler(req, res) {
     };
   });
 
-  // Fire all 4 data sources concurrently
-  var parallel = await Promise.all([gscFn, gbpFn, aiFn, taskFn]);
+  var geogridFn = safe('geogrids', async function() {
+    if (!lbmKey || !config.lbm_location_id) {
+      warnings.push('Geogrids: skipped (no LBM key or location)');
+      return null;
+    }
+
+    var lbmHeaders = { 'Authorization': lbmKey, 'Content-Type': 'application/json' };
+
+    // Fetch all geogrids (API doesn't filter by location_id server-side)
+    var resp = await fetchT('https://api.localbrandmanager.com/geogrids', { headers: lbmHeaders }, 15000);
+    var allGrids = await resp.json();
+
+    if (!Array.isArray(allGrids) || allGrids.length === 0) {
+      warnings.push('Geogrids: no data returned');
+      return null;
+    }
+
+    // Also get the location to find its geogrid_config_id
+    var locResp = await fetchT('https://api.localbrandmanager.com/locations/' + config.lbm_location_id, { headers: lbmHeaders }, 10000);
+    var location = await locResp.json();
+    var locGbpId = location ? location.gbp_id : null;
+
+    // Filter grids for this client's location by matching location_id OR gbp_id
+    var clientGrids = allGrids.filter(function(g) {
+      return g.location_id === config.lbm_location_id || g.gbp_id === locGbpId;
+    });
+
+    if (clientGrids.length === 0) {
+      warnings.push('Geogrids: no grids found for location ' + config.lbm_location_id);
+      return null;
+    }
+
+    // Get the most recent finished grid for each search term
+    var byTerm = {};
+    clientGrids.forEach(function(g) {
+      if (g.state !== 'finished') return;
+      var term = g.search_term;
+      if (!byTerm[term] || new Date(g.created_at) > new Date(byTerm[term].created_at)) {
+        byTerm[term] = g;
+      }
+    });
+
+    var grids = Object.values(byTerm).map(function(g) {
+      return {
+        search_term: g.search_term,
+        agr: g.agr,
+        atgr: g.atgr,
+        solv: g.solv,
+        grid_size: g.grid_size,
+        ranks: g.ranks,
+        image_url: g.image_url || null,
+        headless_image_url: g.headless_image_url || null,
+        public_url: g.public_url || null,
+        created_at: g.created_at,
+        finished_at: g.finished_at
+      };
+    });
+
+    // Sort by SOLV descending (best performing terms first)
+    grids.sort(function(a, b) { return (b.solv || 0) - (a.solv || 0); });
+
+    // Compute averages across all tracked terms
+    var avgAgr = grids.length > 0 ? grids.reduce(function(s, g) { return s + (g.agr || 0); }, 0) / grids.length : 0;
+    var avgSolv = grids.length > 0 ? grids.reduce(function(s, g) { return s + (g.solv || 0); }, 0) / grids.length : 0;
+
+    return {
+      grids: grids,
+      grid_count: grids.length,
+      avg_agr: Math.round(avgAgr * 100) / 100,
+      avg_solv: Math.round(avgSolv * 1000) / 1000
+    };
+  });
+
+  // Fire all 5 data sources concurrently
+  var parallel = await Promise.all([gscFn, gbpFn, aiFn, taskFn, geogridFn]);
   var gscData = parallel[0];
   var gbpData = parallel[1];
   var aiData = parallel[2];
   var taskData = parallel[3];
+  var geogridData = parallel[4];
 
   // Build citation_trend from historical snapshots
   if (aiData) {
@@ -395,7 +469,7 @@ module.exports = async function handler(req, res) {
     gsc_detail: gscData ? { date_range: range, pages: gscData.pages, queries: gscData.queries } : {},
     gbp_detail: gbpData ? { reviews: gbpData.reviews } : {},
     ai_visibility: aiData || {},
-    neo_data: {},
+    neo_data: geogridData || {},
     deliverables: [],
     notes: ''
   };
@@ -497,6 +571,7 @@ module.exports = async function handler(req, res) {
         + (gscData ? '<tr><td style="padding:8px 0;color:#6B7599;border-bottom:1px solid #E2E8F0">GSC Clicks</td><td style="padding:8px 0;text-align:right;font-weight:600;color:#1E2A5E;border-bottom:1px solid #E2E8F0">' + gscData.clicks.toLocaleString() + '</td></tr>' : '')
         + (gbpData ? '<tr><td style="padding:8px 0;color:#6B7599;border-bottom:1px solid #E2E8F0">GBP Calls</td><td style="padding:8px 0;text-align:right;font-weight:600;color:#1E2A5E;border-bottom:1px solid #E2E8F0">' + gbpData.calls + '</td></tr>' : '')
         + (aiSummary ? '<tr><td style="padding:8px 0;color:#6B7599;border-bottom:1px solid #E2E8F0">AI Visibility</td><td style="padding:8px 0;text-align:right;font-weight:600;color:#1E2A5E;border-bottom:1px solid #E2E8F0">' + aiSummary + '</td></tr>' : '')
+        + (geogridData ? '<tr><td style="padding:8px 0;color:#6B7599;border-bottom:1px solid #E2E8F0">Maps (Geogrids)</td><td style="padding:8px 0;text-align:right;font-weight:600;color:#1E2A5E;border-bottom:1px solid #E2E8F0">' + geogridData.grid_count + ' terms tracked | Avg AGR ' + geogridData.avg_agr + ' | SOLV ' + Math.round(geogridData.avg_solv * 100) + '%</td></tr>' : '')
         + '</table>'
         + (errors.length > 0 ? '<p style="color:#EF4444;font-size:13px">Warnings: ' + errors.join('; ') + '</p>' : '')
         + '<a href="' + reviewUrl + '" style="display:inline-block;background:#00D47E;color:#fff;font-weight:600;padding:12px 24px;border-radius:8px;text-decoration:none;margin-top:8px">Review Report</a>'
@@ -539,6 +614,7 @@ module.exports = async function handler(req, res) {
       gsc: gscData ? 'ok' : 'skipped',
       gbp: gbpData ? 'ok' : 'skipped',
       ai_visibility: aiData ? { engines_citing: aiData.engines_citing, engines_checked: aiData.engines_checked, ai_search_volume: aiData.ai_search_volume, ai_impressions: aiData.ai_impressions } : 'skipped',
+      geogrids: geogridData ? { grid_count: geogridData.grid_count, avg_agr: geogridData.avg_agr, avg_solv: geogridData.avg_solv } : 'skipped',
       tasks: taskData ? 'ok' : 'skipped'
     },
     highlights_count: highlights.length,
@@ -830,13 +906,22 @@ async function generateHighlights(snapshot, prevSnap, practiceName, apiKey) {
 
   metricsContext += 'Tasks: ' + snapshot.tasks_complete + '/' + snapshot.tasks_total + ' complete, ' + snapshot.tasks_in_progress + ' in progress\n';
 
+  var neo = snapshot.neo_data || {};
+  if (neo.grids && neo.grids.length > 0) {
+    metricsContext += '\nMaps/Geogrid Performance (' + neo.grid_count + ' terms tracked, avg AGR ' + neo.avg_agr + ', avg SOLV ' + Math.round(neo.avg_solv * 100) + '%):\n';
+    for (var gi = 0; gi < neo.grids.length; gi++) {
+      var grid = neo.grids[gi];
+      metricsContext += '  "' + grid.search_term + '": AGR ' + grid.agr + ', ATGR ' + grid.atgr + ', SOLV ' + Math.round((grid.solv || 0) * 100) + '%, ' + grid.grid_size + 'x' + grid.grid_size + ' grid\n';
+    }
+  }
+
   var claudeResp = await fetch('https://api.anthropic.com/v1/messages', {
     method: 'POST',
     headers: { 'x-api-key': apiKey, 'anthropic-version': '2023-06-01', 'Content-Type': 'application/json' },
     body: JSON.stringify({
       model: 'claude-sonnet-4-20250514',
       max_tokens: 1000,
-      messages: [{ role: 'user', content: 'Generate exactly 3 report highlights for a client\'s monthly campaign report. Each highlight should be a win or milestone.\n\nMetrics:\n' + metricsContext + '\n\nReturn ONLY a JSON array (no markdown, no backticks) with 3 objects, each having:\n- icon: one of "chart-up", "phone", "bot", "target", "globe", "users", "check"\n- headline: short punchy headline (max 8 words, no em dashes)\n- body: 1-2 sentence explanation with specific numbers\n- metric_ref: the primary metric referenced (e.g. "gsc_clicks", "gbp_calls", "ai_visibility")\n- highlight_type: "win" or "milestone"\n\nPrioritize AI visibility data (search volume, impressions, engines citing) when available. Always include concrete numbers.' }]
+      messages: [{ role: 'user', content: 'Generate exactly 3 report highlights for a client\'s monthly campaign report. Each highlight should be a win or milestone.\n\nMetrics:\n' + metricsContext + '\n\nReturn ONLY a JSON array (no markdown, no backticks) with 3 objects, each having:\n- icon: one of "chart-up", "phone", "bot", "target", "globe", "users", "check", "map-pin"\n- headline: short punchy headline (max 8 words, no em dashes)\n- body: 1-2 sentence explanation with specific numbers. AGR = Average Grid Rank (lower is better, 1 is top position). SOLV = Share of Local Voice (higher is better, 100% means appearing in every grid cell).\n- metric_ref: the primary metric referenced (e.g. "gsc_clicks", "gbp_calls", "ai_visibility", "geogrids")\n- highlight_type: "win" or "milestone"\n\nPrioritize AI visibility data and geogrid/maps performance when available. Always include concrete numbers.' }]
     })
   });
 
