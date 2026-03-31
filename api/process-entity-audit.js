@@ -67,7 +67,8 @@ Analyze the Surge data below and return ONLY a valid JSON object (no markdown, n
     "variance": <number 0-100>,
     "variance_desc": "<one sentence describing the variance score meaning>",
     "summary": "<2-3 paragraphs of HTML summarizing the audit findings. Use <strong> for emphasis. Do not use em dashes. Focus on: what is working, what is the core challenge, and what the path forward looks like.>",
-    "quick_wins": ["<quick win 1>", "<quick win 2>", "<quick win 3>", "<quick win 4>", "<quick win 5>"]
+    "quick_wins": ["<quick win 1>", "<quick win 2>", "<quick win 3>", "<quick win 4>", "<quick win 5>"],
+    "rtpba": "<HTML version of the Ready-to-Publish Best Answer content from Section 3 of the Surge data. Format as clean HTML paragraphs with <h4> for the main heading, <p> for paragraphs, <strong> for emphasis, and <ul>/<li> for any lists. Preserve ALL of the Surge RTPBA content - do not summarize or truncate. If no RTPBA section is found in the Surge data, use null.>"
   },
   "tasks": {
     "credibility": [
