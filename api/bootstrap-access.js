@@ -114,11 +114,13 @@ module.exports = async function handler(req, res) {
       var matchedAccount = null;
 
       // Approach A: Search across all accessible locations (wildcard account)
+      var debugA = 'not attempted';
       try {
         var directLocResp = await fetch('https://mybusinessbusinessinformation.googleapis.com/v1/accounts/-/locations?readMask=name,title,websiteUri,storefrontAddress&pageSize=100', { headers: authH });
         if (directLocResp.ok) {
           var directLocData = await directLocResp.json();
           var allLocs = directLocData.locations || [];
+          debugA = 'ok, ' + allLocs.length + ' locations found';
 
           for (var dli = 0; dli < allLocs.length; dli++) {
             var dloc = allLocs[dli];
@@ -128,20 +130,30 @@ module.exports = async function handler(req, res) {
             if (practiceName && dTitle.indexOf(practiceName.toLowerCase()) >= 0) { matchedLocation = dloc; break; }
             if (websiteDomain && dWebsite && (dWebsite.indexOf(websiteDomain) >= 0 || websiteDomain.indexOf(dWebsite) >= 0)) { matchedLocation = dloc; break; }
           }
+          if (!matchedLocation && allLocs.length > 0) {
+            debugA += '. Titles checked: ' + allLocs.slice(0, 5).map(function(l) { return '"' + (l.title || 'untitled') + '"'; }).join(', ');
+          }
+        } else {
+          var errBody = await directLocResp.text();
+          debugA = 'HTTP ' + directLocResp.status + ': ' + errBody.substring(0, 200);
         }
-      } catch (e) { /* fall through to account-based approach */ }
+      } catch (e) { debugA = 'exception: ' + e.message; }
 
       // Approach B: List accounts then locations (works when support@ has account-level access)
+      var debugB = 'not attempted';
       if (!matchedLocation) {
         var acctResp = await fetch('https://mybusinessaccountmanagement.googleapis.com/v1/accounts', { headers: authH });
         var acctData = await acctResp.json();
         var accounts = acctData.accounts || [];
+        debugB = accounts.length + ' accounts found';
+        if (accounts.length > 0) debugB += ': ' + accounts.map(function(a) { return a.name + ' (' + (a.accountName || 'unnamed') + ')'; }).join(', ');
 
         for (var ai = 0; ai < accounts.length && !matchedLocation; ai++) {
           var acct = accounts[ai];
           var locResp = await fetch('https://mybusinessbusinessinformation.googleapis.com/v1/' + acct.name + '/locations?readMask=name,title,websiteUri,storefrontAddress', { headers: authH });
           var locData = await locResp.json();
           var locations = locData.locations || [];
+          debugB += ' | ' + acct.name + ': ' + locations.length + ' locations';
 
           for (var li = 0; li < locations.length; li++) {
             var loc = locations[li];
@@ -154,7 +166,7 @@ module.exports = async function handler(req, res) {
         }
       }
 
-      if (!matchedLocation) throw new Error('No GBP location matching "' + practiceName + '" or "' + websiteDomain + '" found. Ensure support@ has been granted access via Leaisie.');
+      if (!matchedLocation) throw new Error('No GBP location matching "' + practiceName + '" or "' + websiteDomain + '". Debug: Approach A=' + debugA + '. Approach B=' + debugB);
 
       var locName = matchedLocation.name;
       var gbpLocationId = locName.split('/').pop();
