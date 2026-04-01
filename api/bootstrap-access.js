@@ -109,33 +109,52 @@ module.exports = async function handler(req, res) {
 
       var authH = { 'Authorization': 'Bearer ' + gbpToken, 'Content-Type': 'application/json' };
 
-      // Step 1: List accounts
-      var acctResp = await fetch('https://mybusinessaccountmanagement.googleapis.com/v1/accounts', { headers: authH });
-      var acctData = await acctResp.json();
-      var accounts = acctData.accounts || [];
-      if (accounts.length === 0) throw new Error('No GBP accounts accessible by ' + IMPERSONATE_USER);
-
-      // Step 2: Find matching location across accounts
+      // Step 1: Try direct location search (works when support@ has location-level access via Leaisie)
       var matchedLocation = null;
       var matchedAccount = null;
 
-      for (var ai = 0; ai < accounts.length && !matchedLocation; ai++) {
-        var acct = accounts[ai];
-        var locResp = await fetch('https://mybusinessbusinessinformation.googleapis.com/v1/' + acct.name + '/locations?readMask=name,title,websiteUri,storefrontAddress', { headers: authH });
-        var locData = await locResp.json();
-        var locations = locData.locations || [];
+      // Approach A: Search across all accessible locations (wildcard account)
+      try {
+        var directLocResp = await fetch('https://mybusinessbusinessinformation.googleapis.com/v1/accounts/-/locations?readMask=name,title,websiteUri,storefrontAddress&pageSize=100', { headers: authH });
+        if (directLocResp.ok) {
+          var directLocData = await directLocResp.json();
+          var allLocs = directLocData.locations || [];
 
-        for (var li = 0; li < locations.length; li++) {
-          var loc = locations[li];
-          var locTitle = (loc.title || '').toLowerCase();
-          var locWebsite = (loc.websiteUri || '').replace(/^https?:\/\//, '').replace(/^www\./, '').replace(/\/+$/, '').toLowerCase();
+          for (var dli = 0; dli < allLocs.length; dli++) {
+            var dloc = allLocs[dli];
+            var dTitle = (dloc.title || '').toLowerCase();
+            var dWebsite = (dloc.websiteUri || '').replace(/^https?:\/\//, '').replace(/^www\./, '').replace(/\/+$/, '').toLowerCase();
 
-          if (practiceName && locTitle.indexOf(practiceName.toLowerCase()) >= 0) { matchedLocation = loc; matchedAccount = acct; break; }
-          if (websiteDomain && locWebsite && (locWebsite.indexOf(websiteDomain) >= 0 || websiteDomain.indexOf(locWebsite) >= 0)) { matchedLocation = loc; matchedAccount = acct; break; }
+            if (practiceName && dTitle.indexOf(practiceName.toLowerCase()) >= 0) { matchedLocation = dloc; break; }
+            if (websiteDomain && dWebsite && (dWebsite.indexOf(websiteDomain) >= 0 || websiteDomain.indexOf(dWebsite) >= 0)) { matchedLocation = dloc; break; }
+          }
+        }
+      } catch (e) { /* fall through to account-based approach */ }
+
+      // Approach B: List accounts then locations (works when support@ has account-level access)
+      if (!matchedLocation) {
+        var acctResp = await fetch('https://mybusinessaccountmanagement.googleapis.com/v1/accounts', { headers: authH });
+        var acctData = await acctResp.json();
+        var accounts = acctData.accounts || [];
+
+        for (var ai = 0; ai < accounts.length && !matchedLocation; ai++) {
+          var acct = accounts[ai];
+          var locResp = await fetch('https://mybusinessbusinessinformation.googleapis.com/v1/' + acct.name + '/locations?readMask=name,title,websiteUri,storefrontAddress', { headers: authH });
+          var locData = await locResp.json();
+          var locations = locData.locations || [];
+
+          for (var li = 0; li < locations.length; li++) {
+            var loc = locations[li];
+            var locTitle = (loc.title || '').toLowerCase();
+            var locWebsite = (loc.websiteUri || '').replace(/^https?:\/\//, '').replace(/^www\./, '').replace(/\/+$/, '').toLowerCase();
+
+            if (practiceName && locTitle.indexOf(practiceName.toLowerCase()) >= 0) { matchedLocation = loc; matchedAccount = acct; break; }
+            if (websiteDomain && locWebsite && (locWebsite.indexOf(websiteDomain) >= 0 || websiteDomain.indexOf(locWebsite) >= 0)) { matchedLocation = loc; matchedAccount = acct; break; }
+          }
         }
       }
 
-      if (!matchedLocation) throw new Error('No GBP location matching "' + practiceName + '" found across ' + accounts.length + ' accounts');
+      if (!matchedLocation) throw new Error('No GBP location matching "' + practiceName + '" or "' + websiteDomain + '" found. Ensure support@ has been granted access via Leaisie.');
 
       var locName = matchedLocation.name;
       var gbpLocationId = locName.split('/').pop();
@@ -220,17 +239,17 @@ module.exports = async function handler(req, res) {
       // Add team members as ADMIN (editor) + SA as VIEWER (all in parallel)
       var ga4Adds = await Promise.all([
         addUserSafe('GA4 chris', function() {
-          return fetch('https://analyticsadmin.googleapis.com/v1beta/' + propertyResource + '/accessBindings', {
+          return fetch('https://analyticsadmin.googleapis.com/v1alpha/' + propertyResource + '/accessBindings', {
             method: 'POST', headers: ga4AuthH, body: JSON.stringify({ user: TEAM_MEMBERS[0].email, roles: ['predefinedRoles/admin'] })
           });
         }),
         addUserSafe('GA4 kalyn', function() {
-          return fetch('https://analyticsadmin.googleapis.com/v1beta/' + propertyResource + '/accessBindings', {
+          return fetch('https://analyticsadmin.googleapis.com/v1alpha/' + propertyResource + '/accessBindings', {
             method: 'POST', headers: ga4AuthH, body: JSON.stringify({ user: TEAM_MEMBERS[1].email, roles: ['predefinedRoles/admin'] })
           });
         }),
         addUserSafe('GA4 SA', function() {
-          return fetch('https://analyticsadmin.googleapis.com/v1beta/' + propertyResource + '/accessBindings', {
+          return fetch('https://analyticsadmin.googleapis.com/v1alpha/' + propertyResource + '/accessBindings', {
             method: 'POST', headers: ga4AuthH, body: JSON.stringify({ user: SA_EMAIL, roles: ['predefinedRoles/viewer'] })
           });
         })
