@@ -177,6 +177,30 @@ section { padding: 4.5rem 0; }
 .engine-count { font-family: 'Outfit', sans-serif; font-size: 2.5rem; font-weight: 700; color: var(--color-primary); line-height: 1; }
 .engine-count-label { font-size: .9375rem; color: var(--color-body); }
 
+/* Geogrid section */
+.geogrid-summary { display: flex; flex-wrap: wrap; gap: 1rem; margin: 1.5rem 0; }
+.geogrid-summary-stat { flex: 1; min-width: 140px; background: var(--color-surface); border: 1px solid var(--color-border); border-radius: 12px; padding: 1.25rem; text-align: center; }
+.geogrid-summary-stat .stat-value { font-family: 'Outfit', sans-serif; font-weight: 700; font-size: 1.75rem; color: var(--color-heading); line-height: 1; }
+.geogrid-summary-stat .stat-label { font-size: .75rem; font-weight: 600; letter-spacing: .04em; text-transform: uppercase; color: var(--color-muted); margin-top: .35rem; }
+.geogrid-cards { display: grid; grid-template-columns: repeat(auto-fit, minmax(320px, 1fr)); gap: 1.5rem; margin: 2rem 0; }
+.geogrid-card { background: var(--color-surface); border: 1px solid var(--color-border); border-radius: 14px; overflow: hidden; transition: transform .3s, box-shadow .3s; }
+.geogrid-card:hover { transform: translateY(-3px); box-shadow: 0 8px 24px rgba(0,0,0,.06); }
+.geogrid-card-header { padding: 1rem 1.25rem .75rem; }
+.geogrid-card-header h4 { font-family: 'Outfit', sans-serif; font-weight: 700; font-size: 1rem; color: var(--color-heading); margin: 0 0 .25rem; }
+.geogrid-card-header .geogrid-keyword { font-size: .8125rem; color: var(--color-muted); }
+.geogrid-image-wrap { width: 100%; aspect-ratio: 1; background: var(--color-bg); display: flex; align-items: center; justify-content: center; overflow: hidden; }
+.geogrid-image-wrap img { width: 100%; height: 100%; object-fit: contain; }
+.geogrid-image-wrap .no-image { font-size: .875rem; color: var(--color-muted); }
+.geogrid-card-stats { display: flex; border-top: 1px solid var(--color-border); }
+.geogrid-card-stats .gs { flex: 1; text-align: center; padding: .75rem .5rem; border-right: 1px solid var(--color-border); }
+.geogrid-card-stats .gs:last-child { border-right: none; }
+.geogrid-card-stats .gs-val { font-family: 'Outfit', sans-serif; font-weight: 700; font-size: 1.125rem; color: var(--color-heading); }
+.geogrid-card-stats .gs-val.good { color: var(--color-success); }
+.geogrid-card-stats .gs-val.ok { color: var(--color-warning); }
+.geogrid-card-stats .gs-val.poor { color: var(--color-danger); }
+.geogrid-card-stats .gs-label { font-size: .625rem; font-weight: 600; letter-spacing: .05em; text-transform: uppercase; color: var(--color-muted); margin-top: .15rem; }
+.geogrid-explainer { font-size: .8125rem; color: var(--color-muted); line-height: 1.6; margin-top: 1.5rem; padding: 1rem 1.25rem; background: var(--color-primary-subtle); border-radius: 10px; }
+
 /* Task progress bar */
 .progress-snapshot { margin: 1.5rem 0; }
 .progress-track { height: 12px; background: var(--color-border); border-radius: 6px; overflow: hidden; display: flex; }
@@ -339,6 +363,19 @@ section { padding: 4.5rem 0; }
 
 <hr class="divider">
 
+<!-- GEOGRIDS / LOCAL RANK TRACKING -->
+<section id="geogrids" class="reveal">
+  <div class="container">
+    <h2>Local Rank Tracking</h2>
+    <p style="color:var(--color-muted);margin-bottom:1rem">7x7 geogrid scans showing where the practice ranks in Google Maps across a ~7 mile radius.</p>
+    <div id="geogridContent">
+      <p style="color:var(--color-muted)">Geogrid data not yet available for this period.</p>
+    </div>
+  </div>
+</section>
+
+<hr class="divider">
+
 <!-- AI VISIBILITY -->
 <section id="ai-visibility" class="reveal">
   <div class="container">
@@ -471,6 +508,11 @@ section { padding: 4.5rem 0; }
     if (!dateStr) return '';
     var d = new Date(dateStr + 'T00:00:00');
     return d.toLocaleDateString('en-US', { month: 'short', day: 'numeric' });
+  }
+
+  function esc(s) {
+    if (!s) return '';
+    return String(s).replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;').replace(/"/g, '&quot;');
   }
 
   var HIGHLIGHT_ICONS = {
@@ -608,6 +650,78 @@ section { padding: 4.5rem 0; }
     document.getElementById('gbpDetail').innerHTML = html;
   }
 
+  function renderGeogrids(snap) {
+    var neo = snap.neo_data;
+    if (!neo || !neo.grids || neo.grids.length === 0) return;
+
+    var grids = neo.grids;
+
+    // AGR color class: 1-3 good, 4-7 ok, 8+ poor
+    function agrClass(v) { return v <= 3 ? 'good' : v <= 7 ? 'ok' : 'poor'; }
+    // SOLV color class: 60%+ good, 30-59% ok, <30% poor
+    function solvClass(v) { var pct = (v || 0) * 100; return pct >= 60 ? 'good' : pct >= 30 ? 'ok' : 'poor'; }
+
+    // Summary stats
+    var html = '<div class="geogrid-summary">';
+    html += '<div class="geogrid-summary-stat"><div class="stat-value">' + neo.grid_count + '</div><div class="stat-label">Keywords Tracked</div></div>';
+    html += '<div class="geogrid-summary-stat"><div class="stat-value">' + neo.avg_agr + '</div><div class="stat-label">Avg Grid Rank</div></div>';
+    if (neo.avg_atgr) {
+      html += '<div class="geogrid-summary-stat"><div class="stat-value">' + neo.avg_atgr + '</div><div class="stat-label">Avg True Grid Rank</div></div>';
+    }
+    html += '<div class="geogrid-summary-stat"><div class="stat-value">' + Math.round((neo.avg_solv || 0) * 100) + '%</div><div class="stat-label">Share of Local Voice</div></div>';
+    html += '</div>';
+
+    // Individual grid cards
+    html += '<div class="geogrid-cards">';
+    grids.forEach(function(g) {
+      var label = g.label || g.search_term;
+      var solv = Math.round((g.solv || 0) * 100);
+      var imgUrl = g.headless_image_url || g.image_url;
+      var publicLink = g.public_url;
+
+      html += '<div class="geogrid-card">';
+      html += '<div class="geogrid-card-header">';
+      html += '<h4>' + esc(label) + '</h4>';
+      if (label !== g.search_term) {
+        html += '<div class="geogrid-keyword">' + esc(g.search_term) + '</div>';
+      }
+      html += '</div>';
+
+      // Image
+      html += '<div class="geogrid-image-wrap">';
+      if (imgUrl) {
+        if (publicLink) {
+          html += '<a href="' + publicLink + '" target="_blank" rel="noopener" style="display:block;width:100%;height:100%"><img src="' + imgUrl + '" alt="Geogrid for ' + esc(g.search_term) + '" loading="lazy"></a>';
+        } else {
+          html += '<img src="' + imgUrl + '" alt="Geogrid for ' + esc(g.search_term) + '" loading="lazy">';
+        }
+      } else {
+        html += '<div class="no-image">Grid image processing...</div>';
+      }
+      html += '</div>';
+
+      // Stats bar
+      html += '<div class="geogrid-card-stats">';
+      html += '<div class="gs"><div class="gs-val ' + agrClass(g.agr) + '">' + (g.agr || '-') + '</div><div class="gs-label">AGR</div></div>';
+      html += '<div class="gs"><div class="gs-val ' + agrClass(g.atgr) + '">' + (g.atgr || '-') + '</div><div class="gs-label">ATGR</div></div>';
+      html += '<div class="gs"><div class="gs-val ' + solvClass(g.solv) + '">' + solv + '%</div><div class="gs-label">SoLV</div></div>';
+      html += '<div class="gs"><div class="gs-val">' + (g.grid_size || 7) + 'x' + (g.grid_size || 7) + '</div><div class="gs-label">Grid</div></div>';
+      html += '</div>';
+      html += '</div>';
+    });
+    html += '</div>';
+
+    // Explainer
+    html += '<div class="geogrid-explainer">';
+    html += '<strong>Reading the grid:</strong> Each cell shows where the practice ranks in Google Maps for that keyword from that geographic point. ';
+    html += '<strong>AGR</strong> (Average Grid Rank) is the average position across all cells - lower is better, 1 is top. ';
+    html += '<strong>ATGR</strong> (Average True Grid Rank) includes cells where the practice didn\'t appear (counted as 21). ';
+    html += '<strong>SoLV</strong> (Share of Local Voice) is the percentage of grid cells where the practice appears in the top 3 results.';
+    html += '</div>';
+
+    document.getElementById('geogridContent').innerHTML = html;
+  }
+
   function renderAiVisibility(snap) {
     var ai = snap.ai_visibility;
     if (!ai || !ai.engines) return;
@@ -717,6 +831,7 @@ section { padding: 4.5rem 0; }
     renderGscKpis(snap);
     renderGscTables(snap);
     renderGbp(snap);
+    renderGeogrids(snap);
     renderAiVisibility(snap);
     renderCoreScores(snap);
     renderTaskProgress(snap);
