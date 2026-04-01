@@ -290,6 +290,8 @@ module.exports = async function handler(req, res) {
       clientDomain = config.gsc_property.replace('sc-domain:', '').replace('https://', '').replace('http://', '').split('/')[0];
     }
 
+    // Hardcoded engines: Google AI Mode, Gemini, ChatGPT, Perplexity, Claude
+    // These are the 5 DataForSEO AI optimization endpoints we track
     var engineChecks = [
       { name: 'Google AI Mode', method: 'google_ai_mode' },
       { name: 'Gemini', method: 'gemini_scraper' },
@@ -298,44 +300,50 @@ module.exports = async function handler(req, res) {
       { name: 'Claude', method: 'claude_llm' }
     ];
 
-    var queriesToCheck = aiQueries.slice(0, 3); // Cap at 3 to stay within budget
+    // Check ALL tracked keywords across all engines (no cap)
+    var queriesToCheck = aiQueries;
 
-    // Run ALL engines in parallel — each engine checks its queries sequentially
-    var engineResults = await Promise.all(engineChecks.map(async function(engine) {
-      var cited = false;
-      var context = null;
-      var citedQueries = [];
+    // Run ALL engines + LLM Mentions in parallel
+    var parallelAi = await Promise.all([
+      Promise.all(engineChecks.map(async function(engine) {
+        var cited = false;
+        var context = null;
+        var citedQueries = [];
 
-      for (var qi = 0; qi < queriesToCheck.length; qi++) {
-        var q = queriesToCheck[qi];
-        try {
-          var result = await checkEngineVisibility(engine.method, q.query, clientDomain, dfseAuth());
-          if (result.cited) {
-            cited = true;
-            citedQueries.push(q.label || q.query);
-            if (!context && result.context) context = result.context;
+        for (var qi = 0; qi < queriesToCheck.length; qi++) {
+          var q = queriesToCheck[qi];
+          try {
+            var result = await checkEngineVisibility(engine.method, q.query, clientDomain, dfseAuth());
+            if (result.cited) {
+              cited = true;
+              citedQueries.push(q.label || q.query);
+              if (!context && result.context) context = result.context;
+            }
+          } catch (e) {
+            warnings.push('DataForSEO ' + engine.name + ' "' + q.query + '": ' + e.message);
           }
-        } catch (e) {
-          warnings.push('DataForSEO ' + engine.name + ' "' + q.query + '": ' + e.message);
         }
-      }
 
-      return {
-        name: engine.name,
-        cited: cited,
-        context: context || (cited ? 'Cited for: ' + citedQueries.join(', ') : null),
-        queries_checked: queriesToCheck.length,
-        queries_cited: citedQueries.length
-      };
-    }));
-
-    // Pull LLM Mentions aggregated in parallel with engine checks? No — it ran with them.
-    var mentionsData = null;
-    try {
-      mentionsData = await getLLMMentionsAggregated(clientDomain, dfseAuth());
-    } catch (e) {
-      warnings.push('LLM Mentions aggregated: ' + e.message);
-    }
+        return {
+          name: engine.name,
+          cited: cited,
+          context: context || (cited ? 'Cited for: ' + citedQueries.join(', ') : null),
+          queries_checked: queriesToCheck.length,
+          queries_cited: citedQueries.length
+        };
+      })),
+      // LLM Mentions aggregated runs in parallel
+      (async function() {
+        try {
+          return await getLLMMentionsAggregated(clientDomain, dfseAuth());
+        } catch (e) {
+          warnings.push('LLM Mentions aggregated: ' + e.message);
+          return null;
+        }
+      })()
+    ]);
+    var engineResults = parallelAi[0];
+    var mentionsData = parallelAi[1];
 
     return {
       engines: engineResults,
@@ -416,9 +424,9 @@ module.exports = async function handler(req, res) {
       return null;
     }
 
-    // Step 3: Poll until all grids finish (max 150s, check every 10s)
-    var maxWait = 150000;
-    var pollInterval = 10000;
+    // Step 3: Poll until all grids finish (max 60s, check every 5s)
+    var maxWait = 60000;
+    var pollInterval = 5000;
     var waited = 0;
     var finishedGrids = {};
 
@@ -453,7 +461,7 @@ module.exports = async function handler(req, res) {
       var g = finishedGrids[gridIds[fi].id];
       if (!g) {
         if (!finishedGrids.hasOwnProperty(gridIds[fi].id)) {
-          warnings.push('Geogrid timeout for "' + gridIds[fi].keyword + '" (still processing after ' + Math.round(maxWait / 1000) + 's)');
+          warnings.push('Geogrid timeout for "' + gridIds[fi].keyword + '" (still processing after 60s)');
         }
         continue;
       }
