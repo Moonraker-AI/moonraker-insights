@@ -90,6 +90,56 @@ module.exports = async function handler(req, res) {
       kpiHtml += kpiCell('Tasks Complete', snap.tasks_complete + '/' + snap.tasks_total);
     }
 
+    // Geogrid summary row for email (stats only, no images)
+    var geogridEmailHtml = '';
+    var neo = snap.neo_data || {};
+    if (neo.grids && neo.grids.length > 0) {
+      geogridEmailHtml = '<tr><td style="background:#FFFFFF;padding:0 32px 24px;border-left:1px solid #E2E8F0;border-right:1px solid #E2E8F0;">' +
+        '<h2 style="font-family:Outfit,sans-serif;font-weight:700;font-size:18px;color:#1E2A5E;margin:0 0 12px;">Local Rank Tracking</h2>' +
+        '<table cellpadding="0" cellspacing="0" border="0" width="100%" style="background:#F7FDFB;border-radius:10px;overflow:hidden;">';
+      neo.grids.forEach(function(g) {
+        var label = g.label || g.search_term;
+        var solv = Math.round((g.solv || 0) * 100);
+        var agrColor = g.agr <= 3 ? '#00D47E' : g.agr <= 7 ? '#F59E0B' : '#EF4444';
+        var solvColor = solv >= 60 ? '#00D47E' : solv >= 30 ? '#F59E0B' : '#EF4444';
+        geogridEmailHtml += '<tr><td style="padding:12px 16px;border-bottom:1px solid #E2E8F0;">' +
+          '<table cellpadding="0" cellspacing="0" border="0" width="100%"><tr>' +
+          '<td style="vertical-align:middle;"><div style="font-family:Outfit,sans-serif;font-weight:700;font-size:14px;color:#1E2A5E;">' + esc(label) + '</div>' +
+          '<div style="font-size:12px;color:#6B7599;margin-top:2px;">' + esc(g.search_term) + '</div></td>' +
+          '<td style="text-align:right;white-space:nowrap;vertical-align:middle;">' +
+          '<span style="font-family:Outfit,sans-serif;font-weight:700;font-size:14px;color:' + agrColor + ';">AGR ' + (g.agr || '-') + '</span>' +
+          '<span style="color:#E2E8F0;margin:0 6px;">|</span>' +
+          '<span style="font-family:Outfit,sans-serif;font-weight:700;font-size:14px;color:' + solvColor + ';">SoLV ' + solv + '%</span>' +
+          '</td></tr></table></td></tr>';
+      });
+      geogridEmailHtml += '</table>' +
+        '<p style="font-size:12px;color:#6B7599;margin:8px 0 0;">Avg Grid Rank: ' + neo.avg_agr + ' | Share of Local Voice: ' + Math.round((neo.avg_solv || 0) * 100) + '% across ' + neo.grid_count + ' keywords</p>' +
+        '</td></tr>';
+    }
+
+    // AI visibility summary row for email
+    var aiEmailHtml = '';
+    var ai = snap.ai_visibility || {};
+    if (ai.engines && ai.engines.length > 0) {
+      aiEmailHtml = '<tr><td style="background:#FFFFFF;padding:0 32px 24px;border-left:1px solid #E2E8F0;border-right:1px solid #E2E8F0;">' +
+        '<h2 style="font-family:Outfit,sans-serif;font-weight:700;font-size:18px;color:#1E2A5E;margin:0 0 12px;">AI Visibility</h2>' +
+        '<table cellpadding="0" cellspacing="0" border="0" width="100%" style="background:#F7FDFB;border-radius:10px;overflow:hidden;">';
+      ai.engines.forEach(function(e) {
+        var dotColor = e.cited ? '#00D47E' : '#CBD5E1';
+        var statusText = e.cited ? 'Citing' : 'Not citing';
+        var statusColor = e.cited ? '#00D47E' : '#6B7599';
+        aiEmailHtml += '<tr><td style="padding:10px 16px;border-bottom:1px solid #E2E8F0;">' +
+          '<table cellpadding="0" cellspacing="0" border="0" width="100%"><tr>' +
+          '<td style="width:12px;vertical-align:middle;"><div style="width:10px;height:10px;border-radius:50%;background:' + dotColor + ';"></div></td>' +
+          '<td style="padding-left:10px;vertical-align:middle;"><span style="font-weight:600;font-size:14px;color:#1E2A5E;">' + esc(e.name) + '</span></td>' +
+          '<td style="text-align:right;vertical-align:middle;"><span style="font-size:13px;font-weight:600;color:' + statusColor + ';">' + statusText + '</span></td>' +
+          '</tr></table></td></tr>';
+      });
+      aiEmailHtml += '</table>' +
+        '<p style="font-size:12px;color:#6B7599;margin:8px 0 0;">' + (ai.engines_citing || 0) + ' of ' + (ai.engines_checked || 0) + ' AI engines citing this month</p>' +
+        '</td></tr>';
+    }
+
     // Full email HTML
     var emailHtml = '<!DOCTYPE html><html><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1.0"></head>' +
       '<body style="margin:0;padding:0;background:#F7FDFB;font-family:Inter,-apple-system,BlinkMacSystemFont,sans-serif;">' +
@@ -121,6 +171,12 @@ module.exports = async function handler(req, res) {
         highlightsHtml +
         '</table>' +
       '</td></tr>' : '') +
+
+      // Geogrids (stats only, no images)
+      geogridEmailHtml +
+
+      // AI Visibility
+      aiEmailHtml +
 
       // CTA
       '<tr><td style="background:#FFFFFF;padding:8px 32px 32px;border-left:1px solid #E2E8F0;border-right:1px solid #E2E8F0;">' +
