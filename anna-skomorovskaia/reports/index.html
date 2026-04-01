@@ -759,8 +759,12 @@ section { padding: 4.5rem 0; }
   }
 
   function init() {
+    // Admin preview mode bypasses published filter
+    var isPreview = new URLSearchParams(window.location.search).get('preview') === 'admin';
+    var statusFilter = isPreview ? '' : '&report_status=eq.published';
+
     // Fetch all available months
-    sbFetch('report_snapshots', 'client_slug=eq.' + CLIENT_SLUG + '&report_status=eq.published&select=report_month,campaign_month&order=report_month.desc')
+    sbFetch('report_snapshots', 'client_slug=eq.' + CLIENT_SLUG + statusFilter + '&select=report_month,campaign_month,report_status&order=report_month.desc')
       .then(function(months) {
         if (!months || months.length === 0) {
           document.getElementById('loadingState').innerHTML =
@@ -773,10 +777,21 @@ section { padding: 4.5rem 0; }
         months.forEach(function(m) {
           var opt = document.createElement('option');
           opt.value = m.report_month;
-          opt.textContent = monthLabel(m.report_month);
+          var label = monthLabel(m.report_month);
+          if (isPreview && m.report_status && m.report_status !== 'published') label += ' [' + m.report_status.replace(/_/g, ' ') + ']';
+          opt.textContent = label;
           select.appendChild(opt);
         });
         document.getElementById('monthSelector').style.display = 'flex';
+
+        // Show admin preview banner
+        if (isPreview) {
+          var banner = document.createElement('div');
+          banner.style.cssText = 'position:fixed;top:0;left:0;right:0;z-index:999;background:#D97706;color:#fff;text-align:center;padding:.5rem;font-family:Outfit,sans-serif;font-weight:600;font-size:.82rem;letter-spacing:.02em;';
+          banner.textContent = 'ADMIN PREVIEW - This report has not been published to the client yet';
+          document.body.appendChild(banner);
+          document.body.style.paddingTop = '36px';
+        }
 
         select.addEventListener('change', function() {
           document.getElementById('loadingState').style.display = 'block';
