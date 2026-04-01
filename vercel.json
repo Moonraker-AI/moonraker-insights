@@ -43,15 +43,19 @@
     "api/send-report-email.js": {
       "maxDuration": 30
     },
+    "api/bootstrap-access.js": {
+      "maxDuration": 120,
+      "memory": 1024
+    },
+    "api/discover-services.js": {
+      "maxDuration": 60
+    },
     "api/cron/enqueue-reports.js": {
       "maxDuration": 30
     },
     "api/cron/process-queue.js": {
       "maxDuration": 300,
       "memory": 1024
-    },
-    "api/discover-services.js": {
-      "maxDuration": 30
     }
   },
   "crons": [
