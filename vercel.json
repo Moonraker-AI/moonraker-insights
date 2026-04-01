@@ -5,12 +5,18 @@
     {
       "source": "/(.*)",
       "headers": [
-        { "key": "X-Robots-Tag", "value": "noindex, nofollow" }
+        {
+          "key": "X-Robots-Tag",
+          "value": "noindex, nofollow"
+        }
       ]
     }
   ],
   "rewrites": [
-    { "source": "/favicon.ico", "destination": "/assets/logo.png" }
+    {
+      "source": "/favicon.ico",
+      "destination": "/assets/logo.png"
+    }
   ],
   "functions": {
     "api/chat.js": {
@@ -43,6 +49,9 @@
     "api/cron/process-queue.js": {
       "maxDuration": 300,
       "memory": 1024
+    },
+    "api/discover-services.js": {
+      "maxDuration": 30
     }
   },
   "crons": [
