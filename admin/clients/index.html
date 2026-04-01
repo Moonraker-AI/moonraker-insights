@@ -255,7 +255,7 @@ strong { font-weight: 600; color: var(--color-heading); }
 .ic-label { flex: 1; min-width: 0; }
 .ic-label .ic-title { font-weight: 500; color: var(--color-heading); font-size: .84rem; }
 .ic-label .ic-hint { font-size: .72rem; color: var(--color-muted); margin-top: .1rem; }
-.ic-status-select { font-family: inherit; font-size: .7rem; font-weight: 600; padding: .2rem .5rem; border-radius: 6px; border: 1px solid transparent; cursor: pointer; appearance: none; -webkit-appearance: none; background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='8' height='5'%3E%3Cpath d='M0 0l4 4 4-4' stroke='%236B7599' stroke-width='1.2' fill='none'/%3E%3C/svg%3E"); background-repeat: no-repeat; background-position: right .4rem center; padding-right: 1.4rem; }
+.ic-status-select { font-family: inherit; font-size: .7rem; font-weight: 500; padding: .2rem .35rem; border-radius: 5px; border: 1px solid transparent; cursor: pointer; transition: border-color .15s; }
 .ic-status-select:hover { border-color: var(--color-border); }
 .ic-status-select option { background: var(--color-surface); color: var(--color-body); }
 .ic-status-select.st-pending { background: rgba(107,117,153,.1); color: var(--color-muted); }
@@ -1076,10 +1076,12 @@ strong { font-weight: 600; color: var(--color-heading); }
 
     // Tab counts
     var obCount = state.onboarding.length;
+    var icCount = state.introCall.filter(function(s) { return s.status !== 'complete' && s.status !== 'not_applicable'; }).length;
     var taskCount = state.tasks.length;
     var delCount = state.deliverables.length;
     var rptCount = state.snapshots.length;
     setTabCount('onboarding', obCount);
+    setTabCount('intro-call', icCount);
     setTabCount('audit', taskCount);
     setTabCount('deliverables', delCount);
     setTabCount('reports', rptCount);
@@ -1288,6 +1290,7 @@ strong { font-weight: 600; color: var(--color-heading); }
     var na = steps.filter(function(s) { return s.status === 'not_applicable'; }).length;
     var actionable = steps.length - na;
     var pct = actionable > 0 ? Math.round(complete / actionable * 100) : 0;
+    setTabCount('intro-call', actionable - complete);
     document.getElementById('icStats').innerHTML =
       '<div class="stat-mini"><div class="stat-label">Progress</div><div class="stat-value">' + pct + '%</div><div class="stat-sub">' + complete + ' of ' + actionable + ' complete</div></div>' +
       '<div class="stat-mini"><div class="stat-label">Complete</div><div class="stat-value" style="color:var(--color-success);">' + complete + '</div></div>' +
