@@ -834,19 +834,9 @@ strong { font-weight: 600; color: var(--color-heading); }
   // ============================================================
   // SUPABASE
   // ============================================================
-  function sb(path) {
-    return fetch(SB + '/rest/v1/' + path, {
-      headers: { 'apikey': SK, 'Authorization': 'Bearer ' + SK }
     }).then(function(r) { return r.json(); });
   }
 
-  function apiAction(action, table, filters, data) {
-    return fetch('/api/action', {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ action: action, table: table, filters: filters || undefined, data: data })
-    }).then(function(r) { return r.json(); });
-  }
 
   // ============================================================
   // LOAD DATA
@@ -861,9 +851,9 @@ strong { font-weight: 600; color: var(--color-heading); }
 
   function loadDirectoryData() {
     Promise.all([
-      sb('contacts?select=id,slug,status,practice_name,email,first_name,last_name,campaign_start,website_url,phone,state_province,city,team_size,lost,follow_up_date,audit_tier,referral_code,source&order=practice_name'),
-      sb('onboarding_steps?select=contact_id,step_key,status'),
-      sb('checklist_items?select=client_slug,status')
+      fetch(SB + '/rest/v1/contacts?select=id,slug,status,practice_name,email,first_name,last_name,campaign_start,website_url,phone,state_province,city,team_size,lost,follow_up_date,audit_tier,referral_code,source&order=practice_name', { headers: { 'apikey': SK, 'Authorization': 'Bearer ' + SK } }).then(function(r) { return r.json(); }),
+      fetch(SB + '/rest/v1/onboarding_steps?select=contact_id,step_key,status', { headers: { 'apikey': SK, 'Authorization': 'Bearer ' + SK } }).then(function(r) { return r.json(); }),
+      fetch(SB + '/rest/v1/checklist_items?select=client_slug,status', { headers: { 'apikey': SK, 'Authorization': 'Bearer ' + SK } }).then(function(r) { return r.json(); })
     ]).then(function(res) {
       state.contacts = res[0] || [];
 
@@ -899,8 +889,8 @@ strong { font-weight: 600; color: var(--color-heading); }
   function loadDetailData() {
     // Step 1: Get the contact + all contacts for search
     Promise.all([
-      sb('contacts?slug=eq.' + slug + '&limit=1'),
-      sb('contacts?select=id,slug,status,practice_name,email,first_name,last_name')
+      fetch(SB + '/rest/v1/contacts?slug=eq.' + slug + '&limit=1', { headers: { 'apikey': SK, 'Authorization': 'Bearer ' + SK } }).then(function(r) { return r.json(); }),
+      fetch(SB + '/rest/v1/contacts?select=id,slug,status,practice_name,email,first_name,last_name', { headers: { 'apikey': SK, 'Authorization': 'Bearer ' + SK } }).then(function(r) { return r.json(); })
     ]).then(function(first) {
       state.contact = (first[0] && first[0][0]) || null;
       state.contacts = first[1] || [];
@@ -916,15 +906,15 @@ strong { font-weight: 600; color: var(--color-heading); }
 
       // Step 2: Load all related data using the contact ID
       return Promise.all([
-        sb('practice_details?select=*&contact_id=eq.' + cid).catch(function() { return []; }),
-        sb('onboarding_steps?select=*&order=sort_order&contact_id=eq.' + cid).catch(function() { return []; }),
-        sb('checklist_items?select=*&client_slug=eq.' + slug + '&order=sort_order'),
-        sb('audit_scores?select=*&client_slug=eq.' + slug + '&order=audit_date.desc&limit=1'),
-        sb('deliverables?select=*&order=created_at.desc&contact_id=eq.' + cid).catch(function() { return []; }),
-        sb('report_configs?select=*&client_slug=eq.' + slug + '&limit=1').catch(function() { return []; }),
-        sb('report_snapshots?select=*&client_slug=eq.' + slug + '&order=report_month.desc&limit=20').catch(function() { return []; }),
-        sb('signed_agreements?select=*&contact_id=eq.' + cid + '&limit=1').catch(function() { return []; }),
-        sb('intro_call_steps?select=*&order=sort_order&contact_id=eq.' + cid).catch(function() { return []; })
+        fetch(SB + '/rest/v1/practice_details?select=*&contact_id=eq.' + cid, { headers: { 'apikey': SK, 'Authorization': 'Bearer ' + SK } }).then(function(r) { return r.json(); }).catch(function() { return []; }),
+        fetch(SB + '/rest/v1/onboarding_steps?select=*&order=sort_order&contact_id=eq.' + cid, { headers: { 'apikey': SK, 'Authorization': 'Bearer ' + SK } }).then(function(r) { return r.json(); }).catch(function() { return []; }),
+        fetch(SB + '/rest/v1/checklist_items?select=*&client_slug=eq.' + slug + '&order=sort_order', { headers: { 'apikey': SK, 'Authorization': 'Bearer ' + SK } }).then(function(r) { return r.json(); }),
+        fetch(SB + '/rest/v1/audit_scores?select=*&client_slug=eq.' + slug + '&order=audit_date.desc&limit=1', { headers: { 'apikey': SK, 'Authorization': 'Bearer ' + SK } }).then(function(r) { return r.json(); }),
+        fetch(SB + '/rest/v1/deliverables?select=*&order=created_at.desc&contact_id=eq.' + cid, { headers: { 'apikey': SK, 'Authorization': 'Bearer ' + SK } }).then(function(r) { return r.json(); }).catch(function() { return []; }),
+        fetch(SB + '/rest/v1/report_configs?select=*&client_slug=eq.' + slug + '&limit=1', { headers: { 'apikey': SK, 'Authorization': 'Bearer ' + SK } }).then(function(r) { return r.json(); }).catch(function() { return []; }),
+        fetch(SB + '/rest/v1/report_snapshots?select=*&client_slug=eq.' + slug + '&order=report_month.desc&limit=20', { headers: { 'apikey': SK, 'Authorization': 'Bearer ' + SK } }).then(function(r) { return r.json(); }).catch(function() { return []; }),
+        fetch(SB + '/rest/v1/signed_agreements?select=*&contact_id=eq.' + cid + '&limit=1', { headers: { 'apikey': SK, 'Authorization': 'Bearer ' + SK } }).then(function(r) { return r.json(); }).catch(function() { return []; }),
+        fetch(SB + '/rest/v1/intro_call_steps?select=*&order=sort_order&contact_id=eq.' + cid, { headers: { 'apikey': SK, 'Authorization': 'Bearer ' + SK } }).then(function(r) { return r.json(); }).catch(function() { return []; })
       ]);
     }).then(function(res) {
       if (!res) return; // Contact not found, already handled
@@ -1421,7 +1411,7 @@ strong { font-weight: 600; color: var(--color-heading); }
     var oldStatus = step.status; step.status = newStatus; renderIntroCall();
     var body = { status: newStatus, updated_at: new Date().toISOString() };
     if (newStatus === 'complete') { body.completed_at = new Date().toISOString(); body.completed_by = 'admin'; }
-    apiAction('update_record', 'intro_call_steps', { id: stepId }, body).then(function(r) {
+    fetch('/api/action', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ action: 'update_record', table: 'intro_call_steps', filters: { id: stepId } || undefined, data: body }) }).then(function(r) { return r.json(); }).then(function(r) {
       if (!r.success) { step.status = oldStatus; renderIntroCall(); return; }
     }).catch(function() { step.status = oldStatus; renderIntroCall(); });
   };
@@ -1444,7 +1434,7 @@ strong { font-weight: 600; color: var(--color-heading); }
           toast('LocalFalcon location found: ' + (res.location_name || res.place_id), 'success');
         }
         // Reload report config
-        sb('report_configs?client_slug=eq.' + c.slug + '&limit=1').then(function(cfgs) {
+        fetch(SB + '/rest/v1/report_configs?client_slug=eq.' + c.slug + '&limit=1', { headers: { 'apikey': SK, 'Authorization': 'Bearer ' + SK } }).then(function(r) { return r.json(); }).then(function(cfgs) {
           state.reportConfig = (cfgs && cfgs[0]) || state.reportConfig;
           renderReports();
         });
@@ -1474,13 +1464,13 @@ strong { font-weight: 600; color: var(--color-heading); }
     var slug = c.slug;
     var configData = { client_slug: slug, active: true };
     if (c.gsc_property) configData.gsc_property = c.gsc_property;
-    sb('report_configs?client_slug=eq.' + slug + '&limit=1').then(function(existing) {
+    fetch(SB + '/rest/v1/report_configs?client_slug=eq.' + slug + '&limit=1', { headers: { 'apikey': SK, 'Authorization': 'Bearer ' + SK } }).then(function(r) { return r.json(); }).then(function(existing) {
       if (existing && existing.length > 0) {
-        apiAction('update_record', 'report_configs', { client_slug: slug }, configData).then(function(res) {
+        fetch('/api/action', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ action: 'update_record', table: 'report_configs', filters: { client_slug: slug } || undefined, data: configData }) }).then(function(r) { return r.json(); }).then(function(res) {
           if (res.success) { state.reportConfig = (res.data && res.data[0]) || state.reportConfig; renderReports(); }
         });
       } else {
-        apiAction('create_record', 'report_configs', null, configData).then(function(res) {
+        fetch('/api/action', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ action: 'create_record', table: 'report_configs', filters: undefined, data: configData }) }).then(function(r) { return r.json(); }).then(function(res) {
           if (res.success) { state.reportConfig = (res.data && res.data[0]) || configData; renderReports(); }
         });
       }
@@ -1492,7 +1482,7 @@ strong { font-weight: 600; color: var(--color-heading); }
     // Renders into any element - used by both IC tab and Reports tab
     var targets = targetId ? [targetId] : ['icKeywordForm'];
     var slug = state.contact.slug;
-    sb('tracked_keywords?client_slug=eq.' + slug + '&active=eq.true&order=priority.asc,keyword.asc').then(function(kws) {
+    fetch(SB + '/rest/v1/tracked_keywords?client_slug=eq.' + slug + '&active=eq.true&order=priority.asc,keyword.asc', { headers: { 'apikey': SK, 'Authorization': 'Bearer ' + SK } }).then(function(r) { return r.json(); }).then(function(kws) {
       var html = '<div class="ic-kw-form">';
       html += '<div style="display:grid;grid-template-columns:1fr 1fr auto auto auto;gap:.5rem;padding:.4rem 0 .5rem;border-bottom:1px solid var(--color-border);margin-bottom:.35rem;">';
       html += '<div class="ic-kw-header">Keyword</div><div class="ic-kw-header">Target Page URL</div><div class="ic-kw-header">Priority</div><div class="ic-kw-header">Page Status</div><div class="ic-kw-header"></div></div>';
@@ -1541,7 +1531,7 @@ strong { font-weight: 600; color: var(--color-heading); }
     var pageType = document.getElementById('icNewPageType').value;
     if (!kw) { alert('Enter a keyword'); return; }
     var data = { contact_id: state.contact.id, client_slug: state.contact.slug, keyword: kw, label: kw, keyword_type: 'service', priority: priority, target_page: page || null, source: 'intro_call', notes: pageType === 'new' ? 'New page to create' : 'Update existing page (use -new suffix)' };
-    apiAction('create_record', 'tracked_keywords', null, data).then(function(res) {
+    fetch('/api/action', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ action: 'create_record', table: 'tracked_keywords', filters: undefined, data: data }) }).then(function(r) { return r.json(); }).then(function(res) {
       if (res.success) { renderKeywordForm(); }
       else { alert('Failed to add keyword'); }
     }).catch(function() { alert('Error adding keyword'); });
@@ -1549,7 +1539,7 @@ strong { font-weight: 600; color: var(--color-heading); }
 
   window.deleteICKeyword = function(kwId) {
     if (!confirm('Delete this keyword?')) return;
-    apiAction('update_record', 'tracked_keywords', { id: kwId }, { active: false }).then(function(res) {
+    fetch('/api/action', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ action: 'update_record', table: 'tracked_keywords', filters: { id: kwId } || undefined, data: { active: false } }) }).then(function(r) { return r.json(); }).then(function(res) {
       if (res.success) renderKeywordForm();
       else alert('Failed to delete keyword');
     }).catch(function() { alert('Error deleting keyword'); });
@@ -1558,9 +1548,9 @@ strong { font-weight: 600; color: var(--color-heading); }
   window.seedIntroCallSteps = function() {
     var cid = state.contact.id;
     var rows = IC_STEPS.map(function(s) { return { contact_id: cid, step_key: s.key, label: s.label, category: s.cat, sort_order: s.sort, status: 'pending' }; });
-    apiAction('create_record', 'intro_call_steps', null, rows).then(function(res) {
+    fetch('/api/action', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ action: 'create_record', table: 'intro_call_steps', filters: undefined, data: rows }) }).then(function(r) { return r.json(); }).then(function(res) {
       if (res.success && res.data) { state.introCall = res.data; }
-      else { sb('intro_call_steps?select=*&order=sort_order&contact_id=eq.' + cid).then(function(d) { state.introCall = d || []; renderIntroCall(); }); }
+      else { fetch(SB + '/rest/v1/intro_call_steps?select=*&order=sort_order&contact_id=eq.' + cid, { headers: { 'apikey': SK, 'Authorization': 'Bearer ' + SK } }).then(function(r) { return r.json(); }).then(function(d) { state.introCall = d || []; renderIntroCall(); }); }
       renderIntroCall();
     }).catch(function(err) { console.error('Seed failed:', err); alert('Failed to create checklist.'); });
   };
@@ -2044,7 +2034,7 @@ strong { font-weight: 600; color: var(--color-heading); }
       if (succeeded.length === 4) {
         var rcDel = state.deliverables.find(function(d) { return d.id === delId; });
         if (rcDel) { rcDel.status = 'delivered'; rcDel.delivered_at = new Date().toISOString(); }
-        apiAction('update_record', 'deliverables', { id: delId }, { status: 'delivered', delivered_at: new Date().toISOString(), notes: 'All services bootstrapped: ' + succeeded.join(', ') });
+        fetch('/api/action', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ action: 'update_record', table: 'deliverables', filters: { id: delId } || undefined, data: { status: 'delivered', delivered_at: new Date().toISOString(), notes: 'All services bootstrapped: ' + succeeded.join(', ') } }) }).then(function(r) { return r.json(); });
       }
 
       setTimeout(function() { renderDeliverables(); renderReports(); }, 1500);
@@ -2381,7 +2371,7 @@ strong { font-weight: 600; color: var(--color-heading); }
 
     // Also save gsc_property on the contact record
     if (gscVal && gscVal !== c.gsc_property) {
-      apiAction('update_record', 'contacts', { slug: c.slug }, { gsc_property: gscVal });
+      fetch('/api/action', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ action: 'update_record', table: 'contacts', filters: { slug: c.slug } || undefined, data: { gsc_property: gscVal } }) }).then(function(r) { return r.json(); });
       state.contact.gsc_property = gscVal;
     }
 
@@ -2389,8 +2379,8 @@ strong { font-weight: 600; color: var(--color-heading); }
     if (btn) { btn.textContent = 'Saving...'; btn.disabled = true; }
 
     var cfg = state.reportConfig;
-    var action = cfg ? apiAction('update_record', 'report_configs', { client_slug: c.slug }, configData)
-                     : apiAction('create_record', 'report_configs', null, configData);
+    var action = cfg ? fetch('/api/action', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ action: 'update_record', table: 'report_configs', filters: { client_slug: c.slug } || undefined, data: configData }) }).then(function(r) { return r.json(); })
+                     : fetch('/api/action', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ action: 'create_record', table: 'report_configs', filters: undefined, data: configData }) }).then(function(r) { return r.json(); });
 
     action.then(function(res) {
       if (res.success) {
@@ -2445,7 +2435,7 @@ strong { font-weight: 600; color: var(--color-heading); }
     queries = queries.filter(function(q) { return q.query && q.query.trim(); });
     cfg.tracked_queries = queries;
 
-    apiAction('update_record', 'report_configs', { client_slug: c.slug }, { tracked_queries: queries }).then(function(res) {
+    fetch('/api/action', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ action: 'update_record', table: 'report_configs', filters: { client_slug: c.slug } || undefined, data: { tracked_queries: queries } }) }).then(function(r) { return r.json(); }).then(function(res) {
       if (res.success) {
         toast('Tracked queries saved (' + queries.length + ')', 'success');
         renderReports();
@@ -2571,7 +2561,7 @@ strong { font-weight: 600; color: var(--color-heading); }
       if (res.success) {
         toast('Report compiled for ' + (res.practice_name || c.slug), 'success');
         // Reload snapshots
-        sb('report_snapshots?select=*&client_slug=eq.' + c.slug + '&order=report_month.desc&limit=20').then(function(snaps) {
+        fetch(SB + '/rest/v1/report_snapshots?select=*&client_slug=eq.' + c.slug + '&order=report_month.desc&limit=20', { headers: { 'apikey': SK, 'Authorization': 'Bearer ' + SK } }).then(function(r) { return r.json(); }).then(function(snaps) {
           state.snapshots = snaps || [];
           renderReports();
         });
@@ -2983,7 +2973,7 @@ strong { font-weight: 600; color: var(--color-heading); }
     btn.textContent = 'Checking slug...';
 
     // Check slug uniqueness first
-    sb('contacts?slug=eq.' + slug + '&select=id,practice_name&limit=1')
+    fetch(SB + '/rest/v1/contacts?slug=eq.' + slug + '&select=id,practice_name&limit=1', { headers: { 'apikey': SK, 'Authorization': 'Bearer ' + SK } }).then(function(r) { return r.json(); })
       .then(function(existing) {
         if (existing && existing.length > 0) {
           // Conflict found
