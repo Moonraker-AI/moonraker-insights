@@ -67,6 +67,10 @@
     },
     "api/send-proposal-email.js": {
       "maxDuration": 30
+    },
+    "api/proposal-chat.js": {
+      "maxDuration": 120,
+      "memory": 1024
     }
   },
   "crons": [
