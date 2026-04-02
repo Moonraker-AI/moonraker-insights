@@ -169,7 +169,7 @@ Respond with ONLY valid JSON (no markdown, no backticks). The JSON must have the
   "reputation_findings": "Same format, 3-4 findings",
   "engagement_findings": "Same format, 2-3 findings",
   "strategy_intro": "One paragraph about how the CORE strategy addresses their specific gaps",
-  "strategy_cards": "4 HTML cards: <div class=\"card\"><h3 style=\"margin-bottom:1rem;\">C/O/R/E - Title</h3><p>Specific strategy description</p></div>",
+  "strategy_cards": "4 HTML cards using EXACTLY these headings: <div class=\"card\"><h3 style=\"margin-bottom:1rem;\">Credibility: Prove You\'re Real</h3><p>...</p></div> then <div class=\"card\"><h3 style=\"margin-bottom:1rem;\">Optimization: Make AI Understand You</h3><p>...</p></div> then <div class=\"card\"><h3 style=\"margin-bottom:1rem;\">Reputation: Amplify the Signal</h3><p>...</p></div> then <div class=\"card\"><h3 style=\"margin-bottom:1rem;\">Engagement: Convert Visitors to Clients</h3><p>...</p></div>",
   "strategy_roi_callout": "HTML: <div class=\"roi-callout\"><h4>Title</h4><p style=\"margin-bottom:0;\">ROI calculation relevant to their practice</p></div> or empty string if insufficient data",
   "timeline_items": "3-4 timeline phases as HTML: <div class=\"timeline-item\"><span class=\"timeline-phase\">PHASE_LABEL</span><h4>PHASE_TITLE</h4><p>DESCRIPTION</p></div>",
   "investment_features": "10-12 feature items as HTML: <li><span class=\"check\">&#10003;</span> FEATURE</li>",
@@ -231,7 +231,7 @@ Respond with ONLY valid JSON (no markdown, no backticks). The JSON must have the
     investmentCardsHtml += '<div class="investment-price">' + info.price + '</div>';
     investmentCardsHtml += '<div class="investment-period">' + info.period + '</div>';
     investmentCardsHtml += '<ul class="investment-features">' + (generatedContent.investment_features || '') + '</ul>';
-    investmentCardsHtml += '<a href="/' + slug + '/checkout" class="cta-btn" target="_blank">Choose Your Plan &#8594;</a>';
+    investmentCardsHtml += '<a href="/' + slug + '/checkout?plan=' + c + '" class="cta-btn" target="_blank">Choose Your Plan &#8594;</a>';
     investmentCardsHtml += '</div>';
   });
   // Add custom pricing card if present
