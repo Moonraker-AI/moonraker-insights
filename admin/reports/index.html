@@ -866,7 +866,7 @@ strong { font-weight: 600; color: var(--color-heading); }
       }
     }).catch(function(err) {
       console.error('Load error:', err);
-      showToast('Failed to load data', 'error');
+      toast('Failed to load data', 'error');
     });
   }
 
@@ -1117,10 +1117,10 @@ strong { font-weight: 600; color: var(--color-heading); }
     }
 
     promise.then(function() {
-      showToast('Configuration saved', 'success');
+      toast('Configuration saved', 'success');
       loadData();
     }).catch(function(err) {
-      showToast('Save failed: ' + err.message, 'error');
+      toast('Save failed: ' + err.message, 'error');
     });
   };
 
@@ -1169,7 +1169,7 @@ strong { font-weight: 600; color: var(--color-heading); }
   window._saveQueries = function(slug) {
     var cfg = state.configs[slug];
     if (!cfg || !cfg.id) {
-      showToast('Save data sources first to create the config', 'error');
+      toast('Save data sources first to create the config', 'error');
       return;
     }
 
@@ -1177,10 +1177,10 @@ strong { font-weight: 600; color: var(--color-heading); }
 
     sbFetch('report_configs?id=eq.' + cfg.id, { method: 'PATCH', body: body, prefer: 'return=representation' })
       .then(function() {
-        showToast(body.tracked_queries.length + ' queries saved', 'success');
+        toast(body.tracked_queries.length + ' queries saved', 'success');
         loadData();
       }).catch(function(err) {
-        showToast('Save failed: ' + err.message, 'error');
+        toast('Save failed: ' + err.message, 'error');
       });
   };
 
@@ -1205,7 +1205,7 @@ strong { font-weight: 600; color: var(--color-heading); }
     return d.toLocaleDateString();
   }
 
-  function showToast(msg, type) {
+  function toast(msg, type) {
     var t = document.getElementById('toast');
     t.textContent = msg;
     t.className = 'toast ' + (type || 'info') + ' show';
