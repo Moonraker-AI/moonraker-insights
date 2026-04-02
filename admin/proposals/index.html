@@ -1,0 +1,796 @@
+<!DOCTYPE html>
+<html lang="en" data-theme="light">
+<script>try{var st=localStorage.getItem('moonraker-theme');if(st){document.documentElement.setAttribute('data-theme',st)}}catch(e){}</script>
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<link rel="icon" type="image/png" href="/assets/logo.png">
+<title>Proposals - Moonraker Admin</title>
+<style>
+@import url('https://fonts.googleapis.com/css2?family=Outfit:wght@400;600;700&display=swap');
+@import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600&display=swap');
+
+:root, [data-theme="light"] {
+  --color-primary: #00D47E;
+  --color-primary-hover: #00b86c;
+  --color-primary-light: #B4EEE0;
+  --color-primary-subtle: #DDF8F2;
+  --color-bg: #F7FDFB;
+  --color-surface: #FFFFFF;
+  --color-border: #E2E8F0;
+  --color-heading: #1E2A5E;
+  --color-body: #333F70;
+  --color-muted: #6B7599;
+  --color-navy: #141C3A;
+  --color-success: #00D47E;
+  --color-warning: #F59E0B;
+  --color-danger: #EF4444;
+  --color-info: #3B82F6;
+  --sidebar-bg: #FAFDFB;
+  --sidebar-border: #E8F0EC;
+  --sidebar-hover: #EEF8F3;
+}
+[data-theme="dark"] {
+  --color-primary: #00D47E;
+  --color-primary-hover: #00f598;
+  --color-primary-light: #1A4A38;
+  --color-primary-subtle: #0D2E22;
+  --color-bg: #080F0B;
+  --color-surface: #0E1A14;
+  --color-border: #1E3530;
+  --color-heading: #E8F5EF;
+  --color-body: #C8D8D0;
+  --color-muted: #5A7A6E;
+  --color-navy: #0A1630;
+  --color-success: #00D47E;
+  --color-warning: #F59E0B;
+  --color-danger: #FF6B6B;
+  --color-info: #60A5FA;
+  --sidebar-bg: #0A120E;
+  --sidebar-border: #162820;
+  --sidebar-hover: #12201A;
+}
+
+*, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+html { font-size: 17px; }
+body { font-family: 'Inter', -apple-system, BlinkMacSystemFont, sans-serif; font-weight: 400; color: var(--color-body); background: var(--color-bg); line-height: 1.6; -webkit-font-smoothing: antialiased; overflow-x: hidden; }
+h1,h2,h3,h4 { font-family: 'Outfit', sans-serif; font-weight: 700; color: var(--color-heading); line-height: 1.2; }
+a { color: var(--color-primary); text-decoration: none; }
+a:hover { color: var(--color-primary-hover); }
+
+.admin-layout { display: flex; min-height: 100vh; }
+.sidebar { width: 240px; background: var(--sidebar-bg); border-right: 1px solid var(--sidebar-border); position: fixed; top: 0; left: 0; bottom: 0; z-index: 200; display: flex; flex-direction: column; transition: transform .25s ease; }
+.sidebar-header { padding: 1.25rem .75rem .75rem; display: flex; align-items: center; gap: .65rem; }
+.sidebar-header img { height: 34px; padding: 5px; background: var(--color-primary-subtle); border: 1px solid rgba(0,212,126,.15); border-radius: 8px; }
+.sidebar-header span { font-family: 'Outfit', sans-serif; font-weight: 700; font-size: 1.05rem; color: var(--color-heading); }
+.sidebar-nav { flex: 1; display: flex; flex-direction: column; gap: 2px; }
+.sidebar-nav a { display: flex; align-items: center; gap: .65rem; padding: .55rem .75rem; border-radius: 8px; font-size: .82rem; font-weight: 500; color: var(--color-muted); text-decoration: none; transition: all .15s; }
+.sidebar-nav a:hover { background: var(--sidebar-hover); color: var(--color-heading); }
+.sidebar-nav a.active { background: var(--color-primary-subtle); color: var(--color-primary); font-weight: 600; }
+.sidebar-nav .nav-icon { width: 18px; height: 18px; display: flex; align-items: center; justify-content: center; font-size: .95rem; flex-shrink: 0; opacity: .7; }
+.sidebar-nav a.active .nav-icon { opacity: 1; }
+.sidebar-nav .nav-icon svg { width: 15px; height: 15px; stroke: currentColor; fill: none; stroke-width: 1.25; stroke-linecap: round; stroke-linejoin: round; }
+.nav-section { font-size: .65rem; font-weight: 600; text-transform: uppercase; letter-spacing: .08em; color: var(--color-muted); padding: .75rem .75rem .25rem; opacity: .6; }
+.sidebar-footer { padding: .75rem 1rem; border-top: 1px solid var(--sidebar-border); display: flex; align-items: center; justify-content: space-between; }
+
+.main { flex: 1; margin-left: 240px; min-width: 0; transition: margin-left .2s ease; }
+.topbar { position: sticky; top: 0; z-index: 100; background: var(--color-surface); border-bottom: 1px solid var(--color-border); padding: 0 2rem; height: 56px; display: flex; align-items: center; gap: 1rem; }
+.topbar h1 { font-size: 1.1rem; margin: 0; }
+.topbar-right { display: flex; align-items: center; gap: .5rem; margin-left: auto; }
+.content { padding: 2rem; }
+
+/* Buttons */
+.btn { display: inline-flex; align-items: center; gap: .4rem; padding: .45rem .85rem; border-radius: 8px; font-size: .82rem; font-weight: 500; border: none; cursor: pointer; transition: all .2s; font-family: inherit; }
+.btn-primary { background: var(--color-primary); color: #fff; }
+.btn-primary:hover { background: var(--color-primary-hover); }
+.btn-ghost { background: none; color: var(--color-muted); padding: .35rem .5rem; }
+.btn-ghost:hover { color: var(--color-heading); background: var(--sidebar-hover); }
+.btn-outline { background: none; color: var(--color-heading); border: 1px solid var(--color-border); }
+.btn-outline:hover { border-color: var(--color-primary); color: var(--color-primary); }
+.btn-sm { padding: .3rem .6rem; font-size: .75rem; }
+.btn-danger { background: none; color: var(--color-danger); border: 1px solid rgba(239,68,68,.2); }
+.btn-danger:hover { background: rgba(239,68,68,.08); }
+
+/* Tags */
+.tag { display: inline-flex; align-items: center; gap: .3rem; padding: .15rem .5rem; border-radius: 6px; font-size: .72rem; font-weight: 500; white-space: nowrap; }
+.tag-draft { background: rgba(107,117,153,.08); color: var(--color-muted); }
+.tag-enriching { background: rgba(59,130,246,.08); color: var(--color-info); }
+.tag-review { background: rgba(245,158,11,.08); color: var(--color-warning); }
+.tag-ready { background: rgba(0,212,126,.1); color: var(--color-success); }
+.tag-sent { background: rgba(59,130,246,.08); color: var(--color-info); }
+.tag-viewed { background: rgba(168,85,247,.08); color: #A855F7; }
+.tag-accepted { background: rgba(0,212,126,.1); color: var(--color-success); }
+.tag-expired { background: rgba(239,68,68,.08); color: var(--color-danger); }
+.tag-declined { background: rgba(239,68,68,.08); color: var(--color-danger); }
+
+/* Stat Cards */
+.stat-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(160px, 1fr)); gap: 1rem; margin-bottom: 2rem; }
+.stat-card { background: var(--color-surface); border: 1px solid var(--color-border); border-radius: 12px; padding: 1.25rem; transition: border-color .2s; }
+.stat-card:hover { border-color: rgba(0,212,126,.25); }
+.stat-card .stat-label { font-size: .72rem; font-weight: 600; text-transform: uppercase; letter-spacing: .05em; color: var(--color-muted); margin-bottom: .35rem; }
+.stat-card .stat-value { font-family: 'Outfit', sans-serif; font-size: 2rem; font-weight: 700; color: var(--color-heading); line-height: 1; }
+.stat-card .stat-sub { font-size: .75rem; color: var(--color-muted); margin-top: .35rem; }
+
+/* Filter tabs */
+.filter-bar { display: flex; align-items: center; gap: .25rem; margin-bottom: 1.25rem; border-bottom: 1px solid var(--color-border); }
+.filter-tab { padding: .55rem 1rem; font-size: .82rem; font-weight: 500; color: var(--color-muted); cursor: pointer; border: none; background: none; border-bottom: 2px solid transparent; font-family: inherit; transition: all .15s; }
+.filter-tab:hover { color: var(--color-heading); }
+.filter-tab.active { color: var(--color-primary); border-bottom-color: var(--color-primary); }
+.filter-tab .count { font-size: .7rem; padding: .05rem .4rem; border-radius: 4px; background: var(--color-bg); margin-left: .3rem; }
+.filter-tab.active .count { background: var(--color-primary-subtle); }
+
+/* Proposals table */
+.proposals-table { width: 100%; border-collapse: collapse; }
+.proposals-table th { text-align: left; font-size: .72rem; font-weight: 600; text-transform: uppercase; letter-spacing: .05em; color: var(--color-muted); padding: .6rem .75rem; border-bottom: 1px solid var(--color-border); }
+.proposals-table td { padding: .75rem; border-bottom: 1px solid var(--color-border); font-size: .85rem; vertical-align: middle; }
+.proposals-table tbody tr { transition: background .15s; cursor: pointer; }
+.proposals-table tbody tr:hover { background: var(--sidebar-hover); }
+.proposals-table .client-cell { display: flex; align-items: center; gap: .6rem; }
+.proposals-table .client-avatar { width: 32px; height: 32px; border-radius: 8px; background: var(--color-primary-subtle); color: var(--color-primary); display: flex; align-items: center; justify-content: center; font-weight: 600; font-size: .75rem; font-family: 'Outfit', sans-serif; flex-shrink: 0; }
+.proposals-table .client-name { font-weight: 600; color: var(--color-heading); font-size: .85rem; }
+.proposals-table .client-practice { font-size: .75rem; color: var(--color-muted); }
+.proposals-table .plan-pills { display: flex; gap: .25rem; flex-wrap: wrap; }
+.proposals-table .plan-pill { font-size: .68rem; padding: .1rem .35rem; border-radius: 4px; background: var(--color-bg); color: var(--color-muted); border: 1px solid var(--color-border); }
+.proposals-table .date-cell { font-size: .78rem; color: var(--color-muted); }
+.proposals-table .actions-cell { display: flex; gap: .25rem; }
+
+/* Empty state */
+.empty-state { text-align: center; padding: 4rem 2rem; }
+.empty-icon { font-size: 2.5rem; margin-bottom: 1rem; opacity: .5; }
+.empty-title { font-size: 1.15rem; font-weight: 600; color: var(--color-heading); margin-bottom: .35rem; }
+.empty-desc { font-size: .85rem; color: var(--color-muted); margin-bottom: 1.5rem; }
+
+/* Modal */
+.modal-backdrop { position: fixed; inset: 0; background: rgba(0,0,0,.45); z-index: 500; display: none; align-items: center; justify-content: center; padding: 1.5rem; animation: fadeIn .2s ease; }
+.modal-backdrop.open { display: flex; }
+.modal { background: var(--color-surface); border: 1px solid var(--color-border); border-radius: 16px; width: 100%; max-width: 640px; max-height: 90vh; overflow-y: auto; box-shadow: 0 20px 60px rgba(0,0,0,.15); animation: slideUp .25s ease; }
+.modal-header { padding: 1.25rem 1.5rem; border-bottom: 1px solid var(--color-border); display: flex; align-items: center; justify-content: space-between; position: sticky; top: 0; background: var(--color-surface); z-index: 1; border-radius: 16px 16px 0 0; }
+.modal-header h3 { font-size: 1.1rem; margin: 0; }
+.modal-close { background: none; border: none; font-size: 1.25rem; color: var(--color-muted); cursor: pointer; padding: .25rem; line-height: 1; border-radius: 6px; }
+.modal-close:hover { color: var(--color-heading); background: var(--sidebar-hover); }
+.modal-body { padding: 1.5rem; }
+.modal-footer { padding: 1rem 1.5rem; border-top: 1px solid var(--color-border); display: flex; align-items: center; justify-content: flex-end; gap: .5rem; position: sticky; bottom: 0; background: var(--color-surface); border-radius: 0 0 16px 16px; }
+
+@keyframes fadeIn { from { opacity: 0; } to { opacity: 1; } }
+@keyframes slideUp { from { opacity: 0; transform: translateY(16px); } to { opacity: 1; transform: translateY(0); } }
+
+/* Form elements */
+.form-group { margin-bottom: 1.25rem; }
+.form-label { display: block; font-size: .78rem; font-weight: 600; color: var(--color-heading); margin-bottom: .35rem; }
+.form-hint { font-size: .72rem; color: var(--color-muted); margin-top: .2rem; }
+.form-input, .form-select { width: 100%; padding: .5rem .75rem; border: 1px solid var(--color-border); border-radius: 8px; font-size: .85rem; font-family: inherit; background: var(--color-surface); color: var(--color-heading); transition: border-color .2s; }
+.form-input:focus, .form-select:focus { outline: none; border-color: var(--color-primary); box-shadow: 0 0 0 3px rgba(0,212,126,.1); }
+.form-input::placeholder { color: var(--color-muted); }
+
+/* Checkbox/chip selectors */
+.chip-group { display: flex; flex-wrap: wrap; gap: .4rem; }
+.chip { display: inline-flex; align-items: center; gap: .35rem; padding: .35rem .75rem; border-radius: 8px; font-size: .8rem; font-weight: 500; border: 1px solid var(--color-border); background: var(--color-surface); color: var(--color-muted); cursor: pointer; transition: all .2s; user-select: none; }
+.chip:hover { border-color: var(--color-primary); color: var(--color-heading); }
+.chip.selected { border-color: var(--color-primary); background: var(--color-primary-subtle); color: var(--color-primary); font-weight: 600; }
+.chip .chip-check { width: 14px; height: 14px; border-radius: 4px; border: 1.5px solid var(--color-border); display: flex; align-items: center; justify-content: center; font-size: .6rem; transition: all .2s; }
+.chip.selected .chip-check { border-color: var(--color-primary); background: var(--color-primary); color: #fff; }
+
+/* Inline create contact */
+.inline-create { background: var(--color-bg); border: 1px solid var(--color-border); border-radius: 10px; padding: 1rem; margin-top: .5rem; }
+.inline-create .form-row { display: grid; grid-template-columns: 1fr 1fr; gap: .75rem; }
+.inline-create .form-group { margin-bottom: .75rem; }
+
+/* Custom pricing section */
+.custom-pricing { background: var(--color-bg); border: 1px solid var(--color-border); border-radius: 10px; padding: 1rem; margin-top: .5rem; }
+.custom-pricing .form-row { display: grid; grid-template-columns: 1fr 1fr; gap: .75rem; }
+
+/* Divider */
+.form-divider { height: 1px; background: var(--color-border); margin: 1.5rem 0; }
+
+/* Toggle */
+.toggle-row { display: flex; align-items: center; justify-content: space-between; }
+.toggle { width: 36px; height: 20px; border-radius: 10px; background: var(--color-border); cursor: pointer; position: relative; transition: background .2s; border: none; padding: 0; flex-shrink: 0; }
+.toggle::after { content: ''; position: absolute; top: 2px; left: 2px; width: 16px; height: 16px; border-radius: 50%; background: #fff; transition: transform .2s; }
+.toggle.on { background: var(--color-primary); }
+.toggle.on::after { transform: translateX(16px); }
+
+/* Sidebar collapse */
+.sidebar.collapsed { width: 56px; }
+.sidebar.collapsed .sidebar-header span { color: transparent; }
+.sidebar.collapsed .sidebar-nav .nav-label { color: transparent; }
+.sidebar.collapsed .nav-section { color: transparent; }
+.sidebar.collapsed .sidebar-footer { flex-wrap: wrap; justify-content: center; gap: .35rem; }
+.sidebar-nav .nav-label { white-space: nowrap; transition: color .15s; }
+.nav-section { white-space: nowrap; transition: color .15s; }
+.sidebar.collapsed:hover { width: 240px; box-shadow: 4px 0 20px rgba(0,0,0,.1); z-index: 250; }
+.sidebar.collapsed:hover .sidebar-header span { color: var(--color-heading); }
+.sidebar.collapsed:hover .sidebar-nav .nav-label { color: inherit; }
+.sidebar.collapsed:hover .nav-section { color: var(--color-muted); }
+.sidebar.collapsed:hover .sidebar-footer { justify-content: space-between; }
+.sidebar.collapsed ~ .main { margin-left: 56px; }
+.collapse-btn { display: flex; align-items: center; justify-content: center; width: 28px; height: 28px; background: var(--color-bg); border: 1px solid var(--color-border); border-radius: 50%; color: var(--color-muted); cursor: pointer; transition: all .2s; flex-shrink: 0; padding: 0; }
+.collapse-btn:hover { color: var(--color-heading); border-color: var(--color-primary); background: var(--color-primary-subtle); }
+.collapse-btn svg { transition: transform .25s; stroke: currentColor; fill: none; stroke-width: 1.5; stroke-linecap: round; stroke-linejoin: round; }
+.sidebar.collapsed .collapse-btn svg { transform: rotate(180deg); }
+.theme-toggle { background: none; border: none; font-size: 1.05rem; cursor: pointer; padding: .25rem; }
+.mobile-toggle { display: none; background: none; border: none; color: var(--color-heading); font-size: 1.25rem; cursor: pointer; padding: .25rem; }
+
+@media (max-width: 860px) {
+  .sidebar { transform: translateX(-100%); }
+  .sidebar.open { transform: translateX(0); box-shadow: 4px 0 20px rgba(0,0,0,.15); }
+  .main { margin-left: 0 !important; }
+  .mobile-toggle { display: block; }
+  .stat-grid { grid-template-columns: repeat(2, 1fr); }
+}
+@media (max-width: 860px) {
+  .sidebar.collapsed { width: 240px; transform: translateX(-100%); }
+  .sidebar.collapsed.open { transform: translateX(0); }
+  .sidebar.collapsed ~ .main { margin-left: 0; }
+  .sidebar.collapsed .sidebar-header span { color: var(--color-heading); }
+  .sidebar.collapsed .sidebar-nav .nav-label { color: inherit; }
+  .sidebar.collapsed .nav-section { color: var(--color-muted); }
+  .sidebar.collapsed .sidebar-footer { justify-content: space-between; }
+}
+@media (max-width: 560px) {
+  .content { padding: 1.25rem; }
+  .stat-grid { grid-template-columns: 1fr 1fr; }
+  .inline-create .form-row, .custom-pricing .form-row { grid-template-columns: 1fr; }
+}
+</style>
+</head>
+<body>
+<div class="admin-layout">
+
+<aside class="sidebar" id="sidebar">
+  <div class="sidebar-header">
+    <img src="https://moonraker.ai/wp-content/uploads/2023/10/Moonraker-Logo-Transparent.png" alt="Moonraker">
+    <span>Client HQ</span>
+  </div>
+  <nav class="sidebar-nav">
+    <div class="nav-section">Overview</div>
+    <a href="/admin"><span class="nav-icon"><svg viewBox="0 0 16 16"><rect x="1.5" y="1.5" width="5" height="5" rx="1"/><rect x="9.5" y="1.5" width="5" height="5" rx="1"/><rect x="1.5" y="9.5" width="5" height="5" rx="1"/><rect x="9.5" y="9.5" width="5" height="5" rx="1"/></svg></span><span class="nav-label">Dashboard</span></a>
+    <a href="/admin/clients"><span class="nav-icon"><svg viewBox="0 0 16 16"><circle cx="8" cy="4.5" r="2.5"/><path d="M2.5 15c0-3 2.5-5.5 5.5-5.5s5.5 2.5 5.5 5.5"/></svg></span><span class="nav-label">Clients</span></a>
+    <div class="nav-section">Workflows</div>
+    <a href="/admin/proposals" class="active"><span class="nav-icon"><svg viewBox="0 0 16 16"><path d="M3 2h7l3 3v9a1 1 0 01-1 1H3a1 1 0 01-1-1V3a1 1 0 011-1z"/><path d="M10 2v3h3"/><path d="M5 9h6M5 12h4"/></svg></span><span class="nav-label">Proposals</span></a>
+    <a href="/admin/onboarding"><span class="nav-icon"><svg viewBox="0 0 16 16"><path d="M8 1v10M4.5 7.5L8 11l3.5-3.5"/><path d="M2.5 13.5h11"/></svg></span><span class="nav-label">Onboarding</span></a>
+    <a href="/admin/audits"><span class="nav-icon"><svg viewBox="0 0 16 16"><circle cx="6.5" cy="6.5" r="4"/><path d="M14.5 14.5l-4-4"/></svg></span><span class="nav-label">Audits</span></a>
+    <a href="/admin/deliverables"><span class="nav-icon"><svg viewBox="0 0 16 16"><rect x="2" y="2" width="12" height="12" rx="2"/><path d="M5.5 8l2 2 3.5-3.5"/></svg></span><span class="nav-label">Deliverables</span></a>
+    <a href="/admin/reports"><span class="nav-icon"><svg viewBox="0 0 16 16"><path d="M2 14V6l3.5-2v10"/><path d="M6.25 14V4.5l3.5-2v11.5"/><path d="M10.5 14V3l3.5-2v13"/></svg></span><span class="nav-label">Reports</span></a>
+  </nav>
+  <div class="sidebar-footer">
+    <button class="collapse-btn" id="collapseBtn" aria-label="Collapse sidebar"><svg viewBox="0 0 16 16" width="14" height="14"><path d="M10 3L5 8l5 5"/></svg></button>
+    <button class="theme-toggle" id="themeBtn" aria-label="Toggle theme">&#x1F319;</button>
+  </div>
+</aside>
+
+<div class="main">
+  <div class="topbar">
+    <button class="mobile-toggle" id="mobileToggle" aria-label="Menu">&#9776;</button>
+    <h1>Proposals</h1>
+    <div class="topbar-right">
+      <button class="btn btn-primary" onclick="openNewProposal()">+ New Proposal</button>
+    </div>
+  </div>
+
+  <div class="content">
+    <div class="stat-grid" id="statsGrid">
+      <div class="stat-card"><div class="stat-label">Drafts</div><div class="stat-value" id="statDraft">-</div><div class="stat-sub">In progress</div></div>
+      <div class="stat-card"><div class="stat-label">Sent</div><div class="stat-value" id="statSent">-</div><div class="stat-sub">Awaiting response</div></div>
+      <div class="stat-card"><div class="stat-label">Viewed</div><div class="stat-value" id="statViewed">-</div><div class="stat-sub">Opened by prospect</div></div>
+      <div class="stat-card"><div class="stat-label">Accepted</div><div class="stat-value" id="statAccepted">-</div><div class="stat-sub">Moved to checkout</div></div>
+    </div>
+
+    <div class="section-header">
+      <h2>All Proposals</h2>
+    </div>
+    <p class="section-desc">Track proposals from draft through acceptance. Click any row to view details.</p>
+
+    <div class="filter-bar" id="filterBar">
+      <button class="filter-tab active" data-filter="all">All<span class="count" id="countAll">0</span></button>
+      <button class="filter-tab" data-filter="draft">Draft<span class="count" id="countDraft">0</span></button>
+      <button class="filter-tab" data-filter="sent">Sent<span class="count" id="countSent">0</span></button>
+      <button class="filter-tab" data-filter="viewed">Viewed<span class="count" id="countViewed">0</span></button>
+      <button class="filter-tab" data-filter="accepted">Accepted<span class="count" id="countAccepted">0</span></button>
+    </div>
+
+    <div id="proposalsList"></div>
+    <div id="emptyState" class="empty-state" style="display:none;">
+      <div class="empty-icon">&#128203;</div>
+      <div class="empty-title">No proposals yet</div>
+      <div class="empty-desc">Create your first proposal to start converting leads into clients.</div>
+      <button class="btn btn-primary" onclick="openNewProposal()">+ New Proposal</button>
+    </div>
+  </div>
+</div>
+</div>
+
+<!-- New Proposal Modal -->
+<div class="modal-backdrop" id="newProposalModal">
+  <div class="modal">
+    <div class="modal-header">
+      <h3>New Proposal</h3>
+      <button class="modal-close" onclick="closeModal()">&times;</button>
+    </div>
+    <div class="modal-body">
+
+      <!-- Step 1: Contact -->
+      <div class="form-group">
+        <label class="form-label">Contact</label>
+        <select class="form-select" id="contactSelect" onchange="onContactChange()">
+          <option value="">Select a contact...</option>
+        </select>
+        <div class="form-hint">Choose an existing lead or prospect, or create a new contact.</div>
+      </div>
+      <div id="inlineCreateSection" class="inline-create" style="display:none;">
+        <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:.75rem;">
+          <span style="font-size:.82rem;font-weight:600;color:var(--color-heading);">New Contact</span>
+          <button class="btn btn-ghost btn-sm" onclick="cancelNewContact()">Cancel</button>
+        </div>
+        <div class="form-row">
+          <div class="form-group"><label class="form-label">First Name</label><input class="form-input" id="newFirst" placeholder="Jane"></div>
+          <div class="form-group"><label class="form-label">Last Name</label><input class="form-input" id="newLast" placeholder="Smith"></div>
+        </div>
+        <div class="form-row">
+          <div class="form-group"><label class="form-label">Email</label><input class="form-input" id="newEmail" type="email" placeholder="jane@practice.com"></div>
+          <div class="form-group"><label class="form-label">Credentials</label><input class="form-input" id="newCreds" placeholder="LMFT, LPC"></div>
+        </div>
+        <div class="form-group"><label class="form-label">Practice Name</label><input class="form-input" id="newPractice" placeholder="Harmony Counseling"></div>
+        <div class="form-row">
+          <div class="form-group"><label class="form-label">Website</label><input class="form-input" id="newWebsite" placeholder="https://practice.com"></div>
+          <div class="form-group"><label class="form-label">City, State</label><input class="form-input" id="newLocation" placeholder="Austin, TX"></div>
+        </div>
+      </div>
+
+      <div class="form-divider"></div>
+
+      <!-- Step 2: Campaign Length -->
+      <div class="form-group">
+        <label class="form-label">Campaign Length</label>
+        <div class="form-hint" style="margin-bottom:.5rem;">Select which options to show the prospect. Multiple allowed.</div>
+        <div class="chip-group" id="campaignChips">
+          <div class="chip selected" data-value="annual" onclick="toggleChip(this,'campaign')">
+            <span class="chip-check">&#10003;</span>Annual - $20,000
+          </div>
+          <div class="chip" data-value="quarterly" onclick="toggleChip(this,'campaign')">
+            <span class="chip-check">&#10003;</span>3 Months - $5,000
+          </div>
+          <div class="chip" data-value="monthly" onclick="toggleChip(this,'campaign')">
+            <span class="chip-check">&#10003;</span>Month-to-Month - $1,667/mo
+          </div>
+        </div>
+      </div>
+
+      <!-- Step 3: Billing Options -->
+      <div class="form-group" id="billingSection">
+        <label class="form-label">Billing Options</label>
+        <div class="form-hint" style="margin-bottom:.5rem;">Select which billing preferences to show. Depends on campaign lengths above.</div>
+        <div class="chip-group" id="billingChips"></div>
+      </div>
+
+      <div class="form-divider"></div>
+
+      <!-- Custom Pricing Toggle -->
+      <div class="form-group">
+        <div class="toggle-row">
+          <div>
+            <label class="form-label" style="margin-bottom:0;">Custom Pricing</label>
+            <div class="form-hint">Enable for non-standard arrangements (e.g. $1,250/mo x 4).</div>
+          </div>
+          <button class="toggle" id="customToggle" onclick="toggleCustomPricing()"></button>
+        </div>
+      </div>
+      <div id="customPricingSection" class="custom-pricing" style="display:none;">
+        <div class="custom-pricing form-row">
+          <div class="form-group"><label class="form-label">Amount</label><input class="form-input" id="customAmount" type="number" placeholder="1250"></div>
+          <div class="form-group"><label class="form-label">Period</label>
+            <select class="form-select" id="customPeriod">
+              <option value="month">Per Month</option>
+              <option value="quarter">Per Quarter</option>
+              <option value="one-time">One-Time</option>
+            </select>
+          </div>
+        </div>
+        <div class="form-row">
+          <div class="form-group"><label class="form-label">Duration (months)</label><input class="form-input" id="customDuration" type="number" placeholder="4"></div>
+          <div class="form-group"><label class="form-label">Label (shown to client)</label><input class="form-input" id="customLabel" placeholder="$1,250/mo x 4 months"></div>
+        </div>
+        <div class="form-hint">You'll need to create a Stripe price and payment link for custom pricing. We'll prompt for those after saving.</div>
+      </div>
+
+      <div class="form-divider"></div>
+
+      <!-- Notes -->
+      <div class="form-group">
+        <label class="form-label">Internal Notes</label>
+        <textarea class="form-input" id="proposalNotes" rows="3" placeholder="Any context for this proposal... referral source, special circumstances, etc."></textarea>
+      </div>
+
+    </div>
+    <div class="modal-footer">
+      <button class="btn btn-outline" onclick="closeModal()">Cancel</button>
+      <button class="btn btn-primary" id="createBtn" onclick="createProposal()">Create Proposal</button>
+    </div>
+  </div>
+</div>
+
+<script>
+(function() {
+  var SB_URL = 'https://ofmmwcjhdrhvxxkhcuww.supabase.co';
+  var SB_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6Im9mbW13Y2poZHJodnh4a2hjdXd3Iiwicm9sZSI6ImFub24iLCJpYXQiOjE3NzQzMjM1NTcsImV4cCI6MjA4OTg5OTU1N30.zMMHW0Fk9ixWjORngyxJTIoPOfx7GFsD4wBV4Foqqms';
+  var SB_SVC = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6Im9mbW13Y2poZHJodnh4a2hjdXd3Iiwicm9sZSI6InNlcnZpY2Vfcm9sZSIsImlhdCI6MTc3NDMyMzU1NywiZXhwIjoyMDg5ODk5NTU3fQ.EyEyVh6er79xjWGgMIgKaF2pErkDz0fOxQsrNSup2fk';
+
+  var state = { contacts: [], proposals: [], filter: 'all' };
+
+  // BILLING OPTIONS MAP
+  var BILLING_MAP = {
+    annual: [
+      { key: 'annual_upfront', label: 'Annual - Pay Upfront ($20,000)' },
+      { key: 'annual_quarterly', label: 'Annual - Quarterly Billing ($5,000/qtr)' },
+      { key: 'annual_monthly', label: 'Annual - Monthly Billing ($1,667/mo)' }
+    ],
+    quarterly: [
+      { key: 'quarterly_upfront', label: '3-Month - Pay Upfront ($5,000)' },
+      { key: 'quarterly_monthly', label: '3-Month - Monthly Billing ($1,667/mo)' }
+    ],
+    monthly: [
+      { key: 'monthly', label: 'Month-to-Month ($1,667/mo)' }
+    ]
+  };
+
+  function sbFetch(path, opts) {
+    opts = opts || {};
+    var headers = { 'apikey': SB_SVC, 'Authorization': 'Bearer ' + SB_SVC, 'Content-Type': 'application/json' };
+    if (opts.headers) Object.keys(opts.headers).forEach(function(k) { headers[k] = opts.headers[k]; });
+    opts.headers = headers;
+    return fetch(SB_URL + '/rest/v1/' + path, opts).then(function(r) { return r.json(); });
+  }
+
+  async function loadData() {
+    try {
+      var [contacts, proposals] = await Promise.all([
+        sbFetch('contacts?select=id,slug,status,first_name,last_name,credentials,email,practice_name,website_url,city,state_province&order=last_name'),
+        sbFetch('proposals?select=*,contacts(slug,first_name,last_name,credentials,practice_name,email)&order=created_at.desc')
+      ]);
+      state.contacts = contacts || [];
+      state.proposals = proposals || [];
+      populateContactSelect();
+      render();
+    } catch(e) {
+      console.error('Load error:', e);
+    }
+  }
+
+  function populateContactSelect() {
+    var sel = document.getElementById('contactSelect');
+    var html = '<option value="">Select a contact...</option>';
+    html += '<option value="__new__">+ Create New Contact</option>';
+    var leads = state.contacts.filter(function(c) { return c.status === 'lead'; });
+    var prospects = state.contacts.filter(function(c) { return c.status === 'prospect'; });
+    if (leads.length) {
+      html += '<optgroup label="Leads">';
+      leads.forEach(function(c) { html += '<option value="' + c.id + '">' + esc(c.first_name + ' ' + c.last_name) + ' - ' + esc(c.practice_name || '') + '</option>'; });
+      html += '</optgroup>';
+    }
+    if (prospects.length) {
+      html += '<optgroup label="Prospects">';
+      prospects.forEach(function(c) { html += '<option value="' + c.id + '">' + esc(c.first_name + ' ' + c.last_name) + ' - ' + esc(c.practice_name || '') + '</option>'; });
+      html += '</optgroup>';
+    }
+    sel.innerHTML = html;
+  }
+
+  window.onContactChange = function() {
+    var val = document.getElementById('contactSelect').value;
+    document.getElementById('inlineCreateSection').style.display = val === '__new__' ? 'block' : 'none';
+  };
+
+  window.cancelNewContact = function() {
+    document.getElementById('contactSelect').value = '';
+    document.getElementById('inlineCreateSection').style.display = 'none';
+  };
+
+  // Chip toggle
+  window.toggleChip = function(el, group) {
+    el.classList.toggle('selected');
+    if (group === 'campaign') updateBillingChips();
+  };
+
+  function getSelectedChips(containerId) {
+    var chips = document.querySelectorAll('#' + containerId + ' .chip.selected');
+    return Array.from(chips).map(function(c) { return c.dataset.value; });
+  }
+
+  function updateBillingChips() {
+    var campaigns = getSelectedChips('campaignChips');
+    var container = document.getElementById('billingChips');
+    var html = '';
+    var allOptions = [];
+    campaigns.forEach(function(c) {
+      (BILLING_MAP[c] || []).forEach(function(opt) {
+        if (!allOptions.some(function(o) { return o.key === opt.key; })) allOptions.push(opt);
+      });
+    });
+    allOptions.forEach(function(opt) {
+      html += '<div class="chip selected" data-value="' + opt.key + '" onclick="toggleChip(this,\'billing\')">';
+      html += '<span class="chip-check">&#10003;</span>' + esc(opt.label);
+      html += '</div>';
+    });
+    container.innerHTML = html;
+    document.getElementById('billingSection').style.display = allOptions.length ? 'block' : 'none';
+  }
+
+  // Custom pricing toggle
+  window.toggleCustomPricing = function() {
+    var btn = document.getElementById('customToggle');
+    btn.classList.toggle('on');
+    document.getElementById('customPricingSection').style.display = btn.classList.contains('on') ? 'block' : 'none';
+  };
+
+  // Create proposal
+  window.createProposal = async function() {
+    var contactId = document.getElementById('contactSelect').value;
+    var isNew = contactId === '__new__';
+    var btn = document.getElementById('createBtn');
+    btn.disabled = true;
+    btn.textContent = 'Creating...';
+
+    try {
+      // Create new contact if needed
+      if (isNew) {
+        var first = document.getElementById('newFirst').value.trim();
+        var last = document.getElementById('newLast').value.trim();
+        if (!first || !last) { alert('First and last name are required.'); btn.disabled = false; btn.textContent = 'Create Proposal'; return; }
+        var locParts = (document.getElementById('newLocation').value || '').split(',').map(function(s) { return s.trim(); });
+        var slug = (first + '-' + last).toLowerCase().replace(/[^a-z0-9-]/g, '');
+        var newContact = {
+          slug: slug,
+          status: 'lead',
+          first_name: first,
+          last_name: last,
+          email: document.getElementById('newEmail').value.trim() || null,
+          credentials: document.getElementById('newCreds').value.trim() || null,
+          practice_name: document.getElementById('newPractice').value.trim() || null,
+          website_url: document.getElementById('newWebsite').value.trim() || null,
+          city: locParts[0] || null,
+          state_province: locParts[1] || null
+        };
+        var created = await fetch(SB_URL + '/rest/v1/contacts', {
+          method: 'POST',
+          headers: { 'apikey': SB_SVC, 'Authorization': 'Bearer ' + SB_SVC, 'Content-Type': 'application/json', 'Prefer': 'return=representation' },
+          body: JSON.stringify(newContact)
+        }).then(function(r) { return r.json(); });
+        if (created && created.length) contactId = created[0].id;
+        else { alert('Failed to create contact. Check for duplicate slug.'); btn.disabled = false; btn.textContent = 'Create Proposal'; return; }
+      }
+
+      if (!contactId) { alert('Please select a contact.'); btn.disabled = false; btn.textContent = 'Create Proposal'; return; }
+
+      var campaigns = getSelectedChips('campaignChips');
+      var billings = getSelectedChips('billingChips');
+      if (campaigns.length === 0) { alert('Select at least one campaign length.'); btn.disabled = false; btn.textContent = 'Create Proposal'; return; }
+
+      // Build custom pricing if enabled
+      var customPricing = null;
+      if (document.getElementById('customToggle').classList.contains('on')) {
+        var amt = parseInt(document.getElementById('customAmount').value);
+        if (amt > 0) {
+          customPricing = {
+            amount_cents: amt * 100,
+            period: document.getElementById('customPeriod').value,
+            duration_months: parseInt(document.getElementById('customDuration').value) || null,
+            label: document.getElementById('customLabel').value.trim() || ('$' + amt + '/' + document.getElementById('customPeriod').value)
+          };
+        }
+      }
+
+      // Build the checkout_options for the contact
+      var checkoutPlans = billings.length ? billings : null;
+      if (campaigns.length === 1 && campaigns[0] === 'monthly') checkoutPlans = ['monthly'];
+
+      var proposal = {
+        contact_id: contactId,
+        status: 'draft',
+        campaign_lengths: campaigns,
+        billing_options: billings,
+        custom_pricing: customPricing,
+        notes: document.getElementById('proposalNotes').value.trim() || null,
+        created_by: 'chris'
+      };
+
+      var result = await fetch(SB_URL + '/rest/v1/proposals', {
+        method: 'POST',
+        headers: { 'apikey': SB_SVC, 'Authorization': 'Bearer ' + SB_SVC, 'Content-Type': 'application/json', 'Prefer': 'return=representation' },
+        body: JSON.stringify(proposal)
+      }).then(function(r) { return r.json(); });
+
+      // Update contact status to prospect if lead, and set checkout_options
+      var contact = state.contacts.find(function(c) { return c.id === contactId; });
+      if (contact) {
+        var patch = {};
+        if (contact.status === 'lead') { patch.status = 'prospect'; patch.converted_from_lead_at = new Date().toISOString(); }
+        if (checkoutPlans) patch.checkout_options = { plans: checkoutPlans };
+        if (Object.keys(patch).length) {
+          await fetch(SB_URL + '/rest/v1/contacts?id=eq.' + contactId, {
+            method: 'PATCH',
+            headers: { 'apikey': SB_SVC, 'Authorization': 'Bearer ' + SB_SVC, 'Content-Type': 'application/json' },
+            body: JSON.stringify(patch)
+          });
+        }
+      }
+
+      closeModal();
+      loadData();
+    } catch(e) {
+      console.error('Create error:', e);
+      alert('Something went wrong. Please try again.');
+    }
+    btn.disabled = false;
+    btn.textContent = 'Create Proposal';
+  };
+
+  // Render
+  function render() {
+    var proposals = state.proposals;
+    var counts = { all: proposals.length, draft: 0, sent: 0, viewed: 0, accepted: 0 };
+    proposals.forEach(function(p) {
+      if (p.status === 'draft' || p.status === 'enriching' || p.status === 'review' || p.status === 'ready') counts.draft++;
+      else if (p.status === 'sent') counts.sent++;
+      else if (p.status === 'viewed') counts.viewed++;
+      else if (p.status === 'accepted') counts.accepted++;
+    });
+
+    document.getElementById('statDraft').textContent = counts.draft;
+    document.getElementById('statSent').textContent = counts.sent;
+    document.getElementById('statViewed').textContent = counts.viewed;
+    document.getElementById('statAccepted').textContent = counts.accepted;
+    document.getElementById('countAll').textContent = counts.all;
+    document.getElementById('countDraft').textContent = counts.draft;
+    document.getElementById('countSent').textContent = counts.sent;
+    document.getElementById('countViewed').textContent = counts.viewed;
+    document.getElementById('countAccepted').textContent = counts.accepted;
+
+    var filtered = proposals;
+    if (state.filter !== 'all') {
+      filtered = proposals.filter(function(p) {
+        if (state.filter === 'draft') return p.status === 'draft' || p.status === 'enriching' || p.status === 'review' || p.status === 'ready';
+        return p.status === state.filter;
+      });
+    }
+
+    var container = document.getElementById('proposalsList');
+    var emptyState = document.getElementById('emptyState');
+
+    if (proposals.length === 0) {
+      container.innerHTML = '';
+      emptyState.style.display = 'block';
+      return;
+    }
+    emptyState.style.display = 'none';
+
+    if (filtered.length === 0) {
+      container.innerHTML = '<div style="text-align:center;padding:2rem;color:var(--color-muted);font-size:.85rem;">No proposals match this filter.</div>';
+      return;
+    }
+
+    var html = '<table class="proposals-table"><thead><tr>';
+    html += '<th>Contact</th><th>Status</th><th>Campaign</th><th>Created</th><th>Sent</th><th style="width:80px;"></th>';
+    html += '</tr></thead><tbody>';
+
+    filtered.forEach(function(p) {
+      var c = p.contacts || {};
+      var name = ((c.first_name || '') + ' ' + (c.last_name || '')).trim() || c.slug || 'Unknown';
+      var initials = ((c.first_name || '')[0] || '') + ((c.last_name || '')[0] || '');
+      var tagClass = 'tag-' + p.status;
+      var statusLabel = p.status.charAt(0).toUpperCase() + p.status.slice(1);
+
+      html += '<tr onclick="viewProposal(\'' + p.id + '\')">';
+      html += '<td><div class="client-cell"><div class="client-avatar">' + esc(initials.toUpperCase()) + '</div><div><div class="client-name">' + esc(name) + '</div><div class="client-practice">' + esc(c.practice_name || '') + '</div></div></div></td>';
+      html += '<td><span class="tag ' + tagClass + '">' + statusLabel + '</span></td>';
+      html += '<td><div class="plan-pills">';
+      (p.campaign_lengths || []).forEach(function(cl) {
+        html += '<span class="plan-pill">' + cl.charAt(0).toUpperCase() + cl.slice(1) + '</span>';
+      });
+      if (p.custom_pricing) html += '<span class="plan-pill" style="border-color:var(--color-warning);color:var(--color-warning);">Custom</span>';
+      html += '</div></td>';
+      html += '<td class="date-cell">' + formatDate(p.created_at) + '</td>';
+      html += '<td class="date-cell">' + (p.sent_at ? formatDate(p.sent_at) : '-') + '</td>';
+      html += '<td class="actions-cell">';
+      if (p.proposal_url) html += '<a href="' + esc(p.proposal_url) + '" target="_blank" class="btn btn-ghost btn-sm" title="View proposal" onclick="event.stopPropagation()">&#8599;</a>';
+      html += '</td>';
+      html += '</tr>';
+    });
+
+    html += '</tbody></table>';
+    container.innerHTML = html;
+  }
+
+  window.viewProposal = function(id) {
+    var p = state.proposals.find(function(pr) { return pr.id === id; });
+    if (p && p.proposal_url) window.open(p.proposal_url, '_blank');
+  };
+
+  // Modal
+  window.openNewProposal = function() {
+    document.getElementById('newProposalModal').classList.add('open');
+    // Reset form
+    document.getElementById('contactSelect').value = '';
+    document.getElementById('inlineCreateSection').style.display = 'none';
+    document.querySelectorAll('#campaignChips .chip').forEach(function(c, i) { c.classList.toggle('selected', i === 0); });
+    updateBillingChips();
+    document.getElementById('customToggle').classList.remove('on');
+    document.getElementById('customPricingSection').style.display = 'none';
+    document.getElementById('proposalNotes').value = '';
+    ['newFirst','newLast','newEmail','newCreds','newPractice','newWebsite','newLocation','customAmount','customDuration','customLabel'].forEach(function(id) {
+      var el = document.getElementById(id); if (el) el.value = '';
+    });
+  };
+
+  window.closeModal = function() {
+    document.getElementById('newProposalModal').classList.remove('open');
+  };
+
+  // Close modal on backdrop click
+  document.getElementById('newProposalModal').addEventListener('click', function(e) {
+    if (e.target === this) closeModal();
+  });
+
+  // Filter tabs
+  document.getElementById('filterBar').addEventListener('click', function(e) {
+    var tab = e.target.closest('.filter-tab');
+    if (!tab) return;
+    document.querySelectorAll('#filterBar .filter-tab').forEach(function(t) { t.classList.remove('active'); });
+    tab.classList.add('active');
+    state.filter = tab.dataset.filter;
+    render();
+  });
+
+  function formatDate(iso) {
+    if (!iso) return '';
+    var d = new Date(iso);
+    var months = ['Jan','Feb','Mar','Apr','May','Jun','Jul','Aug','Sep','Oct','Nov','Dec'];
+    return months[d.getMonth()] + ' ' + d.getDate() + ', ' + d.getFullYear();
+  }
+
+  function esc(s) { if (!s) return ''; var d = document.createElement('div'); d.textContent = s; return d.innerHTML; }
+
+  // Initialize billing chips on load
+  updateBillingChips();
+
+  // ============================================================
+  // SIDEBAR COLLAPSE
+  // ============================================================
+  var sidebar = document.getElementById('sidebar');
+  var collapseBtn = document.getElementById('collapseBtn');
+  try { if (localStorage.getItem('moonraker-sidebar') === 'collapsed') sidebar.classList.add('collapsed'); } catch(e) {}
+  if (collapseBtn) collapseBtn.addEventListener('click', function() {
+    sidebar.classList.toggle('collapsed');
+    try { localStorage.setItem('moonraker-sidebar', sidebar.classList.contains('collapsed') ? 'collapsed' : 'open'); } catch(e) {}
+  });
+  var mobileToggle = document.getElementById('mobileToggle');
+  if (mobileToggle) mobileToggle.addEventListener('click', function() { sidebar.classList.toggle('open'); });
+
+  // Theme
+  var themeBtn = document.getElementById('themeBtn');
+  var _curTheme = document.documentElement.getAttribute('data-theme');
+  if (themeBtn) {
+    themeBtn.innerHTML = _curTheme === 'dark' ? '&#9728;&#65039;' : '&#x1F319;';
+    themeBtn.addEventListener('click', function() {
+      var h = document.documentElement;
+      document.body.style.transition='opacity .25s ease';
+      document.body.style.opacity='0';
+      setTimeout(function(){
+        if (h.getAttribute('data-theme') === 'light') {
+          h.setAttribute('data-theme', 'dark'); themeBtn.innerHTML = '&#9728;&#65039;';
+          try { localStorage.setItem('moonraker-theme', 'dark'); } catch(e) {}
+        } else {
+          h.setAttribute('data-theme', 'light'); themeBtn.innerHTML = '&#x1F319;';
+          try { localStorage.setItem('moonraker-theme', 'light'); } catch(e) {}
+        }
+        document.body.style.transition='opacity .3s ease';
+        document.body.style.opacity='1';
+        setTimeout(function(){document.body.style.transition=''},400);
+      },280);
+    });
+  }
+
+  loadData();
+})();
+</script>
+<script src="/shared/chat-panel.js"></script>
+</body>
+</html>
