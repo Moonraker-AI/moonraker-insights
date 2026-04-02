@@ -64,6 +64,9 @@
     "api/generate-proposal.js": {
       "maxDuration": 300,
       "memory": 1024
+    },
+    "api/send-proposal-email.js": {
+      "maxDuration": 30
     }
   },
   "crons": [
