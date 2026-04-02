@@ -345,7 +345,7 @@
   panel.innerHTML = `
     <div class="mr-chat-header">
       <div class="mr-chat-header-icon">
-        <img src="https://moonraker.ai/wp-content/uploads/2023/10/Moonraker-Logo-Transparent.png" alt="Moonraker">
+        <img src="/assets/logo.png" alt="Moonraker">
       </div>
       <div class="mr-chat-header-info">
         <div class="mr-chat-header-title">MoonBot</div>
@@ -481,7 +481,7 @@
     var suggestions = getSuggestions(ctx);
 
     var html = '<div class="mr-chat-welcome">';
-    html += '<div class="mr-chat-welcome-icon"><img src="https://moonraker.ai/wp-content/uploads/2023/10/Moonraker-Logo-Transparent.png" alt="Moonraker"></div>';
+    html += '<div class="mr-chat-welcome-icon"><img src="/assets/logo.png" alt="Moonraker"></div>';
     html += '<h3>MoonBot</h3>';
     html += '<p>I can help you manage clients, update deliverables, build audits, and more. What would you like to do?</p>';
     html += '<div class="mr-chat-suggestions">';
