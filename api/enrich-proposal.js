@@ -1,0 +1,358 @@
+// /api/enrich-proposal.js
+// Enrichment endpoint for the proposal system.
+// Searches Gmail (chris@, scott@, support@), Fathom (chris + scott accounts),
+// entity audits in Supabase, and optionally the prospect's website to gather
+// context for proposal generation.
+//
+// POST { proposal_id }
+//   - Or: POST { contact_id } to enrich without a proposal record
+//
+// ENV VARS:
+//   SUPABASE_SERVICE_ROLE_KEY, GOOGLE_SERVICE_ACCOUNT_JSON,
+//   FATHOM_API_CHRIS, FATHOM_API_SCOTT
+
+module.exports = async function handler(req, res) {
+  if (req.method !== 'POST') return res.status(405).json({ error: 'Method not allowed' });
+
+  var sbKey = process.env.SUPABASE_SERVICE_ROLE_KEY;
+  var googleSA = process.env.GOOGLE_SERVICE_ACCOUNT_JSON;
+  var fathomChris = process.env.FATHOM_API_CHRIS;
+  var fathomScott = process.env.FATHOM_API_SCOTT;
+  var sbUrl = process.env.NEXT_PUBLIC_SUPABASE_URL || 'https://ofmmwcjhdrhvxxkhcuww.supabase.co';
+
+  if (!sbKey) return res.status(500).json({ error: 'SUPABASE_SERVICE_ROLE_KEY not configured' });
+
+  var body = req.body;
+  var proposalId = body.proposal_id;
+  var contactId = body.contact_id;
+
+  if (!proposalId && !contactId) {
+    return res.status(400).json({ error: 'proposal_id or contact_id required' });
+  }
+
+  function sbHeaders() {
+    return { 'apikey': sbKey, 'Authorization': 'Bearer ' + sbKey, 'Content-Type': 'application/json', 'Prefer': 'return=representation' };
+  }
+
+  var enrichment = {
+    sources: { gmail: [], fathom: [], entity_audit: null, website: null },
+    data: { emails: [], calls: [], audit_scores: null, audit_tasks: null, website_info: null },
+    summary: { email_count: 0, call_count: 0, has_audit: false, has_website: false }
+  };
+
+  // ─── Load proposal + contact ──────────────────────────────────
+  var proposal = null;
+  var contact = null;
+
+  try {
+    if (proposalId) {
+      var pResp = await fetch(sbUrl + '/rest/v1/proposals?id=eq.' + proposalId + '&select=*,contacts(*)&limit=1', { headers: sbHeaders() });
+      var proposals = await pResp.json();
+      if (!proposals || proposals.length === 0) return res.status(404).json({ error: 'Proposal not found' });
+      proposal = proposals[0];
+      contact = proposal.contacts;
+      contactId = contact.id;
+    } else {
+      var cResp = await fetch(sbUrl + '/rest/v1/contacts?id=eq.' + contactId + '&select=*&limit=1', { headers: sbHeaders() });
+      var contacts = await cResp.json();
+      if (!contacts || contacts.length === 0) return res.status(404).json({ error: 'Contact not found' });
+      contact = contacts[0];
+    }
+  } catch (e) {
+    return res.status(500).json({ error: 'Failed to load data: ' + e.message });
+  }
+
+  // Build search terms
+  var searchEmail = contact.email || '';
+  var searchDomain = '';
+  if (contact.website_url) {
+    try { searchDomain = new URL(contact.website_url).hostname.replace(/^www\./, ''); } catch(e) {}
+  }
+  if (!searchDomain && searchEmail) {
+    var parts = searchEmail.split('@');
+    if (parts.length === 2 && !parts[1].match(/gmail|yahoo|hotmail|outlook|protonmail|icloud/i)) {
+      searchDomain = parts[1];
+    }
+  }
+  var searchName = ((contact.first_name || '') + ' ' + (contact.last_name || '')).trim();
+  var practiceName = contact.practice_name || '';
+
+  // Update proposal status to enriching
+  if (proposalId) {
+    await fetch(sbUrl + '/rest/v1/proposals?id=eq.' + proposalId, {
+      method: 'PATCH', headers: sbHeaders(),
+      body: JSON.stringify({ status: 'enriching' })
+    });
+  }
+
+  // ─── 1. Gmail Search (all 3 accounts) ─────────────────────────
+  if (googleSA && (searchEmail || searchDomain)) {
+    var gmailAccounts = ['chris@moonraker.ai', 'scott@moonraker.ai', 'support@moonraker.ai'];
+    var gmailScope = 'https://www.googleapis.com/auth/gmail.readonly';
+
+    for (var acct of gmailAccounts) {
+      try {
+        var token = await getDelegatedToken(googleSA, acct, gmailScope);
+        if (token && typeof token === 'string') {
+          // Build search query: email address OR domain
+          var queries = [];
+          if (searchEmail) queries.push(searchEmail);
+          if (searchDomain) queries.push(searchDomain);
+          if (searchName && searchName.length > 3) queries.push('"' + searchName + '"');
+          var query = queries.join(' OR ');
+
+          var msgResp = await fetch(
+            'https://gmail.googleapis.com/gmail/v1/users/me/messages?q=' + encodeURIComponent(query) + '&maxResults=15',
+            { headers: { 'Authorization': 'Bearer ' + token } }
+          );
+          var msgData = await msgResp.json();
+
+          if (msgData.messages && msgData.messages.length > 0) {
+            enrichment.sources.gmail.push({ account: acct, thread_count: msgData.messages.length });
+
+            // Fetch up to 5 message snippets for context
+            var fetchCount = Math.min(msgData.messages.length, 5);
+            for (var i = 0; i < fetchCount; i++) {
+              try {
+                var detailResp = await fetch(
+                  'https://gmail.googleapis.com/gmail/v1/users/me/messages/' + msgData.messages[i].id + '?format=metadata&metadataHeaders=Subject&metadataHeaders=From&metadataHeaders=To&metadataHeaders=Date',
+                  { headers: { 'Authorization': 'Bearer ' + token } }
+                );
+                var detail = await detailResp.json();
+                var headers = {};
+                (detail.payload && detail.payload.headers || []).forEach(function(h) {
+                  headers[h.name.toLowerCase()] = h.value;
+                });
+                enrichment.data.emails.push({
+                  account: acct,
+                  message_id: detail.id,
+                  thread_id: detail.threadId,
+                  subject: headers.subject || '',
+                  from: headers.from || '',
+                  to: headers.to || '',
+                  date: headers.date || '',
+                  snippet: detail.snippet || ''
+                });
+              } catch(e) { /* skip individual message errors */ }
+            }
+          }
+        }
+      } catch (e) {
+        enrichment.sources.gmail.push({ account: acct, error: e.message || String(e) });
+      }
+    }
+    enrichment.summary.email_count = enrichment.data.emails.length;
+  }
+
+  // ─── 2. Fathom Search (both accounts) ─────────────────────────
+  var fathomKeys = [];
+  if (fathomChris) fathomKeys.push({ key: fathomChris, owner: 'chris' });
+  if (fathomScott) fathomKeys.push({ key: fathomScott, owner: 'scott' });
+
+  for (var fk of fathomKeys) {
+    try {
+      // Search by attendee email, contact name, and practice name
+      var searchTerms = [];
+      if (searchEmail) searchTerms.push(searchEmail);
+      if (searchName) searchTerms.push(searchName);
+      if (practiceName) searchTerms.push(practiceName);
+
+      for (var term of searchTerms) {
+        var fResp = await fetch(
+          'https://api.fathom.video/v1/call-recordings?query=' + encodeURIComponent(term) + '&limit=10',
+          { headers: { 'Authorization': 'Bearer ' + fk.key, 'Content-Type': 'application/json' } }
+        );
+
+        if (fResp.ok) {
+          var fData = await fResp.json();
+          var recordings = fData.call_recordings || fData.data || fData.recordings || fData;
+          if (Array.isArray(recordings) && recordings.length > 0) {
+            enrichment.sources.fathom.push({ owner: fk.owner, recording_count: recordings.length, search_term: term });
+
+            for (var rec of recordings) {
+              // Avoid duplicates
+              var recId = rec.id || rec.recording_id;
+              if (enrichment.data.calls.some(function(c) { return c.recording_id === recId; })) continue;
+
+              var callEntry = {
+                recording_id: recId,
+                fathom_owner: fk.owner,
+                title: rec.title || rec.meeting_title || '',
+                date: rec.created_at || rec.date || rec.started_at || '',
+                duration_seconds: rec.duration || rec.duration_seconds || null,
+                attendees: rec.attendees || []
+              };
+
+              // Try to get the summary
+              try {
+                var sumResp = await fetch(
+                  'https://api.fathom.video/v1/call-recordings/' + recId + '/summary',
+                  { headers: { 'Authorization': 'Bearer ' + fk.key } }
+                );
+                if (sumResp.ok) {
+                  var sumData = await sumResp.json();
+                  callEntry.summary = sumData.summary || sumData.text || sumData.content || JSON.stringify(sumData).substring(0, 2000);
+                }
+              } catch(e) { /* summary fetch optional */ }
+
+              enrichment.data.calls.push(callEntry);
+            }
+          }
+        }
+      }
+    } catch (e) {
+      enrichment.sources.fathom.push({ owner: fk.owner, error: e.message || String(e) });
+    }
+  }
+  enrichment.summary.call_count = enrichment.data.calls.length;
+
+  // ─── 3. Entity Audit Data ─────────────────────────────────────
+  try {
+    var auditResp = await fetch(
+      sbUrl + '/rest/v1/entity_audits?contact_id=eq.' + contactId + '&select=*&order=created_at.desc&limit=1',
+      { headers: sbHeaders() }
+    );
+    var audits = await auditResp.json();
+    if (audits && audits.length > 0) {
+      var audit = audits[0];
+      enrichment.sources.entity_audit = { id: audit.id, tier: audit.audit_tier, date: audit.audit_date, status: audit.status };
+      enrichment.data.audit_scores = audit.scores || null;
+      enrichment.data.audit_tasks = audit.tasks || null;
+      enrichment.summary.has_audit = true;
+    }
+  } catch (e) { /* entity audit optional */ }
+
+  // ─── 4. Also check campaign audit scores ──────────────────────
+  try {
+    var coreResp = await fetch(
+      sbUrl + '/rest/v1/audit_scores?client_slug=eq.' + contact.slug + '&select=*&order=audit_date.desc&limit=1',
+      { headers: sbHeaders() }
+    );
+    var coreAudits = await coreResp.json();
+    if (coreAudits && coreAudits.length > 0) {
+      enrichment.data.campaign_audit = {
+        c_score: coreAudits[0].c_score,
+        o_score: coreAudits[0].o_score,
+        r_score: coreAudits[0].r_score,
+        e_score: coreAudits[0].e_score,
+        variance_score: coreAudits[0].variance_score,
+        audit_date: coreAudits[0].audit_date
+      };
+    }
+  } catch (e) { /* campaign audit optional */ }
+
+  // ─── 5. Website Scan ──────────────────────────────────────────
+  if (contact.website_url) {
+    try {
+      var wResp = await fetch(contact.website_url, {
+        headers: { 'User-Agent': 'Moonraker-Bot/1.0' },
+        redirect: 'follow',
+        signal: AbortSignal.timeout(8000)
+      });
+      if (wResp.ok) {
+        var html = await wResp.text();
+        // Extract useful metadata
+        var titleMatch = html.match(/<title[^>]*>(.*?)<\/title>/i);
+        var metaDescMatch = html.match(/<meta[^>]*name=["']description["'][^>]*content=["'](.*?)["']/i);
+        var h1Match = html.match(/<h1[^>]*>(.*?)<\/h1>/i);
+
+        // Extract specialties/keywords from common therapy site patterns
+        var bodyText = html.replace(/<script[\s\S]*?<\/script>/gi, '')
+          .replace(/<style[\s\S]*?<\/style>/gi, '')
+          .replace(/<[^>]+>/g, ' ')
+          .replace(/\s+/g, ' ')
+          .substring(0, 5000);
+
+        enrichment.data.website_info = {
+          url: contact.website_url,
+          title: titleMatch ? titleMatch[1].trim() : '',
+          meta_description: metaDescMatch ? metaDescMatch[1].trim() : '',
+          h1: h1Match ? h1Match[1].replace(/<[^>]+>/g, '').trim() : '',
+          body_preview: bodyText.substring(0, 2000)
+        };
+        enrichment.sources.website = { url: contact.website_url, fetched: true };
+        enrichment.summary.has_website = true;
+      }
+    } catch (e) {
+      enrichment.sources.website = { url: contact.website_url, error: e.message || String(e) };
+    }
+  }
+
+  // ─── 6. Practice details from Supabase ────────────────────────
+  try {
+    var pdResp = await fetch(
+      sbUrl + '/rest/v1/practice_details?contact_id=eq.' + contactId + '&select=*&limit=1',
+      { headers: sbHeaders() }
+    );
+    var pdData = await pdResp.json();
+    if (pdData && pdData.length > 0) {
+      enrichment.data.practice_details = pdData[0];
+    }
+  } catch (e) { /* practice details optional */ }
+
+  // ─── Save enrichment to proposal ──────────────────────────────
+  if (proposalId) {
+    try {
+      await fetch(sbUrl + '/rest/v1/proposals?id=eq.' + proposalId, {
+        method: 'PATCH', headers: sbHeaders(),
+        body: JSON.stringify({
+          status: 'review',
+          enrichment_sources: enrichment.sources,
+          enrichment_data: enrichment.data
+        })
+      });
+    } catch (e) {
+      enrichment._save_error = e.message;
+    }
+  }
+
+  // ─── Return results ───────────────────────────────────────────
+  return res.status(200).json({
+    ok: true,
+    contact: {
+      slug: contact.slug,
+      name: searchName,
+      email: searchEmail,
+      domain: searchDomain,
+      practice: practiceName
+    },
+    enrichment: enrichment
+  });
+};
+
+
+// ─── JWT Token Helper (reused from bootstrap-access.js) ─────────
+async function getDelegatedToken(saJson, impersonateEmail, scope) {
+  try {
+    var sa = typeof saJson === 'string' ? JSON.parse(saJson) : saJson;
+    if (!sa.private_key || !sa.client_email) throw new Error('SA JSON missing private_key or client_email');
+    var crypto = require('crypto');
+
+    var header = Buffer.from(JSON.stringify({ alg: 'RS256', typ: 'JWT' })).toString('base64url');
+    var now = Math.floor(Date.now() / 1000);
+    var claims = Buffer.from(JSON.stringify({
+      iss: sa.client_email,
+      sub: impersonateEmail,
+      scope: scope,
+      aud: 'https://oauth2.googleapis.com/token',
+      iat: now,
+      exp: now + 3600
+    })).toString('base64url');
+
+    var signable = header + '.' + claims;
+    var signer = crypto.createSign('RSA-SHA256');
+    signer.update(signable);
+    var signature = signer.sign(sa.private_key, 'base64url');
+    var jwt = signable + '.' + signature;
+
+    var tokenResp = await fetch('https://oauth2.googleapis.com/token', {
+      method: 'POST', headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
+      body: 'grant_type=urn%3Aietf%3Aparams%3Aoauth%3Agrant-type%3Ajwt-bearer&assertion=' + jwt
+    });
+    var tokenData = await tokenResp.json();
+    if (!tokenData.access_token) throw new Error(tokenData.error_description || tokenData.error || JSON.stringify(tokenData));
+    return tokenData.access_token;
+  } catch (e) {
+    return { error: e.message || String(e) };
+  }
+}
