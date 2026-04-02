@@ -1,35 +1,51 @@
 // /api/proposal-chat.js
 // Streaming chat endpoint for the proposal chatbot (client-facing).
 // Uses Claude Opus 4.6 with full context of the proposal, CSA, and services.
+// Runs as Vercel Edge Function for true zero-buffer streaming.
 //
 // POST { messages: [...], context: { page_content, slug } }
 //
 // ENV VARS: ANTHROPIC_API_KEY
 
-module.exports = async function handler(req, res) {
-  if (req.method === 'OPTIONS') {
-    res.setHeader('Access-Control-Allow-Origin', '*');
-    res.setHeader('Access-Control-Allow-Methods', 'POST');
-    res.setHeader('Access-Control-Allow-Headers', 'Content-Type');
-    return res.status(200).end();
+export const config = { runtime: 'edge' };
+
+export default async function handler(request) {
+  if (request.method === 'OPTIONS') {
+    return new Response(null, {
+      status: 200,
+      headers: {
+        'Access-Control-Allow-Origin': '*',
+        'Access-Control-Allow-Methods': 'POST',
+        'Access-Control-Allow-Headers': 'Content-Type'
+      }
+    });
   }
-  if (req.method !== 'POST') return res.status(405).json({ error: 'Method not allowed' });
+  if (request.method !== 'POST') {
+    return new Response(JSON.stringify({ error: 'Method not allowed' }), { status: 405, headers: { 'Content-Type': 'application/json' } });
+  }
 
   var apiKey = process.env.ANTHROPIC_API_KEY;
-  if (!apiKey) return res.status(500).json({ error: 'ANTHROPIC_API_KEY not configured' });
+  if (!apiKey) {
+    return new Response(JSON.stringify({ error: 'ANTHROPIC_API_KEY not configured' }), { status: 500, headers: { 'Content-Type': 'application/json' } });
+  }
 
-  var body = req.body || {};
+  var body;
+  try { body = await request.json(); } catch(e) {
+    return new Response(JSON.stringify({ error: 'Invalid JSON body' }), { status: 400, headers: { 'Content-Type': 'application/json' } });
+  }
+
   var messages = body.messages;
   var context = body.context || {};
+  if (!messages || !Array.isArray(messages)) {
+    return new Response(JSON.stringify({ error: 'messages array required' }), { status: 400, headers: { 'Content-Type': 'application/json' } });
+  }
 
-  if (!messages || !Array.isArray(messages)) return res.status(400).json({ error: 'messages array required' });
-
-  // Build the system prompt with full context
   var systemPrompt = buildSystemPrompt(context);
 
-  // Stream response from Claude Opus 4.6
+  // Call Anthropic with stream: true
+  var aiResp;
   try {
-    var aiResp = await fetch('https://api.anthropic.com/v1/messages', {
+    aiResp = await fetch('https://api.anthropic.com/v1/messages', {
       method: 'POST',
       headers: {
         'Content-Type': 'application/json',
@@ -44,58 +60,69 @@ module.exports = async function handler(req, res) {
         stream: true
       })
     });
-
-    if (!aiResp.ok) {
-      var errBody = await aiResp.text();
-      return res.status(502).json({ error: 'Anthropic API error', status: aiResp.status, body: errBody });
-    }
-
-    // Stream SSE to client
-    res.setHeader('Content-Type', 'text/event-stream');
-    res.setHeader('Cache-Control', 'no-cache');
-    res.setHeader('Connection', 'keep-alive');
-    res.setHeader('X-Accel-Buffering', 'no');
-    res.flushHeaders();
-
-    var reader = aiResp.body.getReader();
-    var decoder = new TextDecoder();
-    var buffer = '';
-
-    while (true) {
-      var chunk = await reader.read();
-      if (chunk.done) break;
-      buffer += decoder.decode(chunk.value, { stream: true });
-
-      var lines = buffer.split('\n');
-      buffer = lines.pop() || '';
-
-      for (var line of lines) {
-        if (line.startsWith('data: ')) {
-          var data = line.substring(6).trim();
-          if (data === '[DONE]') { res.write('data: [DONE]\n\n'); continue; }
-          try {
-            var parsed = JSON.parse(data);
-            if (parsed.type === 'content_block_delta' && parsed.delta && parsed.delta.text) {
-              res.write('data: ' + JSON.stringify({ text: parsed.delta.text }) + '\n\n');
-            } else if (parsed.type === 'message_stop') {
-              res.write('data: [DONE]\n\n');
-            }
-          } catch(e) { /* skip unparseable */ }
-        }
-      }
-    }
-    res.end();
-  } catch (e) {
-    if (!res.headersSent) {
-      return res.status(500).json({ error: 'Chat error: ' + e.message });
-    }
-    res.end();
+  } catch(e) {
+    return new Response(JSON.stringify({ error: 'Failed to reach Anthropic API' }), { status: 502, headers: { 'Content-Type': 'application/json' } });
   }
-};
+
+  if (!aiResp.ok) {
+    var errBody = await aiResp.text();
+    return new Response(JSON.stringify({ error: 'Anthropic API error', status: aiResp.status, body: errBody }), { status: 502, headers: { 'Content-Type': 'application/json' } });
+  }
+
+  // Create a TransformStream to convert Anthropic SSE into our simplified SSE
+  var encoder = new TextEncoder();
+  var decoder = new TextDecoder();
+  var sseBuffer = '';
+
+  var stream = new ReadableStream({
+    async start(controller) {
+      var reader = aiResp.body.getReader();
+      try {
+        while (true) {
+          var chunk = await reader.read();
+          if (chunk.done) break;
+          sseBuffer += decoder.decode(chunk.value, { stream: true });
+
+          var lines = sseBuffer.split('\n');
+          sseBuffer = lines.pop() || '';
+
+          for (var line of lines) {
+            if (line.startsWith('data: ')) {
+              var data = line.substring(6).trim();
+              if (data === '[DONE]') {
+                controller.enqueue(encoder.encode('data: [DONE]\n\n'));
+                continue;
+              }
+              try {
+                var parsed = JSON.parse(data);
+                if (parsed.type === 'content_block_delta' && parsed.delta && parsed.delta.text) {
+                  controller.enqueue(encoder.encode('data: ' + JSON.stringify({ text: parsed.delta.text }) + '\n\n'));
+                } else if (parsed.type === 'message_stop') {
+                  controller.enqueue(encoder.encode('data: [DONE]\n\n'));
+                }
+              } catch(e) { /* skip unparseable */ }
+            }
+          }
+        }
+      } catch(e) {
+        // Stream error, close gracefully
+      }
+      controller.close();
+    }
+  });
+
+  return new Response(stream, {
+    status: 200,
+    headers: {
+      'Content-Type': 'text/event-stream',
+      'Cache-Control': 'no-cache',
+      'Connection': 'keep-alive'
+    }
+  });
+}
 
 function buildSystemPrompt(context) {
   var pageContent = context.page_content || '';
-  var slug = context.slug || '';
 
   return `You are the Moonraker Proposal Assistant, a warm and knowledgeable AI that helps prospective clients understand their growth proposal and the Client Service Agreement.
 
@@ -155,4 +182,3 @@ RESPONSE GUIDELINES:
 - Suggest booking a call with Scott for complex questions: https://msg.moonraker.ai/widget/bookings/scott-pope-calendar
 - Keep responses to 2-4 paragraphs unless the question requires more detail`;
 }
-
