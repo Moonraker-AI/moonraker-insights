@@ -161,6 +161,12 @@ strong { font-weight: 600; color: var(--color-heading); }
 /* Stats bar */
 .stats-bar { display: flex; gap: 1.5rem; padding: 1.25rem 0; margin: 1.5rem 0; border-top: 1px solid var(--color-border); border-bottom: 1px solid var(--color-border); }
 .stat { text-align: center; }
+.stat-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(160px, 1fr)); gap: 1rem; margin-bottom: 2rem; }
+.stat-card { background: var(--color-surface); border: 1px solid var(--color-border); border-radius: 12px; padding: 1.25rem; transition: border-color .2s; }
+.stat-card:hover { border-color: rgba(0,212,126,.25); }
+.stat-card .stat-label { font-size: .72rem; font-weight: 600; text-transform: uppercase; letter-spacing: .05em; color: var(--color-muted); margin-bottom: .35rem; }
+.stat-card .stat-value { font-family: 'Outfit', sans-serif; font-size: 2rem; font-weight: 700; color: var(--color-heading); line-height: 1; }
+.stat-card .stat-sub { font-size: .75rem; color: var(--color-muted); margin-top: .35rem; }
 .stat-value { font-family: 'Outfit', sans-serif; font-size: 1.75rem; font-weight: 700; color: var(--color-heading); }
 .stat-label { font-size: .75rem; color: var(--color-muted); text-transform: uppercase; letter-spacing: .04em; }
 
@@ -386,9 +392,10 @@ strong { font-weight: 600; color: var(--color-heading); }
   </div>
   <div class="content" style="padding: 2rem; max-width: 1400px;">
 
-<div class="section-header" style="margin-bottom:1.25rem;">
-  <h2>Reports</h2>
+<div class="section-header" style="margin-bottom:.25rem;">
+  <h2>Client Reports Overview</h2>
 </div>
+<p style="color:var(--color-muted);font-size:.82rem;margin-bottom:1.25rem;">Click any client to view and configure their reports in the client deep-dive.</p>
 
 <!-- Tab Bar -->
 <div class="report-tabs">
@@ -400,29 +407,28 @@ strong { font-weight: 600; color: var(--color-heading); }
 <div class="tab-panel active" id="tab-clients">
 
 <!-- Stats Summary -->
-<div class="stats-bar">
-    <div class="stat">
-      <div class="stat-value" id="statTotal">-</div>
+<div class="stat-grid" style="margin-bottom:1.5rem;">
+    <div class="stat-card">
       <div class="stat-label">Total Clients</div>
+      <div class="stat-value" id="statTotal">-</div>
+      <div class="stat-sub">Active campaigns</div>
     </div>
-    <div class="stat">
-      <div class="stat-value" id="statConfigured">-</div>
+    <div class="stat-card">
       <div class="stat-label">Configured</div>
+      <div class="stat-value" id="statConfigured">-</div>
+      <div class="stat-sub">Ready to report</div>
     </div>
-    <div class="stat">
-      <div class="stat-value" id="statPending">-</div>
+    <div class="stat-card">
       <div class="stat-label">Needs Config</div>
+      <div class="stat-value" id="statPending">-</div>
+      <div class="stat-sub">Missing data sources</div>
     </div>
-    <div class="stat">
-      <div class="stat-value" id="statCompiled">-</div>
+    <div class="stat-card">
       <div class="stat-label">Compiled This Month</div>
+      <div class="stat-value" id="statCompiled">-</div>
+      <div class="stat-sub">Reports generated</div>
     </div>
   </div>
-
-  <div style="display: flex; align-items: center; justify-content: space-between; margin-bottom: .5rem;">
-    <h2 style="font-size: 1.35rem; margin-bottom: 0;">Client Reports Overview</h2>
-  </div>
-  <p style="color: var(--color-muted); font-size: .85rem; margin-bottom: 0;">Click any client to view and configure their reports in the client deep-dive.</p>
 
   <div class="client-grid" id="clientGrid">
     <div class="empty-state">
