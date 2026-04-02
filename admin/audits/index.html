@@ -393,18 +393,14 @@ a:hover { color: var(--color-primary-hover); }
   var SK = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6Im9mbW13Y2poZHJodnh4a2hjdXd3Iiwicm9sZSI6ImFub24iLCJpYXQiOjE3NzQzMjM1NTcsImV4cCI6MjA4OTg5OTU1N30.zMMHW0Fk9ixWjORngyxJTIoPOfx7GFsD4wBV4Foqqms';
 
   var state = { contacts: [], tasks: {}, scores: {} };
-
-  function sb(path) {
-    return fetch(SB + '/rest/v1/' + path, {
-      headers: { 'apikey': SK, 'Authorization': 'Bearer ' + SK }
     }).then(function(r) { return r.json(); });
   }
 
   function loadData() {
     Promise.all([
-      sb('contacts?select=id,slug,status,practice_name,email,first_name,last_name,website_url&order=practice_name'),
-      sb('checklist_items?select=client_slug,status,owner,priority,category,title&order=client_slug,sort_order'),
-      sb('audit_scores?select=client_slug,variance_score,score_credibility,score_optimization,score_reputation,score_engagement,audit_date&order=audit_date.desc')
+      fetch(SB + '/rest/v1/contacts?select=id,slug,status,practice_name,email,first_name,last_name,website_url&order=practice_name', { headers: { 'apikey': SK, 'Authorization': 'Bearer ' + SK } }).then(function(r) { return r.json(); }),
+      fetch(SB + '/rest/v1/checklist_items?select=client_slug,status,owner,priority,category,title&order=client_slug,sort_order', { headers: { 'apikey': SK, 'Authorization': 'Bearer ' + SK } }).then(function(r) { return r.json(); }),
+      fetch(SB + '/rest/v1/audit_scores?select=client_slug,variance_score,score_credibility,score_optimization,score_reputation,score_engagement,audit_date&order=audit_date.desc', { headers: { 'apikey': SK, 'Authorization': 'Bearer ' + SK } }).then(function(r) { return r.json(); })
     ]).then(function(res) {
       state.contacts = res[0] || [];
 
@@ -638,8 +634,8 @@ a:hover { color: var(--color-primary-hover); }
 
   function loadEntityAudits() {
     Promise.all([
-      sb('entity_audits?select=*&order=created_at.desc'),
-      sb('contacts?select=id,slug,first_name,last_name,practice_name,email,source,referral_code,audit_tier&order=practice_name')
+      fetch(SB + '/rest/v1/entity_audits?select=*&order=created_at.desc', { headers: { 'apikey': SK, 'Authorization': 'Bearer ' + SK } }).then(function(r) { return r.json(); }),
+      fetch(SB + '/rest/v1/contacts?select=id,slug,first_name,last_name,practice_name,email,source,referral_code,audit_tier&order=practice_name', { headers: { 'apikey': SK, 'Authorization': 'Bearer ' + SK } }).then(function(r) { return r.json(); })
     ]).then(function(res) {
       eaState.audits = res[0] || [];
       (res[1] || []).forEach(function(c) { eaState.contacts[c.id] = c; });
@@ -836,7 +832,7 @@ a:hover { color: var(--color-primary-hover); }
     statusEl.style.color = 'var(--color-muted)';
 
     // Check slug uniqueness first
-    sb('contacts?slug=eq.' + slug + '&select=id,practice_name&limit=1')
+    fetch(SB + '/rest/v1/contacts?slug=eq.' + slug + '&select=id,practice_name&limit=1', { headers: { 'apikey': SK, 'Authorization': 'Bearer ' + SK } }).then(function(r) { return r.json(); })
       .then(function(existing) {
         if (existing && existing.length > 0) {
           // Conflict - unlock slug field for manual editing
