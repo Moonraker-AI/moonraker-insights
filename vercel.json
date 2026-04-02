@@ -21,7 +21,8 @@
   "functions": {
     "api/chat.js": {
       "maxDuration": 120,
-      "memory": 1024
+      "memory": 1024,
+      "supportsResponseStreaming": true
     },
     "api/action.js": {
       "maxDuration": 30
@@ -70,7 +71,8 @@
     },
     "api/proposal-chat.js": {
       "maxDuration": 120,
-      "memory": 1024
+      "memory": 1024,
+      "supportsResponseStreaming": true
     },
     "api/delete-proposal.js": {
       "maxDuration": 60
