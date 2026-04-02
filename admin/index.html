@@ -341,6 +341,15 @@ strong { font-weight: 600; color: var(--color-heading); }
 <div class="toast" id="toast"></div>
 
 <script>
+  function toast(msg, type) {
+    var t = document.getElementById('toast');
+    t.textContent = msg;
+    t.className = 'toast ' + (type || 'success');
+    t.classList.add('show');
+    setTimeout(function() { t.classList.remove('show'); }, 3000);
+  }
+  window.toast = toast;
+
 (function() {
   'use strict';
 
