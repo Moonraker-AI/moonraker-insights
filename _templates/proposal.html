@@ -173,6 +173,10 @@ section { padding: 4.5rem 0; }
 .reveal { opacity: 0; transform: translateY(20px); transition: opacity .6s ease, transform .6s ease; }
 .reveal.visible { opacity: 1; transform: translateY(0); }
 
+.investment-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(280px, 1fr)); gap: 1.5rem; margin-top: 2rem; }
+.investment-grid .investment-card { margin: 0; }
+@media (max-width: 640px) { .investment-grid { grid-template-columns: 1fr; } }
+
 @media print {
   .section-nav, .theme-toggle, .progress-bar { display: none !important; }
   .reveal { opacity: 1 !important; transform: none !important; }
@@ -366,16 +370,7 @@ section { padding: 4.5rem 0; }
 <section class="reveal" id="investment">
   <div class="container">
     <h2>Your Investment</h2>
-    <div class="investment-card" style="margin-top:2rem;">
-      <span class="badge">{{INVESTMENT_BADGE}}</span>
-      <div class="investment-price">{{INVESTMENT_PRICE}}</div>
-      <div class="investment-period">{{INVESTMENT_PERIOD}}</div>
-      <ul class="investment-features">
-{{INVESTMENT_FEATURES}}
-      </ul>
-      <a href="{{CHECKOUT_URL}}" class="cta-btn" target="_blank">Choose Your Plan &#8594;</a>
-    </div>
-{{INVESTMENT_ROI_CALLOUT}}
+{{INVESTMENT_CARDS_HTML}}
 {{GUARANTEE_BOX}}
   </div>
 </section>
