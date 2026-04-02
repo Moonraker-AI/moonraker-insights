@@ -141,7 +141,7 @@ a:hover { color: var(--color-primary-hover); }
 .proposals-table .plan-pills { display: flex; gap: .25rem; flex-wrap: wrap; }
 .proposals-table .plan-pill { font-size: .68rem; padding: .1rem .35rem; border-radius: 4px; background: var(--color-bg); color: var(--color-muted); border: 1px solid var(--color-border); }
 .proposals-table .date-cell { font-size: .78rem; color: var(--color-muted); }
-.proposals-table .actions-cell { display: flex; gap: .25rem; }
+.proposals-table .actions-cell { vertical-align: middle; }
 
 /* Empty state */
 .empty-state { text-align: center; padding: 4rem 2rem; }
@@ -707,13 +707,21 @@ a:hover { color: var(--color-primary-hover); }
         html += '<span class="tag tag-enriching" style="gap:.35rem;"><span class="dot-pulse"></span>Enriching...</span>';
       } else if (p.status === 'review') {
         var es = p.enrichment_sources || {};
-        var badges = [];
-        if (es.gmail && es.gmail.length) badges.push('&#128231; ' + (p.enrichment_data && p.enrichment_data.emails ? p.enrichment_data.emails.length : 0));
-        if (es.fathom && es.fathom.length) badges.push('&#127908; ' + (p.enrichment_data && p.enrichment_data.calls ? p.enrichment_data.calls.length : 0));
-        if (es.entity_audit) badges.push('&#128202; Audit');
-        if (es.website) badges.push('&#127760; Site');
-        html += '<span style="font-size:.72rem;color:var(--color-muted);margin-right:.5rem;">' + (badges.length ? badges.join(' &middot; ') : 'No data') + '</span>';
-        html += '<button class="btn btn-primary btn-sm" onclick="event.stopPropagation();generateProposal(\'' + p.id + '\',this)">&#9889; Generate</button>';
+        var ed = p.enrichment_data || {};
+        var emailCt = ed.emails ? ed.emails.length : 0;
+        var callCt = ed.calls ? ed.calls.length : 0;
+        var hasAudit = !!es.entity_audit;
+        var hasSite = !!es.website;
+        html += '<div style="display:flex;align-items:center;gap:.5rem;">';
+        html += '<div style="display:flex;gap:.4rem;flex-wrap:wrap;">';
+        if (emailCt) html += '<span class="plan-pill" style="color:var(--color-info);border-color:rgba(59,130,246,.2);">&#128231; ' + emailCt + ' emails</span>';
+        if (callCt) html += '<span class="plan-pill" style="color:#A855F7;border-color:rgba(168,85,247,.2);">&#127908; ' + callCt + ' calls</span>';
+        if (hasAudit) html += '<span class="plan-pill" style="color:var(--color-warning);border-color:rgba(245,158,11,.2);">&#128202; Audit</span>';
+        if (hasSite) html += '<span class="plan-pill" style="color:var(--color-success);border-color:rgba(0,212,126,.2);">&#127760; Site</span>';
+        if (!emailCt && !callCt && !hasAudit && !hasSite) html += '<span style="font-size:.72rem;color:var(--color-muted);">No data found</span>';
+        html += '</div>';
+        html += '<button class="btn btn-primary btn-sm" style="flex-shrink:0;" onclick="event.stopPropagation();generateProposal(\'' + p.id + '\',this)">&#9889; Generate</button>';
+        html += '</div>';
       } else if (p.status === 'generating') {
         html += '<span class="tag tag-enriching" style="gap:.35rem;"><span class="dot-pulse"></span>Generating...</span>';
       } else if (p.status === 'ready') {
