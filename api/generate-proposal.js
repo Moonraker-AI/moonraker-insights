@@ -213,16 +213,44 @@ Respond with ONLY valid JSON (no markdown, no backticks). The JSON must have the
   var today = new Date();
   var dateStr = today.toLocaleDateString('en-US', { month: 'long', day: 'numeric', year: 'numeric' });
 
-  // Determine investment display
-  var invBadge = campaignDisplay[primaryCampaign];
-  var invPrice = customPricing ? ('$' + (customPricing.amount_cents / 100).toLocaleString()) : priceDisplay[primaryCampaign];
-  var invPeriod = customPricing ? customPricing.label : periodDisplay[primaryCampaign];
+  // Build investment cards for each selected campaign length
+  var campaignInfo = {
+    annual: { badge: '12-Month CORE Campaign', price: '$20,000', period: '12-month campaign', desc: 'Full annual engagement with performance guarantee', recommended: true },
+    quarterly: { badge: '3-Month Growth Engagement', price: '$5,000', period: '3-month campaign', desc: 'Foundation-building quarterly engagement' },
+    monthly: { badge: 'Monthly CORE Engagement', price: '$1,667', period: 'per month', desc: 'Flexible month-to-month engagement' }
+  };
+
+  var investmentCardsHtml = '<div class="investment-grid">';
+  campaigns.forEach(function(c) {
+    var info = campaignInfo[c];
+    if (!info) return;
+    var isRecommended = campaigns.length > 1 && c === 'annual';
+    investmentCardsHtml += '<div class="investment-card">';
+    investmentCardsHtml += '<span class="badge">' + info.badge + '</span>';
+    if (isRecommended) investmentCardsHtml += '<div style="font-size:.7rem;font-weight:600;text-transform:uppercase;letter-spacing:.06em;color:var(--color-primary);margin-top:.5rem;">Recommended</div>';
+    investmentCardsHtml += '<div class="investment-price">' + info.price + '</div>';
+    investmentCardsHtml += '<div class="investment-period">' + info.period + '</div>';
+    investmentCardsHtml += '<ul class="investment-features">' + (generatedContent.investment_features || '') + '</ul>';
+    investmentCardsHtml += '<a href="/' + slug + '/checkout" class="cta-btn" target="_blank">Choose Your Plan &#8594;</a>';
+    investmentCardsHtml += '</div>';
+  });
+  // Add custom pricing card if present
+  if (customPricing) {
+    investmentCardsHtml += '<div class="investment-card">';
+    investmentCardsHtml += '<span class="badge">Custom Arrangement</span>';
+    investmentCardsHtml += '<div class="investment-price">$' + (customPricing.amount_cents / 100).toLocaleString() + '</div>';
+    investmentCardsHtml += '<div class="investment-period">' + (customPricing.label || customPricing.period) + '</div>';
+    investmentCardsHtml += '<ul class="investment-features">' + (generatedContent.investment_features || '') + '</ul>';
+    investmentCardsHtml += '<a href="/' + slug + '/checkout" class="cta-btn" target="_blank">Choose Your Plan &#8594;</a>';
+    investmentCardsHtml += '</div>';
+  }
+  investmentCardsHtml += '</div>';
 
   // Guarantee box
   var guaranteeBox = '';
-  if (primaryCampaign === 'annual') {
-    guaranteeBox = '<div class="guarantee-box"><h3>Performance Guarantee</h3><p>We set a measurable consultation benchmark together using your historical data, and we continue working for free until you hit it. No other agency in this space offers this.</p></div>';
-  } else if (primaryCampaign === 'quarterly') {
+  if (campaigns.includes('annual')) {
+    guaranteeBox = '<div class="guarantee-box"><h3>Performance Guarantee</h3><p>Our annual program includes a performance guarantee - we set a measurable consultation benchmark together using your historical data, and we continue working for free until you hit it. No other agency in this space offers this.</p></div>';
+  } else if (campaigns.includes('quarterly')) {
     guaranteeBox = '<div class="guarantee-box"><h3>Looking Ahead</h3><p>Our annual program includes a performance guarantee - we set a measurable consultation benchmark together and continue working for free until you hit it. While the 3-month engagement builds the foundation, many clients see enough momentum to transition to an annual program where the guarantee kicks in.</p><p>Everything we build in these 3 months is yours to keep, regardless of what you decide next.</p></div>';
   }
 
@@ -277,12 +305,8 @@ Respond with ONLY valid JSON (no markdown, no backticks). The JSON must have the
     '{{TIMELINE_TITLE}}': 'Your ' + timelineLabel[primaryCampaign] + ' Roadmap',
     '{{TIMELINE_INTRO}}': 'Here is exactly what happens from the moment you say go. We handle the heavy lifting - your time commitment is roughly 6-8 hours in month one (mostly the onboarding call and content review), then significantly less after that.',
     '{{TIMELINE_ITEMS}}': generatedContent.timeline_items || '',
-    '{{INVESTMENT_BADGE}}': invBadge,
-    '{{INVESTMENT_PRICE}}': invPrice,
-    '{{INVESTMENT_PERIOD}}': invPeriod,
-    '{{INVESTMENT_FEATURES}}': generatedContent.investment_features || '',
+    '{{INVESTMENT_CARDS_HTML}}': investmentCardsHtml,
     '{{CHECKOUT_URL}}': '/' + slug + '/checkout',
-    '{{INVESTMENT_ROI_CALLOUT}}': '',
     '{{GUARANTEE_BOX}}': guaranteeBox,
     '{{NEXT_STEPS_ITEMS}}': nextStepsHtml
   };
