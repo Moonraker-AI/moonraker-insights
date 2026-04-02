@@ -618,11 +618,91 @@ h1, h2, h3, h4 { font-family: 'Outfit', sans-serif; font-weight: 700; color: var
     <tr><td>Status naming</td><td>Deliverables end-state: <code>delivered</code>. Checklist end-state: <code>complete</code>. Intentionally different semantics.</td></tr>
     <tr><td>Expand state</td><td>Single <code>expandedXxxId</code> variable per tab. Toggled by <code>toggleXxxExpand(id)</code>. Re-render on toggle.</td></tr>
     <tr><td>Tab count badges</td><td>Show outstanding items (non-complete/non-delivered). Amber when > 0, muted when info-only.</td></tr>
-    <tr><td>Supabase queries</td><td>Use <code>sb()</code> helper for reads, <code>apiAction()</code> for writes. Two-step lookup for PostgREST (no subqueries).</td></tr>
+    <tr><td>Supabase reads</td><td>Direct <code>fetch(SB + '/rest/v1/' + path, { headers: { apikey: SK, Authorization: 'Bearer ' + SK } })</code> with anon key. Two-step lookup for PostgREST (no subqueries).</td></tr>
+    <tr><td>Supabase writes</td><td><code>POST /api/action</code> with <code>{ action, table, filters, data }</code>. Service role key handled server-side. See Data Access section below.</td></tr>
     <tr><td>GitHub push (large files)</td><td>Write payload to <code>/home/claude/push.json</code> then <code>curl -d @push.json</code></td></tr>
     <tr><td>Logo</td><td><code>https://moonraker.ai/wp-content/uploads/2023/10/Moonraker-Logo-Transparent.png</code></td></tr>
     <tr><td>Scott's calendar</td><td><code>https://msg.moonraker.ai/widget/bookings/scott-pope-calendar</code></td></tr>
   </table>
+</div>
+
+<!-- ═══════════════════════════════════════ -->
+<div class="ds-section" id="data-access">
+  <h2>Data Access Patterns</h2>
+  <p class="ds-section-desc">How pages read from and write to Supabase. All new pages use direct fetch calls. Legacy <code>sb()</code> and <code>apiAction()</code> helpers exist in some older admin pages but should not be used in new work.</p>
+
+  <div class="ds-card" style="margin-bottom:1rem;">
+    <div class="ds-card-header"><span>Reading Data (Client-Facing &amp; Admin)</span></div>
+    <div class="ds-card-body">
+      <p style="font-size:.78rem;color:var(--color-body);margin-bottom:.5rem;">Use the <strong>anon key</strong> for all reads. Works from both admin and client-facing pages.</p>
+      <pre style="background:var(--color-bg);border:1px solid var(--color-border);border-radius:8px;padding:.75rem;font-size:.75rem;overflow-x:auto;color:var(--color-body);"><code>var SB = 'https://ofmmwcjhdrhvxxkhcuww.supabase.co';
+var SK = '...anon key...';
+
+// Basic read
+fetch(SB + '/rest/v1/contacts?slug=eq.anna-skomorovskaia&amp;select=*', {
+  headers: { 'apikey': SK, 'Authorization': 'Bearer ' + SK }
+}).then(r =&gt; r.json()).then(data =&gt; { ... });
+
+// Read with multiple filters
+fetch(SB + '/rest/v1/deliverables?contact_id=eq.' + id + '&amp;status=neq.delivered&amp;select=*', {
+  headers: { 'apikey': SK, 'Authorization': 'Bearer ' + SK }
+}).then(r =&gt; r.json());</code></pre>
+    </div>
+  </div>
+
+  <div class="ds-card" style="margin-bottom:1rem;">
+    <div class="ds-card-header"><span>Writing Data via /api/action</span></div>
+    <div class="ds-card-body">
+      <p style="font-size:.78rem;color:var(--color-body);margin-bottom:.5rem;">All writes go through <code>POST /api/action</code>, which uses the <strong>service role key</strong> server-side to bypass RLS.</p>
+      <pre style="background:var(--color-bg);border:1px solid var(--color-border);border-radius:8px;padding:.75rem;font-size:.75rem;overflow-x:auto;color:var(--color-body);"><code>// Create
+fetch('/api/action', {
+  method: 'POST',
+  headers: { 'Content-Type': 'application/json' },
+  body: JSON.stringify({
+    action: 'create_record',
+    table: 'deliverables',
+    data: { contact_id: id, type: 'schema', title: 'Brand Schema', status: 'not_started' }
+  })
+}).then(r =&gt; r.json());
+
+// Update (filters identify the row, data is the patch)
+fetch('/api/action', {
+  method: 'POST',
+  headers: { 'Content-Type': 'application/json' },
+  body: JSON.stringify({
+    action: 'update_record',
+    table: 'deliverables',
+    filters: { id: deliverableId },
+    data: { status: 'delivered' }
+  })
+}).then(r =&gt; r.json());
+
+// Delete
+fetch('/api/action', {
+  method: 'POST',
+  headers: { 'Content-Type': 'application/json' },
+  body: JSON.stringify({
+    action: 'delete_record',
+    table: 'deliverables',
+    filters: { id: deliverableId }
+  })
+}).then(r =&gt; r.json());</code></pre>
+    </div>
+  </div>
+
+  <div class="ds-card" style="margin-bottom:1rem;">
+    <div class="ds-card-header"><span>/api/action Reference</span></div>
+    <div class="ds-card-body">
+      <table class="token-table">
+        <tr><th style="width:30%;">Property</th><th>Details</th></tr>
+        <tr><td>Actions</td><td><code>create_record</code>, <code>read_records</code>, <code>update_record</code>, <code>bulk_update</code>, <code>delete_record</code></td></tr>
+        <tr><td>Filter syntax</td><td><code>{ column: value }</code> defaults to <code>eq.</code> operator. For other operators: <code>{ column: 'neq.value' }</code>, <code>{ column: 'in.(a,b,c)' }</code>, <code>{ column: 'is.null' }</code></td></tr>
+        <tr><td>Allowed tables</td><td><code>contacts</code>, <code>practice_details</code>, <code>onboarding_steps</code>, <code>deliverables</code>, <code>checklist_items</code>, <code>audit_scores</code>, <code>report_snapshots</code>, <code>report_highlights</code>, <code>report_configs</code>, <code>bio_materials</code>, <code>social_profiles</code>, <code>signed_agreements</code>, <code>activity_log</code>, <code>settings</code>, <code>entity_audits</code>, <code>account_access</code>, <code>payments</code>, <code>scheduled_touchpoints</code>, <code>intro_call_steps</code>, <code>tracked_keywords</code>, <code>report_queue</code></td></tr>
+        <tr><td>Response format</td><td><code>{ success: true, action: 'created', data: [...] }</code> or <code>{ error: '...' }</code></td></tr>
+        <tr><td>read_records extras</td><td>Accepts <code>select</code> (column list) and <code>limit</code> (default 50) in request body</td></tr>
+      </table>
+    </div>
+  </div>
 </div>
 
 <div style="text-align:center;padding:2rem 0;color:var(--color-muted);font-size:.82rem;">
