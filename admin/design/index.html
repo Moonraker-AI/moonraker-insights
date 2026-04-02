@@ -850,6 +850,7 @@ fetch('/api/action', {
     <div class="sitemap-item"><div class="sitemap-url">/api/enrich-proposal</div><div class="sitemap-desc">Enriches a proposal with Gmail threads, Fathom calls, audit data, and website scan. 120s timeout.</div><div><span class="sitemap-type api">API</span></div></div>
     <div class="sitemap-item"><div class="sitemap-url">/api/generate-proposal</div><div class="sitemap-desc">Generates personalized proposal content via Claude, deploys proposal + checkout + onboarding + router pages. 300s timeout.</div><div><span class="sitemap-type api">API</span></div></div>
     <div class="sitemap-item"><div class="sitemap-url">/api/proposal-chat</div><div class="sitemap-desc">Streaming chat endpoint for proposal chatbot. Opus 4.6 with proposal + CSA context. 120s timeout.</div><div><span class="sitemap-type api">API</span></div></div>
+    <div class="sitemap-item"><div class="sitemap-url">/api/agreement-chat</div><div class="sitemap-desc">Streaming chat endpoint for agreement page chatbot. Opus 4.6 with full CSA + CORE services + pricing knowledge. 120s timeout.</div><div><span class="sitemap-type api">API</span></div></div>
     <div class="sitemap-item"><div class="sitemap-url">/api/send-proposal-email</div><div class="sitemap-desc">Sends proposal email via Resend. From proposals@, reply-to scott@, CC chris@. Supports preview mode.</div><div><span class="sitemap-type api">API</span></div></div>
     <div class="sitemap-item"><div class="sitemap-url">/api/delete-proposal</div><div class="sitemap-desc">Deletes a proposal record and its deployed GitHub pages (proposal, checkout, onboarding, router).</div><div><span class="sitemap-type api">API</span></div></div>
     <div class="sitemap-item"><div class="sitemap-url">/api/cron/enqueue-reports</div><div class="sitemap-desc">Monthly cron (1st at 10am UTC). Creates staggered queue entries for all active report configs, 3 min apart. Supports <code>?dry_run=true</code>.</div><div><span class="sitemap-type cron">Cron</span></div></div>
@@ -890,6 +891,7 @@ fetch('/api/action', {
     <div class="sitemap-item header"><div>File</div><div>Description</div><div>Used By</div></div>
     <div class="sitemap-item"><div class="sitemap-url">shared/chat-panel.js</div><div class="sitemap-desc">MoonBot admin chat panel. Floating button, streaming Opus chat, self-contained CSS injection. 1,161 lines.</div><div><span class="sitemap-type dynamic">All Admin Pages</span></div></div>
     <div class="sitemap-item"><div class="sitemap-url">shared/proposal-chatbot.js</div><div class="sitemap-desc">Prospect-facing chatbot widget. Floating button with dismissible tooltip, streaming Opus chat. 467 lines.</div><div><span class="sitemap-type template">Proposal Template</span></div></div>
+    <div class="sitemap-item"><div class="sitemap-url">shared/agreement-chatbot.js</div><div class="sitemap-desc">Agreement page chatbot widget. Same UI as proposal chatbot, with CSA + services + pricing knowledge. 467 lines.</div><div><span class="sitemap-type static">Agreement Page</span></div></div>
   </div>
 </div>
 
@@ -1005,3 +1007,4 @@ try {
 </script>
 </body>
 </html>
+
