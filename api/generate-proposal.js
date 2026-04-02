@@ -68,10 +68,17 @@ module.exports = async function handler(req, res) {
   var templateHtml;
   try {
     var tResp = await fetch('https://api.github.com/repos/' + REPO + '/contents/_templates/proposal.html?ref=' + BRANCH, { headers: ghHeaders() });
+    if (!tResp.ok) {
+      var errText = await tResp.text().catch(function() { return 'unknown'; });
+      return res.status(500).json({ error: 'GitHub API returned ' + tResp.status + ' reading template. Check GITHUB_PAT env var.', details: errText.substring(0, 500) });
+    }
     var tData = await tResp.json();
+    if (!tData.content) {
+      return res.status(500).json({ error: 'Template response has no content field', keys: Object.keys(tData) });
+    }
     templateHtml = Buffer.from(tData.content, 'base64').toString('utf-8');
   } catch (e) {
-    return res.status(500).json({ error: 'Failed to read proposal template: ' + e.message });
+    return res.status(500).json({ error: 'Failed to read proposal template: ' + e.message, stack: (e.stack || '').substring(0, 500) });
   }
 
   // ─── 3. Build context and call Anthropic ──────────────────────
