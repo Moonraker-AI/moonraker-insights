@@ -116,6 +116,10 @@ a:hover { color: var(--color-primary-hover); }
 .section-header h2 { font-size: 1.35rem; margin: 0; }
 .section-desc { font-size: .82rem; color: var(--color-muted); margin-bottom: 1.25rem; }
 
+/* Dot pulse animation */
+.dot-pulse { display: inline-block; width: 6px; height: 6px; border-radius: 50%; background: currentColor; animation: dotPulse 1.2s ease infinite; }
+@keyframes dotPulse { 0%, 100% { opacity: .3; transform: scale(.8); } 50% { opacity: 1; transform: scale(1.2); } }
+
 /* Filter tabs */
 .filter-bar { display: flex; align-items: center; gap: .25rem; margin-bottom: 1.25rem; border-bottom: 1px solid var(--color-border); }
 .filter-tab { padding: .55rem 1rem; font-size: .82rem; font-weight: 500; color: var(--color-muted); cursor: pointer; border: none; background: none; border-bottom: 2px solid transparent; font-family: inherit; transition: all .15s; }
@@ -674,7 +678,7 @@ a:hover { color: var(--color-primary-hover); }
     }
 
     var html = '<table class="proposals-table"><thead><tr>';
-    html += '<th>Contact</th><th>Status</th><th>Campaign</th><th>Created</th><th>Sent</th><th>Views</th><th style="width:100px;"></th>';
+    html += '<th>Contact</th><th>Status</th><th>Campaign</th><th>Created</th><th>Sent</th><th>Views</th><th>Enrichment / Actions</th>';
     html += '</tr></thead><tbody>';
 
     filtered.forEach(function(p) {
@@ -697,7 +701,20 @@ a:hover { color: var(--color-primary-hover); }
       html += '<td class="date-cell">' + (p.sent_at ? formatDate(p.sent_at) : '-') + '</td>';
       html += '<td class="date-cell">' + (p.view_count || 0) + '</td>';
       html += '<td class="actions-cell">';
-      if (p.proposal_url) html += '<a href="' + esc(p.proposal_url) + '?preview=true" target="_blank" class="btn btn-ghost btn-sm" title="Preview (no tracking)" onclick="event.stopPropagation()">&#128065; Preview</a>';
+      if (p.status === 'draft') {
+        html += '<button class="btn btn-outline btn-sm" onclick="event.stopPropagation();enrichProposal(\'' + p.id + '\',this)" title="Scan Gmail, Fathom, audits and website">&#128270; Enrich</button>';
+      } else if (p.status === 'enriching') {
+        html += '<span class="tag tag-enriching" style="gap:.35rem;"><span class="dot-pulse"></span>Enriching...</span>';
+      } else if (p.status === 'review') {
+        var es = p.enrichment_sources || {};
+        var badges = [];
+        if (es.gmail && es.gmail.length) badges.push('&#128231; ' + (p.enrichment_data && p.enrichment_data.emails ? p.enrichment_data.emails.length : 0));
+        if (es.fathom && es.fathom.length) badges.push('&#127908; ' + (p.enrichment_data && p.enrichment_data.calls ? p.enrichment_data.calls.length : 0));
+        if (es.entity_audit) badges.push('&#128202; Audit');
+        if (es.website) badges.push('&#127760; Site');
+        html += '<span style="font-size:.72rem;color:var(--color-muted);">' + (badges.length ? badges.join(' &middot; ') : 'No data found') + '</span>';
+      }
+      if (p.proposal_url) html += ' <a href="' + esc(p.proposal_url) + '?preview=true" target="_blank" class="btn btn-ghost btn-sm" title="Preview (no tracking)" onclick="event.stopPropagation()">&#128065;</a>';
       html += '</td>';
       html += '</tr>';
     });
@@ -730,6 +747,31 @@ a:hover { color: var(--color-primary-hover); }
   document.getElementById('newProposalModal').addEventListener('click', function(e) {
     if (e.target === this) closeModal();
   });
+
+  // Enrich a proposal
+  window.enrichProposal = async function(proposalId, btn) {
+    btn.disabled = true;
+    btn.innerHTML = '<span class="dot-pulse"></span> Scanning...';
+    try {
+      var resp = await fetch('/api/enrich-proposal', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ proposal_id: proposalId })
+      });
+      var data = await resp.json();
+      if (data.ok) {
+        await loadData();
+      } else {
+        alert('Enrichment failed: ' + (data.error || 'Unknown error'));
+        btn.disabled = false;
+        btn.innerHTML = '&#128270; Enrich';
+      }
+    } catch(e) {
+      alert('Enrichment error: ' + e.message);
+      btn.disabled = false;
+      btn.innerHTML = '&#128270; Enrich';
+    }
+  };
 
   // Filter tabs
   document.getElementById('filterBar').addEventListener('click', function(e) {
