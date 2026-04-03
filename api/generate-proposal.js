@@ -96,6 +96,21 @@ module.exports = async function handler(req, res) {
   var periodDisplay = { annual: '12-month campaign', quarterly: '3-month campaign', monthly: 'per month' };
   var timelineLabel = { annual: '12-Month', quarterly: '3-Month', monthly: 'Monthly' };
 
+  // ─── Fetch Service & Sales Reference (source of truth) ───────
+  var serviceReference = '';
+  try {
+    var docResp = await fetch('https://docs.google.com/document/d/1P9s6TKxp2cWRsGpvm-XvT_OipTqZqdk1XtGL3yG65Zc/export?format=txt', {
+      signal: AbortSignal.timeout(10000)
+    });
+    if (docResp.ok) {
+      serviceReference = await docResp.text();
+      // Trim to key sections to fit context (skip objection handling, etc.)
+      var pricingIdx = serviceReference.indexOf('PRICING & CONTRACTS');
+      var objectionIdx = serviceReference.indexOf('OBJECTION HANDLING');
+      if (objectionIdx > 0) serviceReference = serviceReference.substring(0, objectionIdx).trim();
+    }
+  } catch (e) { /* service doc fetch optional, prompt has fallback */ }
+
   // Build enrichment context summary
   var enrichmentContext = '';
   if (enrichment.emails && enrichment.emails.length > 0) {
@@ -147,11 +162,7 @@ IMPORTANT RULES:
 - Keep paragraphs concise and scannable.
 - Score each CORE pillar 1-10 based on what you can assess from the data. If no audit data exists, estimate conservatively based on the website scan.
 
-SERVICES WE ACTUALLY DELIVER (use ONLY these in investment features):
-- Credibility: Directory listings across 50+ platforms, DNS records (DKIM/DMARC), social profile buildout (YouTube, LinkedIn, Facebook, Quora, Instagram, TikTok, Pinterest, X), Entity Veracity Hub, Google Workspace setup
-- Optimization: Dedicated service pages (5 target pages standard, $300/ea additional), location pages, schema markup, FAQ sections, bio pages, heading hierarchy, technical optimization via Surge audit
-- Reputation: Professional endorsement collection, social posting (2/month on 4 platforms), YouTube content, press release syndication, NEO image creation and distribution, Quora Space content
-- Engagement: Hero section optimization, CTA optimization, conversion tracking, booking calendar installation (not configuration)
+SERVICE SCOPE: The Service & Sales Reference document below is the SINGLE SOURCE OF TRUTH for all services, deliverables, pricing, and scope. Only reference services that appear in this document. If it is not in the document, we do not offer it.
 
 CRITICAL: NEVER mention any of these in investment features or anywhere in the proposal:
 - Blog posts, blog content, or content marketing (we do NOT write blogs)
@@ -160,6 +171,9 @@ CRITICAL: NEVER mention any of these in investment features or anywhere in the p
 - Email marketing or newsletters
 - PPC/paid advertising management (referrals go to Mike Ensor)
 - Website redesign or platform migration
+- Any "12-month" guarantee (only a 12-month performance guarantee exists, and it is only for annual plans)
+
+GUARANTEE: The 12-month performance guarantee means we set a measurable consultation benchmark together using their historical data, and we continue working for free until they hit it. This ONLY applies to the annual (12-month) plan. Do NOT mention it in the investment features (it is appended automatically for annual plans). Quarterly and monthly plans do NOT include any guarantee.
 
 CONTACT: ${fullName} (${contact.credentials || 'credentials unknown'})
 PRACTICE: ${practiceName}
@@ -169,6 +183,8 @@ EMAIL: ${contact.email || 'unknown'}
 CAMPAIGN: ${campaignDisplay[primaryCampaign]}
 CAMPAIGN LENGTHS OFFERED: ${campaigns.join(', ')}
 ${enrichmentContext}
+
+${serviceReference ? 'SERVICE & SALES REFERENCE DOCUMENT (source of truth for all services):\n' + serviceReference.substring(0, 8000) : ''}
 
 Respond with ONLY valid JSON (no markdown, no backticks). The JSON must have these exact keys:`;
 
@@ -187,9 +203,7 @@ Respond with ONLY valid JSON (no markdown, no backticks). The JSON must have the
   "strategy_cards": "4 HTML cards using EXACTLY these headings: <div class=\"card\"><h3 style=\"margin-bottom:1rem;\">Credibility: Prove You\'re Real</h3><p>...</p></div> then <div class=\"card\"><h3 style=\"margin-bottom:1rem;\">Optimization: Make AI Understand You</h3><p>...</p></div> then <div class=\"card\"><h3 style=\"margin-bottom:1rem;\">Reputation: Amplify the Signal</h3><p>...</p></div> then <div class=\"card\"><h3 style=\"margin-bottom:1rem;\">Engagement: Convert Visitors to Clients</h3><p>...</p></div>",
   "strategy_roi_callout": "HTML: <div class=\"roi-callout\"><h4>Title</h4><p style=\"margin-bottom:0;\">ROI calculation relevant to their practice</p></div> or empty string if insufficient data",
   "timeline_items": "3-4 timeline phases as HTML: <div class=\"timeline-item\"><span class=\"timeline-phase\">PHASE_LABEL</span><h4>PHASE_TITLE</h4><p>DESCRIPTION</p></div>",
-  "investment_features_annual": "10-12 feature items for 12-MONTH campaign as HTML: <li><span class=\"check\">&#10003;</span> FEATURE</li>. Include: full audit and optimization, 5 dedicated service pages, bio pages, general FAQ page, schema implementation, directory listings (50+ platforms), social profile buildout, Entity Veracity Hub, press release, NEO image creation, YouTube content, social posting, hero section optimization, professional endorsement guidance, monthly reporting, 12 months of dedicated account management, and performance guarantee.",
-  "investment_features_quarterly": "8-10 feature items for 3-MONTH campaign as HTML: <li><span class=\"check\">&#10003;</span> FEATURE</li>. Include: initial audit and optimization, 5 dedicated service pages, bio pages, schema implementation, directory listings, social profile buildout, hero section optimization, press release, 3 months of dedicated account management. Do NOT include ongoing items like NEO images, social posting, YouTube content, or performance guarantee.",
-  "investment_features_monthly": "6-8 feature items for MONTHLY campaign as HTML: <li><span class=\"check\">&#10003;</span> FEATURE</li>. Include: ongoing optimization, service page updates, schema maintenance, directory monitoring, social posting, monthly reporting, dedicated account management. Do NOT include one-time setup items that are already complete or performance guarantee.",
+  "investment_features": "10-12 feature items as HTML: <li><span class=\\"check\\">&#10003;</span> FEATURE</li>. These features are IDENTICAL for all campaign lengths. Draw ONLY from the Service & Sales Reference doc. Do NOT include blog posts, backlinks, or any service not in that doc. Do NOT include the performance guarantee (it is added automatically for annual plans only).",
   "next_steps": [{"title":"Step Title","desc":"Step description"}] // JSON array of exactly 4 steps describing what happens after they sign up. Personalize to their practice. Typical flow: Strategy Call, Custom Proposal/Onboarding, Quick Start, Launch & Monitor."
 }`;
 
@@ -247,9 +261,11 @@ Respond with ONLY valid JSON (no markdown, no backticks). The JSON must have the
     if (isRecommended) investmentCardsHtml += '<div style="font-size:.7rem;font-weight:600;text-transform:uppercase;letter-spacing:.06em;color:var(--color-primary);margin-top:.5rem;">Recommended</div>';
     investmentCardsHtml += '<div class="investment-price">' + info.price + '</div>';
     investmentCardsHtml += '<div class="investment-period">' + info.period + '</div>';
-    // Use per-campaign features if available, fallback to annual
-    var featuresKey = 'investment_features_' + c;
-    var featuresList = generatedContent[featuresKey] || generatedContent.investment_features_annual || generatedContent.investment_features || '';
+    var featuresList = generatedContent.investment_features || '';
+    // Annual plans get the 12-month performance guarantee appended
+    if (c === 'annual') {
+      featuresList += '<li><span class="check">&#10003;</span> 12-month performance guarantee: we set a measurable consultation benchmark together, and continue working for free until you hit it</li>';
+    }
     investmentCardsHtml += '<ul class="investment-features">' + featuresList + '</ul>';
     investmentCardsHtml += '<a href="/' + slug + '/checkout?plan=' + c + '" class="cta-btn" target="_blank">Choose Your Plan &#8594;</a>';
     investmentCardsHtml += '</div>';
@@ -260,7 +276,7 @@ Respond with ONLY valid JSON (no markdown, no backticks). The JSON must have the
     investmentCardsHtml += '<span class="badge">Custom Arrangement</span>';
     investmentCardsHtml += '<div class="investment-price">$' + (customPricing.amount_cents / 100).toLocaleString() + '</div>';
     investmentCardsHtml += '<div class="investment-period">' + (customPricing.label || customPricing.period) + '</div>';
-    investmentCardsHtml += '<ul class="investment-features">' + (generatedContent.investment_features_annual || generatedContent.investment_features || '') + '</ul>';
+    investmentCardsHtml += '<ul class="investment-features">' + (generatedContent.investment_features || '') + '</ul>';
     investmentCardsHtml += '<a href="/' + slug + '/checkout" class="cta-btn" target="_blank">Choose Your Plan &#8594;</a>';
     investmentCardsHtml += '</div>';
   }
@@ -424,5 +440,6 @@ Respond with ONLY valid JSON (no markdown, no backticks). The JSON must have the
     results: results
   });
 };
+
 
 
