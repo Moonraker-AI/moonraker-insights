@@ -149,6 +149,43 @@ module.exports = async function handler(req, res) {
   // Auth: X-Api-Key header. Filter by calendar_invitees_domains.
   // Summary endpoint: GET /recordings/{recording_id}/summary
   var FATHOM_BASE = 'https://api.fathom.ai/external/v1';
+
+  // Helper: process matched Fathom meetings into enrichment data
+  async function processFathomMeetings(meetings, fk, enrichment) {
+    for (var rec of meetings) {
+      var recId = rec.recording_id || rec.id;
+      if (!recId) continue;
+      if (enrichment.data.calls.some(function(c) { return c.recording_id === String(recId); })) continue;
+
+      var callEntry = {
+        recording_id: String(recId),
+        fathom_owner: fk.owner,
+        title: rec.title || rec.meeting_title || '',
+        date: rec.created_at || '',
+        duration_seconds: null,
+        attendees: (rec.calendar_invitees || []).map(function(inv) {
+          return { name: inv.name || '', email: inv.email || '' };
+        })
+      };
+
+      if (rec.default_summary) {
+        callEntry.summary = rec.default_summary.markdown_formatted || JSON.stringify(rec.default_summary).substring(0, 2000);
+      } else {
+        try {
+          var sumResp = await fetch(
+            FATHOM_BASE + '/recordings/' + recId + '/summary',
+            { headers: { 'X-Api-Key': fk.key }, signal: AbortSignal.timeout(8000) }
+          );
+          if (sumResp.ok) {
+            var sumData = await sumResp.json();
+            callEntry.summary = sumData.markdown_formatted || sumData.summary || sumData.text || JSON.stringify(sumData).substring(0, 2000);
+          }
+        } catch(e) { /* summary optional */ }
+      }
+
+      enrichment.data.calls.push(callEntry);
+    }
+  }
   var fathomKeys = [];
   if (fathomChris) fathomKeys.push({ key: fathomChris, owner: 'chris' });
   if (fathomScott) fathomKeys.push({ key: fathomScott, owner: 'scott' });
@@ -203,43 +240,44 @@ module.exports = async function handler(req, res) {
 
         if (meetings.length > 0) {
           enrichment.sources.fathom.push({ owner: fk.owner, recording_count: meetings.length });
+          await processFathomMeetings(meetings, fk, enrichment);
+        }
 
-          for (var rec of meetings) {
-            var recId = rec.recording_id || rec.id;
-            if (!recId) continue;
-            if (enrichment.data.calls.some(function(c) { return c.recording_id === String(recId); })) continue;
-
-            var callEntry = {
-              recording_id: String(recId),
-              fathom_owner: fk.owner,
-              title: rec.title || rec.meeting_title || '',
-              date: rec.created_at || '',
-              duration_seconds: null,
-              attendees: (rec.calendar_invitees || []).map(function(inv) {
-                return { name: inv.name || '', email: inv.email || '' };
-              })
-            };
-
-            // Use inline summary if available (from include_summary=true)
-            if (rec.default_summary) {
-              callEntry.summary = rec.default_summary.markdown_formatted || JSON.stringify(rec.default_summary).substring(0, 2000);
-            } else {
-              // Fallback: fetch summary separately
-              try {
-                var sumResp = await fetch(
-                  FATHOM_BASE.replace('/meetings', '') + '/recordings/' + recId + '/summary',
-                  { headers: { 'X-Api-Key': fk.key }, signal: AbortSignal.timeout(8000) }
-                );
-                if (sumResp.ok) {
-                  var sumData = await sumResp.json();
-                  callEntry.summary = sumData.markdown_formatted || sumData.summary || sumData.text || JSON.stringify(sumData).substring(0, 2000);
+        // Fallback 3: if still no matches, check recent meetings' summaries for contact name
+        // This catches "Impromptu Zoom Meeting" calls where the prospect isn't on the calendar invite
+        if (meetings.length === 0 && searchName && searchName.length > 3) {
+          try {
+            var sumParams = new URLSearchParams();
+            sumParams.append('include_summary', 'true');
+            // Look at last 30 days of meetings
+            var thirtyDaysAgo = new Date(Date.now() - 30 * 24 * 60 * 60 * 1000).toISOString().replace(/\.\d+Z$/, 'Z');
+            sumParams.append('created_after', thirtyDaysAgo);
+            var sumUrl = FATHOM_BASE + '/meetings?' + sumParams.toString();
+            var sumResp2 = await fetch(sumUrl, {
+              headers: { 'X-Api-Key': fk.key },
+              signal: AbortSignal.timeout(12000)
+            });
+            if (sumResp2.ok) {
+              var sumData2 = await sumResp2.json();
+              var nameLower = searchName.toLowerCase();
+              var lastNameLower = (searchName.split(' ').pop() || '').toLowerCase();
+              meetings = (sumData2.items || []).filter(function(m) {
+                var sumText = '';
+                if (m.default_summary) {
+                  sumText = (m.default_summary.markdown_formatted || JSON.stringify(m.default_summary)).toLowerCase();
                 }
-              } catch(e) { /* summary fetch optional */ }
+                var titleText = ((m.title || '') + ' ' + (m.meeting_title || '')).toLowerCase();
+                return sumText.indexOf(nameLower) !== -1 || sumText.indexOf(lastNameLower) !== -1 || titleText.indexOf(nameLower) !== -1;
+              });
+              if (meetings.length > 0) {
+                enrichment.sources.fathom.push({ owner: fk.owner, recording_count: meetings.length, match_method: 'summary_text' });
+                await processFathomMeetings(meetings, fk, enrichment);
+              }
             }
+          } catch(e) { /* summary search fallback optional */ }
+        }
 
-            enrichment.data.calls.push(callEntry);
-          }
-        } else {
+        if (meetings.length === 0) {
           enrichment.sources.fathom.push({ owner: fk.owner, recording_count: 0, note: 'No matching meetings found' });
         }
       } else {
@@ -403,4 +441,5 @@ async function getDelegatedToken(saJson, impersonateEmail, scope) {
     return { error: e.message || String(e) };
   }
 }
+
 
