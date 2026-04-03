@@ -131,7 +131,7 @@ function emailWrap(content) {
     + content
     + '</div>'
     + '<div style="text-align:center;padding:1.5rem 0;color:#6B7599;font-size:.8rem;">'
-    + '<p style="margin:0;">Moonraker AI &middot; moonraker.ai</p>'
+    + '<p style="margin:0;">moonraker.ai</p>'
     + '</div></div></body></html>';
 }
 
