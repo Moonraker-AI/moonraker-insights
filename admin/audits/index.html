@@ -931,7 +931,7 @@ a:hover { color: var(--color-primary-hover); }
     textarea.focus();
   };
 
-  window.processSurgeData = function(auditId) {
+  window.processSurgeData = async function(auditId) {
     var input = document.getElementById('surgeInput');
     var surgeData = input.value.trim();
     var statusEl = document.getElementById('surgeStatus');
@@ -948,25 +948,96 @@ a:hover { color: var(--color-primary-hover); }
     cancelBtn.style.opacity = '.3';
     cancelBtn.style.cursor = 'not-allowed';
     statusEl.className = 'surge-status loading';
-    statusEl.textContent = 'Sending to Claude for analysis (this may take 30-60 seconds)...';
+    statusEl.textContent = 'Starting analysis...';
     input.readOnly = true;
     input.style.opacity = '.5';
 
-    fetch('/api/process-entity-audit', {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ audit_id: auditId, surge_data: surgeData })
-    })
-    .then(function(r) { return r.json().then(function(d) { return { ok: r.ok, data: d }; }); })
-    .then(function(resp) {
+    function unlockModal() {
       surgeProcessing = false;
-      // Check if modal still exists (user might have force-closed via devtools)
+      submitBtn.disabled = false;
+      submitBtn.textContent = 'Retry';
+      cancelBtn.style.opacity = '1';
+      cancelBtn.style.cursor = 'pointer';
+      input.readOnly = false;
+      input.style.opacity = '1';
+    }
+
+    try {
+      var resp = await fetch('/api/process-entity-audit', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ audit_id: auditId, surge_data: surgeData })
+      });
+
+      // Non-streaming error (e.g. 400, 500 before stream starts)
+      if (!resp.ok && !resp.headers.get('content-type')?.includes('ndjson')) {
+        var errData = await resp.json().catch(function() { return { error: 'Server error (' + resp.status + ')' }; });
+        statusEl.className = 'surge-status error';
+        statusEl.textContent = 'Error: ' + (errData.error || 'Unknown error');
+        unlockModal();
+        return;
+      }
+
+      // Read NDJSON stream
+      var reader = resp.body.getReader();
+      var decoder = new TextDecoder();
+      var buffer = '';
+      var finalData = null;
+
+      while (true) {
+        var chunk = await reader.read();
+        if (chunk.done) break;
+        buffer += decoder.decode(chunk.value, { stream: true });
+
+        // Process complete lines
+        var lines = buffer.split('\n');
+        buffer = lines.pop(); // Keep incomplete line in buffer
+
+        for (var i = 0; i < lines.length; i++) {
+          var line = lines[i].trim();
+          if (!line) continue;
+          try {
+            var evt = JSON.parse(line);
+          } catch (e) { continue; }
+
+          if (evt.step === 'error') {
+            statusEl.className = 'surge-status error';
+            statusEl.textContent = 'Error: ' + evt.message;
+            if (evt.raw) console.error('Parse error raw:', evt.raw);
+            unlockModal();
+            return;
+          }
+
+          if (evt.step === 'done') {
+            finalData = evt;
+          } else if (evt.step !== 'heartbeat') {
+            // Update status with progress message
+            statusEl.textContent = evt.message || evt.step;
+          }
+        }
+      }
+
+      // Process any remaining buffer
+      if (buffer.trim()) {
+        try {
+          var lastEvt = JSON.parse(buffer.trim());
+          if (lastEvt.step === 'done') finalData = lastEvt;
+          if (lastEvt.step === 'error') {
+            statusEl.className = 'surge-status error';
+            statusEl.textContent = 'Error: ' + lastEvt.message;
+            unlockModal();
+            return;
+          }
+        } catch (e) { /* ignore */ }
+      }
+
+      surgeProcessing = false;
       var overlay = document.getElementById('surgeOverlay');
       if (!overlay) { eaLoaded = false; loadEntityAudits(); return; }
 
-      if (resp.ok && resp.data.success) {
-        var s = resp.data.scores || {};
-        var tc = resp.data.task_counts || {};
+      if (finalData && finalData.success) {
+        var s = finalData.scores || {};
+        var tc = finalData.task_counts || {};
         var totalTasks = (tc.credibility || 0) + (tc.optimization || 0) + (tc.reputation || 0) + (tc.engagement || 0);
         statusEl.className = 'surge-status success';
         statusEl.textContent = 'Scorecard deployed!';
@@ -974,7 +1045,7 @@ a:hover { color: var(--color-primary-hover); }
 
         var scoreColor = function(v) { return v <= 3 ? 'var(--color-danger)' : v <= 6 ? 'var(--color-warning)' : 'var(--color-success)'; };
         document.getElementById('surgeResult').innerHTML = '<div class="surge-result">' +
-          '<h4>Audit Complete - ' + totalTasks + ' findings extracted</h4>' +
+          '<h4>Audit Complete: ' + totalTasks + ' findings extracted</h4>' +
           '<div class="surge-result-scores">' +
           '<div class="surge-result-score"><div class="val" style="color:' + scoreColor(s.credibility) + '">' + (s.credibility || '--') + '</div><div class="lbl">Credibility</div></div>' +
           '<div class="surge-result-score"><div class="val" style="color:' + scoreColor(s.optimization) + '">' + (s.optimization || '--') + '</div><div class="lbl">Optimization</div></div>' +
@@ -983,7 +1054,7 @@ a:hover { color: var(--color-primary-hover); }
           '<div class="surge-result-score"><div class="val" style="color:var(--color-warning)">' + (s.variance || '--') + '</div><div class="lbl">Variance</div></div>' +
           '</div>' +
           '<div style="display:flex;gap:.5rem;flex-wrap:wrap;">' +
-          (resp.data.scorecard_url ? '<a href="' + resp.data.scorecard_url + '" target="_blank" class="ea-btn" style="border-color:var(--color-primary);color:var(--color-primary);">View Scorecard</a>' : '') +
+          (finalData.scorecard_url ? '<a href="' + finalData.scorecard_url + '" target="_blank" class="ea-btn" style="border-color:var(--color-primary);color:var(--color-primary);">View Scorecard</a>' : '') +
           '</div></div>';
 
         cancelBtn.style.opacity = '1';
@@ -992,30 +1063,19 @@ a:hover { color: var(--color-primary-hover); }
         cancelBtn.onclick = function() { overlay.remove(); eaLoaded = false; loadEntityAudits(); };
       } else {
         statusEl.className = 'surge-status error';
-        statusEl.textContent = 'Error: ' + (resp.data.error || 'Unknown error');
-        if (resp.data.raw) statusEl.textContent += ' (see console)';
-        console.error('Process error:', resp.data);
-        submitBtn.disabled = false;
-        submitBtn.textContent = 'Retry';
-        cancelBtn.style.opacity = '1';
-        cancelBtn.style.cursor = 'pointer';
-        input.readOnly = false;
-        input.style.opacity = '1';
+        statusEl.textContent = 'Processing completed but no results received. Check console.';
+        console.error('No final data received from stream');
+        unlockModal();
       }
-    })
-    .catch(function(err) {
+
+    } catch (err) {
       surgeProcessing = false;
       var overlay = document.getElementById('surgeOverlay');
       if (!overlay) { eaLoaded = false; loadEntityAudits(); return; }
       statusEl.className = 'surge-status error';
       statusEl.textContent = 'Network error: ' + err.message;
-      submitBtn.disabled = false;
-      submitBtn.textContent = 'Retry';
-      cancelBtn.style.opacity = '1';
-      cancelBtn.style.cursor = 'pointer';
-      input.readOnly = false;
-      input.style.opacity = '1';
-    });
+      unlockModal();
+    }
   };
 
   loadData();
@@ -1025,6 +1085,7 @@ a:hover { color: var(--color-primary-hover); }
 <div class="toast" id="toast"></div>
 </body>
 </html>
+
 
 
 
