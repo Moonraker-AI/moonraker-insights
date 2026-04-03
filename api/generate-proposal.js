@@ -286,8 +286,6 @@ Respond with ONLY valid JSON (no markdown, no backticks). The JSON must have the
 
   // Build investment cards for each selected campaign length
   var campaignInfo = {
-
-  var campaignInfo = {
     annual: { badge: '12-Month CORE Campaign', price: '$20,000', period: '12-month campaign', desc: 'Full annual engagement with performance guarantee', recommended: true },
     quarterly: { badge: '3-Month Growth Engagement', price: '$5,000', period: '3-month campaign', desc: 'Foundation-building quarterly engagement' },
     monthly: { badge: 'Monthly CORE Engagement', price: '$1,667', period: 'per month', desc: 'Flexible month-to-month engagement' }
