@@ -47,6 +47,7 @@
 
 *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
 body { font-family: 'Inter', sans-serif; color: var(--color-body); background: var(--color-bg); line-height: 1.6; }
+::view-transition-old(root), ::view-transition-new(root) { animation-duration: .25s; }
 h1, h2, h3, h4 { font-family: 'Outfit', sans-serif; font-weight: 700; color: var(--color-heading); }
 
 .ds-page { max-width: 1100px; margin: 0 auto; padding: 2rem 2.5rem 4rem; }
@@ -997,15 +998,18 @@ fetch('/api/action', {
 function toggleTheme() {
   var h = document.documentElement;
   var btn = document.getElementById('themeBtn');
-  if (h.getAttribute('data-theme') === 'light') {
-    h.setAttribute('data-theme', 'dark');
-    btn.innerHTML = '&#9728;&#65039;';
-    try { localStorage.setItem('moonraker-theme', 'dark'); } catch(e) {}
-  } else {
-    h.setAttribute('data-theme', 'light');
-    btn.innerHTML = '&#127769;';
-    try { localStorage.setItem('moonraker-theme', 'light'); } catch(e) {}
+  function apply() {
+    if (h.getAttribute('data-theme') === 'light') {
+      h.setAttribute('data-theme', 'dark');
+      btn.innerHTML = '&#9728;&#65039;';
+      try { localStorage.setItem('moonraker-theme', 'dark'); } catch(e) {}
+    } else {
+      h.setAttribute('data-theme', 'light');
+      btn.innerHTML = '&#127769;';
+      try { localStorage.setItem('moonraker-theme', 'light'); } catch(e) {}
+    }
   }
+  if (document.startViewTransition) { document.startViewTransition(apply); } else { apply(); }
 }
 function switchDsTab(tabId) {
   document.querySelectorAll('.ds-tab').forEach(function(t) { t.classList.remove('active'); });
