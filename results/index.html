@@ -5,7 +5,7 @@
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
 <title>Client Results - Moonraker</title>
 <link rel="icon" href="https://moonraker.ai/wp-content/uploads/2023/10/cropped-Moonraker-Favicon-32x32.png" sizes="32x32">
-<link href="https://fonts.googleapis.com/css2?family=Outfit:wght@400;600;700&family=Inter:wght@400;500;600&display=swap" rel="stylesheet">
+<link href="https://fonts.googleapis.com/css2?family=Outfit:wght@400;600;700;800&family=Inter:wght@400;500;600&display=swap" rel="stylesheet">
 <script>
 (function(){var t=localStorage.getItem('moonraker-theme');if(t==='dark')document.documentElement.classList.add('dark')})();
 </script>
@@ -45,6 +45,8 @@ body {
   line-height: 1.6;
   -webkit-font-smoothing: antialiased;
 }
+
+/* ── Nav ── */
 .theme-toggle {
   position: fixed; top: 1.25rem; right: 1.25rem; z-index: 100;
   width: 40px; height: 40px; border-radius: 50%;
@@ -59,249 +61,282 @@ body {
   display: flex; align-items: center; gap: .75rem;
 }
 .nav img { height: 32px; }
-.nav-divider {
-  width: 1px; height: 20px; background: var(--color-border); margin: 0 .25rem;
-}
+.nav-divider { width: 1px; height: 20px; background: var(--color-border); margin: 0 .25rem; }
 .nav-label {
   font-family: 'Outfit', sans-serif; font-weight: 600; font-size: .85rem;
   color: var(--color-muted); letter-spacing: .02em;
 }
+
+/* ── Hero ── */
 .hero {
-  text-align: center; padding: 3.5rem 2rem 2rem;
+  text-align: center; padding: 3rem 2rem 1.5rem;
   max-width: 780px; margin: 0 auto;
 }
 .hero h1 {
-  font-family: 'Outfit', sans-serif; font-weight: 700;
-  font-size: 2.25rem; line-height: 1.2; color: var(--color-heading);
+  font-family: 'Outfit', sans-serif; font-weight: 800;
+  font-size: 2.5rem; line-height: 1.15; color: var(--color-heading);
   margin-bottom: 1rem;
 }
 .hero h1 span { color: var(--color-primary); }
 .hero p {
   font-size: .95rem; color: var(--color-muted); max-width: 560px; margin: 0 auto;
-  line-height: 1.7;
 }
-.partners {
-  text-align: center; padding: 1.5rem 2rem 2rem;
-  max-width: 900px; margin: 0 auto;
+
+/* ── Trust badges ── */
+.trust-bar {
+  display: flex; align-items: center; justify-content: center; gap: 2rem;
+  padding: 1.5rem 2rem; flex-wrap: wrap;
 }
-.partners-label {
-  font-size: .72rem; font-weight: 600; text-transform: uppercase;
-  letter-spacing: .06em; color: var(--color-muted); margin-bottom: 1.25rem;
-}
-.partners-logos {
-  display: flex; align-items: center; justify-content: center;
-  gap: 2.5rem; flex-wrap: wrap;
-}
-.partners-logos img {
-  height: 40px; width: auto; opacity: .55;
-  transition: opacity .2s; filter: grayscale(100%);
-}
-html.dark .partners-logos img { filter: grayscale(100%) invert(1); opacity: .4; }
-.partners-logos img:hover { opacity: .85; }
+.trust-bar img { height: 40px; }
+html.dark .trust-bar img { filter: brightness(1.2); }
+
+/* ── Stats ── */
 .stats-bar {
-  display: flex; justify-content: center; gap: 2.5rem;
-  padding: 1.5rem 2rem; margin: 0 auto .5rem; max-width: 700px;
-  flex-wrap: wrap;
+  display: flex; justify-content: center; gap: 3rem; padding: 1.5rem 2rem;
 }
 .stat-item { text-align: center; }
 .stat-value {
-  font-family: 'Outfit', sans-serif; font-weight: 700;
-  font-size: 1.75rem; color: var(--color-primary); line-height: 1.2;
+  font-family: 'Outfit', sans-serif; font-weight: 800; font-size: 2rem;
+  color: var(--color-primary); line-height: 1;
 }
 .stat-label {
-  font-size: .72rem; font-weight: 600; text-transform: uppercase;
-  letter-spacing: .04em; color: var(--color-muted); margin-top: .15rem;
+  font-size: .75rem; font-weight: 600; text-transform: uppercase;
+  letter-spacing: .06em; color: var(--color-muted); margin-top: .35rem;
 }
+
+/* ── Filters ── */
 .filters {
-  display: flex; justify-content: center; gap: .5rem;
-  padding: .75rem 2rem 2rem; flex-wrap: wrap;
+  display: flex; justify-content: center; gap: .5rem; padding: .5rem 2rem 1.5rem;
+  flex-wrap: wrap;
 }
 .filter-pill {
-  font-family: 'Inter', sans-serif; font-size: .78rem; font-weight: 500;
-  padding: .4rem 1rem; border-radius: 100px; cursor: pointer;
-  border: 1px solid var(--color-border); background: transparent;
-  color: var(--color-body); transition: all .2s;
+  padding: .4rem 1rem; border-radius: 99px; font-size: .8rem; font-weight: 500;
+  border: 1px solid var(--color-border); background: var(--color-surface);
+  color: var(--color-muted); cursor: pointer; transition: all .2s;
 }
-.filter-pill:hover { border-color: var(--color-primary); color: var(--color-primary); }
+.filter-pill:hover { border-color: var(--color-primary); color: var(--color-heading); }
 .filter-pill.active {
-  border-color: var(--color-primary); background: var(--color-primary-subtle);
-  color: var(--color-primary); font-weight: 600;
+  background: var(--color-primary); color: #fff; border-color: var(--color-primary);
 }
 .filter-pill .count {
-  display: inline-block; margin-left: .35rem; font-size: .7rem;
-  background: var(--color-primary-subtle); color: var(--color-primary);
-  padding: .1rem .4rem; border-radius: 100px; font-weight: 600;
+  display: inline-block; background: rgba(255,255,255,.2); border-radius: 99px;
+  padding: 0 .45rem; font-size: .7rem; margin-left: .25rem;
 }
-.filter-pill.active .count { background: var(--color-primary); color: #fff; }
+.filter-pill:not(.active) .count { background: var(--color-primary-subtle); color: var(--color-primary); }
+
+/* ── Results grid ── */
 .results-grid {
-  max-width: 1200px; margin: 0 auto; padding: 0 2rem 2rem;
-  display: grid; grid-template-columns: repeat(auto-fill, minmax(340px, 1fr));
-  gap: 1.25rem;
+  display: grid; grid-template-columns: repeat(auto-fill, minmax(320px, 1fr));
+  gap: 1.25rem; padding: 0 2rem 3rem; max-width: 1200px; margin: 0 auto;
 }
 .result-card {
-  background: var(--color-surface);
-  border: 1px solid var(--color-border);
-  border-radius: 14px; overflow: hidden;
-  transition: transform .2s, box-shadow .2s, border-color .2s;
-  cursor: pointer;
+  background: var(--color-surface); border-radius: 12px;
+  border: 1px solid var(--color-border); overflow: hidden; cursor: pointer;
+  transition: transform .2s, box-shadow .2s;
 }
 .result-card:hover {
   transform: translateY(-3px);
-  box-shadow: 0 8px 24px rgba(0,212,126,.08);
-  border-color: var(--color-primary);
+  box-shadow: 0 8px 24px rgba(0,0,0,.08);
 }
 .result-card.hidden { display: none; }
 .card-image-wrap {
-  position: relative; width: 100%; overflow: hidden;
-  aspect-ratio: 1312 / 702; background: var(--color-navy);
+  position: relative; overflow: hidden; aspect-ratio: 16/9; background: var(--color-navy);
 }
-.card-image-wrap.portrait { aspect-ratio: 708 / 773; }
+.card-image-wrap.portrait { aspect-ratio: 4/5; }
 .card-image-wrap img {
-  width: 100%; height: 100%; object-fit: cover;
-  display: block; transition: transform .3s;
+  width: 100%; height: 100%; object-fit: cover; transition: transform .3s;
 }
 .result-card:hover .card-image-wrap img { transform: scale(1.03); }
 .card-badge {
-  position: absolute; top: .65rem; right: .65rem;
-  background: var(--color-primary); color: #fff;
-  font-family: 'Outfit', sans-serif; font-weight: 700;
-  font-size: .8rem; padding: .3rem .65rem; border-radius: 6px;
-  box-shadow: 0 2px 8px rgba(0,0,0,.15);
+  position: absolute; top: .75rem; right: .75rem;
+  background: var(--color-primary); color: #fff; font-family: 'Outfit', sans-serif;
+  font-weight: 700; font-size: .8rem; padding: .3rem .7rem; border-radius: 8px;
+  box-shadow: 0 2px 8px rgba(0,0,0,.2);
 }
 .card-body { padding: .75rem 1rem; }
 .card-meta {
-  display: flex; align-items: center; gap: .5rem;
   font-size: .78rem; color: var(--color-muted);
+  display: flex; align-items: center; gap: .5rem;
 }
 .card-type-tag {
-  font-size: .68rem; font-weight: 600; text-transform: uppercase;
-  letter-spacing: .04em; padding: .2rem .55rem; border-radius: 4px;
-  background: var(--color-primary-subtle); color: var(--color-primary);
+  display: inline-block; background: var(--color-primary-subtle);
+  color: var(--color-primary); font-weight: 600; font-size: .7rem;
+  padding: .15rem .5rem; border-radius: 6px;
 }
-.testimonials-section {
-  max-width: 1000px; margin: 0 auto; padding: 2.5rem 2rem 1rem;
+
+/* ── Divider ── */
+.section-divider {
+  max-width: 1200px; margin: 0 auto; padding: 0 2rem;
+}
+.section-divider hr {
+  border: none; border-top: 1px solid var(--color-border);
+}
+
+/* ── Partners ── */
+.partners-section {
+  padding: 3rem 2rem; max-width: 1200px; margin: 0 auto; text-align: center;
 }
 .section-heading {
-  font-family: 'Outfit', sans-serif; font-weight: 700;
-  font-size: 1.5rem; color: var(--color-heading);
-  text-align: center; margin-bottom: .5rem;
+  font-family: 'Outfit', sans-serif; font-weight: 700; font-size: 1.75rem;
+  color: var(--color-heading); margin-bottom: .5rem;
 }
 .section-subhead {
-  font-size: .88rem; color: var(--color-muted); text-align: center;
-  margin-bottom: 2rem; line-height: 1.6;
+  font-size: .9rem; color: var(--color-muted); max-width: 520px; margin: 0 auto 2rem;
+}
+.partners-grid {
+  display: flex; flex-wrap: wrap; align-items: center; justify-content: center;
+  gap: 2rem 2.5rem; padding: 0 1rem;
+}
+.partner-logo {
+  height: 48px; max-width: 180px; object-fit: contain;
+  transition: transform .2s, opacity .2s; opacity: .85;
+}
+.partner-logo:hover { transform: scale(1.08); opacity: 1; }
+html.dark .partner-logo { filter: brightness(1.1) contrast(1.05); opacity: .75; }
+html.dark .partner-logo:hover { opacity: .95; }
+
+/* ── Testimonials ── */
+.testimonials-section {
+  padding: 3rem 2rem; max-width: 1100px; margin: 0 auto;
 }
 .testimonials-grid {
-  display: grid; grid-template-columns: repeat(auto-fill, minmax(300px, 1fr));
-  gap: 1.25rem;
+  display: grid; grid-template-columns: repeat(auto-fill, minmax(480px, 1fr));
+  gap: 1.5rem;
 }
 .testimonial-card {
-  background: var(--color-surface);
-  border: 1px solid var(--color-border);
-  border-radius: 14px; padding: 1.5rem;
-  transition: border-color .2s;
+  background: var(--color-surface); border: 1px solid var(--color-border);
+  border-radius: 16px; padding: 2rem; position: relative; overflow: hidden;
+  transition: border-color .2s, box-shadow .2s;
 }
-.testimonial-card:hover { border-color: var(--color-primary); }
-.testimonial-card.featured {
-  grid-column: 1 / -1;
-  border-left: 3px solid var(--color-primary);
+.testimonial-card:hover {
+  border-color: var(--color-primary);
+  box-shadow: 0 4px 20px rgba(0, 212, 126, 0.08);
 }
-.testimonial-stars {
-  color: #F59E0B; font-size: .85rem; margin-bottom: .75rem; letter-spacing: .05em;
+.testimonial-card::before {
+  content: '\201C'; position: absolute; top: .75rem; right: 1.25rem;
+  font-family: Georgia, serif; font-size: 4rem; line-height: 1;
+  color: var(--color-primary); opacity: .15;
 }
 .testimonial-text {
-  font-size: .84rem; color: var(--color-body); line-height: 1.75;
-  margin-bottom: 1rem; font-style: italic;
+  font-size: .9rem; line-height: 1.7; color: var(--color-body);
+  margin-bottom: 1.5rem; font-style: italic; position: relative;
 }
 .testimonial-author {
-  display: flex; align-items: center; gap: .6rem;
+  display: flex; align-items: center; gap: 1rem;
 }
-.testimonial-avatar {
-  width: 36px; height: 36px; border-radius: 50%;
-  background: var(--color-primary-subtle);
-  display: flex; align-items: center; justify-content: center;
-  font-family: 'Outfit', sans-serif; font-weight: 700;
-  font-size: .82rem; color: var(--color-primary);
-  flex-shrink: 0;
+.testimonial-headshot {
+  width: 56px; height: 56px; border-radius: 50%; object-fit: cover;
+  border: 2px solid var(--color-primary-light);
 }
 .testimonial-name {
-  font-family: 'Outfit', sans-serif; font-weight: 600;
-  font-size: .82rem; color: var(--color-heading); line-height: 1.2;
+  font-family: 'Outfit', sans-serif; font-weight: 600; font-size: .9rem;
+  color: var(--color-heading);
 }
 .testimonial-role {
-  font-size: .72rem; color: var(--color-muted);
+  font-size: .78rem; color: var(--color-muted);
 }
-.google-badge {
-  display: flex; align-items: center; gap: .4rem;
-  font-size: .72rem; font-weight: 600; color: var(--color-muted);
-  margin-top: 1.5rem; justify-content: center;
+.testimonial-logo {
+  height: 28px; max-width: 120px; object-fit: contain; margin-top: .35rem;
+  opacity: .6;
 }
-.google-badge svg { width: 14px; height: 14px; }
-.lightbox {
-  position: fixed; inset: 0; z-index: 200;
-  background: var(--color-overlay); backdrop-filter: blur(8px);
-  display: none; align-items: center; justify-content: center;
-  padding: 2rem; cursor: pointer;
+html.dark .testimonial-logo { filter: brightness(1.3); }
+
+/* ── Google Reviews ── */
+.google-reviews-section {
+  padding: 3rem 2rem; max-width: 1200px; margin: 0 auto; text-align: center;
 }
-.lightbox.open { display: flex; }
-.lightbox img {
-  max-width: 95vw; max-height: 90vh; border-radius: 10px;
-  box-shadow: 0 12px 48px rgba(0,0,0,.3);
+.google-badge-large {
+  display: inline-flex; align-items: center; gap: .75rem;
+  background: var(--color-surface); border: 1px solid var(--color-border);
+  border-radius: 12px; padding: 1rem 1.75rem; margin-bottom: 2rem;
 }
-.lightbox-close {
-  position: absolute; top: 1.25rem; right: 1.5rem;
-  font-size: 1.5rem; color: #fff; cursor: pointer;
-  width: 40px; height: 40px; border-radius: 50%;
-  background: rgba(0,0,0,.4); border: none;
-  display: flex; align-items: center; justify-content: center;
-  transition: background .2s;
+.google-badge-large svg { width: 28px; height: 28px; }
+.google-badge-large .badge-text {
+  font-family: 'Outfit', sans-serif; font-weight: 600; font-size: .95rem;
+  color: var(--color-heading);
 }
-.lightbox-close:hover { background: rgba(0,0,0,.6); }
-.lightbox-caption {
-  position: absolute; bottom: 1.5rem; left: 50%; transform: translateX(-50%);
-  background: rgba(0,0,0,.55); color: #fff; padding: .5rem 1.25rem;
-  border-radius: 8px; font-size: .82rem; font-weight: 500;
-  white-space: nowrap; max-width: 90vw; overflow: hidden; text-overflow: ellipsis;
+.google-badge-large .badge-stars { color: #FBBC05; font-size: 1.1rem; letter-spacing: 1px; }
+.reviews-masonry {
+  columns: 3; column-gap: 1rem; padding: 0;
 }
+.review-card {
+  break-inside: avoid; background: var(--color-surface);
+  border: 1px solid var(--color-border); border-radius: 12px;
+  padding: 1.25rem; margin-bottom: 1rem; text-align: left;
+}
+.review-card .review-stars { color: #FBBC05; font-size: .8rem; margin-bottom: .5rem; }
+.review-card .review-text { font-size: .82rem; line-height: 1.6; color: var(--color-body); }
+.review-card .review-author {
+  margin-top: .75rem; font-size: .75rem; font-weight: 600;
+  color: var(--color-muted);
+}
+
+/* ── CTA ── */
 .cta-section {
-  text-align: center; padding: 2.5rem 2rem 3.5rem;
-  max-width: 640px; margin: 0 auto;
+  text-align: center; padding: 3.5rem 2rem;
+  background: linear-gradient(135deg, var(--color-primary-subtle), var(--color-bg));
+  border-top: 1px solid var(--color-border); border-bottom: 1px solid var(--color-border);
 }
 .cta-section h2 {
-  font-family: 'Outfit', sans-serif; font-weight: 700;
-  font-size: 1.5rem; color: var(--color-heading); margin-bottom: .75rem;
+  font-family: 'Outfit', sans-serif; font-weight: 700; font-size: 1.5rem;
+  color: var(--color-heading); margin-bottom: .5rem;
 }
-.cta-section p {
-  font-size: .88rem; color: var(--color-muted); margin-bottom: 1.5rem;
-  line-height: 1.7;
-}
+.cta-section p { color: var(--color-muted); font-size: .9rem; margin-bottom: 1.5rem; }
 .cta-btn {
-  display: inline-block; padding: .7rem 2rem;
-  background: var(--color-primary); color: #fff;
-  font-family: 'Inter', sans-serif; font-weight: 600; font-size: .88rem;
-  border-radius: 8px; text-decoration: none;
+  display: inline-block; padding: .75rem 2.25rem; border-radius: 99px;
+  background: var(--color-primary); color: #fff; text-decoration: none;
+  font-family: 'Outfit', sans-serif; font-weight: 600; font-size: .9rem;
   transition: background .2s, transform .15s;
 }
 .cta-btn:hover { background: var(--color-primary-hover); transform: translateY(-1px); }
 .footer {
-  text-align: center; padding: 2rem;
-  font-size: .72rem; color: var(--color-muted);
-  border-top: 1px solid var(--color-border);
+  text-align: center; padding: 1.5rem; font-size: .75rem; color: var(--color-muted);
 }
+
+/* ── Lightbox ── */
+.lightbox {
+  display: none; position: fixed; inset: 0; z-index: 200;
+  background: var(--color-overlay); backdrop-filter: blur(12px);
+  align-items: center; justify-content: center; padding: 2rem;
+}
+.lightbox.open { display: flex; }
+.lightbox img {
+  max-width: 90vw; max-height: 85vh; border-radius: 12px;
+  box-shadow: 0 12px 48px rgba(0,0,0,.3);
+}
+.lightbox-close {
+  position: absolute; top: 1.25rem; right: 1.5rem;
+  background: none; border: none; color: #fff; font-size: 2rem;
+  cursor: pointer; opacity: .7; transition: opacity .2s;
+}
+.lightbox-close:hover { opacity: 1; }
+.lightbox-caption {
+  position: absolute; bottom: 2rem; left: 50%; transform: translateX(-50%);
+  background: var(--color-surface); color: var(--color-heading);
+  padding: .5rem 1.25rem; border-radius: 99px; font-size: .8rem;
+  font-weight: 500; white-space: nowrap; box-shadow: 0 2px 12px rgba(0,0,0,.15);
+}
+
+/* ── Responsive ── */
 @media (max-width: 768px) {
-  .hero { padding: 2.5rem 1.25rem 1.5rem; }
-  .hero h1 { font-size: 1.6rem; }
-  .stats-bar { gap: 1.5rem; }
-  .stat-value { font-size: 1.35rem; }
+  .hero h1 { font-size: 1.75rem; }
   .results-grid { grid-template-columns: 1fr; padding: 0 1rem 2rem; }
   .testimonials-grid { grid-template-columns: 1fr; }
-  .testimonials-section { padding: 2rem 1rem 1rem; }
-  .nav { padding: 1rem 1.25rem; }
-  .partners-logos { gap: 1.5rem; }
-  .partners-logos img { height: 32px; }
+  .testimonials-section { padding: 2rem 1rem; }
+  .partners-grid { gap: 1.5rem 2rem; }
+  .partner-logo { height: 36px; }
+  .reviews-masonry { columns: 1; }
+  .stats-bar { gap: 1.5rem; }
+  .trust-bar { gap: 1rem; }
+  .trust-bar img { height: 32px; }
 }
 @media (max-width: 480px) {
   .stats-bar { gap: 1rem; }
   .hero h1 { font-size: 1.35rem; }
+  .partners-logos img { height: 32px; }
+}
+@media (min-width: 769px) and (max-width: 1024px) {
+  .reviews-masonry { columns: 2; }
 }
 </style>
 </head>
@@ -319,20 +354,20 @@ html.dark .partners-logos img { filter: grayscale(100%) invert(1); opacity: .4; 
   <span id="themeIcon">&#127769;</span>
 </button>
 
+<!-- ── Hero ── -->
 <section class="hero">
   <h1>Real Results for <span>Real Practices</span></h1>
   <p>Verified Google Search Console data showing how therapy practices grow their online visibility with Moonraker. No vanity metrics, just the numbers that matter.</p>
 </section>
 
-<div class="partners">
-  <div class="partners-label">Trusted by the experts who educate therapists</div>
-  <div class="partners-logos">
-    <img src="/assets/partners/psychology-business-school.png" alt="Psychology Business School" style="height:44px">
-    <img src="/assets/partners/scalingup-emdr.png" alt="ScalingUp EMDR" style="height:32px">
-    <img src="/assets/partners/therasaas.png" alt="TheraSaaS" style="height:28px">
-  </div>
+<!-- ── Trust badges ── -->
+<div class="trust-bar">
+  <img src="/assets/badges/google-partner.png" alt="Google Partner">
+  <img src="/assets/badges/google-rating.png" alt="Google Rating 4.9 stars">
+  <img src="/assets/badges/google-local-guides.png" alt="Google Local Guides">
 </div>
 
+<!-- ── Stats ── -->
 <div class="stats-bar">
   <div class="stat-item">
     <div class="stat-value">23</div>
@@ -348,91 +383,119 @@ html.dark .partners-logos img { filter: grayscale(100%) invert(1); opacity: .4; 
   </div>
 </div>
 
+<!-- ── Filters ── -->
 <div class="filters">
   <button class="filter-pill active" onclick="filterCards('all')">All <span class="count">23</span></button>
   <button class="filter-pill" onclick="filterCards('group')">Group Practices <span class="count">11</span></button>
   <button class="filter-pill" onclick="filterCards('solo')">Solo Therapists <span class="count">12</span></button>
 </div>
 
+<!-- ── GSC Results Grid ── -->
 <div class="results-grid" id="resultsGrid"></div>
 
-<section class="testimonials-section">
-  <h2 class="section-heading">What Our Clients Say</h2>
-  <p class="section-subhead">Feedback from the therapists and practice owners we work with every day.</p>
-  <div class="testimonials-grid">
-    <div class="testimonial-card featured">
-      <div class="testimonial-stars">&#9733;&#9733;&#9733;&#9733;&#9733;</div>
-      <div class="testimonial-text">"So. Good problem. The SEO is working too good!! I've had 8 inquiries in the past 10 days. And most are scheduling consultations. I'm now faced with some new challenges that I wasn't quite prepared to solve so soon. Time to figure out waitlist management. My calendar books 2-3 weeks out now."</div>
-      <div class="testimonial-author">
-        <div class="testimonial-avatar">AS</div>
-        <div>
-          <div class="testimonial-name">Audrey Schoen, LMFT</div>
-          <div class="testimonial-role">Founder, Balanced Private Practice</div>
-        </div>
-      </div>
-    </div>
-    <div class="testimonial-card">
-      <div class="testimonial-stars">&#9733;&#9733;&#9733;&#9733;&#9733;</div>
-      <div class="testimonial-text">"My business was in a really tough spot when I started working with Moonraker. In a very short amount of time they were able to significantly improve the inbound traffic on my website. A significant chunk of the new business we've gained this past year is due to their expertise."</div>
-      <div class="testimonial-author">
-        <div class="testimonial-avatar">CB</div>
-        <div>
-          <div class="testimonial-name">Christopher B.</div>
-          <div class="testimonial-role">Practice Owner</div>
-        </div>
-      </div>
-    </div>
-    <div class="testimonial-card">
-      <div class="testimonial-stars">&#9733;&#9733;&#9733;&#9733;&#9733;</div>
-      <div class="testimonial-text">"I honestly think that Moonraker is the best choice that anyone could ever make for digital marketing. I know that I never would have been able to attract the clients that I have, in the volume that I have, without their expertise. It's like you have an entire team behind you providing support."</div>
-      <div class="testimonial-author">
-        <div class="testimonial-avatar">BR</div>
-        <div>
-          <div class="testimonial-name">Bambi R.</div>
-          <div class="testimonial-role">Practice Owner</div>
-        </div>
-      </div>
-    </div>
-    <div class="testimonial-card">
-      <div class="testimonial-stars">&#9733;&#9733;&#9733;&#9733;&#9733;</div>
-      <div class="testimonial-text">"I had no idea how much of an impact SEO could have on my business. Within just eight months my returns had already doubled. So grateful I found Moonraker!"</div>
-      <div class="testimonial-author">
-        <div class="testimonial-avatar">G</div>
-        <div>
-          <div class="testimonial-name">George</div>
-          <div class="testimonial-role">Practice Owner</div>
-        </div>
-      </div>
-    </div>
-    <div class="testimonial-card">
-      <div class="testimonial-stars">&#9733;&#9733;&#9733;&#9733;&#9733;</div>
-      <div class="testimonial-text">"Having worked with Moonraker on a number of projects over the years, I can say without a doubt their service is the best investment you can make for your business, no matter what era of development it's currently in. There isn't a problem I've brought to the team that they can't solve."</div>
-      <div class="testimonial-author">
-        <div class="testimonial-avatar">SM</div>
-        <div>
-          <div class="testimonial-name">Shannon M.</div>
-          <div class="testimonial-role">Practice Owner</div>
-        </div>
-      </div>
-    </div>
-    <div class="testimonial-card">
-      <div class="testimonial-stars">&#9733;&#9733;&#9733;&#9733;&#9733;</div>
-      <div class="testimonial-text">"As a multi-passionate entrepreneur, keeping my brands organized and visible online has always felt like herding cats. Moonraker helped me untangle the chaos, streamline my marketing, and optimize my websites for SEO in a way that actually makes sense and gets results."</div>
-      <div class="testimonial-author">
-        <div class="testimonial-avatar">KT</div>
-        <div>
-          <div class="testimonial-name">Kym Tolson</div>
-          <div class="testimonial-role">Founder, The Traveling Therapist</div>
-        </div>
-      </div>
-    </div>
-  </div>
-  <div class="google-badge">
-    <svg viewBox="0 0 24 24" fill="none"><path d="M22.56 12.25c0-.78-.07-1.53-.2-2.25H12v4.26h5.92a5.06 5.06 0 01-2.2 3.32v2.77h3.57c2.08-1.92 3.28-4.74 3.28-8.1z" fill="#4285F4"/><path d="M12 23c2.97 0 5.46-.98 7.28-2.66l-3.57-2.77c-.98.66-2.23 1.06-3.71 1.06-2.86 0-5.29-1.93-6.16-4.53H2.18v2.84C3.99 20.53 7.7 23 12 23z" fill="#34A853"/><path d="M5.84 14.09c-.22-.66-.35-1.36-.35-2.09s.13-1.43.35-2.09V7.07H2.18C1.43 8.55 1 10.22 1 12s.43 3.45 1.18 4.93l2.85-2.22.81-.62z" fill="#FBBC05"/><path d="M12 5.38c1.62 0 3.06.56 4.21 1.64l3.15-3.15C17.45 2.09 14.97 1 12 1 7.7 1 3.99 3.47 2.18 7.07l3.66 2.84c.87-2.6 3.3-4.53 6.16-4.53z" fill="#EA4335"/></svg>
-    4.9 stars from 44 Google reviews
+<div class="section-divider"><hr></div>
+
+<!-- ── Partner Logos ── -->
+<section class="partners-section">
+  <h2 class="section-heading">Trusted by the Experts Who Educate Therapists</h2>
+  <p class="section-subhead">We partner with the industry's most respected names in practice building, clinical training, and therapist entrepreneurship.</p>
+  <div class="partners-grid">
+    <img class="partner-logo" src="/assets/partners/mccance-method.png" alt="The McCance Method">
+    <img class="partner-logo" src="/assets/partners/scalingup-emdr.png" alt="ScalingUp EMDR">
+    <img class="partner-logo" src="/assets/partners/psychology-business-school.png" alt="Psychology Business School">
+    <img class="partner-logo" src="/assets/partners/traveling-therapist.png" alt="The Traveling Therapist">
+    <img class="partner-logo" src="/assets/partners/balanced-private-practice.png" alt="Balanced Private Practice">
+    <img class="partner-logo" src="/assets/partners/entrepreneurial-therapist.png" alt="Entrepreneurial Therapist">
+    <img class="partner-logo" src="/assets/partners/therasaas.png" alt="TheraSaaS">
+    <img class="partner-logo" src="/assets/partners/private-practice-academy.png" alt="The Private Practice Academy">
+    <img class="partner-logo" src="/assets/partners/private-practice-elevation.png" alt="Private Practice Elevation">
+    <img class="partner-logo" src="/assets/partners/walker-co-strategy.png" alt="Walker Co Strategy">
+    <img class="partner-logo" src="/assets/partners/prosperous-therapist.png" alt="The Prosperous Therapist">
+    <img class="partner-logo" src="/assets/partners/berries.png" alt="Berries">
   </div>
 </section>
 
+<div class="section-divider"><hr></div>
+
+<!-- ── Partner Testimonials ── -->
+<section class="testimonials-section">
+  <h2 class="section-heading" style="text-align:center;">What Our Partners and Clients Say</h2>
+  <p class="section-subhead" style="text-align:center;">Feedback from the therapists, practice owners, and industry leaders we work with every day.</p>
+
+  <div class="testimonials-grid">
+    <!-- Audrey Shoen -->
+    <div class="testimonial-card">
+      <div class="testimonial-text">"So. Good problem. The SEO is working too good!! I've had 8 inquiries in the past 10 days. And most are scheduling consultations. I'm now faced with some new challenges that I wasn't quite prepared to solve so soon. Time to figure out waitlist management. And further streamline or offload more tasks. My calendar books 2-3 weeks out now."</div>
+      <div class="testimonial-author">
+        <img class="testimonial-headshot" src="/assets/headshots/audrey-shoen.png" alt="Audrey Shoen">
+        <div>
+          <div class="testimonial-name">Audrey Shoen, LMFT</div>
+          <div class="testimonial-role">Founder, Balanced Private Practice</div>
+          <img class="testimonial-logo" src="/assets/partners/balanced-private-practice.png" alt="Balanced Private Practice">
+        </div>
+      </div>
+    </div>
+
+    <!-- Kym Tolson -->
+    <div class="testimonial-card">
+      <div class="testimonial-text">"As a multi-passionate entrepreneur, keeping my brands organized and visible online has always felt like herding cats. Enter Moonraker and Chris - absolute game-changers! Chris helped me untangle the chaos, streamline my marketing, and optimize my websites for SEO in a way that actually makes sense (and gets results). Whether it's refining my messaging, making sure my sites rank on Google, or creating a strategy that works across multiple brands, Moonraker has been an invaluable asset."</div>
+      <div class="testimonial-author">
+        <img class="testimonial-headshot" src="/assets/headshots/kym-tolson.png" alt="Kym Tolson">
+        <div>
+          <div class="testimonial-name">Kym Tolson</div>
+          <div class="testimonial-role">Founder, The Traveling Therapist</div>
+          <img class="testimonial-logo" src="/assets/partners/traveling-therapist.png" alt="The Traveling Therapist">
+        </div>
+      </div>
+    </div>
+
+    <!-- Kelly Smyth-Dent -->
+    <div class="testimonial-card">
+      <div class="testimonial-text">"Chris was great to work with. He was responsive, answered our questions clearly, and explained things in a way that made sense. His help improved our SEO, and we appreciate his expertise. Highly recommend!"</div>
+      <div class="testimonial-author">
+        <img class="testimonial-headshot" src="/assets/headshots/kelly-smyth-dent.png" alt="Kelly Smyth-Dent">
+        <div>
+          <div class="testimonial-name">Kelly Smyth-Dent</div>
+          <div class="testimonial-role">Founder, ScalingUp EMDR</div>
+          <img class="testimonial-logo" src="/assets/partners/scalingup-emdr.png" alt="ScalingUp EMDR">
+        </div>
+      </div>
+    </div>
+
+    <!-- Brent Stutzman -->
+    <div class="testimonial-card">
+      <div class="testimonial-text">"If you're a therapist looking for SEO strategy and implementation, Chris and his Moonraker team know how to rank you high on Google. I highly recommend them."</div>
+      <div class="testimonial-author">
+        <img class="testimonial-headshot" src="/assets/headshots/brent-stutzman.png" alt="Brent Stutzman">
+        <div>
+          <div class="testimonial-name">Brent Stutzman</div>
+          <div class="testimonial-role">Founder, TheraSaaS</div>
+          <img class="testimonial-logo" src="/assets/partners/therasaas.png" alt="TheraSaaS">
+        </div>
+      </div>
+    </div>
+  </div>
+</section>
+
+<div class="section-divider"><hr></div>
+
+<!-- ── Google Reviews (populated dynamically) ── -->
+<section class="google-reviews-section" id="googleReviews">
+  <h2 class="section-heading">Google Reviews</h2>
+  <p class="section-subhead">What our clients are saying on Google.</p>
+  <div class="google-badge-large">
+    <svg viewBox="0 0 24 24" fill="none"><path d="M22.56 12.25c0-.78-.07-1.53-.2-2.25H12v4.26h5.92a5.06 5.06 0 01-2.2 3.32v2.77h3.57c2.08-1.92 3.28-4.74 3.28-8.1z" fill="#4285F4"/><path d="M12 23c2.97 0 5.46-.98 7.28-2.66l-3.57-2.77c-.98.66-2.23 1.06-3.71 1.06-2.86 0-5.29-1.93-6.16-4.53H2.18v2.84C3.99 20.53 7.7 23 12 23z" fill="#34A853"/><path d="M5.84 14.09c-.22-.66-.35-1.36-.35-2.09s.13-1.43.35-2.09V7.07H2.18C1.43 8.55 1 10.22 1 12s.43 3.45 1.18 4.93l2.85-2.22.81-.62z" fill="#FBBC05"/><path d="M12 5.38c1.62 0 3.06.56 4.21 1.64l3.15-3.15C17.45 2.09 14.97 1 12 1 7.7 1 3.99 3.47 2.18 7.07l3.66 2.84c.87-2.6 3.3-4.53 6.16-4.53z" fill="#EA4335"/></svg>
+    <div>
+      <div class="badge-stars">&#9733;&#9733;&#9733;&#9733;&#9733;</div>
+      <div class="badge-text">4.9 stars from 44 Google reviews</div>
+    </div>
+  </div>
+  <div class="reviews-masonry" id="reviewsMasonry">
+    <!-- Reviews will be populated here -->
+  </div>
+</section>
+
+<!-- ── CTA ── -->
 <section class="cta-section">
   <h2>Ready to See Results Like These?</h2>
   <p>Every practice shown here started right where you are now. Book a quick call with our team to see what Moonraker can do for yours.</p>
@@ -443,6 +506,7 @@ html.dark .partners-logos img { filter: grayscale(100%) invert(1); opacity: .4; 
   &copy; 2026 Moonraker AI. All data sourced directly from Google Search Console.
 </footer>
 
+<!-- ── Lightbox ── -->
 <div class="lightbox" id="lightbox" onclick="closeLightbox()">
   <button class="lightbox-close" onclick="closeLightbox()">&times;</button>
   <img id="lightboxImg" src="" alt="">
