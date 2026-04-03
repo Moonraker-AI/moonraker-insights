@@ -164,9 +164,9 @@ IMPORTANT RULES:
 
 SERVICE SCOPE: The Service & Sales Reference document below is the SINGLE SOURCE OF TRUTH for all services, deliverables, pricing, and scope. Only reference services that appear in this document. If it is not in the document, we do not offer it.
 
-CRITICAL: NEVER mention any of these in investment features or anywhere in the proposal:
-- Blog posts, blog content, or content marketing (we do NOT write blogs)
-- Backlinks, link building, or backlink strategies (we do NOT do link building)
+CRITICAL: NEVER mention any of these ANYWHERE in the proposal, including findings, strategy sections, ROI, or investment features:
+- Blog posts, blog content, blogging, or content marketing (we do NOT write blogs, do not even mention them as a gap)
+- Backlinks, link building, or backlink strategies (we do NOT do link building, do not even mention them as a gap)
 - Monthly strategy calls (we do onboarding calls, not ongoing monthly strategy calls)
 - Email marketing or newsletters
 - PPC/paid advertising management (referrals go to Mike Ensor)
