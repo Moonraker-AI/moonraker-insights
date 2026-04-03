@@ -282,7 +282,7 @@ Respond with ONLY valid JSON (no markdown, no backticks). The JSON must have the
     + '<li><span class="check">&#10003;</span> Ongoing social posting across 4 platforms to reinforce your digital presence</li>'
     + '<li><span class="check">&#10003;</span> Hero section and CTA optimization to convert visitors into consultation bookings</li>'
     + '<li><span class="check">&#10003;</span> Monthly progress reports with visibility and engagement metrics</li>';
-  var guaranteeFeature = '<li><span class="check">&#10003;</span> 12-month performance guarantee: if we don\'t hit our shared goal in 12 months, we continue working for free until you get there</li>';
+  var guaranteeFeature = '<li><span class="check">&#10003;</span> <strong>12-month performance guarantee: if we don\'t hit our shared goal in 12 months, we continue working for free until you get there</strong></li>';
 
   // Build investment cards for each selected campaign length
   var campaignInfo = {
@@ -301,7 +301,7 @@ Respond with ONLY valid JSON (no markdown, no backticks). The JSON must have the
     investmentCardsHtml += '<div class="investment-price">' + info.price + '</div>';
     investmentCardsHtml += '<div class="investment-period">' + info.period + '</div>';
     var featuresList = standardFeatures;
-    if (c === 'annual') featuresList += guaranteeFeature;
+    if (c === 'annual') featuresList = guaranteeFeature + featuresList;
     investmentCardsHtml += '<ul class="investment-features">' + featuresList + '</ul>';
     investmentCardsHtml += '<a href="/' + slug + '/checkout?plan=' + c + '" class="cta-btn" target="_blank">Choose Your Plan &#8594;</a>';
     investmentCardsHtml += '</div>';
