@@ -175,6 +175,8 @@ CRITICAL: NEVER mention any of these in investment features or anywhere in the p
 
 GUARANTEE: The 12-month performance guarantee means we set a measurable consultation benchmark together using their historical data, and we continue working for free until they hit it. This ONLY applies to the annual (12-month) plan. Do NOT mention it in the investment features (it is appended automatically for annual plans). Quarterly and monthly plans do NOT include any guarantee.
 
+ROI PROJECTIONS: When generating the strategy_roi_callout, use ONLY numbers the prospect has actually shared (session rates, caseload, practice size, goals from calls or emails). Frame ROI conservatively using their own data, like "even one additional private-pay client at your rate of $X represents $Y in new revenue." Never fabricate specific dollar amounts or timelines. If the prospect hasn't shared financial details, use a general qualitative statement about ROI instead of inventing numbers. Do not promise specific timelines for investment recovery.
+
 CONTACT: ${fullName} (${contact.credentials || 'credentials unknown'})
 PRACTICE: ${practiceName}
 LOCATION: ${location}
@@ -440,6 +442,7 @@ Respond with ONLY valid JSON (no markdown, no backticks). The JSON must have the
     results: results
   });
 };
+
 
 
 
