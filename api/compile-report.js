@@ -758,7 +758,7 @@ module.exports = async function handler(req, res) {
       } : 'skipped',
       tasks: taskData ? 'ok' : 'skipped'
     },
-    localfalcon_stats: lfData ? { scans_read: lfData.scans_run, reports_found: allReports ? allReports.length : 0 } : null,
+    localfalcon_stats: lfData ? { scans_read: lfData.scans_run, reports_found: lfData.scans_requested } : null,
     highlights_count: highlights.length,
     notification_sent: notificationSent,
     errors: errors,
@@ -972,3 +972,4 @@ async function generateHighlights(snapshot, prevSnap, practiceName, apiKey) {
     };
   });
 }
+
