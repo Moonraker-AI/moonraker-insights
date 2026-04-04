@@ -645,6 +645,129 @@ window.toast = toast;</code></pre>
 <div class="ds-divider"></div>
 
 <!-- ═══════════════════════════════════════ -->
+<!-- EMAIL TEMPLATE -->
+<!-- ═══════════════════════════════════════ -->
+<div class="ds-section" id="email-template">
+  <h2>Email Template</h2>
+  <p class="ds-section-desc">All system emails use a shared branded template at <code>api/_lib/email-template.js</code>. Dark navy header and footer, white content body, consistent fonts throughout.</p>
+
+  <div class="ds-subsection">
+    <h3>Template Structure</h3>
+    <div style="max-width:480px;margin:0 auto 1.5rem;">
+      <div style="background:#141C3A;padding:16px 24px;border-radius:14px 14px 0 0;display:flex;justify-content:space-between;align-items:center;">
+        <img src="/assets/logo.png" alt="Moonraker" style="height:22px;">
+        <span style="color:rgba(232,245,239,.45);font-size:.7rem;letter-spacing:.03em;">Header Label</span>
+      </div>
+      <div style="background:#fff;padding:24px;border-left:1px solid var(--color-border);border-right:1px solid var(--color-border);">
+        <div style="font-family:Outfit;font-weight:700;font-size:1rem;color:#1E2A5E;margin-bottom:.5rem;">Hi Sarah,</div>
+        <div style="font-size:.82rem;color:#333F70;line-height:1.6;margin-bottom:.75rem;">Email body content using shared helper functions: greeting(), p(), cta(), secondaryCta(), bookingButton(), divider(), sectionHeading(), coreScoreCards(), statCards().</div>
+        <div style="text-align:center;"><span style="display:inline-block;background:#00D47E;color:#fff;padding:.5rem 1.5rem;border-radius:8px;font-size:.8rem;font-weight:600;">Primary CTA</span></div>
+      </div>
+      <div style="background:#141C3A;padding:16px 24px;border-radius:0 0 14px 14px;text-align:center;">
+        <div style="font-size:.72rem;color:rgba(232,245,239,.55);margin-bottom:.35rem;">Optional footer note (email-specific)</div>
+        <div style="font-size:.65rem;color:rgba(232,245,239,.35);">&copy; 2026 Moonraker AI</div>
+      </div>
+    </div>
+  </div>
+
+  <div class="ds-subsection">
+    <h3>From Addresses</h3>
+    <table class="token-table">
+      <tr><th>Key</th><th>Display Name</th><th>Used By</th></tr>
+      <tr><td><code>email.FROM.proposals</code></td><td>Moonraker Proposals &lt;proposals@clients.moonraker.ai&gt;</td><td>Proposal emails, follow-up sequence</td></tr>
+      <tr><td><code>email.FROM.audits</code></td><td>Moonraker Audits &lt;audits@clients.moonraker.ai&gt;</td><td>Entity audit scorecard emails</td></tr>
+      <tr><td><code>email.FROM.reports</code></td><td>Moonraker Reports &lt;reports@clients.moonraker.ai&gt;</td><td>Monthly campaign reports</td></tr>
+      <tr><td><code>email.FROM.notifications</code></td><td>Moonraker Notifications &lt;notifications@clients.moonraker.ai&gt;</td><td>Team digest, internal alerts</td></tr>
+    </table>
+  </div>
+
+  <div class="ds-subsection">
+    <h3>Header Labels</h3>
+    <table class="token-table">
+      <tr><th>Email Type</th><th>Header Label</th></tr>
+      <tr><td>Proposal + follow-ups</td><td>Growth Proposal</td></tr>
+      <tr><td>Entity audit</td><td>CORE Entity Audit</td></tr>
+      <tr><td>Monthly report</td><td>Monthly Campaign Report</td></tr>
+      <tr><td>Team digest</td><td>Team Digest</td></tr>
+    </table>
+  </div>
+
+  <div class="ds-subsection">
+    <h3>Helper Functions</h3>
+    <table class="token-table">
+      <tr><th>Function</th><th>Output</th></tr>
+      <tr><td><code>email.wrap({ headerLabel, content, footerNote })</code></td><td>Full email HTML with branded header/footer</td></tr>
+      <tr><td><code>email.greeting('Sarah')</code></td><td>H1 heading: "Hi Sarah," (Outfit 700, 24px, #1E2A5E)</td></tr>
+      <tr><td><code>email.p('Body text')</code></td><td>Paragraph (Inter 400, 15px, #333F70, lh 1.7)</td></tr>
+      <tr><td><code>email.cta(url, 'Button Text')</code></td><td>Green primary CTA button (#00D47E, centered)</td></tr>
+      <tr><td><code>email.secondaryCta(url, 'Text')</code></td><td>Outline secondary button (green border)</td></tr>
+      <tr><td><code>email.bookingButton()</code></td><td>Pre-configured "Book a Call with Scott" outline button</td></tr>
+      <tr><td><code>email.sectionHeading('Title')</code></td><td>H2 section heading (Outfit 700, 18px)</td></tr>
+      <tr><td><code>email.coreScoreCards(scores)</code></td><td>4 CORE score cards with color-coded values</td></tr>
+      <tr><td><code>email.statCards(items)</code></td><td>Flexible stat card row (digest-style colored cards)</td></tr>
+      <tr><td><code>email.divider()</code></td><td>Thin horizontal rule (#E2E8F0)</td></tr>
+      <tr><td><code>email.esc(text)</code></td><td>HTML-escape utility</td></tr>
+    </table>
+  </div>
+
+  <div class="ds-subsection">
+    <h3>Font Rules</h3>
+    <table class="token-table">
+      <tr><th>Element</th><th>Font</th></tr>
+      <tr><td>Headings, greeting, big stat numbers</td><td><code>font-family:Outfit,sans-serif; font-weight:700</code></td></tr>
+      <tr><td>Body text, labels, buttons, muted text</td><td><code>font-family:Inter,sans-serif</code></td></tr>
+      <tr><td colspan="2" style="font-size:.78rem;color:var(--color-muted);">Every text element must have an explicit font-family declaration. Email clients do not reliably inherit fonts from parent elements.</td></tr>
+    </table>
+  </div>
+
+  <div class="ds-subsection">
+    <h3>Color Tokens</h3>
+    <table class="token-table">
+      <tr><th>Token</th><th>Value</th><th>Usage</th></tr>
+      <tr><td>Navy header/footer</td><td><code>#141C3A</code></td><td>Header and footer background</td></tr>
+      <tr><td>Header text (muted)</td><td><code>rgba(232,245,239,.45)</code></td><td>Header label text</td></tr>
+      <tr><td>Footer note text</td><td><code>rgba(232,245,239,.55)</code></td><td>Footer contextual note</td></tr>
+      <tr><td>Footer copyright</td><td><code>rgba(232,245,239,.35)</code></td><td>Copyright line</td></tr>
+      <tr><td>Body background</td><td><code>#FFFFFF</code></td><td>Content area</td></tr>
+      <tr><td>Body border</td><td><code>#E2E8F0</code></td><td>Side borders on content area</td></tr>
+      <tr><td>Page background</td><td><code>#F7FDFB</code></td><td>Outer email background (mint)</td></tr>
+      <tr><td>Heading color</td><td><code>#1E2A5E</code></td><td>H1, H2, stat card values</td></tr>
+      <tr><td>Body text</td><td><code>#333F70</code></td><td>Paragraph text</td></tr>
+      <tr><td>Muted text</td><td><code>#6B7599</code></td><td>Labels, captions, footer</td></tr>
+      <tr><td>CTA green</td><td><code>#00D47E</code></td><td>Buttons, links</td></tr>
+    </table>
+  </div>
+
+  <div class="ds-subsection">
+    <h3>Usage Example</h3>
+    <pre style="background:var(--color-surface);border:1px solid var(--color-border);border-radius:8px;padding:1rem;font-size:.78rem;line-height:1.6;overflow-x:auto;"><code>var email = require('./_lib/email-template');
+
+var html = email.wrap({
+  headerLabel: 'Growth Proposal',
+  footerNote: 'Questions? Reply to this email.',
+  content:
+    email.greeting('Sarah') +
+    email.p('Your proposal is ready.') +
+    email.cta('https://...', 'View Proposal') +
+    email.bookingButton()
+});
+
+// Send via Resend
+fetch('https://api.resend.com/emails', {
+  method: 'POST',
+  body: JSON.stringify({
+    from: email.FROM.proposals,
+    to: ['sarah@example.com'],
+    subject: 'Your Growth Proposal',
+    html: html
+  })
+});</code></pre>
+  </div>
+</div>
+
+<div class="ds-divider"></div>
+
+<!-- ═══════════════════════════════════════ -->
 <!-- PATTERNS -->
 <!-- ═══════════════════════════════════════ -->
 <div class="ds-section" id="patterns">
