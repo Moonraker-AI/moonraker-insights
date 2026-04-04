@@ -1,5 +1,8 @@
 // /api/send-report-email.js - Send branded report notification email to client
-// Uses Resend from reports@clients.moonraker.ai, reply-to support@, CC scott@
+// Uses shared email template for consistent branding.
+// From: reports@clients.moonraker.ai, reply-to support@, CC scott@
+
+var email = require('./_lib/email-template');
 
 module.exports = async function handler(req, res) {
   if (req.method !== 'POST') return res.status(405).json({ error: 'Method not allowed' });
@@ -50,7 +53,6 @@ module.exports = async function handler(req, res) {
     var clientName = (contact.first_name || '') + (contact.last_name ? ' ' + contact.last_name : '');
     var practiceName = contact.practice_name || clientName;
     var reportUrl = 'https://clients.moonraker.ai/' + contact.slug + '/reports#' + snap.report_month;
-    var calendarUrl = 'https://msg.moonraker.ai/widget/bookings/scott-pope-calendar';
 
     // Build highlights HTML
     var highlightsHtml = '';
@@ -66,8 +68,8 @@ module.exports = async function handler(req, res) {
             '<div style="width:36px;height:36px;border-radius:8px;background:' + color + '15;text-align:center;line-height:36px;font-size:18px;">' + emoji + '</div>' +
           '</td>' +
           '<td style="vertical-align:top;">' +
-            '<div style="font-family:Outfit,sans-serif;font-weight:700;font-size:15px;color:#1E2A5E;margin-bottom:2px;">' + esc(h.headline) + '</div>' +
-            '<div style="font-size:14px;color:#333F70;line-height:1.5;">' + esc(h.body) + '</div>' +
+            '<div style="font-family:Outfit,sans-serif;font-weight:700;font-size:15px;color:#1E2A5E;margin-bottom:2px;">' + email.esc(h.headline) + '</div>' +
+            '<div style="font-family:Inter,sans-serif;font-size:14px;color:#333F70;line-height:1.5;">' + email.esc(h.body) + '</div>' +
           '</td></tr></table>' +
           '</td></tr>';
       });
@@ -77,9 +79,9 @@ module.exports = async function handler(req, res) {
     var kpiHtml = '';
     function kpiCell(label, value, sub) {
       return '<td style="text-align:center;padding:16px 8px;">' +
-        '<div style="font-size:12px;color:#6B7599;text-transform:uppercase;letter-spacing:0.5px;margin-bottom:4px;">' + label + '</div>' +
+        '<div style="font-family:Inter,sans-serif;font-size:12px;color:#6B7599;text-transform:uppercase;letter-spacing:0.5px;margin-bottom:4px;">' + label + '</div>' +
         '<div style="font-family:Outfit,sans-serif;font-weight:700;font-size:24px;color:#1E2A5E;">' + (value || '-') + '</div>' +
-        (sub ? '<div style="font-size:11px;color:#6B7599;margin-top:2px;">' + sub + '</div>' : '') +
+        (sub ? '<div style="font-family:Inter,sans-serif;font-size:11px;color:#6B7599;margin-top:2px;">' + sub + '</div>' : '') +
         '</td>';
     }
     if (snap.gsc_clicks || snap.gsc_impressions) {
@@ -90,108 +92,67 @@ module.exports = async function handler(req, res) {
       kpiHtml += kpiCell('Tasks Complete', snap.tasks_complete + '/' + snap.tasks_total);
     }
 
-    // Geogrid summary row for email (stats only, no images)
-    var geogridEmailHtml = '';
+    // Geogrid summary (stats only, no images)
+    var geogridHtml = '';
     var neo = snap.neo_data || {};
     if (neo.grids && neo.grids.length > 0) {
-      geogridEmailHtml = '<tr><td style="background:#FFFFFF;padding:0 32px 24px;border-left:1px solid #E2E8F0;border-right:1px solid #E2E8F0;">' +
-        '<h2 style="font-family:Outfit,sans-serif;font-weight:700;font-size:18px;color:#1E2A5E;margin:0 0 12px;">Local Rank Tracking</h2>' +
-        '<table cellpadding="0" cellspacing="0" border="0" width="100%" style="background:#F7FDFB;border-radius:10px;overflow:hidden;">';
+      geogridHtml = email.sectionHeading('Local Rank Tracking') +
+        '<table cellpadding="0" cellspacing="0" border="0" width="100%" style="background:#F7FDFB;border-radius:10px;overflow:hidden;margin-bottom:8px;">';
       neo.grids.forEach(function(g) {
         var label = g.label || g.search_term;
         var solv = Math.round((g.solv || 0) * 100);
         var agrColor = g.agr <= 3 ? '#00D47E' : g.agr <= 7 ? '#F59E0B' : '#EF4444';
         var solvColor = solv >= 60 ? '#00D47E' : solv >= 30 ? '#F59E0B' : '#EF4444';
-        geogridEmailHtml += '<tr><td style="padding:12px 16px;border-bottom:1px solid #E2E8F0;">' +
+        geogridHtml += '<tr><td style="padding:12px 16px;border-bottom:1px solid #E2E8F0;">' +
           '<table cellpadding="0" cellspacing="0" border="0" width="100%"><tr>' +
-          '<td style="vertical-align:middle;"><div style="font-family:Outfit,sans-serif;font-weight:700;font-size:14px;color:#1E2A5E;">' + esc(label) + '</div>' +
-          '<div style="font-size:12px;color:#6B7599;margin-top:2px;">' + esc(g.search_term) + '</div></td>' +
+          '<td style="vertical-align:middle;"><div style="font-family:Outfit,sans-serif;font-weight:700;font-size:14px;color:#1E2A5E;">' + email.esc(label) + '</div>' +
+          '<div style="font-family:Inter,sans-serif;font-size:12px;color:#6B7599;margin-top:2px;">' + email.esc(g.search_term) + '</div></td>' +
           '<td style="text-align:right;white-space:nowrap;vertical-align:middle;">' +
           '<span style="font-family:Outfit,sans-serif;font-weight:700;font-size:14px;color:' + agrColor + ';">AGR ' + (g.agr || '-') + '</span>' +
-          '<span style="color:#E2E8F0;margin:0 6px;">|</span>' +
+          '<span style="font-family:Inter,sans-serif;color:#E2E8F0;margin:0 6px;">|</span>' +
           '<span style="font-family:Outfit,sans-serif;font-weight:700;font-size:14px;color:' + solvColor + ';">SoLV ' + solv + '%</span>' +
           '</td></tr></table></td></tr>';
       });
-      geogridEmailHtml += '</table>' +
-        '<p style="font-size:12px;color:#6B7599;margin:8px 0 0;">Avg Grid Rank: ' + neo.avg_agr + ' | Share of Local Voice: ' + Math.round((neo.avg_solv || 0) * 100) + '% across ' + neo.grid_count + ' keywords</p>' +
-        '</td></tr>';
+      geogridHtml += '</table>' +
+        '<p style="font-family:Inter,sans-serif;font-size:12px;color:#6B7599;margin:0 0 24px;">Avg Grid Rank: ' + neo.avg_agr + ' | Share of Local Voice: ' + Math.round((neo.avg_solv || 0) * 100) + '% across ' + neo.grid_count + ' keywords</p>';
     }
 
-    // AI visibility summary row for email
-    var aiEmailHtml = '';
+    // AI visibility summary
+    var aiHtml = '';
     var ai = snap.ai_visibility || {};
     if (ai.engines && ai.engines.length > 0) {
-      aiEmailHtml = '<tr><td style="background:#FFFFFF;padding:0 32px 24px;border-left:1px solid #E2E8F0;border-right:1px solid #E2E8F0;">' +
-        '<h2 style="font-family:Outfit,sans-serif;font-weight:700;font-size:18px;color:#1E2A5E;margin:0 0 12px;">AI Visibility</h2>' +
-        '<table cellpadding="0" cellspacing="0" border="0" width="100%" style="background:#F7FDFB;border-radius:10px;overflow:hidden;">';
+      aiHtml = email.sectionHeading('AI Visibility') +
+        '<table cellpadding="0" cellspacing="0" border="0" width="100%" style="background:#F7FDFB;border-radius:10px;overflow:hidden;margin-bottom:8px;">';
       ai.engines.forEach(function(e) {
         var dotColor = e.cited ? '#00D47E' : '#CBD5E1';
         var statusText = e.cited ? 'Citing' : 'Not citing';
         var statusColor = e.cited ? '#00D47E' : '#6B7599';
-        aiEmailHtml += '<tr><td style="padding:10px 16px;border-bottom:1px solid #E2E8F0;">' +
+        aiHtml += '<tr><td style="padding:10px 16px;border-bottom:1px solid #E2E8F0;">' +
           '<table cellpadding="0" cellspacing="0" border="0" width="100%"><tr>' +
           '<td style="width:12px;vertical-align:middle;"><div style="width:10px;height:10px;border-radius:50%;background:' + dotColor + ';"></div></td>' +
-          '<td style="padding-left:10px;vertical-align:middle;"><span style="font-weight:600;font-size:14px;color:#1E2A5E;">' + esc(e.name) + '</span></td>' +
-          '<td style="text-align:right;vertical-align:middle;"><span style="font-size:13px;font-weight:600;color:' + statusColor + ';">' + statusText + '</span></td>' +
+          '<td style="padding-left:10px;vertical-align:middle;"><span style="font-family:Inter,sans-serif;font-weight:600;font-size:14px;color:#1E2A5E;">' + email.esc(e.name) + '</span></td>' +
+          '<td style="text-align:right;vertical-align:middle;"><span style="font-family:Inter,sans-serif;font-size:13px;font-weight:600;color:' + statusColor + ';">' + statusText + '</span></td>' +
           '</tr></table></td></tr>';
       });
-      aiEmailHtml += '</table>' +
-        '<p style="font-size:12px;color:#6B7599;margin:8px 0 0;">' + (ai.engines_citing || 0) + ' of ' + (ai.engines_checked || 0) + ' AI engines citing this month</p>' +
-        '</td></tr>';
+      aiHtml += '</table>' +
+        '<p style="font-family:Inter,sans-serif;font-size:12px;color:#6B7599;margin:0 0 24px;">' + (ai.engines_citing || 0) + ' of ' + (ai.engines_checked || 0) + ' AI engines citing this month</p>';
     }
 
-    // Full email HTML
-    var emailHtml = '<!DOCTYPE html><html><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1.0"></head>' +
-      '<body style="margin:0;padding:0;background:#F7FDFB;font-family:Inter,-apple-system,BlinkMacSystemFont,sans-serif;">' +
-      '<table cellpadding="0" cellspacing="0" border="0" width="100%" style="background:#F7FDFB;">' +
-      '<tr><td align="center" style="padding:24px 16px;">' +
-      '<table cellpadding="0" cellspacing="0" border="0" width="600" style="max-width:600px;width:100%;">' +
+    // Assemble content
+    var content =
+      '<h1 style="font-family:Outfit,sans-serif;font-weight:700;font-size:24px;color:#1E2A5E;margin:0 0 8px;">Your ' + monthLabel + ' Report is Ready</h1>' +
+      '<p style="font-family:Inter,sans-serif;font-size:15px;color:#333F70;margin:0 0 24px;line-height:1.6;">Hi ' + email.esc(contact.first_name || 'there') + ', here is a summary of your campaign progress for ' + monthLabel + ' (Month ' + (snap.campaign_month || '-') + ').</p>' +
+      (kpiHtml ? '<table cellpadding="0" cellspacing="0" border="0" width="100%" style="background:#F7FDFB;border-radius:10px;margin-bottom:24px;"><tr>' + kpiHtml + '</tr></table>' : '') +
+      (highlightsHtml ? email.sectionHeading('Highlights') + '<table cellpadding="0" cellspacing="0" border="0" width="100%" style="background:#F7FDFB;border-radius:10px;overflow:hidden;margin-bottom:24px;">' + highlightsHtml + '</table>' : '') +
+      geogridHtml +
+      aiHtml +
+      email.cta(reportUrl, 'View Full Report');
 
-      // Header
-      '<tr><td style="background:#141C3A;padding:24px 32px;border-radius:14px 14px 0 0;">' +
-        '<table cellpadding="0" cellspacing="0" border="0" width="100%"><tr>' +
-          '<td><img src="https://moonraker.ai/wp-content/uploads/2023/10/Moonraker-Logo-Transparent.png" alt="Moonraker" height="28" style="display:block;"></td>' +
-          '<td style="text-align:right;"><span style="color:rgba(232,245,239,.45);font-size:12px;">Monthly Campaign Report</span></td>' +
-        '</tr></table>' +
-      '</td></tr>' +
-
-      // Hero
-      '<tr><td style="background:#FFFFFF;padding:32px;border-left:1px solid #E2E8F0;border-right:1px solid #E2E8F0;">' +
-        '<h1 style="font-family:Outfit,sans-serif;font-weight:700;font-size:24px;color:#1E2A5E;margin:0 0 8px;">Your ' + monthLabel + ' Report is Ready</h1>' +
-        '<p style="font-size:15px;color:#333F70;margin:0 0 24px;line-height:1.6;">Hi ' + esc(contact.first_name || 'there') + ', here is a summary of your campaign progress for ' + monthLabel + ' (Month ' + (snap.campaign_month || '-') + ').</p>' +
-
-        // KPIs
-        (kpiHtml ? '<table cellpadding="0" cellspacing="0" border="0" width="100%" style="background:#F7FDFB;border-radius:10px;margin-bottom:24px;"><tr>' + kpiHtml + '</tr></table>' : '') +
-      '</td></tr>' +
-
-      // Highlights
-      (highlightsHtml ? '<tr><td style="background:#FFFFFF;padding:0 32px 24px;border-left:1px solid #E2E8F0;border-right:1px solid #E2E8F0;">' +
-        '<h2 style="font-family:Outfit,sans-serif;font-weight:700;font-size:18px;color:#1E2A5E;margin:0 0 12px;">Highlights</h2>' +
-        '<table cellpadding="0" cellspacing="0" border="0" width="100%" style="background:#F7FDFB;border-radius:10px;overflow:hidden;">' +
-        highlightsHtml +
-        '</table>' +
-      '</td></tr>' : '') +
-
-      // Geogrids (stats only, no images)
-      geogridEmailHtml +
-
-      // AI Visibility
-      aiEmailHtml +
-
-      // CTA
-      '<tr><td style="background:#FFFFFF;padding:8px 32px 32px;border-left:1px solid #E2E8F0;border-right:1px solid #E2E8F0;">' +
-        '<table cellpadding="0" cellspacing="0" border="0" width="100%"><tr><td align="center">' +
-          '<a href="' + reportUrl + '" style="display:inline-block;background:#00D47E;color:#FFFFFF;font-family:Outfit,sans-serif;font-weight:700;font-size:15px;text-decoration:none;padding:14px 32px;border-radius:10px;">View Full Report</a>' +
-        '</td></tr></table>' +
-      '</td></tr>' +
-
-      // Footer
-      '<tr><td style="background:#F7FDFB;padding:24px 32px;border:1px solid #E2E8F0;border-top:none;border-radius:0 0 14px 14px;text-align:center;">' +
-        '<p style="font-size:13px;color:#6B7599;margin:0 0 8px;line-height:1.6;">Questions about your report? Reply to this email or <a href="' + calendarUrl + '" style="color:#00D47E;text-decoration:none;font-weight:500;">book a call with Scott</a>.</p>' +
-        '<p style="font-size:12px;color:#6B7599;margin:0;">&copy; 2026 Moonraker AI &middot; <a href="https://moonraker.ai" style="color:#6B7599;">moonraker.ai</a></p>' +
-      '</td></tr>' +
-
-      '</table></td></tr></table></body></html>';
+    var emailHtml = email.wrap({
+      headerLabel: 'Monthly Campaign Report',
+      footerNote: 'Questions about your report? Reply to this email and our team will follow up.',
+      content: content
+    });
 
     var subject = 'Your ' + monthLabel + ' Campaign Report is Ready \uD83D\uDCCA';
 
@@ -213,7 +174,7 @@ module.exports = async function handler(req, res) {
       method: 'POST',
       headers: { 'Authorization': 'Bearer ' + resendKey, 'Content-Type': 'application/json' },
       body: JSON.stringify({
-        from: 'Moonraker Reports <reports@clients.moonraker.ai>',
+        from: email.FROM.reports,
         to: [contact.email],
         cc: ['scott@moonraker.ai'],
         reply_to: 'support@moonraker.ai',
@@ -234,8 +195,3 @@ module.exports = async function handler(req, res) {
     return res.status(500).json({ error: err.message || 'Internal error' });
   }
 };
-
-function esc(s) {
-  if (!s) return '';
-  return String(s).replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;').replace(/"/g, '&quot;');
-}
