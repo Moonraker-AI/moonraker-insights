@@ -1,6 +1,6 @@
 // /api/proposal-chat.js
 // Streaming chat endpoint for the proposal chatbot (client-facing).
-// Uses Claude Opus 4.6 with full context of the proposal, CSA, and services.
+// Uses Claude Sonnet 4.6 with full context of the proposal, CSA, and services.
 // Fetches structured proposal data from Supabase for accurate, personalized responses.
 //
 // POST { messages: [...], context: { page_content, slug } }
@@ -51,7 +51,7 @@ module.exports = async function handler(req, res) {
         'anthropic-version': '2023-06-01'
       },
       body: JSON.stringify({
-        model: 'claude-opus-4-20250514',
+        model: 'claude-sonnet-4-6',
         max_tokens: 2000,
         system: systemPrompt,
         messages: messages,
