@@ -113,6 +113,7 @@ a:hover { color: var(--color-primary-hover); }
 .del-status-select.st-internal_review { background: rgba(139,92,246,.1); color: #8B5CF6; }
 .del-status-select.st-waiting_on_client { background: rgba(245,158,11,.1); color: #D97706; }
 .del-status-select.st-delivered { background: rgba(0,212,126,.1); color: #00b86c; }
+.del-status-select.st-active { background: rgba(0,212,126,.1); color: #00b86c; }
 .urgency-dot { width: 8px; height: 8px; border-radius: 50%; display: inline-block; margin-left: .5rem; flex-shrink: 0; }
 .urgency-dot.high { background: var(--color-danger); }
 .urgency-dot.medium { background: var(--color-warning); }
@@ -148,6 +149,7 @@ a:hover { color: var(--color-primary-hover); }
 .matrix-dot.in_progress { background: rgba(59,130,246,.12); color: var(--color-info); }
 .matrix-dot.pending_review { background: rgba(245,158,11,.1); color: var(--color-warning); }
 .matrix-dot.not_started { background: var(--color-bg); border: 1px solid var(--color-border); color: transparent; }
+.matrix-dot.active { background: rgba(0,212,126,.15); color: var(--color-success); }
 .matrix-dot.na { background: none; color: var(--color-muted); font-size: .6rem; }
 .matrix-dot.missing { background: rgba(239,68,68,.08); border: 1px dashed rgba(239,68,68,.3); color: transparent; }
 .matrix-client { display: flex; align-items: center; gap: .4rem; cursor: pointer; }
@@ -290,6 +292,7 @@ a:hover { color: var(--color-primary-hover); }
     <div id="matrixView" style="display:none;">
       <div class="legend">
         <div class="legend-item"><span class="matrix-dot delivered" style="width:14px;height:14px;">&#10003;</span> Delivered</div>
+        <div class="legend-item"><span class="matrix-dot active" style="width:14px;height:14px;">&#8635;</span> Active</div>
         <div class="legend-item"><span class="matrix-dot in_progress" style="width:14px;height:14px;">&#9654;</span> In Progress</div>
         <div class="legend-item"><span class="matrix-dot pending_review" style="width:14px;height:14px;">&#9679;</span> Pending Review</div>
         <div class="legend-item"><span class="matrix-dot not_started" style="width:14px;height:14px;"></span> Not Started</div>
@@ -406,10 +409,10 @@ a:hover { color: var(--color-primary-hover); }
   });
 
   var STATUS_LABELS = {
-    delivered: 'Delivered', in_progress: 'In Progress', not_started: 'Not Started',
+    delivered: 'Delivered', active: 'Active', in_progress: 'In Progress', not_started: 'Not Started',
     pending_review: 'Pending Review', blocked: 'Blocked', client_action: 'Client Action'
   };
-  var STATUS_ICONS = { delivered: '\u2713', in_progress: '\u25B6', pending_review: '\u25CF', not_started: '', blocked: '\u2716', client_action: '\u25CF' };
+  var STATUS_ICONS = { delivered: '\u2713', active: '\u21BB', in_progress: '\u25B6', pending_review: '\u25CF', not_started: '', blocked: '\u2716', client_action: '\u25CF' };
 
   var state = { contacts: [], deliverables: [], clientFilter: 'all', phaseFilter: 'all', view: 'list' };
 
@@ -469,7 +472,7 @@ a:hover { color: var(--color-primary-hover); }
   };
 
   function getUrgency(d, contactMap) {
-    if (d.status === 'delivered') return { score: 0, level: 'none' };
+    if (d.status === 'delivered' || d.status === 'active') return { score: 0, level: 'none' };
     var phase = DEL_PHASE[d.deliverable_type];
     if (phase === undefined || phase === 0) return { score: 0, level: 'none' };
     var baseWeight = {1:10, 2:8, 3:6, 4:3}[phase] || 3;
@@ -525,9 +528,10 @@ a:hover { color: var(--color-primary-hover); }
     var ir = all.filter(function(d) { return d.status === 'internal_review'; }).length;
     var wc = all.filter(function(d) { return d.status === 'waiting_on_client'; }).length;
     var ns = all.filter(function(d) { return d.status === 'not_started'; }).length;
+    var active = all.filter(function(d) { return d.status === 'active'; }).length;
     var clients = {};
     all.forEach(function(d) { clients[d.contact_id] = true; });
-    var pct = all.length > 0 ? Math.round(delivered / all.length * 100) : 0;
+    var pct = all.length > 0 ? Math.round((delivered + active) / all.length * 100) : 0;
 
     document.getElementById('statGrid').innerHTML =
       '<div class="stat-card"><div class="stat-label">Total Deliverables</div><div class="stat-value">' + all.length + '</div><div class="stat-sub">' + Object.keys(clients).length + ' clients</div></div>' +
@@ -535,7 +539,8 @@ a:hover { color: var(--color-primary-hover); }
       '<div class="stat-card"><div class="stat-label">In Progress</div><div class="stat-value" style="color:#3B82F6;">' + ip + '</div></div>' +
       '<div class="stat-card"><div class="stat-label">Internal Review</div><div class="stat-value" style="color:#8B5CF6;">' + ir + '</div></div>' +
       '<div class="stat-card"><div class="stat-label">Waiting on Client</div><div class="stat-value" style="color:#D97706;">' + wc + '</div></div>' +
-      '<div class="stat-card"><div class="stat-label">Delivered</div><div class="stat-value" style="color:var(--color-success);">' + delivered + '</div><div class="stat-sub">' + pct + '% complete</div></div>';
+      '<div class="stat-card"><div class="stat-label">Delivered</div><div class="stat-value" style="color:var(--color-success);">' + delivered + '</div></div>' +
+      '<div class="stat-card"><div class="stat-label">Active</div><div class="stat-value" style="color:var(--color-success);">' + active + '</div><div class="stat-sub">' + pct + '% complete</div></div>';
   }
 
   function renderPhaseFilters() {
@@ -616,6 +621,7 @@ a:hover { color: var(--color-primary-hover); }
         html += '<option value="internal_review"' + (d.status === 'internal_review' ? ' selected' : '') + '>Internal Review</option>';
         html += '<option value="waiting_on_client"' + (d.status === 'waiting_on_client' ? ' selected' : '') + '>Waiting on Client</option>';
         html += '<option value="delivered"' + (d.status === 'delivered' ? ' selected' : '') + '>Delivered</option>';
+        html += '<option value="active"' + (d.status === 'active' ? ' selected' : '') + '>Active</option>';
         html += '</select>';
         if (urg.level !== 'none') html += '<span class="urgency-dot ' + urg.level + '"></span>';
         html += '</div>';
@@ -645,6 +651,7 @@ a:hover { color: var(--color-primary-hover); }
         html += '<option value="internal_review"' + (d.status === 'internal_review' ? ' selected' : '') + '>Internal Review</option>';
         html += '<option value="waiting_on_client"' + (d.status === 'waiting_on_client' ? ' selected' : '') + '>Waiting on Client</option>';
         html += '<option value="delivered"' + (d.status === 'delivered' ? ' selected' : '') + '>Delivered</option>';
+        html += '<option value="active"' + (d.status === 'active' ? ' selected' : '') + '>Active</option>';
         html += '</select>';
         if (oUrg.level !== 'none') html += '<span class="urgency-dot ' + oUrg.level + '"></span>';
         html += '</div>';
@@ -824,6 +831,7 @@ a:hover { color: var(--color-primary-hover); }
 <div class="toast" id="toast"></div>
 </body>
 </html>
+
 
 
 
