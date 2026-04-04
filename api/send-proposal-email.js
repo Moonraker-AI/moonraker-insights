@@ -1,14 +1,14 @@
 // /api/send-proposal-email.js
 // Sends a proposal email to the prospect via Resend.
-// From: proposals@clients.moonraker.ai
-// Reply-To: scott@moonraker.ai
-// CC: chris@moonraker.ai, scott@moonraker.ai
+// Uses shared email template for consistent branding.
 //
 // POST { proposal_id, subject?, body_html?, preview_only? }
 //   - If subject/body_html omitted, generates a default email
 //   - If preview_only=true, returns the email without sending
 //
 // ENV VARS: SUPABASE_SERVICE_ROLE_KEY, RESEND_API_KEY
+
+var email = require('./_lib/email-template');
 
 module.exports = async function handler(req, res) {
   if (req.method !== 'POST') return res.status(405).json({ error: 'Method not allowed' });
@@ -57,7 +57,7 @@ module.exports = async function handler(req, res) {
       ok: true,
       preview: true,
       to: contact.email,
-      from: 'proposals@clients.moonraker.ai',
+      from: email.FROM.proposals,
       reply_to: 'scott@moonraker.ai',
       cc: 'chris@moonraker.ai, scott@moonraker.ai',
       subject: subject,
@@ -71,7 +71,7 @@ module.exports = async function handler(req, res) {
       method: 'POST',
       headers: { 'Authorization': 'Bearer ' + resendKey, 'Content-Type': 'application/json' },
       body: JSON.stringify({
-        from: 'Moonraker AI <proposals@clients.moonraker.ai>',
+        from: email.FROM.proposals,
         to: [contact.email],
         cc: ['chris@moonraker.ai', 'scott@moonraker.ai'],
         reply_to: 'scott@moonraker.ai',
@@ -105,44 +105,16 @@ module.exports = async function handler(req, res) {
 };
 
 function buildDefaultEmail(firstName, practiceName, proposalUrl) {
-  return `
-<!DOCTYPE html>
-<html>
-<head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"></head>
-<body style="margin:0;padding:0;background:#f7fdfb;font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',Roboto,sans-serif;">
-<div style="max-width:600px;margin:0 auto;padding:2rem 1.5rem;">
-
-<div style="text-align:center;margin-bottom:2rem;">
-  <img src="https://moonraker.ai/wp-content/uploads/2023/10/Moonraker-Logo-Transparent.png" alt="Moonraker" style="height:40px;">
-</div>
-
-<div style="background:#ffffff;border-radius:12px;padding:2rem;border:1px solid #e2e8f0;">
-  <h1 style="font-family:'Outfit',sans-serif;font-size:1.5rem;color:#1E2A5E;margin:0 0 1rem;">Hi ${firstName},</h1>
-
-  <p style="color:#333F70;line-height:1.7;margin-bottom:1rem;">Thank you for taking the time to speak with us about ${practiceName}. We have put together a personalized growth proposal based on our conversation and analysis of your current digital presence.</p>
-
-  <p style="color:#333F70;line-height:1.7;margin-bottom:1.5rem;">Inside, you will find a detailed assessment of where your practice stands today across the four pillars of our CORE framework, along with a concrete strategy and timeline for growing your visibility in both traditional search and AI-powered platforms.</p>
-
-  <div style="text-align:center;margin:2rem 0;">
-    <a href="${proposalUrl}" style="display:inline-block;background:#00D47E;color:#ffffff;padding:.75rem 2rem;border-radius:8px;font-weight:600;font-size:1rem;text-decoration:none;">View Your Proposal</a>
-  </div>
-
-  <p style="color:#333F70;line-height:1.7;margin-bottom:1rem;">Feel free to take your time reviewing everything. If you have any questions, you can reply to this email and it will go directly to Scott, our Director of Growth, or you can book a follow-up call at a time that works for you.</p>
-
-  <div style="text-align:center;margin:1.5rem 0;">
-    <a href="https://msg.moonraker.ai/widget/bookings/scott-pope-calendar" style="display:inline-block;border:1px solid #00D47E;color:#00D47E;padding:.5rem 1.5rem;border-radius:8px;font-weight:500;font-size:.9rem;text-decoration:none;">Book a Call with Scott</a>
-  </div>
-
-  <p style="color:#333F70;line-height:1.7;margin-bottom:0;">We are excited about the opportunity to help ${practiceName} grow. Looking forward to hearing your thoughts.</p>
-</div>
-
-<div style="text-align:center;padding:1.5rem 0;color:#6B7599;font-size:.8rem;">
-  <p style="margin:0;">moonraker.ai</p>
-  <p style="margin:.25rem 0 0;">This email was sent to you because you expressed interest in our services.</p>
-</div>
-
-</div>
-</body>
-</html>`;
+  return email.wrap({
+    headerLabel: 'Growth Proposal',
+    footerNote: 'Questions? Reply to this email or <a href="' + email.CALENDAR_URL + '" style="font-family:Inter,sans-serif;color:#00D47E;text-decoration:none;font-weight:500;">book a call with Scott</a>.',
+    content:
+      email.greeting(firstName) +
+      email.p('Thank you for taking the time to speak with us about ' + email.esc(practiceName) + '. We have put together a personalized growth proposal based on our conversation and analysis of your current digital presence.') +
+      email.p('Inside, you will find a detailed assessment of where your practice stands today across the four pillars of our CORE framework, along with a concrete strategy and timeline for growing your visibility in both traditional search and AI-powered platforms.') +
+      email.cta(proposalUrl, 'View Your Proposal') +
+      email.p('Feel free to take your time reviewing everything. If you have any questions, you can reply to this email and it will go directly to Scott, our Director of Growth, or you can book a follow-up call at a time that works for you.') +
+      email.bookingButton() +
+      email.p('We are excited about the opportunity to help ' + email.esc(practiceName) + ' grow. Looking forward to hearing your thoughts.')
+  });
 }
-
