@@ -1,6 +1,6 @@
 // /api/report-chat.js
 // Streaming chat endpoint for the report chatbot (client-facing).
-// Uses Claude Opus 4.6 with full context of the report snapshot, metrics,
+// Uses Claude Sonnet 4.6 with full context of the report snapshot, metrics,
 // and the CORE Marketing System services reference.
 // Standard Node.js serverless function with SSE streaming.
 //
@@ -42,7 +42,7 @@ module.exports = async function handler(req, res) {
         'anthropic-version': '2023-06-01'
       },
       body: JSON.stringify({
-        model: 'claude-opus-4-20250514',
+        model: 'claude-sonnet-4-6',
         max_tokens: 2000,
         system: systemPrompt,
         messages: messages,
