@@ -1,14 +1,14 @@
 // /api/send-entity-audit-email.js
 // Sends the entity audit scorecard email to the lead/prospect via Resend.
-// From: audits@clients.moonraker.ai
-// Reply-To: scott@moonraker.ai
-// CC: chris@moonraker.ai, scott@moonraker.ai
+// Uses shared email template for consistent branding.
 //
 // POST { audit_id, subject?, body_html?, preview_only? }
 //   - If subject/body_html omitted, generates a default email
 //   - If preview_only=true, returns the email without sending
 //
 // ENV VARS: SUPABASE_SERVICE_ROLE_KEY, RESEND_API_KEY
+
+var email = require('./_lib/email-template');
 
 module.exports = async function handler(req, res) {
   if (req.method !== 'POST') return res.status(405).json({ error: 'Method not allowed' });
@@ -62,7 +62,7 @@ module.exports = async function handler(req, res) {
       ok: true,
       preview: true,
       to: contact.email,
-      from: 'audits@clients.moonraker.ai',
+      from: email.FROM.audits,
       reply_to: 'scott@moonraker.ai',
       cc: 'chris@moonraker.ai, scott@moonraker.ai',
       subject: subject,
@@ -76,7 +76,7 @@ module.exports = async function handler(req, res) {
       method: 'POST',
       headers: { 'Authorization': 'Bearer ' + resendKey, 'Content-Type': 'application/json' },
       body: JSON.stringify({
-        from: 'Moonraker AI <audits@clients.moonraker.ai>',
+        from: email.FROM.audits,
         to: [contact.email],
         cc: ['chris@moonraker.ai', 'scott@moonraker.ai'],
         reply_to: 'scott@moonraker.ai',
@@ -109,72 +109,13 @@ module.exports = async function handler(req, res) {
 };
 
 function buildDefaultEmail(firstName, practiceName, scorecardUrl, scores) {
-  var cred = scores.credibility || 0;
-  var opt = scores.optimization || 0;
-  var rep = scores.reputation || 0;
-  var eng = scores.engagement || 0;
-  var avg = ((cred + opt + rep + eng) / 4).toFixed(1);
-
-  function scoreColor(v) {
-    if (v <= 3) return '#EF4444';
-    if (v <= 6) return '#F59E0B';
-    return '#00D47E';
-  }
-
-  return `
-<!DOCTYPE html>
-<html>
-<head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"></head>
-<body style="margin:0;padding:0;background:#f7fdfb;font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',Roboto,sans-serif;">
-<div style="max-width:600px;margin:0 auto;padding:2rem 1.5rem;">
-
-<div style="text-align:center;margin-bottom:2rem;">
-  <img src="https://moonraker.ai/wp-content/uploads/2023/10/Moonraker-Logo-Transparent.png" alt="Moonraker" style="height:40px;">
-</div>
-
-<div style="background:#ffffff;border-radius:12px;padding:2rem;border:1px solid #e2e8f0;">
-  <h1 style="font-family:'Outfit',sans-serif;font-size:1.5rem;color:#1E2A5E;margin:0 0 1rem;">Hi ${firstName},</h1>
-
-  <p style="color:#333F70;font-size:.95rem;line-height:1.7;margin:0 0 1rem;">
-    Your CORE Entity Audit for <strong>${practiceName}</strong> is ready. We analyzed how AI platforms and search engines currently understand and represent your practice online.
-  </p>
-
-  <div style="background:#f7fdfb;border:1px solid #e2e8f0;border-radius:10px;padding:1.25rem;margin:1.25rem 0;text-align:center;">
-    <div style="font-size:.72rem;font-weight:600;text-transform:uppercase;letter-spacing:.04em;color:#6B7599;margin-bottom:.75rem;">Your CORE Scores</div>
-    <div style="display:inline-flex;gap:.5rem;">
-      <div style="display:inline-block;padding:.35rem .75rem;border-radius:8px;font-weight:700;font-size:1rem;background:${scoreColor(cred)}22;color:${scoreColor(cred)};">C: ${cred}</div>
-      <div style="display:inline-block;padding:.35rem .75rem;border-radius:8px;font-weight:700;font-size:1rem;background:${scoreColor(opt)}22;color:${scoreColor(opt)};">O: ${opt}</div>
-      <div style="display:inline-block;padding:.35rem .75rem;border-radius:8px;font-weight:700;font-size:1rem;background:${scoreColor(rep)}22;color:${scoreColor(rep)};">R: ${rep}</div>
-      <div style="display:inline-block;padding:.35rem .75rem;border-radius:8px;font-weight:700;font-size:1rem;background:${scoreColor(eng)}22;color:${scoreColor(eng)};">E: ${eng}</div>
-    </div>
-    <div style="font-size:.82rem;color:#6B7599;margin-top:.5rem;">Average: ${avg}/10</div>
-  </div>
-
-  <p style="color:#333F70;font-size:.95rem;line-height:1.7;margin:0 0 1.25rem;">
-    Your scorecard includes a breakdown of findings across all four pillars, along with the first fix in each area you can implement right away.
-  </p>
-
-  <div style="text-align:center;margin:1.5rem 0;">
-    <a href="${scorecardUrl}" style="display:inline-block;padding:.75rem 2rem;background:#00D47E;color:#fff;text-decoration:none;border-radius:8px;font-weight:600;font-size:.95rem;">View Your Full Scorecard</a>
-  </div>
-
-  <p style="color:#333F70;font-size:.95rem;line-height:1.7;margin:0 0 .5rem;">
-    If you have any questions about the results, or want to discuss what a full CORE Marketing System campaign would look like for your practice, we would love to chat.
-  </p>
-
-  <div style="text-align:center;margin:1.25rem 0;">
-    <a href="https://msg.moonraker.ai/widget/bookings/moonraker-free-strategy-call" style="display:inline-block;padding:.6rem 1.5rem;border:1px solid #00D47E;color:#00D47E;text-decoration:none;border-radius:8px;font-weight:600;font-size:.9rem;">Book a Free Strategy Call</a>
-  </div>
-</div>
-
-<div style="text-align:center;margin-top:2rem;padding-top:1.5rem;border-top:1px solid #e2e8f0;">
-  <p style="font-size:.78rem;color:#6B7599;margin:0;">Moonraker AI &middot; Digital Marketing for Therapy Practices</p>
-  <p style="font-size:.72rem;color:#6B7599;margin:.25rem 0 0;">
-    <a href="https://moonraker.ai" style="color:#00D47E;text-decoration:none;">moonraker.ai</a>
-  </p>
-</div>
-
-</div>
-</body>
-</html>`;
+  return email.wrap({
+    headerLabel: 'CORE Entity Audit',
+    content:
+      email.greeting(firstName) +
+      email.p('Your CORE Entity Audit for <strong>' + email.esc(practiceName) + '</strong> is ready. We analyzed how AI platforms and search engines currently understand and represent your practice online.') +
+      email.coreScoreCards(scores) +
+      email.p('Your scorecard includes a breakdown of findings across all four pillars, along with the first fix in each area you can implement right away.') +
+      email.cta(scorecardUrl, 'View Your Full Scorecard')
+  });
 }
