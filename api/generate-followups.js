@@ -1,6 +1,6 @@
 // /api/generate-followups.js
 // Generates a 4-email follow-up sequence for a sent proposal.
-// Uses smart templates personalized with proposal + contact data.
+// Uses shared email template for consistent branding.
 //
 // POST { proposal_id }
 // Returns the draft sequence for preview before approval.
@@ -10,6 +10,8 @@
 //   2. Day 7  - Value-add: concrete tip relevant to their practice
 //   3. Day 14 - Social proof: results from similar practices
 //   4. Day 21 - Graceful close: have your priorities shifted?
+
+var email = require('./_lib/email-template');
 
 module.exports = async function handler(req, res) {
   if (req.method !== 'POST') return res.status(405).json({ error: 'Method not allowed' });
@@ -128,67 +130,42 @@ module.exports = async function handler(req, res) {
 };
 
 
-// ---- Email templates ----
+// ---- Email templates (using shared branded wrapper) ----
 
-function emailWrap(content) {
-  return '<!DOCTYPE html><html><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"></head>'
-    + '<body style="margin:0;padding:0;background:#f7fdfb;font-family:-apple-system,BlinkMacSystemFont,\'Segoe UI\',Roboto,sans-serif;">'
-    + '<div style="max-width:600px;margin:0 auto;padding:2rem 1.5rem;">'
-    + '<div style="text-align:center;margin-bottom:2rem;">'
-    + '<img src="https://moonraker.ai/wp-content/uploads/2023/10/Moonraker-Logo-Transparent.png" alt="Moonraker" style="height:40px;">'
-    + '</div>'
-    + '<div style="background:#ffffff;border-radius:12px;padding:2rem;border:1px solid #e2e8f0;">'
-    + content
-    + '</div>'
-    + '<div style="text-align:center;padding:1.5rem 0;color:#6B7599;font-size:.8rem;">'
-    + '<p style="margin:0;">moonraker.ai</p>'
-    + '</div></div></body></html>';
-}
+var FOOTER_NOTE = 'Questions? Reply to this email or <a href="' + email.CALENDAR_URL + '" style="font-family:Inter,sans-serif;color:#00D47E;text-decoration:none;font-weight:500;">book a call with Scott</a>.';
 
-function ctaButton(url, text) {
-  return '<div style="text-align:center;margin:2rem 0;">'
-    + '<a href="' + url + '" style="display:inline-block;background:#00D47E;color:#ffffff;padding:.75rem 2rem;border-radius:8px;font-weight:600;font-size:1rem;text-decoration:none;">' + text + '</a>'
-    + '</div>';
-}
-
-function bookingLink() {
-  return '<div style="text-align:center;margin:1.5rem 0;">'
-    + '<a href="https://msg.moonraker.ai/widget/bookings/scott-pope-calendar" style="display:inline-block;border:1px solid #00D47E;color:#00D47E;padding:.5rem 1.5rem;border-radius:8px;font-weight:500;font-size:.9rem;text-decoration:none;">Book a Call with Scott</a>'
-    + '</div>';
-}
-
-function p(text) {
-  return '<p style="color:#333F70;line-height:1.7;margin-bottom:1rem;">' + text + '</p>';
-}
-
-function greeting(name) {
-  return '<h1 style="font-family:\'Outfit\',sans-serif;font-size:1.5rem;color:#1E2A5E;margin:0 0 1rem;">Hi ' + name + ',</h1>';
+function followupWrap(content) {
+  return email.wrap({
+    headerLabel: 'Growth Proposal',
+    footerNote: FOOTER_NOTE,
+    content: content
+  });
 }
 
 // Email 1: Day 3 - Check-in
 function buildEmail1(firstName, practiceName, proposalUrl) {
-  return emailWrap(
-    greeting(firstName)
-    + p('I wanted to follow up and make sure you had a chance to look over the growth proposal we put together for ' + practiceName + '. We spent time analyzing your current digital presence, and I think you will find some of the insights valuable regardless of what you decide.')
-    + p('If you have not had a chance to open it yet, here is the link again:')
-    + ctaButton(proposalUrl, 'View Your Proposal')
-    + p('If anything in the proposal raised questions or if you would like to talk through any of the recommendations, I am happy to hop on a quick call.')
-    + bookingLink()
-    + p('No rush at all. Just wanted to make sure it did not get buried in your inbox.')
+  return followupWrap(
+    email.greeting(firstName) +
+    email.p('I wanted to follow up and make sure you had a chance to look over the growth proposal we put together for ' + email.esc(practiceName) + '. We spent time analyzing your current digital presence, and I think you will find some of the insights valuable regardless of what you decide.') +
+    email.p('If you have not had a chance to open it yet, here is the link again:') +
+    email.cta(proposalUrl, 'View Your Proposal') +
+    email.p('If anything in the proposal raised questions or if you would like to talk through any of the recommendations, I am happy to hop on a quick call.') +
+    email.bookingButton() +
+    email.p('No rush at all. Just wanted to make sure it did not get buried in your inbox.')
   );
 }
 
 // Email 2: Day 7 - Value-add tip
 function buildEmail2(firstName, practiceName, proposalUrl, location) {
-  var locationNote = location ? ' in ' + location : '';
-  return emailWrap(
-    greeting(firstName)
-    + p('I was thinking about ' + practiceName + ' and wanted to share something that has been making a real difference for practices' + locationNote + '.')
-    + p('One of the biggest shifts we are seeing right now is how AI platforms like ChatGPT and Google AI Overviews are changing the way potential clients find therapists. People are increasingly asking AI for recommendations instead of scrolling through search results, and most practices are not set up to appear in those responses.')
-    + p('Your proposal includes a breakdown of where ' + practiceName + ' stands in both traditional search and AI visibility. Even if you are not ready to move forward with us, understanding this shift can help you make better decisions about your marketing.')
-    + ctaButton(proposalUrl, 'Review Your Visibility Analysis')
-    + p('Happy to answer any questions if something in the analysis catches your eye.')
-    + bookingLink()
+  var locationNote = location ? ' in ' + email.esc(location) : '';
+  return followupWrap(
+    email.greeting(firstName) +
+    email.p('I was thinking about ' + email.esc(practiceName) + ' and wanted to share something that has been making a real difference for practices' + locationNote + '.') +
+    email.p('One of the biggest shifts we are seeing right now is how AI platforms like ChatGPT and Google AI Overviews are changing the way potential clients find therapists. People are increasingly asking AI for recommendations instead of scrolling through search results, and most practices are not set up to appear in those responses.') +
+    email.p('Your proposal includes a breakdown of where ' + email.esc(practiceName) + ' stands in both traditional search and AI visibility. Even if you are not ready to move forward with us, understanding this shift can help you make better decisions about your marketing.') +
+    email.cta(proposalUrl, 'Review Your Visibility Analysis') +
+    email.p('Happy to answer any questions if something in the analysis catches your eye.') +
+    email.bookingButton()
   );
 }
 
@@ -200,31 +177,29 @@ function buildEmail3(firstName, practiceName, proposalUrl, practiceType) {
     : 'our top group practice saw a 213% increase in organic visibility in just 6 months';
   var typeLabel = isSolo ? 'solo therapists' : 'group practices';
 
-  return emailWrap(
-    greeting(firstName)
-    + p('I wanted to share a quick note about something we are seeing with practices similar to ' + practiceName + '.')
-    + p('The practices that tend to see the fastest growth are the ones that invest in building a strong, verified digital foundation early. Things like consistent business listings, a well-structured website, and a presence across the platforms where potential clients are searching (including AI platforms) all compound over time.')
-    + p('To put some numbers behind it: ' + topStat + '. Across all 22 of our clients, the average increase in Google Search Console visibility is 115%.')
-    + p('Rather than take our word for it, here are real Google Search Console results from ' + typeLabel + ' and more:')
-    + ctaButton('https://clients.moonraker.ai/results', 'See Client Results')
-    + p('Every result on that page is verified data pulled directly from Google Search Console. No vanity metrics, just real growth numbers.')
-    + ctaButton(proposalUrl, 'Revisit Your Proposal')
-    + p('If you would like to hear more about what has worked for similar practices, Scott would be happy to walk you through a few examples.')
-    + bookingLink()
+  return followupWrap(
+    email.greeting(firstName) +
+    email.p('I wanted to share a quick note about something we are seeing with practices similar to ' + email.esc(practiceName) + '.') +
+    email.p('The practices that tend to see the fastest growth are the ones that invest in building a strong, verified digital foundation early. Things like consistent business listings, a well-structured website, and a presence across the platforms where potential clients are searching (including AI platforms) all compound over time.') +
+    email.p('To put some numbers behind it: ' + topStat + '. Across all 22 of our clients, the average increase in Google Search Console visibility is 115%.') +
+    email.p('Rather than take our word for it, here are real Google Search Console results from ' + typeLabel + ' and more:') +
+    email.cta('https://clients.moonraker.ai/results', 'See Client Results') +
+    email.p('Every result on that page is verified data pulled directly from Google Search Console. No vanity metrics, just real growth numbers.') +
+    email.cta(proposalUrl, 'Revisit Your Proposal') +
+    email.p('If you would like to hear more about what has worked for similar practices, Scott would be happy to walk you through a few examples.') +
+    email.bookingButton()
   );
 }
 
 // Email 4: Day 21 - Graceful close
 function buildEmail4(firstName, practiceName, proposalUrl) {
-  return emailWrap(
-    greeting(firstName)
-    + p('I wanted to reach out one last time about the growth proposal we put together for ' + practiceName + '.')
-    + p('I completely understand that priorities shift, and the timing might not be right. That is perfectly okay. If your focus has moved elsewhere, just know that your proposal will stay available whenever you are ready to revisit it.')
-    + ctaButton(proposalUrl, 'Your Proposal')
-    + p('If anything has changed and you would like to pick the conversation back up, we are here. And if you have decided to go a different direction, I would genuinely appreciate hearing what factored into that decision. It helps us get better.')
-    + '<p style="color:#333F70;line-height:1.7;margin-bottom:1rem;">Either way, I wish you and ' + practiceName + ' all the best.</p>'
-    + '<p style="color:#333F70;line-height:1.7;margin-bottom:0;">Warmly,<br>The Moonraker Team</p>'
+  return followupWrap(
+    email.greeting(firstName) +
+    email.p('I wanted to reach out one last time about the growth proposal we put together for ' + email.esc(practiceName) + '.') +
+    email.p('I completely understand that priorities shift, and the timing might not be right. That is perfectly okay. If your focus has moved elsewhere, just know that your proposal will stay available whenever you are ready to revisit it.') +
+    email.cta(proposalUrl, 'Your Proposal') +
+    email.p('If anything has changed and you would like to pick the conversation back up, we are here. And if you have decided to go a different direction, I would genuinely appreciate hearing what factored into that decision. It helps us get better.') +
+    email.p('Either way, I wish you and ' + email.esc(practiceName) + ' all the best.') +
+    '<p style="font-family:Inter,sans-serif;font-size:15px;color:#333F70;line-height:1.7;margin:0;">Warmly,<br>The Moonraker Team</p>'
   );
 }
-
-
