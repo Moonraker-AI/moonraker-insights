@@ -1533,55 +1533,58 @@ strong { font-weight: 600; color: var(--color-heading); }
     var targets = targetId ? [targetId] : ['icKeywordForm', 'rptKeywordForm'];
     var slug = state.contact.slug;
     fetch(SB + '/rest/v1/tracked_keywords?client_slug=eq.' + slug + '&active=eq.true&order=priority.asc,keyword.asc', { headers: { 'apikey': SK, 'Authorization': 'Bearer ' + SK } }).then(function(r) { return r.json(); }).then(function(kws) {
-      var html = '<div class="ic-kw-form">';
-      html += '<div style="display:grid;grid-template-columns:.5fr 1fr auto auto auto;gap:.5rem;padding:.4rem 0 .5rem;border-bottom:1px solid var(--color-border);margin-bottom:.35rem;">';
-      html += '<div class="ic-kw-header">Keyword</div><div class="ic-kw-header">Target Page URL</div><div class="ic-kw-header">Priority</div><div class="ic-kw-header">Page Status</div><div class="ic-kw-header"></div></div>';
-      if (kws && kws.length > 0) {
-        kws.forEach(function(kw) {
-          var isNew = (kw.notes || '').toLowerCase().indexOf('new page') >= 0;
-          var pageLabel = isNew ? 'New' : 'Existing';
-          var pageColor = isNew ? 'var(--color-primary)' : 'var(--color-info)';
-          html += '<div style="display:grid;grid-template-columns:.5fr 1fr auto auto auto;gap:.5rem;align-items:center;padding:.4rem 0;border-bottom:1px solid var(--color-border);font-size:.82rem;">';
-          html += '<div style="color:var(--color-heading);font-weight:500;">' + esc(kw.keyword) + '</div>';
-          html += '<div style="color:var(--color-muted);font-size:.78rem;">' + esc(kw.target_page || '-') + '</div>';
-          html += '<span style="font-size:.72rem;font-weight:600;padding:.15rem .45rem;border-radius:4px;background:' + (kw.priority === 1 ? 'rgba(0,212,126,.1);color:#00b86c' : 'rgba(59,130,246,.1);color:#3B82F6') + ';">P' + (kw.priority || 2) + '</span>';
-          html += '<span style="font-size:.72rem;font-weight:500;color:' + pageColor + ';">' + pageLabel + '</span>';
-          html += '<button onclick="deleteICKeyword(\'' + kw.id + '\')" style="width:22px;height:22px;border:none;background:transparent;color:var(--color-muted);cursor:pointer;font-size:.75rem;border-radius:4px;display:flex;align-items:center;justify-content:center;" onmouseover="this.style.background=\'rgba(239,68,68,.1)\';this.style.color=\'var(--color-danger)\'" onmouseout="this.style.background=\'transparent\';this.style.color=\'var(--color-muted)\'" title="Delete">&#10005;</button>';
-          html += '</div>';
-        });
-      }
-      html += '<div style="display:grid;grid-template-columns:.5fr 1fr auto auto auto;gap:.5rem;align-items:center;margin-top:.5rem;">';
-      html += '<input type="text" id="icNewKw" placeholder="e.g. EMDR therapy Tucson" style="font-family:inherit;font-size:.82rem;padding:.35rem .5rem;border:1px solid var(--color-border);border-radius:6px;background:var(--color-bg);color:var(--color-heading);">';
-      html += '<input type="text" id="icNewPage" placeholder="/emdr-therapy/" style="font-family:inherit;font-size:.82rem;padding:.35rem .5rem;border:1px solid var(--color-border);border-radius:6px;background:var(--color-bg);color:var(--color-heading);">';
-      html += '<select id="icNewPriority" style="font-family:inherit;font-size:.78rem;padding:.3rem .4rem;border:1px solid var(--color-border);border-radius:6px;background:var(--color-bg);color:var(--color-heading);"><option value="1">P1</option><option value="2">P2</option></select>';
-      html += '<select id="icNewPageType" style="font-family:inherit;font-size:.78rem;padding:.3rem .4rem;border:1px solid var(--color-border);border-radius:6px;background:var(--color-bg);color:var(--color-heading);"><option value="new">New Page</option><option value="existing">Existing</option></select>';
-      html += '<div></div>';
-      html += '</div>';
-      html += '<div style="margin-top:.6rem;display:flex;gap:.75rem;align-items:center;">';
-      html += '<button onclick="addICKeyword()" style="padding:.35rem .85rem;font-size:.78rem;font-weight:600;border:1px solid var(--color-primary);background:var(--color-primary-subtle);color:var(--color-primary);border-radius:6px;cursor:pointer;">Add Keyword</button>';
-      html += '<span style="font-size:.72rem;color:var(--color-muted);"><strong>P1</strong> = target page for reporting &amp; tracking &nbsp;|&nbsp; <strong>P2</strong> = secondary reference for Surge audit</span>';
-      html += '</div></div>';
-      // Render into whichever target element exists
-      targets.forEach(function(id) {
-        var el = document.getElementById(id);
-        if (el) el.innerHTML = html;
+      targets.forEach(function(tid) {
+        var el = document.getElementById(tid);
+        if (!el) return;
+        var p = tid.replace('KeywordForm', ''); // prefix: 'ic' or 'rpt'
+        var html = '<div class="ic-kw-form">';
+        html += '<div style="display:grid;grid-template-columns:.5fr 1fr auto auto auto;gap:.5rem;padding:.4rem 0 .5rem;border-bottom:1px solid var(--color-border);margin-bottom:.35rem;">';
+        html += '<div class="ic-kw-header">Keyword</div><div class="ic-kw-header">Target Page URL</div><div class="ic-kw-header">Priority</div><div class="ic-kw-header">Page Status</div><div class="ic-kw-header"></div></div>';
+        if (kws && kws.length > 0) {
+          kws.forEach(function(kw) {
+            var isNew = (kw.notes || '').toLowerCase().indexOf('new page') >= 0;
+            var pageLabel = isNew ? 'New' : 'Existing';
+            var pageColor = isNew ? 'var(--color-primary)' : 'var(--color-info)';
+            html += '<div style="display:grid;grid-template-columns:.5fr 1fr auto auto auto;gap:.5rem;align-items:center;padding:.4rem 0;border-bottom:1px solid var(--color-border);font-size:.82rem;">';
+            html += '<div style="color:var(--color-heading);font-weight:500;">' + esc(kw.keyword) + '</div>';
+            html += '<div style="color:var(--color-muted);font-size:.78rem;">' + esc(kw.target_page || '-') + '</div>';
+            html += '<span style="font-size:.72rem;font-weight:600;padding:.15rem .45rem;border-radius:4px;background:' + (kw.priority === 1 ? 'rgba(0,212,126,.1);color:#00b86c' : 'rgba(59,130,246,.1);color:#3B82F6') + ';">P' + (kw.priority || 2) + '</span>';
+            html += '<span style="font-size:.72rem;font-weight:500;color:' + pageColor + ';">' + pageLabel + '</span>';
+            html += '<button onclick="deleteICKeyword(\'' + kw.id + '\')" style="width:22px;height:22px;border:none;background:transparent;color:var(--color-muted);cursor:pointer;font-size:.75rem;border-radius:4px;display:flex;align-items:center;justify-content:center;" onmouseover="this.style.background=\'rgba(239,68,68,.1)\';this.style.color=\'var(--color-danger)\'" onmouseout="this.style.background=\'transparent\';this.style.color=\'var(--color-muted)\'" title="Delete">&#10005;</button>';
+            html += '</div>';
+          });
+        }
+        html += '<div style="display:grid;grid-template-columns:.5fr 1fr auto auto auto;gap:.5rem;align-items:center;margin-top:.5rem;">';
+        html += '<input type="text" id="' + p + 'NewKw" placeholder="e.g. EMDR therapy Tucson" style="font-family:inherit;font-size:.82rem;padding:.35rem .5rem;border:1px solid var(--color-border);border-radius:6px;background:var(--color-bg);color:var(--color-heading);">';
+        html += '<input type="text" id="' + p + 'NewPage" placeholder="/emdr-therapy/" style="font-family:inherit;font-size:.82rem;padding:.35rem .5rem;border:1px solid var(--color-border);border-radius:6px;background:var(--color-bg);color:var(--color-heading);">';
+        html += '<select id="' + p + 'NewPriority" style="font-family:inherit;font-size:.78rem;padding:.3rem .4rem;border:1px solid var(--color-border);border-radius:6px;background:var(--color-bg);color:var(--color-heading);"><option value="1">P1</option><option value="2">P2</option></select>';
+        html += '<select id="' + p + 'NewPageType" style="font-family:inherit;font-size:.78rem;padding:.3rem .4rem;border:1px solid var(--color-border);border-radius:6px;background:var(--color-bg);color:var(--color-heading);"><option value="new">New Page</option><option value="existing">Existing</option></select>';
+        html += '<div></div>';
+        html += '</div>';
+        html += '<div style="margin-top:.6rem;display:flex;gap:.75rem;align-items:center;">';
+        html += '<button onclick="addICKeyword(\'' + p + '\')" style="padding:.35rem .85rem;font-size:.78rem;font-weight:600;border:1px solid var(--color-primary);background:var(--color-primary-subtle);color:var(--color-primary);border-radius:6px;cursor:pointer;">Add Keyword</button>';
+        html += '<span style="font-size:.72rem;color:var(--color-muted);"><strong>P1</strong> = target page for reporting &amp; tracking &nbsp;|&nbsp; <strong>P2</strong> = secondary reference for Surge audit</span>';
+        html += '</div></div>';
+        el.innerHTML = html;
       });
     }).catch(function() {
-      targets.forEach(function(id) {
-        var el = document.getElementById(id);
+      targets.forEach(function(tid) {
+        var el = document.getElementById(tid);
         if (el) el.innerHTML = '<p style="color:var(--color-muted);font-size:.82rem;">Could not load keywords.</p>';
       });
     });
   }
 
-  window.addICKeyword = function() {
-    var kwEl = document.getElementById('icNewKw'); if (!kwEl) { alert('Keyword form not found. Open Intro Call tab > Pick Target Keywords.'); return; }
-    var kw = document.getElementById('icNewKw').value.trim();
-    var page = document.getElementById('icNewPage').value.trim();
-    var priority = parseInt(document.getElementById('icNewPriority').value);
-    var pageType = document.getElementById('icNewPageType').value;
+  window.addICKeyword = function(prefix) {
+    var p = prefix || 'ic';
+    var kw = (document.getElementById(p + 'NewKw') || {}).value;
     if (!kw) { alert('Enter a keyword'); return; }
-    var data = { contact_id: state.contact.id, client_slug: state.contact.slug, keyword: kw, label: kw, keyword_type: 'service', priority: priority, target_page: page || null, source: 'intro_call', notes: pageType === 'new' ? 'New page to create' : 'Existing page' };
+    kw = kw.trim();
+    if (!kw) { alert('Enter a keyword'); return; }
+    var page = (document.getElementById(p + 'NewPage') || {}).value || '';
+    var priority = parseInt((document.getElementById(p + 'NewPriority') || {}).value) || 1;
+    var pageType = (document.getElementById(p + 'NewPageType') || {}).value || 'new';
+    var data = { contact_id: state.contact.id, client_slug: state.contact.slug, keyword: kw, label: kw, keyword_type: 'service', priority: priority, target_page: page.trim() || null, source: 'intro_call', notes: pageType === 'new' ? 'New page to create' : 'Existing page' };
     fetch('/api/action', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ action: 'create_record', table: 'tracked_keywords', filters: undefined, data: data }) }).then(function(r) { return r.json(); }).then(function(res) {
       if (res.success) { renderKeywordForm(); }
       else { alert('Failed to add keyword: ' + JSON.stringify(res)); }
