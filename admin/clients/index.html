@@ -1539,7 +1539,7 @@ strong { font-weight: 600; color: var(--color-heading); }
       if (kws && kws.length > 0) {
         kws.forEach(function(kw) {
           var isNew = (kw.notes || '').toLowerCase().indexOf('new page') >= 0;
-          var pageLabel = isNew ? 'New' : 'Update';
+          var pageLabel = isNew ? 'New' : 'Existing';
           var pageColor = isNew ? 'var(--color-primary)' : 'var(--color-info)';
           html += '<div style="display:grid;grid-template-columns:.5fr 1fr auto auto auto;gap:.5rem;align-items:center;padding:.4rem 0;border-bottom:1px solid var(--color-border);font-size:.82rem;">';
           html += '<div style="color:var(--color-heading);font-weight:500;">' + esc(kw.keyword) + '</div>';
@@ -1554,7 +1554,7 @@ strong { font-weight: 600; color: var(--color-heading); }
       html += '<input type="text" id="icNewKw" placeholder="e.g. EMDR therapy Tucson" style="font-family:inherit;font-size:.82rem;padding:.35rem .5rem;border:1px solid var(--color-border);border-radius:6px;background:var(--color-bg);color:var(--color-heading);">';
       html += '<input type="text" id="icNewPage" placeholder="/emdr-therapy/" style="font-family:inherit;font-size:.82rem;padding:.35rem .5rem;border:1px solid var(--color-border);border-radius:6px;background:var(--color-bg);color:var(--color-heading);">';
       html += '<select id="icNewPriority" style="font-family:inherit;font-size:.78rem;padding:.3rem .4rem;border:1px solid var(--color-border);border-radius:6px;background:var(--color-bg);color:var(--color-heading);"><option value="1">P1</option><option value="2">P2</option></select>';
-      html += '<select id="icNewPageType" style="font-family:inherit;font-size:.78rem;padding:.3rem .4rem;border:1px solid var(--color-border);border-radius:6px;background:var(--color-bg);color:var(--color-heading);"><option value="new">New Page</option><option value="existing">Update</option></select>';
+      html += '<select id="icNewPageType" style="font-family:inherit;font-size:.78rem;padding:.3rem .4rem;border:1px solid var(--color-border);border-radius:6px;background:var(--color-bg);color:var(--color-heading);"><option value="new">New Page</option><option value="existing">Existing</option></select>';
       html += '<div></div>';
       html += '</div>';
       html += '<div style="margin-top:.6rem;display:flex;gap:.75rem;align-items:center;">';
@@ -1581,7 +1581,7 @@ strong { font-weight: 600; color: var(--color-heading); }
     var priority = parseInt(document.getElementById('icNewPriority').value);
     var pageType = document.getElementById('icNewPageType').value;
     if (!kw) { alert('Enter a keyword'); return; }
-    var data = { contact_id: state.contact.id, client_slug: state.contact.slug, keyword: kw, label: kw, keyword_type: 'service', priority: priority, target_page: page || null, source: 'intro_call', notes: pageType === 'new' ? 'New page to create' : 'Update existing page (use -new suffix)' };
+    var data = { contact_id: state.contact.id, client_slug: state.contact.slug, keyword: kw, label: kw, keyword_type: 'service', priority: priority, target_page: page || null, source: 'intro_call', notes: pageType === 'new' ? 'New page to create' : 'Existing page' };
     fetch('/api/action', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ action: 'create_record', table: 'tracked_keywords', filters: undefined, data: data }) }).then(function(r) { return r.json(); }).then(function(res) {
       if (res.success) { renderKeywordForm(); }
       else { alert('Failed to add keyword: ' + JSON.stringify(res)); }
