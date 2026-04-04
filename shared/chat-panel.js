@@ -349,7 +349,7 @@
       </div>
       <div class="mr-chat-header-info">
         <div class="mr-chat-header-title">MoonBot</div>
-        <div class="mr-chat-header-sub">Claude Opus 4.6</div>
+        <div class="mr-chat-header-sub">Claude Sonnet 4.6</div>
       </div>
       <div class="mr-chat-header-actions">
         <button class="mr-chat-clear" title="Clear history" id="mrChatClear">&#8635;</button>
