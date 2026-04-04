@@ -433,6 +433,12 @@ strong { font-weight: 600; color: var(--color-heading); }
 .rpt-month { font-weight: 600; color: var(--color-heading); min-width: 90px; }
 
 /* ---- FILTER BAR ---- */
+.dir-controls { display: flex; align-items: center; justify-content: space-between; margin-bottom: .75rem; }
+.display-toggle { display: flex; align-items: center; gap: 0; border: 1px solid var(--color-border); border-radius: 6px; overflow: hidden; }
+.display-toggle button { padding: .3rem .65rem; font-size: .72rem; font-weight: 500; border: none; background: none; color: var(--color-muted); cursor: pointer; font-family: inherit; transition: all .15s; white-space: nowrap; }
+.display-toggle button:not(:last-child) { border-right: 1px solid var(--color-border); }
+.display-toggle button:hover { color: var(--color-heading); }
+.display-toggle button.active { background: var(--color-primary-subtle); color: var(--color-primary); font-weight: 600; }
 .filter-bar { display: flex; align-items: center; gap: .25rem; margin-bottom: 1.25rem; border-bottom: 1px solid var(--color-border); }
 .filter-tab { padding: .55rem 1rem; font-size: .82rem; font-weight: 500; color: var(--color-muted); cursor: pointer; border: none; background: none; border-bottom: 2px solid transparent; font-family: inherit; transition: all .15s; }
 .filter-tab:hover { color: var(--color-heading); }
@@ -614,13 +620,19 @@ strong { font-weight: 600; color: var(--color-heading); }
       </div>
       <p class="section-desc">Click any row to view full client details.</p>
 
-      <div class="filter-bar" id="dirFilterBar">
-        <button class="filter-tab active" data-filter="all">All</button>
-        <button class="filter-tab" data-filter="active">Active</button>
-        <button class="filter-tab" data-filter="onboarding">Onboarding</button>
-        <button class="filter-tab" data-filter="prospect">Prospects</button>
-        <button class="filter-tab" data-filter="lead">Leads</button>
-        <button class="filter-tab" data-filter="lost">Lost</button>
+      <div class="dir-controls">
+        <div class="filter-bar" id="dirFilterBar" style="margin-bottom:0;">
+          <button class="filter-tab active" data-filter="all">All</button>
+          <button class="filter-tab" data-filter="active">Active</button>
+          <button class="filter-tab" data-filter="onboarding">Onboarding</button>
+          <button class="filter-tab" data-filter="prospect">Prospects</button>
+          <button class="filter-tab" data-filter="lead">Leads</button>
+          <button class="filter-tab" data-filter="lost">Lost</button>
+        </div>
+        <div class="display-toggle" id="displayToggle">
+          <button class="active" data-mode="practice">Practice</button>
+          <button data-mode="name">Name</button>
+        </div>
       </div>
 
       <table class="client-table">
@@ -827,6 +839,7 @@ strong { font-weight: 600; color: var(--color-heading); }
     allOnboarding: {},
     allTasks: {},
     filter: 'all',
+    displayMode: localStorage.getItem('moonraker-client-display') || 'practice',
     taskFilter: 'all',
     taskOwnerFilter: 'all',
     introCall: []
@@ -1003,6 +1016,20 @@ strong { font-weight: 600; color: var(--color-heading); }
     document.getElementById('th5').textContent = isLeads ? 'Audit Tier' : 'Onboarding';
     document.getElementById('th6').textContent = isLeads ? 'Referral' : 'Audit';
 
+    // Sort by display mode
+    var dm = state.displayMode;
+    filtered.sort(function(a, b) {
+      var aName, bName;
+      if (dm === 'name') {
+        aName = ((a.last_name || '') + ' ' + (a.first_name || '')).trim().toLowerCase() || a.slug;
+        bName = ((b.last_name || '') + ' ' + (b.first_name || '')).trim().toLowerCase() || b.slug;
+      } else {
+        aName = (a.practice_name || a.slug).toLowerCase();
+        bName = (b.practice_name || b.slug).toLowerCase();
+      }
+      return aName < bName ? -1 : aName > bName ? 1 : 0;
+    });
+
     var tbody = document.getElementById('dirBody');
 
     if (filtered.length === 0) {
@@ -1014,6 +1041,13 @@ strong { font-weight: 600; color: var(--color-heading); }
     filtered.forEach(function(c) {
       var initials = ((c.first_name || '')[0] || '') + ((c.last_name || '')[0] || '') || c.slug[0].toUpperCase();
       var statusTag = c.lost ? '<span class="tag tag-lost">lost</span>' : '<span class="tag tag-' + c.status + '">' + c.status + '</span>';
+
+      var displayName = dm === 'name'
+        ? esc(((c.first_name || '') + ' ' + (c.last_name || '')).trim() || c.slug)
+        : esc(c.practice_name || c.slug);
+      var subLine = dm === 'name'
+        ? esc(c.practice_name || c.email || c.slug)
+        : esc(c.email || c.slug);
 
       var obSteps = state.allOnboarding[c.id] || [];
       var obC = obSteps.filter(function(s) { return s.status === 'complete'; }).length;
@@ -1033,7 +1067,7 @@ strong { font-weight: 600; color: var(--color-heading); }
       var start = c.campaign_start ? formatDate(c.campaign_start) : '<span style="color:var(--color-muted);font-size:.78rem;">--</span>';
 
       html += '<tr onclick="window.location.href=\'/admin/clients?slug=' + c.slug + '\'">';
-      html += '<td><div class="client-cell"><div class="client-avatar">' + esc(initials.toUpperCase()) + '</div><div><div class="client-name">' + esc(c.practice_name || c.slug) + '</div><div class="client-email">' + esc(c.email || c.slug) + '</div></div></div></td>';
+      html += '<td><div class="client-cell"><div class="client-avatar">' + esc(initials.toUpperCase()) + '</div><div><div class="client-name">' + displayName + '</div><div class="client-email">' + subLine + '</div></div></div></td>';
       html += '<td>' + statusTag + '</td>';
       html += '<td class="hide-mobile">' + website + '</td>';
 
@@ -2638,6 +2672,27 @@ strong { font-weight: 600; color: var(--color-heading); }
     renderDirectory();
   });
 
+  // Display mode toggle (Practice / Name)
+  document.getElementById('displayToggle').addEventListener('click', function(e) {
+    var btn = e.target.closest('button');
+    if (!btn || btn.classList.contains('active')) return;
+    document.querySelectorAll('#displayToggle button').forEach(function(b) { b.classList.remove('active'); });
+    btn.classList.add('active');
+    state.displayMode = btn.dataset.mode;
+    try { localStorage.setItem('moonraker-client-display', btn.dataset.mode); } catch(ex) {}
+    renderDirectory();
+  });
+
+  // Restore display toggle active state from localStorage
+  (function() {
+    var saved = state.displayMode;
+    if (saved === 'name') {
+      document.querySelectorAll('#displayToggle button').forEach(function(b) {
+        b.classList.toggle('active', b.dataset.mode === 'name');
+      });
+    }
+  })();
+
   // ============================================================
   // TASK FILTERS
   // ============================================================
@@ -2687,8 +2742,11 @@ strong { font-weight: 600; color: var(--color-heading); }
       searchResults.innerHTML = '<div style="padding:.75rem 1rem;font-size:.82rem;color:var(--color-muted);">No results</div>';
     } else {
       searchResults.innerHTML = matches.map(function(c) {
+        var rName = state.displayMode === 'name'
+          ? esc(((c.first_name || '') + ' ' + (c.last_name || '')).trim() || c.slug)
+          : esc(c.practice_name || c.slug);
         return '<div class="search-result" data-slug="' + c.slug + '" onclick="window.location.href=\'/admin/clients?slug=' + c.slug + '\'">' +
-          '<div><div class="result-name">' + esc(c.practice_name || c.slug) + '</div><div class="result-slug">' + esc(c.slug) + '</div></div>' +
+          '<div><div class="result-name">' + rName + '</div><div class="result-slug">' + esc(c.slug) + '</div></div>' +
           '<span class="result-status"><span class="tag tag-' + c.status + '">' + c.status + '</span></span></div>';
       }).join('');
     }
@@ -3224,6 +3282,7 @@ strong { font-weight: 600; color: var(--color-heading); }
 <script src="/shared/chat-panel.js"></script>
 </body>
 </html>
+
 
 
 
