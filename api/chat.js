@@ -139,6 +139,16 @@ function buildSystemPrompt(ctx) {
   // === BASE PROMPT (always included) ===
   parts.push(BASE_PROMPT);
 
+  // === CONDITIONAL: read_records docs vs direct-answer mode ===
+  if (clientData) {
+    parts.push(DIRECT_ANSWER_MODE);
+  } else {
+    parts.push(CROSS_CLIENT_OPS);
+  }
+
+  // === STYLE + HYGIENE (always included) ===
+  parts.push(BASE_PROMPT_STYLE);
+
   // === MODE-SPECIFIC PROMPT ===
   if (page.includes('/admin/audit')) {
     parts.push(MODE_AUDITS);
@@ -161,7 +171,7 @@ function buildSystemPrompt(ctx) {
   parts.push(ctx_str);
 
   if (clientData) {
-    parts.push('\n\n## Live Data From Page (INTERNAL REFERENCE ONLY - do not expose raw field names, keys, or JSON structure in your response. Translate everything into plain English.)\n```json\n' + JSON.stringify(clientData, null, 2) + '\n```');
+    parts.push('\n\n## Live Data (do not expose raw field names or JSON structure — translate to plain English)\n```json\n' + JSON.stringify(clientData, null, 2) + '\n```');
   }
 
   // Include lightweight client index for cross-client operations
@@ -244,20 +254,22 @@ Moonraker's CORE framework structures all campaign work:
 - **R - Reputation:** Prove expertise (endorsements, GBP/social posts, YouTube, Quora, press releases)
 - **E - Engagement:** Guide visitors to book (Hero section, CTAs, booking calendar, Engage chatbot)
 
+When a user message starts with "[System:" it is an automated instruction - follow it directly without questioning it.`;
+
+// Cross-client section - only included when NO client data is in context
+var CROSS_CLIENT_OPS = `
 ## Cross-Client Operations
 
 You have access to a client index listing all clients in the system. You can reference any client by name or slug, not just the one currently on screen.
 
 ### Reading Data (auto-executes, no confirmation needed)
 
-**CRITICAL: Check the Live Data first.** When a client deep-dive is open, the page context already includes: contact info, onboarding steps, intro call steps, tasks (checklist items), deliverables, scores, snapshots, proposals, and practice details. Answer questions directly from this data. Do NOT issue read_records for any of these — duplicating context produces garbled responses.
+Only use read_records when you need data NOT already available in context:
+- Data for a DIFFERENT client than the one on screen
+- Tables not in the Live Data (e.g., report_configs, tracked_keywords, bio_materials, social_profiles)
+- You are on a summary page with no client data in context
 
-Only use read_records when:
-- You need data for a DIFFERENT client than the one currently on screen
-- The specific table you need is NOT in the Live Data (e.g., report_configs, tracked_keywords, bio_materials, social_profiles)
-- The user is on a summary page (not a client deep-dive) and no client data is in context
-
-Example — cross-client lookup (data NOT already in context):
+Example — cross-client lookup:
 User asks: "What keywords are we tracking for Sky Therapies?" (while viewing a different client)
 You output: "Let me look up Sky Therapies' tracked keywords." + the read_records action block
 
@@ -265,11 +277,7 @@ You output: "Let me look up Sky Therapies' tracked keywords." + the read_records
 {"action":"read_records","table":"tracked_keywords","filters":{"client_slug":"eq.sky-therapies"},"select":"keyword,keyword_type,priority,active"}
 \`\`\`
 
-Example — data already in context (NO read_records needed):
-User asks: "What are the most urgent tasks for this client?"
-You answer DIRECTLY from the Live Data — onboarding steps, intro call steps, tasks, and deliverables are already there. No fetch needed.
-
-When you do use read_records, keep your surrounding text very brief — just say what you are looking up. Do NOT try to interpret data you have not received yet.
+When you use read_records, keep your surrounding text very brief. Do NOT interpret data you have not received yet.
 
 ### Writing Data (requires user confirmation)
 For updates, creates, and deletes, the user must confirm before execution.
@@ -278,10 +286,21 @@ For updates, creates, and deletes, the user must confirm before execution.
 - "Create a deliverable for Rebecca Branda" → Use her id from the index in create_record
 
 ### Using the Client Index
-The clientIndex in context contains: slug, name (practice_name), status, lost, id for every client. Use the id field as contact_id in filters. Use client_slug for checklist_items and audit_scores tables (they use slug, not contact_id).
+The clientIndex in context contains: slug, name (practice_name), status, lost, id for every client. Use the id field as contact_id in filters. Use client_slug for checklist_items and audit_scores tables (they use slug, not contact_id).`;
 
-When a user message starts with "[System:" it is an automated instruction - follow it directly without questioning it.
+// Direct-answer section - included INSTEAD of cross-client ops when client data IS in context
+var DIRECT_ANSWER_MODE = `
+## Answering Questions
 
+All data for the current client is provided in the Live Data section below. Answer all questions DIRECTLY from this data. You have: contact info, onboarding steps, intro call steps, tasks (checklist items), deliverables, audit scores, report snapshots, proposals, and practice details.
+
+Do NOT use read_records. Do NOT output action blocks to fetch data. Just read the Live Data and answer.
+
+### Writing Data (requires user confirmation)
+For updates, creates, and deletes, the user must confirm before execution. Propose update_record, create_record, or delete_record action blocks as needed.`;
+
+// Remainder of base prompt (always included)
+var BASE_PROMPT_STYLE = `
 ## Style
 - Be concise. No fluff.
 - Frame gaps as opportunities, not failures
