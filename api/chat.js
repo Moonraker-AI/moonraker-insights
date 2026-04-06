@@ -226,6 +226,7 @@ Rules for actions:
 - contacts: id, slug, status (lead/prospect/onboarding/active), lost (boolean), lost_reason, lost_at, follow_up_date, follow_up_notes, first_name, last_name, email, phone, practice_name, website_url, campaign_start, campaign_end, plan_type, credentials, city, state_province, country, gsc_property, ga4_property, gbp_url, gbp_place_id, stripe_customer_id, drive_folder_url, youtube_url, linkedin_url, facebook_url, instagram_url, tiktok_url, pinterest_url, quora_url, x_url, notes
 - practice_details: id, contact_id, practice_type, num_therapists, specialties[], modalities[], populations[], issues_treated, licensed_states[], insurance_or_private_pay, differentiators, campaign_goals[], campaign_objectives, target_keywords[], offers_consultation, ideal_client
 - onboarding_steps: id, contact_id, step_key, status (pending/in_progress/complete), sort_order
+- intro_call_steps: id, contact_id, step_key, label, status (pending/in_progress/complete/not_applicable), sort_order -- tracks intro call sub-tasks (e.g. intro_call_complete, keyword review, access walkthrough)
 - deliverables: id, contact_id, deliverable_type, title, status (not_started/in_progress/internal_review/waiting_on_client/delivered), page_url, drive_url, notes, delivered_at, approved_at
 - checklist_items: id, client_slug, task_id, priority, category, scope, title, description, owner (Moonraker/Client/Collaboration), status (not_started/in_progress/internal_review/waiting_on_client/complete), completed_at, notes, sort_order, phase, audit_period
 - audit_scores: id, client_slug, audit_period, variance_score, score_credibility, score_optimization, score_reputation, score_engagement + 30 individual metrics
@@ -373,6 +374,34 @@ Phase-based priority, not date-based deadlines:
 
 A Phase 1 item still "not_started" when the client is 2+ months in = high urgency flag.
 A Phase 3 item "not_started" in Month 1 = expected, low urgency.
+
+### Intro Call Gate (IMPORTANT - check before recommending priorities)
+
+Many deliverables depend on information gathered during the intro call (keywords, service focus, access credentials). Before recommending priorities, check the client's onboarding and intro call status:
+
+**Pre-Intro Call** (onboarding step "book_intro_call" is NOT complete):
+The intro call hasn't happened yet. Most campaign work is blocked. Only recommend tasks that use publicly available information:
+- Initial website audit/review (what we can see ourselves)
+- Keyword research prep (competitive analysis, market research)
+- Entity Veracity Hub framework setup
+- NEO/Rising Tide infrastructure preparation
+Do NOT recommend: citations, BrightLocal, data aggregator submissions, target page content, platform configs, or anything requiring the client's keywords or account access. These all depend on the intro call.
+Frame blocked items as: "Waiting on intro call before these can start."
+If the intro call isn't booked yet, suggest: "Scott should follow up about scheduling the intro call."
+
+**Post-Intro Call, Pre-Access** (intro call done but onboarding step "connect_accounts" is NOT complete):
+Keywords and service focus are now known. Recommend:
+- BrightLocal citation submissions
+- Data aggregator seeding
+- Press release drafting
+- Target page content planning/writing
+- GBP optimization planning
+But platform configurations (GSC setup, GA4 setup, GTM setup, website CMS changes) are still blocked on the client providing access.
+Frame blocked items as: "Waiting on client: account access needed."
+Suggest: "Karen should nudge [client name] about providing their platform access."
+
+**Fully Unblocked** (intro call done AND connect_accounts is complete):
+All deliverables are actionable. Use the standard phase-based urgency model above.
 
 ### Campaign Timeline Reference
 Month 1-2: Audit, site content (5 target pages + HTML/schema/FAQs), bio pages, general FAQ page, press release, citations, CRO (Hero sections), social profile buildout, GBP optimization.
@@ -529,7 +558,13 @@ After creating the contact, seed 8 onboarding steps and a practice_details row.
 - Add campaign dates: update contacts.campaign_start, contacts.campaign_end
 - Link Stripe: update contacts.stripe_customer_id
 - Add notes: update contacts.notes
-- Link Drive folder: update contacts.drive_folder_url`;
+- Link Drive folder: update contacts.drive_folder_url
+
+### Priority Recommendations (Intro Call Gate)
+When asked "What are the highest priority items?" or similar, check the introCall data in context (intro_call_steps). The intro call is a hard dependency gate for most campaign work. See the Intro Call Gate section in the Deliverables documentation for full phase logic. Cross-reference:
+- onboarding steps: look at book_intro_call and connect_accounts status
+- introCall data: look for intro_call_complete step status
+If the intro call hasn't happened, do not surface keyword-dependent or access-dependent tasks as priorities. Instead, surface what's actually actionable and flag the blocker clearly.`;
 
 
 // ============================================================
