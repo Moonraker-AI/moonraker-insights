@@ -173,7 +173,10 @@ function buildSystemPrompt(ctx) {
   parts.push(ctx_str);
 
   if (clientData) {
-    parts.push('\n\n## Live Data (do not expose raw field names or JSON structure — translate to plain English)\n```json\n' + JSON.stringify(clientData, null, 2) + '\n```');
+    var dataLabel = clientSlug
+      ? 'Live Data for ' + clientSlug + ' (do not expose raw field names or JSON — translate to plain English)'
+      : 'Cross-Client Summary Data (do not expose raw field names or JSON — translate to plain English)\nThis includes per-client onboarding gate status, intro call progress, task counts, and deliverable counts for all active/onboarding clients. Use this data to answer questions about priorities, blockers, and team workload across the portfolio.';
+    parts.push('\n\n## ' + dataLabel + '\n```json\n' + JSON.stringify(clientData, null, 2) + '\n```');
   }
 
   // Include lightweight client index for cross-client operations
@@ -616,7 +619,17 @@ Keywords are now known. Additionally recommend:
 Platform configs (GSC, GA4, GTM, website CMS changes) remain blocked. Suggest Karen nudge the client for access.
 
 **Fully Unblocked** (intro call done AND access provided):
-All work is actionable. Prioritize by campaign phase: setup and technical foundation first, then content buildout, then off-page, then ongoing.`;
+All work is actionable. Prioritize by campaign phase: setup and technical foundation first, then content buildout, then off-page, then ongoing.
+
+### Cross-Client Priority View (List Page)
+When on the client list page (no specific client selected), the context includes a clientSummaries array with per-client data for all active/onboarding clients:
+- name, slug, status, campaign_start
+- intro_call_booked, intro_call_complete, accounts_connected (gate status)
+- onboarding progress (X/Y steps done)
+- task counts (complete/total)
+- deliverable counts by status (not_started, in_progress, delivered, etc.)
+
+Use this data to answer cross-client questions like "what should the team focus on today?" or "which clients are blocked?" Apply the same intro call gate logic: clients without a completed intro call are blocked on Scott. Clients with intro call done but no access are blocked on the client (Karen should nudge). Clients fully unblocked with many not-started deliverables should be prioritized for the SEO team.`;
 
 
 // ============================================================
