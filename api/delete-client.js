@@ -1,5 +1,8 @@
 // /api/delete-client.js
-// Fully deletes a client: cascades through Supabase tables, then removes all GitHub files for the slug.
+// Fully deletes a client: explicitly deletes all 22 child tables in dependency order,
+// then deletes the contact, then removes all GitHub files for the slug.
+// All FKs are CASCADE, so the contact delete would cascade anyway, but explicit
+// deletion gives us per-table success/failure reporting.
 
 module.exports = async function handler(req, res) {
   if (req.method !== 'POST') return res.status(405).json({ error: 'Method not allowed' });
@@ -29,8 +32,17 @@ module.exports = async function handler(req, res) {
     // ============================================================
     // STEP 1: Cascade delete Supabase tables
     // ============================================================
+    // All child tables in dependency order. Most have CASCADE FKs now,
+    // but explicit deletion is belt-and-suspenders for safety.
+    // Key ordering: audit_followups before entity_audits,
+    //   proposals before contacts (proposal_followups cascade from proposals),
+    //   report_queue before report_snapshots.
     var tables = [
+      { table: 'activity_log', filter: 'contact_id=eq.' + contactId },
+      { table: 'audit_followups', filter: 'contact_id=eq.' + contactId },
       { table: 'entity_audits', filter: 'contact_id=eq.' + contactId },
+      { table: 'proposals', filter: 'contact_id=eq.' + contactId },
+      { table: 'intro_call_steps', filter: 'contact_id=eq.' + contactId },
       { table: 'onboarding_steps', filter: 'contact_id=eq.' + contactId },
       { table: 'bio_materials', filter: 'contact_id=eq.' + contactId },
       { table: 'social_profiles', filter: 'contact_id=eq.' + contactId },
@@ -39,9 +51,12 @@ module.exports = async function handler(req, res) {
       { table: 'account_access', filter: 'contact_id=eq.' + contactId },
       { table: 'scheduled_touchpoints', filter: 'contact_id=eq.' + contactId },
       { table: 'payments', filter: 'contact_id=eq.' + contactId },
+      { table: 'performance_guarantees', filter: 'contact_id=eq.' + contactId },
       { table: 'deliverables', filter: 'contact_id=eq.' + contactId },
+      { table: 'tracked_keywords', filter: 'contact_id=eq.' + contactId },
       { table: 'checklist_items', filter: 'client_slug=eq.' + slug },
       { table: 'audit_scores', filter: 'client_slug=eq.' + slug },
+      { table: 'report_queue', filter: 'client_slug=eq.' + slug },
       { table: 'report_snapshots', filter: 'client_slug=eq.' + slug },
       { table: 'report_highlights', filter: 'client_slug=eq.' + slug },
       { table: 'report_configs', filter: 'client_slug=eq.' + slug }
@@ -125,3 +140,4 @@ module.exports = async function handler(req, res) {
     return res.status(500).json({ error: err.message, results: results });
   }
 };
+
