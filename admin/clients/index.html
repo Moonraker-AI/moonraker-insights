@@ -573,6 +573,46 @@ strong { font-weight: 600; color: var(--color-heading); }
   .sidebar.collapsed .sidebar-footer { justify-content: space-between; }
 }
 
+
+/* ── Proposals Tab ── */
+.prop-status-bar { display: flex; align-items: center; gap: .75rem; margin-bottom: 1.25rem; flex-wrap: wrap; }
+.prop-status-tag { font-size: .72rem; font-weight: 600; padding: .25rem .6rem; border-radius: 6px; text-transform: uppercase; letter-spacing: .03em; }
+.prop-status-tag.st-draft { background: rgba(245,158,11,.1); color: #F59E0B; }
+.prop-status-tag.st-enriching, .prop-status-tag.st-generating { background: rgba(59,130,246,.08); color: #3B82F6; }
+.prop-status-tag.st-review { background: rgba(168,85,247,.1); color: #A855F7; }
+.prop-status-tag.st-ready { background: rgba(0,212,126,.1); color: #00D47E; }
+.prop-status-tag.st-sent { background: rgba(59,130,246,.08); color: #3B82F6; }
+.prop-status-tag.st-viewed { background: rgba(0,212,126,.1); color: #00D47E; }
+.prop-status-tag.st-accepted { background: rgba(0,212,126,.15); color: #00D47E; }
+.prop-actions { display: flex; gap: .5rem; flex-wrap: wrap; align-items: center; }
+.prop-config-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 1rem; }
+@media (max-width: 640px) { .prop-config-grid { grid-template-columns: 1fr; } }
+.prop-form-group { margin-bottom: 1rem; }
+.prop-form-label { display: block; font-size: .72rem; font-weight: 600; color: var(--color-muted); text-transform: uppercase; letter-spacing: .04em; margin-bottom: .35rem; }
+.prop-form-hint { font-size: .72rem; color: var(--color-muted); margin-top: .15rem; }
+.prop-input, .prop-select { width: 100%; padding: .4rem .6rem; border: 1px solid var(--color-border); border-radius: 8px; font-size: .84rem; font-family: inherit; background: var(--color-surface); color: var(--color-heading); transition: border-color .2s; box-sizing: border-box; }
+.prop-input:focus, .prop-select:focus { outline: none; border-color: var(--color-primary); box-shadow: 0 0 0 3px rgba(0,212,126,.1); }
+.prop-input::placeholder { color: var(--color-muted); }
+.prop-chip-group { display: flex; flex-wrap: wrap; gap: .4rem; }
+.prop-chip { display: inline-flex; align-items: center; gap: .35rem; padding: .3rem .65rem; border-radius: 8px; font-size: .78rem; font-weight: 500; border: 1px solid var(--color-border); background: var(--color-surface); color: var(--color-muted); cursor: pointer; transition: all .2s; user-select: none; }
+.prop-chip:hover { border-color: var(--color-primary); color: var(--color-heading); }
+.prop-chip.selected { border-color: var(--color-primary); background: var(--color-primary-subtle); color: var(--color-primary); font-weight: 600; }
+.prop-chip .pchk { width: 14px; height: 14px; border-radius: 4px; border: 1.5px solid var(--color-border); display: flex; align-items: center; justify-content: center; font-size: .6rem; transition: all .2s; }
+.prop-chip.selected .pchk { border-color: var(--color-primary); background: var(--color-primary); color: #fff; }
+.prop-toggle-row { display: flex; align-items: center; justify-content: space-between; }
+.prop-toggle { width: 36px; height: 20px; border-radius: 10px; background: var(--color-border); cursor: pointer; position: relative; transition: background .2s; border: none; padding: 0; flex-shrink: 0; }
+.prop-toggle::after { content: ''; position: absolute; top: 2px; left: 2px; width: 16px; height: 16px; border-radius: 50%; background: #fff; transition: transform .2s; }
+.prop-toggle.on { background: var(--color-primary); }
+.prop-toggle.on::after { transform: translateX(16px); }
+.prop-custom-section { background: var(--color-bg); border: 1px solid var(--color-border); border-radius: 10px; padding: 1rem; margin-top: .5rem; }
+.prop-custom-section .prop-config-grid { gap: .75rem; }
+.prop-enrichment-pills { display: flex; gap: .4rem; flex-wrap: wrap; margin-bottom: 1rem; }
+.prop-enrichment-pills .epill { font-size: .72rem; padding: .15rem .45rem; border-radius: 4px; border: 1px solid var(--color-border); }
+.prop-divider { height: 1px; background: var(--color-border); margin: 1.25rem 0; }
+.prop-regen-notice { display: flex; align-items: center; gap: .75rem; padding: .65rem 1rem; border-radius: 8px; background: rgba(245,158,11,.08); border: 1px solid rgba(245,158,11,.2); font-size: .82rem; color: var(--color-heading); margin-bottom: 1rem; }
+.prop-regen-notice .rn-text { flex: 1; }
+.prop-fu-section { margin-top: 1rem; }
+.prop-fu-bar { display: flex; align-items: center; gap: .5rem; flex-wrap: wrap; }
 </style>
 </head>
 <body>
@@ -682,6 +722,7 @@ strong { font-weight: 600; color: var(--color-heading); }
       <!-- Tabs -->
       <div class="tab-bar" id="tabBar">
         <button class="tab-btn active" data-tab="overview">Overview</button>
+        <button class="tab-btn" data-tab="proposals">Proposals</button>
         <button class="tab-btn" data-tab="onboarding">Onboarding</button>
         <button class="tab-btn" data-tab="intro-call">Intro Call</button>
         <button class="tab-btn" data-tab="deliverables">Deliverables</button>
@@ -726,6 +767,12 @@ strong { font-weight: 600; color: var(--color-heading); }
             <div id="notesContent" style="font-size:.84rem;white-space:pre-wrap;"></div>
           </div>
         </div>
+      </div>
+
+
+      <!-- TAB: Proposals -->
+      <div class="tab-panel" id="tab-proposals">
+        <div id="proposalsContent"></div>
       </div>
 
       <!-- TAB: Onboarding -->
@@ -849,7 +896,9 @@ strong { font-weight: 600; color: var(--color-heading); }
     sortDir: 'asc',
     taskFilter: 'all',
     taskOwnerFilter: 'all',
-    introCall: []
+    introCall: [],
+    proposals: [],
+    proposalFollowups: {}
   };
 
   // ============================================================
@@ -932,7 +981,8 @@ strong { font-weight: 600; color: var(--color-heading); }
         fetch(SB + '/rest/v1/report_configs?select=*&client_slug=eq.' + slug + '&limit=1', { headers: { 'apikey': SK, 'Authorization': 'Bearer ' + SK } }).then(function(r) { return r.json(); }).catch(function() { return []; }),
         fetch(SB + '/rest/v1/report_snapshots?select=*&client_slug=eq.' + slug + '&order=report_month.desc&limit=20', { headers: { 'apikey': SK, 'Authorization': 'Bearer ' + SK } }).then(function(r) { return r.json(); }).catch(function() { return []; }),
         fetch(SB + '/rest/v1/signed_agreements?select=*&contact_id=eq.' + cid + '&limit=1', { headers: { 'apikey': SK, 'Authorization': 'Bearer ' + SK } }).then(function(r) { return r.json(); }).catch(function() { return []; }),
-        fetch(SB + '/rest/v1/intro_call_steps?select=*&order=sort_order&contact_id=eq.' + cid, { headers: { 'apikey': SK, 'Authorization': 'Bearer ' + SK } }).then(function(r) { return r.json(); }).catch(function() { return []; })
+        fetch(SB + '/rest/v1/intro_call_steps?select=*&order=sort_order&contact_id=eq.' + cid, { headers: { 'apikey': SK, 'Authorization': 'Bearer ' + SK } }).then(function(r) { return r.json(); }).catch(function() { return []; }),
+        fetch(SB + '/rest/v1/proposals?select=*&contact_id=eq.' + cid + '&order=created_at.desc', { headers: { 'apikey': SK, 'Authorization': 'Bearer ' + SK } }).then(function(r) { return r.json(); }).catch(function() { return []; })
       ]);
     }).then(function(res) {
       if (!res) return; // Contact not found, already handled
@@ -946,6 +996,22 @@ strong { font-weight: 600; color: var(--color-heading); }
       state.snapshots = res[6] || [];
       state.signed = (res[7] && res[7][0]) || null;
       state.introCall = res[8] || [];
+      state.proposals = res[9] || [];
+      state.proposalFollowups = {};
+
+      // Load followups for proposals (async, re-renders proposals tab when done)
+      if (state.proposals.length > 0) {
+        var pids = state.proposals.map(function(p) { return p.id; }).join(',');
+        fetch(SB + '/rest/v1/proposal_followups?proposal_id=in.(' + pids + ')&order=sequence_number.asc', { headers: { 'apikey': SK, 'Authorization': 'Bearer ' + SK } })
+          .then(function(r) { return r.json(); })
+          .then(function(fus) {
+            (fus || []).forEach(function(fu) {
+              if (!state.proposalFollowups[fu.proposal_id]) state.proposalFollowups[fu.proposal_id] = [];
+              state.proposalFollowups[fu.proposal_id].push(fu);
+            });
+            renderProposals();
+          }).catch(function() {});
+      }
 
       document.getElementById('loadingState').style.display = 'none';
 
@@ -970,7 +1036,8 @@ strong { font-weight: 600; color: var(--color-heading); }
             tasks: state.tasks.map(function(t) { return { id: t.id, title: t.title, status: t.status, owner: t.owner, priority: t.priority, category: t.category }; }),
             scores: state.scores,
             deliverables: state.deliverables.map(function(d) { return { id: d.id, deliverable_type: d.deliverable_type, title: d.title, status: d.status, contact_id: d.contact_id }; }),
-            snapshots: state.snapshots.map(function(s) { return { report_month: s.report_month, report_status: s.report_status, campaign_month: s.campaign_month, gsc_clicks: s.gsc_clicks, gsc_impressions: s.gsc_impressions }; })
+            snapshots: state.snapshots.map(function(s) { return { report_month: s.report_month, report_status: s.report_status, campaign_month: s.campaign_month, gsc_clicks: s.gsc_clicks, gsc_impressions: s.gsc_impressions }; }),
+            proposals: state.proposals.map(function(p) { return { id: p.id, status: p.status, campaign_lengths: p.campaign_lengths, created_at: p.created_at, sent_at: p.sent_at, view_count: p.view_count }; })
           }
         });
       }
@@ -1169,6 +1236,8 @@ strong { font-weight: 600; color: var(--color-heading); }
     var taskCount = state.tasks.filter(function(t) { return t.status !== 'complete'; }).length;
     var delCount = state.deliverables.filter(function(d) { return d.status !== 'delivered' && d.status !== 'active'; }).length;
     var rptCount = state.snapshots.length;
+    var propCount = state.proposals.filter(function(p) { return p.status === 'draft' || p.status === 'review' || p.status === 'ready'; }).length;
+    setTabCount('proposals', propCount);
     setTabCount('onboarding', obCount);
     setTabCount('intro-call', icCount);
     setTabCount('audit', taskCount);
@@ -1176,6 +1245,7 @@ strong { font-weight: 600; color: var(--color-heading); }
     setTabCount('reports', rptCount);
 
     renderOverview(c, p);
+    renderProposals();
     renderOnboarding();
     renderIntroCall();
     renderDeliverables();
@@ -2640,6 +2710,514 @@ strong { font-weight: 600; color: var(--color-heading); }
       agr.innerHTML = '<div style="display:flex;align-items:center;gap:.5rem;"><span class="dot dot-gray"></span><span style="font-size:.84rem;color:var(--color-muted);">Not yet signed</span></div>';
     }
   }
+
+
+  // ============================================================
+  // PROPOSALS TAB
+  // ============================================================
+
+  var PROP_BILLING_MAP = {
+    annual: [
+      { key: 'annual_upfront', label: 'Pay Upfront ($20,000)' },
+      { key: 'annual_quarterly', label: 'Quarterly ($5,000/qtr)' },
+      { key: 'annual_monthly', label: 'Monthly ($1,667/mo)' }
+    ],
+    quarterly: [
+      { key: 'quarterly_upfront', label: 'Pay Upfront ($5,000)' },
+      { key: 'quarterly_monthly', label: 'Monthly ($1,667/mo)' }
+    ],
+    monthly: [
+      { key: 'monthly', label: 'Month-to-Month ($1,667/mo)' }
+    ]
+  };
+
+  function propChipHtml(value, label, selected, group) {
+    return '<div class="prop-chip' + (selected ? ' selected' : '') + '" data-value="' + value + '" onclick="window._togglePropChip(this,\'' + group + '\')">' +
+      '<span class="pchk">&#10003;</span>' + esc(label) + '</div>';
+  }
+
+  window._togglePropChip = function(el, group) {
+    el.classList.toggle('selected');
+    if (group === 'campaign') updatePropBillingChips();
+  };
+
+  function getPropSelectedChips(containerId) {
+    return Array.from(document.querySelectorAll('#' + containerId + ' .prop-chip.selected')).map(function(c) { return c.dataset.value; });
+  }
+
+  function updatePropBillingChips() {
+    var campaigns = getPropSelectedChips('propCampaignChips');
+    var container = document.getElementById('propBillingChips');
+    if (!container) return;
+    var existingSelected = getPropSelectedChips('propBillingChips');
+    var allOpts = [];
+    campaigns.forEach(function(c) {
+      (PROP_BILLING_MAP[c] || []).forEach(function(opt) {
+        if (!allOpts.some(function(o) { return o.key === opt.key; })) allOpts.push(opt);
+      });
+    });
+    var html = '';
+    allOpts.forEach(function(opt) {
+      var sel = existingSelected.indexOf(opt.key) > -1;
+      html += propChipHtml(opt.key, opt.label, sel || existingSelected.length === 0, 'billing');
+    });
+    container.innerHTML = html;
+    var sec = document.getElementById('propBillingSection');
+    if (sec) sec.style.display = allOpts.length ? 'block' : 'none';
+  }
+
+  window._togglePropCustom = function() {
+    var btn = document.getElementById('propCustomToggle');
+    btn.classList.toggle('on');
+    document.getElementById('propCustomSection').style.display = btn.classList.contains('on') ? 'block' : 'none';
+  };
+
+  function renderProposals() {
+    var c = state.contact;
+    var container = document.getElementById('proposalsContent');
+    if (!container) return;
+    var proposal = state.proposals.length > 0 ? state.proposals[0] : null;
+    var followups = proposal ? (state.proposalFollowups[proposal.id] || []) : [];
+
+    if (!proposal) {
+      // ── No proposal: show creation form ──
+      var h = '<div class="card"><div class="card-header"><h3>New Proposal</h3></div>';
+      h += '<div style="padding:1.25rem;">';
+
+      // Campaign lengths
+      h += '<div class="prop-form-group"><div class="prop-form-label">Campaign Length</div>';
+      h += '<div class="prop-form-hint" style="margin-bottom:.4rem;">Select which options to present. Multiple allowed.</div>';
+      h += '<div class="prop-chip-group" id="propCampaignChips">';
+      h += propChipHtml('annual', 'Annual - $20,000', true, 'campaign');
+      h += propChipHtml('quarterly', '3 Months - $5,000', false, 'campaign');
+      h += propChipHtml('monthly', 'Month-to-Month - $1,667/mo', false, 'campaign');
+      h += '</div></div>';
+
+      // Billing
+      h += '<div class="prop-form-group" id="propBillingSection"><div class="prop-form-label">Billing Options</div>';
+      h += '<div class="prop-form-hint" style="margin-bottom:.4rem;">Which payment structures to show.</div>';
+      h += '<div class="prop-chip-group" id="propBillingChips"></div></div>';
+
+      h += '<div class="prop-divider"></div>';
+
+      // Custom pricing
+      h += '<div class="prop-form-group"><div class="prop-toggle-row"><div>';
+      h += '<div class="prop-form-label" style="margin-bottom:0;">Custom Pricing</div>';
+      h += '<div class="prop-form-hint">For non-standard arrangements.</div>';
+      h += '</div><button class="prop-toggle" id="propCustomToggle" onclick="window._togglePropCustom()"></button></div></div>';
+      h += '<div id="propCustomSection" class="prop-custom-section" style="display:none;">';
+      h += '<div class="prop-config-grid">';
+      h += '<div class="prop-form-group"><div class="prop-form-label">Amount</div><input class="prop-input" id="propCustomAmt" type="number" placeholder="1250"></div>';
+      h += '<div class="prop-form-group"><div class="prop-form-label">Period</div><select class="prop-select" id="propCustomPeriod"><option value="month">Per Month</option><option value="quarter">Per Quarter</option><option value="one-time">One-Time</option></select></div>';
+      h += '</div><div class="prop-config-grid">';
+      h += '<div class="prop-form-group"><div class="prop-form-label">Duration (months)</div><input class="prop-input" id="propCustomDur" type="number" placeholder="4"></div>';
+      h += '<div class="prop-form-group"><div class="prop-form-label">Label</div><input class="prop-input" id="propCustomLabel" placeholder="$1,250/mo x 4 months"></div>';
+      h += '</div></div>';
+
+      h += '<div class="prop-divider"></div>';
+
+      // Notes
+      h += '<div class="prop-form-group"><div class="prop-form-label">Internal Notes</div>';
+      h += '<textarea class="prop-input" id="propNotes" rows="3" placeholder="Referral source, special circumstances, etc." style="resize:vertical;"></textarea></div>';
+
+      h += '<button class="btn-sm" id="propCreateBtn" onclick="window._createProposal()" style="padding:.5rem 1.25rem;font-size:.84rem;font-weight:600;border:none;background:var(--color-primary);color:#fff;border-radius:6px;cursor:pointer;">Create Proposal &#8594;</button>';
+      h += '</div></div>';
+      container.innerHTML = h;
+      // Init billing chips after DOM is ready
+      setTimeout(updatePropBillingChips, 0);
+      return;
+    }
+
+    // ── Existing proposal ──
+    var h = '';
+    var st = proposal.status;
+    var isTransitional = (st === 'enriching' || st === 'generating');
+    var isGenerated = (st === 'ready' || st === 'sent' || st === 'viewed' || st === 'accepted');
+
+    // Status bar
+    h += '<div class="prop-status-bar">';
+    h += '<span class="prop-status-tag st-' + st + '">' + st.charAt(0).toUpperCase() + st.slice(1) + '</span>';
+    if (proposal.view_count > 0) h += '<span style="font-size:.78rem;color:var(--color-muted);">' + proposal.view_count + ' view' + (proposal.view_count !== 1 ? 's' : '') + '</span>';
+    if (proposal.sent_at) h += '<span style="font-size:.78rem;color:var(--color-muted);">Sent ' + new Date(proposal.sent_at).toLocaleDateString('en-US', { month: 'short', day: 'numeric' }) + '</span>';
+    if (proposal.proposal_url) h += '<a href="' + esc(proposal.proposal_url) + '?preview=true" target="_blank" style="font-size:.78rem;color:var(--color-primary);">Preview &#8599;</a>';
+    h += '<div style="flex:1;"></div>';
+    h += '<button class="row-delete" title="Delete proposal" onclick="window._deleteProposal(\'' + proposal.id + '\')"><svg width="14" height="14" viewBox="0 0 14 14" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round"><path d="M3 3l8 8M11 3l-8 8"/></svg></button>';
+    h += '</div>';
+
+    // Enrichment pills (if enriched)
+    var ed = proposal.enrichment_data || {};
+    var es = proposal.enrichment_sources || {};
+    var emailCt = ed.emails ? ed.emails.length : 0;
+    var callCt = ed.calls ? ed.calls.length : 0;
+    if (emailCt || callCt || es.entity_audit || es.website) {
+      h += '<div class="prop-enrichment-pills">';
+      if (emailCt) h += '<span class="epill" style="color:var(--color-info);border-color:rgba(59,130,246,.2);">&#128231; ' + emailCt + ' email' + (emailCt !== 1 ? 's' : '') + '</span>';
+      if (callCt) h += '<span class="epill" style="color:#A855F7;border-color:rgba(168,85,247,.2);">&#127908; ' + callCt + ' call' + (callCt !== 1 ? 's' : '') + '</span>';
+      if (es.entity_audit) h += '<span class="epill" style="color:var(--color-warning);border-color:rgba(245,158,11,.2);">&#128202; Audit</span>';
+      if (es.website) h += '<span class="epill" style="color:var(--color-success);border-color:rgba(0,212,126,.2);">&#127760; Site</span>';
+      h += '</div>';
+    }
+
+    // Config card
+    h += '<div class="card"><div class="card-header"><h3>Configuration</h3>';
+    if (!isTransitional) h += '<button class="btn-sm" id="propSaveBtn" onclick="window._saveProposalConfig(\'' + proposal.id + '\')" style="padding:.3rem .75rem;font-size:.75rem;font-weight:600;border:1px solid var(--color-primary);background:var(--color-primary-subtle);color:var(--color-primary);border-radius:6px;cursor:pointer;">Save Changes</button>';
+    h += '</div><div style="padding:1.25rem;">';
+
+    // Campaign chips
+    var currentCampaigns = proposal.campaign_lengths || [];
+    h += '<div class="prop-form-group"><div class="prop-form-label">Campaign Length</div>';
+    h += '<div class="prop-chip-group" id="propCampaignChips">';
+    h += propChipHtml('annual', 'Annual - $20,000', currentCampaigns.indexOf('annual') > -1, 'campaign');
+    h += propChipHtml('quarterly', '3 Months - $5,000', currentCampaigns.indexOf('quarterly') > -1, 'campaign');
+    h += propChipHtml('monthly', 'Month-to-Month - $1,667/mo', currentCampaigns.indexOf('monthly') > -1, 'campaign');
+    h += '</div></div>';
+
+    // Billing chips - will be populated by JS
+    h += '<div class="prop-form-group" id="propBillingSection"><div class="prop-form-label">Billing Options</div>';
+    h += '<div class="prop-chip-group" id="propBillingChips"></div></div>';
+
+    h += '<div class="prop-divider"></div>';
+
+    // Custom pricing
+    var cp = proposal.custom_pricing;
+    h += '<div class="prop-form-group"><div class="prop-toggle-row"><div>';
+    h += '<div class="prop-form-label" style="margin-bottom:0;">Custom Pricing</div>';
+    h += '<div class="prop-form-hint">For non-standard arrangements.</div>';
+    h += '</div><button class="prop-toggle' + (cp ? ' on' : '') + '" id="propCustomToggle" onclick="window._togglePropCustom()"></button></div></div>';
+    h += '<div id="propCustomSection" class="prop-custom-section" style="display:' + (cp ? 'block' : 'none') + ';">';
+    h += '<div class="prop-config-grid">';
+    h += '<div class="prop-form-group"><div class="prop-form-label">Amount</div><input class="prop-input" id="propCustomAmt" type="number" placeholder="1250" value="' + (cp ? Math.round(cp.amount_cents / 100) : '') + '"></div>';
+    h += '<div class="prop-form-group"><div class="prop-form-label">Period</div><select class="prop-select" id="propCustomPeriod"><option value="month"' + (cp && cp.period === 'month' ? ' selected' : '') + '>Per Month</option><option value="quarter"' + (cp && cp.period === 'quarter' ? ' selected' : '') + '>Per Quarter</option><option value="one-time"' + (cp && cp.period === 'one-time' ? ' selected' : '') + '>One-Time</option></select></div>';
+    h += '</div><div class="prop-config-grid">';
+    h += '<div class="prop-form-group"><div class="prop-form-label">Duration (months)</div><input class="prop-input" id="propCustomDur" type="number" placeholder="4" value="' + (cp && cp.duration_months ? cp.duration_months : '') + '"></div>';
+    h += '<div class="prop-form-group"><div class="prop-form-label">Label</div><input class="prop-input" id="propCustomLabel" placeholder="$1,250/mo x 4 months" value="' + esc(cp && cp.label ? cp.label : '') + '"></div>';
+    h += '</div></div>';
+
+    h += '<div class="prop-divider"></div>';
+
+    // Notes
+    h += '<div class="prop-form-group"><div class="prop-form-label">Internal Notes</div>';
+    h += '<textarea class="prop-input" id="propNotes" rows="3" style="resize:vertical;">' + esc(proposal.notes || '') + '</textarea></div>';
+
+    h += '</div></div>';
+
+    // Regenerate notice (for generated proposals)
+    if (isGenerated) {
+      h += '<div class="prop-regen-notice" style="margin-top:1rem;">';
+      h += '<div class="rn-text">Update config above and save, then regenerate to apply changes to the proposal.</div>';
+      h += '<button class="btn-sm" onclick="window._regenerateProposal(\'' + proposal.id + '\',this)" style="padding:.35rem .75rem;font-size:.78rem;font-weight:600;border:none;background:var(--color-warning);color:#fff;border-radius:6px;cursor:pointer;white-space:nowrap;">&#9889; Regenerate</button>';
+      h += '</div>';
+    }
+
+    // Action buttons
+    h += '<div style="margin-top:1rem;"><div class="prop-actions">';
+    if (st === 'draft') {
+      h += '<button class="btn-sm" id="propEnrichBtn" onclick="window._enrichProposal(\'' + proposal.id + '\',this)" style="padding:.45rem 1rem;font-size:.82rem;font-weight:600;border:1px solid var(--color-border);background:var(--color-surface);color:var(--color-heading);border-radius:6px;cursor:pointer;">&#128270; Enrich</button>';
+    } else if (st === 'enriching') {
+      h += '<span style="display:inline-flex;align-items:center;gap:.5rem;font-size:.82rem;color:var(--color-info);"><span class="dot-pulse"></span> Enriching...</span>';
+    } else if (st === 'review') {
+      h += '<button class="btn-sm" id="propGenerateBtn" onclick="window._generateProposal(\'' + proposal.id + '\',this)" style="padding:.45rem 1rem;font-size:.82rem;font-weight:600;border:none;background:var(--color-primary);color:#fff;border-radius:6px;cursor:pointer;">&#9889; Generate Proposal</button>';
+    } else if (st === 'generating') {
+      h += '<span style="display:inline-flex;align-items:center;gap:.5rem;font-size:.82rem;color:var(--color-info);"><span class="dot-pulse"></span> Generating...</span>';
+    } else if (st === 'ready') {
+      h += '<button class="btn-sm" onclick="window._sendProposal(\'' + proposal.id + '\',this)" style="padding:.45rem 1rem;font-size:.82rem;font-weight:600;border:none;background:var(--color-primary);color:#fff;border-radius:6px;cursor:pointer;">&#9993; Send Proposal</button>';
+      h += '<button class="btn-sm" onclick="window._previewEmail(\'' + proposal.id + '\')" style="padding:.45rem 1rem;font-size:.82rem;font-weight:600;border:1px solid var(--color-border);background:var(--color-surface);color:var(--color-heading);border-radius:6px;cursor:pointer;">Preview Email</button>';
+    } else if (st === 'sent' || st === 'viewed') {
+      // Follow-up section
+      var draftCount = followups.filter(function(f) { return f.status === 'draft'; }).length;
+      var pendingCount = followups.filter(function(f) { return f.status === 'pending'; }).length;
+      var sentCount = followups.filter(function(f) { return f.status === 'sent'; }).length;
+      var cancelledCount = followups.filter(function(f) { return f.status === 'cancelled'; }).length;
+
+      if (followups.length === 0) {
+        h += '<button class="btn-sm" onclick="window._generateFollowups(\'' + proposal.id + '\',this)" style="padding:.45rem 1rem;font-size:.82rem;font-weight:600;border:1px solid var(--color-border);background:var(--color-surface);color:var(--color-heading);border-radius:6px;cursor:pointer;">&#128337; Schedule Follow-ups</button>';
+      } else if (draftCount > 0) {
+        h += '<button class="btn-sm" onclick="window._previewFollowups(\'' + proposal.id + '\')" style="padding:.45rem 1rem;font-size:.82rem;font-weight:600;border:1px solid var(--color-border);background:var(--color-surface);color:var(--color-heading);border-radius:6px;cursor:pointer;">Preview Sequence</button>';
+        h += '<button class="btn-sm" onclick="window._approveFollowups(\'' + proposal.id + '\',this)" style="padding:.45rem 1rem;font-size:.82rem;font-weight:600;border:none;background:var(--color-primary);color:#fff;border-radius:6px;cursor:pointer;">Approve &amp; Schedule</button>';
+      } else if (pendingCount > 0) {
+        var nextFu = followups.filter(function(f) { return f.status === 'pending'; }).sort(function(a,b) { return new Date(a.scheduled_for) - new Date(b.scheduled_for); })[0];
+        h += '<span class="epill" style="color:var(--color-info);border-color:rgba(59,130,246,.2);">&#128231; ' + sentCount + '/' + followups.length + ' sent</span>';
+        if (nextFu) h += '<span style="font-size:.75rem;color:var(--color-muted);">Next: ' + new Date(nextFu.scheduled_for).toLocaleDateString('en-US', { month: 'short', day: 'numeric' }) + '</span>';
+        h += '<button class="btn-sm" onclick="window._previewFollowups(\'' + proposal.id + '\')" style="padding:.3rem .65rem;font-size:.75rem;font-weight:500;border:1px solid var(--color-border);background:transparent;color:var(--color-muted);border-radius:6px;cursor:pointer;" title="View sequence">&#128065;</button>';
+        h += '<button class="btn-sm" onclick="window._cancelFollowups(\'' + proposal.id + '\')" style="padding:.3rem .65rem;font-size:.75rem;font-weight:500;border:1px solid rgba(239,68,68,.2);background:transparent;color:var(--color-danger);border-radius:6px;cursor:pointer;" title="Cancel remaining">&#10005;</button>';
+      } else if (sentCount === followups.length && sentCount > 0) {
+        h += '<span class="epill" style="color:var(--color-success);border-color:rgba(0,212,126,.2);">&#9989; Sequence complete (' + sentCount + '/' + followups.length + ')</span>';
+      } else if (cancelledCount > 0) {
+        var reason = followups.find(function(f) { return f.cancel_reason; }) || {};
+        var label = reason.cancel_reason === 'signed_up' ? 'Signed up' : reason.cancel_reason === 'lost' ? 'Lost' : 'Cancelled';
+        h += '<span class="epill" style="color:var(--color-muted);border-color:rgba(107,117,153,.2);">' + label + ' (' + sentCount + '/' + followups.length + ' sent)</span>';
+      }
+    }
+    h += '</div></div>';
+
+    container.innerHTML = h;
+
+    // Init billing chips with current selections
+    setTimeout(function() {
+      updatePropBillingChips();
+      // Re-select current billing options
+      var currentBillings = proposal.billing_options || [];
+      document.querySelectorAll('#propBillingChips .prop-chip').forEach(function(chip) {
+        if (currentBillings.indexOf(chip.dataset.value) > -1) {
+          chip.classList.add('selected');
+        } else {
+          chip.classList.remove('selected');
+        }
+      });
+    }, 0);
+  }
+
+  // ── Create proposal from deep dive ──
+  window._createProposal = async function() {
+    var c = state.contact;
+    var btn = document.getElementById('propCreateBtn');
+    btn.disabled = true; btn.textContent = 'Creating...';
+
+    var campaigns = getPropSelectedChips('propCampaignChips');
+    var billings = getPropSelectedChips('propBillingChips');
+    if (campaigns.length === 0) { toast('Select at least one campaign length', 'error'); btn.disabled = false; btn.textContent = 'Create Proposal \u2192'; return; }
+
+    var customPricing = null;
+    var ct = document.getElementById('propCustomToggle');
+    if (ct && ct.classList.contains('on')) {
+      var amt = parseInt(document.getElementById('propCustomAmt').value);
+      if (amt > 0) {
+        customPricing = {
+          amount_cents: amt * 100,
+          period: document.getElementById('propCustomPeriod').value,
+          duration_months: parseInt(document.getElementById('propCustomDur').value) || null,
+          label: document.getElementById('propCustomLabel').value.trim() || ('$' + amt + '/' + document.getElementById('propCustomPeriod').value)
+        };
+      }
+    }
+
+    try {
+      // Create proposal via action API
+      var result = await fetch('/api/action', {
+        method: 'POST', headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          action: 'create_record', table: 'proposals',
+          data: {
+            contact_id: c.id,
+            status: 'draft',
+            campaign_lengths: campaigns,
+            billing_options: billings,
+            custom_pricing: customPricing,
+            notes: document.getElementById('propNotes').value.trim() || null,
+            created_by: 'chris'
+          }
+        })
+      }).then(function(r) { return r.json(); });
+
+      // Update contact to prospect if lead
+      if (c.status === 'lead') {
+        var checkoutPlans = billings.length ? billings : null;
+        if (campaigns.length === 1 && campaigns[0] === 'monthly') checkoutPlans = ['monthly'];
+        await fetch('/api/action', {
+          method: 'POST', headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({
+            action: 'update_record', table: 'contacts', filters: { id: c.id },
+            data: { status: 'prospect', converted_from_lead_at: new Date().toISOString(), checkout_options: checkoutPlans ? { plans: checkoutPlans } : undefined }
+          })
+        });
+        state.contact.status = 'prospect';
+        renderDetail();
+      }
+
+      toast('Proposal created');
+      loadDetailData();
+    } catch(e) {
+      toast('Failed to create proposal: ' + e.message, 'error');
+      btn.disabled = false; btn.textContent = 'Create Proposal \u2192';
+    }
+  };
+
+  // ── Save proposal config ──
+  window._saveProposalConfig = async function(proposalId) {
+    var campaigns = getPropSelectedChips('propCampaignChips');
+    var billings = getPropSelectedChips('propBillingChips');
+    if (campaigns.length === 0) { toast('Select at least one campaign length', 'error'); return; }
+
+    var customPricing = null;
+    var ct = document.getElementById('propCustomToggle');
+    if (ct && ct.classList.contains('on')) {
+      var amt = parseInt(document.getElementById('propCustomAmt').value);
+      if (amt > 0) {
+        customPricing = {
+          amount_cents: amt * 100,
+          period: document.getElementById('propCustomPeriod').value,
+          duration_months: parseInt(document.getElementById('propCustomDur').value) || null,
+          label: document.getElementById('propCustomLabel').value.trim() || ('$' + amt + '/' + document.getElementById('propCustomPeriod').value)
+        };
+      }
+    }
+
+    try {
+      await fetch('/api/action', {
+        method: 'POST', headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          action: 'update_record', table: 'proposals', filters: { id: proposalId },
+          data: {
+            campaign_lengths: campaigns,
+            billing_options: billings,
+            custom_pricing: customPricing,
+            notes: document.getElementById('propNotes').value.trim() || null
+          }
+        })
+      });
+
+      // Also update checkout_options on the contact
+      var checkoutPlans = billings.length ? billings : null;
+      if (campaigns.length === 1 && campaigns[0] === 'monthly') checkoutPlans = ['monthly'];
+      if (checkoutPlans) {
+        await fetch('/api/action', {
+          method: 'POST', headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({
+            action: 'update_record', table: 'contacts', filters: { id: state.contact.id },
+            data: { checkout_options: { plans: checkoutPlans } }
+          })
+        });
+      }
+
+      toast('Configuration saved');
+      loadDetailData();
+    } catch(e) {
+      toast('Save failed: ' + e.message, 'error');
+    }
+  };
+
+  // ── Enrich proposal ──
+  window._enrichProposal = async function(proposalId, btn) {
+    btn.disabled = true; btn.innerHTML = '<span class="dot-pulse"></span> Enriching...';
+    try {
+      var resp = await fetch('/api/enrich-proposal', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ proposal_id: proposalId }) });
+      var data = await resp.json();
+      if (data.ok) { toast('Enrichment complete'); loadDetailData(); }
+      else { toast('Enrichment failed: ' + (data.error || 'Unknown'), 'error'); btn.disabled = false; btn.innerHTML = '&#128270; Enrich'; }
+    } catch(e) { toast('Enrichment error: ' + e.message, 'error'); btn.disabled = false; btn.innerHTML = '&#128270; Enrich'; }
+  };
+
+  // ── Generate proposal ──
+  window._generateProposal = async function(proposalId, btn) {
+    btn.disabled = true; btn.innerHTML = '<span class="dot-pulse"></span> Generating...';
+    try {
+      var resp = await fetch('/api/generate-proposal', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ proposal_id: proposalId }) });
+      var data = await resp.json();
+      if (data.ok) { toast('Proposal generated'); loadDetailData(); }
+      else { toast('Generation failed: ' + (data.error || 'Unknown'), 'error'); btn.disabled = false; btn.innerHTML = '&#9889; Generate Proposal'; }
+    } catch(e) { toast('Generation error: ' + e.message, 'error'); btn.disabled = false; btn.innerHTML = '&#9889; Generate Proposal'; }
+  };
+
+  // ── Regenerate proposal (re-runs generate with updated config) ──
+  window._regenerateProposal = async function(proposalId, btn) {
+    if (!confirm('Regenerate this proposal? The current proposal page will be replaced with freshly generated content using the saved configuration.')) return;
+    btn.disabled = true; btn.innerHTML = '<span class="dot-pulse"></span> Regenerating...';
+    try {
+      var resp = await fetch('/api/generate-proposal', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ proposal_id: proposalId }) });
+      var data = await resp.json();
+      if (data.ok) { toast('Proposal regenerated'); loadDetailData(); }
+      else { toast('Regeneration failed: ' + (data.error || 'Unknown'), 'error'); btn.disabled = false; btn.innerHTML = '&#9889; Regenerate'; }
+    } catch(e) { toast('Regeneration error: ' + e.message, 'error'); btn.disabled = false; btn.innerHTML = '&#9889; Regenerate'; }
+  };
+
+  // ── Send proposal ──
+  window._sendProposal = async function(proposalId, btn) {
+    if (!confirm('Send the proposal email to the prospect?')) return;
+    btn.disabled = true; btn.textContent = 'Sending...';
+    try {
+      var resp = await fetch('/api/send-proposal-email', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ proposal_id: proposalId }) });
+      var data = await resp.json();
+      if (data.ok) { toast('Proposal sent'); loadDetailData(); }
+      else { toast('Send failed: ' + (data.error || 'Unknown'), 'error'); btn.disabled = false; btn.innerHTML = '&#9993; Send Proposal'; }
+    } catch(e) { toast('Send error: ' + e.message, 'error'); btn.disabled = false; btn.innerHTML = '&#9993; Send Proposal'; }
+  };
+
+  // ── Preview email ──
+  window._previewEmail = async function(proposalId) {
+    try {
+      var resp = await fetch('/api/send-proposal-email', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ proposal_id: proposalId, preview_only: true }) });
+      var data = await resp.json();
+      if (data.ok) {
+        var w = window.open('', '_blank');
+        w.document.write('<html><head><title>Email Preview</title></head><body>');
+        w.document.write('<div style="padding:1rem;background:#f5f5f5;font-family:sans-serif;font-size:14px;margin-bottom:1rem;">');
+        w.document.write('<strong>To:</strong> ' + data.to + '<br><strong>From:</strong> ' + data.from + '<br><strong>Reply-To:</strong> ' + data.reply_to + '<br><strong>CC:</strong> ' + data.cc + '<br><strong>Subject:</strong> ' + data.subject);
+        w.document.write('</div>');
+        w.document.write(data.body_html);
+        w.document.write('</body></html>');
+        w.document.close();
+      } else { toast('Preview failed: ' + (data.error || 'Unknown'), 'error'); }
+    } catch(e) { toast('Preview error: ' + e.message, 'error'); }
+  };
+
+  // ── Delete proposal ──
+  window._deleteProposal = async function(proposalId) {
+    if (!confirm('Delete this proposal and remove all deployed pages (proposal, checkout, onboarding) for this prospect?')) return;
+    try {
+      var resp = await fetch('/api/delete-proposal', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ proposal_id: proposalId, delete_pages: true }) });
+      var data = await resp.json();
+      if (data.ok) { toast('Proposal deleted'); loadDetailData(); }
+      else { toast('Delete failed: ' + (data.error || 'Unknown'), 'error'); }
+    } catch(e) { toast('Delete error: ' + e.message, 'error'); }
+  };
+
+  // ── Follow-up functions ──
+  window._generateFollowups = async function(proposalId, btn) {
+    btn.disabled = true; btn.innerHTML = '&#128337; Generating...';
+    try {
+      var resp = await fetch('/api/generate-followups', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ proposal_id: proposalId }) });
+      var data = await resp.json();
+      if (data.ok) { toast('Follow-up sequence generated. Preview and approve to schedule.'); loadDetailData(); }
+      else { toast('Failed: ' + (data.error || 'Unknown'), 'error'); btn.disabled = false; btn.innerHTML = '&#128337; Schedule Follow-ups'; }
+    } catch(e) { toast('Error: ' + e.message, 'error'); btn.disabled = false; btn.innerHTML = '&#128337; Schedule Follow-ups'; }
+  };
+
+  window._previewFollowups = function(proposalId) {
+    var fus = state.proposalFollowups[proposalId] || [];
+    if (fus.length === 0) { toast('No follow-ups found', 'error'); return; }
+    var w = window.open('', '_blank');
+    w.document.write('<html><head><title>Follow-up Sequence Preview</title>');
+    w.document.write('<style>body{margin:0;padding:2rem;background:#f5f5f5;font-family:-apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,sans-serif;color:#1E2A5E;}.email-card{background:#fff;border-radius:12px;border:1px solid #e2e8f0;margin-bottom:2rem;overflow:hidden;}.email-header{padding:1rem 1.5rem;background:#f8fafc;border-bottom:1px solid #e2e8f0;display:flex;justify-content:space-between;align-items:center;flex-wrap:wrap;gap:.5rem;}.email-meta{font-size:.85rem;color:#6B7599;}.email-meta strong{color:#1E2A5E;}.email-num{font-size:.75rem;font-weight:600;padding:.25rem .75rem;border-radius:99px;display:inline-block;}.status-draft{background:rgba(245,158,11,.1);color:#F59E0B;}.status-pending{background:rgba(59,130,246,.08);color:#3B82F6;}.status-sent{background:rgba(0,212,126,.1);color:#00D47E;}.status-cancelled{background:rgba(107,117,153,.1);color:#6B7599;}</style></head><body>');
+    w.document.write('<h1 style="font-size:1.3rem;margin:0 0 .25rem;">Follow-up Sequence (' + fus.length + ' emails)</h1>');
+    w.document.write('<p style="color:#6B7599;font-size:.85rem;margin-bottom:1.5rem;">From: proposals@clients.moonraker.ai</p>');
+    fus.forEach(function(fu) {
+      var statusLabel = fu.status.charAt(0).toUpperCase() + fu.status.slice(1);
+      var schedStr = fu.scheduled_for ? new Date(fu.scheduled_for).toLocaleDateString('en-US', { weekday: 'short', month: 'short', day: 'numeric' }) : 'Day ' + fu.day_offset;
+      if (fu.sent_at) schedStr = 'Sent ' + new Date(fu.sent_at).toLocaleDateString('en-US', { month: 'short', day: 'numeric' });
+      w.document.write('<div class="email-card"><div class="email-header"><div><span class="email-num status-' + fu.status + '">Email ' + fu.sequence_number + ' &middot; ' + statusLabel + '</span><span class="email-meta" style="margin-left:.75rem;">' + schedStr + '</span></div><div class="email-meta"><strong>Subject:</strong> ' + (fu.subject || '(no subject)') + '</div></div>');
+      var escaped = (fu.body_html || '').replace(/&/g,'&amp;').replace(/"/g,'&quot;');
+      w.document.write('<div style="padding:0;"><iframe srcdoc="' + escaped + '" style="width:100%;min-height:500px;border:none;" onload="this.style.height=this.contentDocument.body.scrollHeight+20+\'px\'"></iframe></div></div>');
+    });
+    w.document.write('</body></html>');
+    w.document.close();
+  };
+
+  window._approveFollowups = async function(proposalId, btn) {
+    if (!confirm('Approve and schedule all follow-up emails? They will be sent automatically on the scheduled dates.')) return;
+    btn.disabled = true; btn.textContent = 'Scheduling...';
+    try {
+      var resp = await fetch('/api/approve-followups', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ proposal_id: proposalId }) });
+      var data = await resp.json();
+      if (data.ok) { toast('Follow-ups approved and scheduled'); loadDetailData(); }
+      else { toast('Failed: ' + (data.error || 'Unknown'), 'error'); btn.disabled = false; btn.textContent = 'Approve & Schedule'; }
+    } catch(e) { toast('Error: ' + e.message, 'error'); btn.disabled = false; btn.textContent = 'Approve & Schedule'; }
+  };
+
+  window._cancelFollowups = async function(proposalId) {
+    if (!confirm('Cancel all remaining follow-up emails?')) return;
+    try {
+      var fus = state.proposalFollowups[proposalId] || [];
+      var pending = fus.filter(function(f) { return f.status === 'pending'; });
+      for (var i = 0; i < pending.length; i++) {
+        await fetch('/api/action', {
+          method: 'POST', headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ action: 'update_record', table: 'proposal_followups', filters: { id: pending[i].id }, data: { status: 'cancelled', cancel_reason: 'manual' } })
+        });
+      }
+      toast('Follow-ups cancelled');
+      loadDetailData();
+    } catch(e) { toast('Cancel error: ' + e.message, 'error'); }
+  };
 
   // ============================================================
   // TABS
