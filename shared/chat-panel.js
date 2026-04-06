@@ -1157,14 +1157,15 @@
       currentStreamText = '';
       displayedText = '';
 
+      // Re-render first to hide the false-start message, THEN append streaming div
+      renderMessages();
+
       var aiDiv = document.createElement('div');
       aiDiv.className = 'mr-msg mr-msg-ai streaming';
       aiDiv.innerHTML = '<div class="mr-msg-label">COREBot</div>';
       messagesEl.appendChild(aiDiv);
       currentStreamEl = aiDiv;
       scrollToBottom(true);
-
-      renderMessages(); // Re-render to hide the false-start message
 
       var apiMessages = messages.filter(function(m) {
         return m.role === 'user' || m.role === 'assistant';
