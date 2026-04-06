@@ -943,7 +943,8 @@ strong { font-weight: 600; color: var(--color-heading); }
     introCall: [],
     proposals: [],
     entityAudit: null,
-    proposalFollowups: {}
+    proposalFollowups: {},
+    auditFollowups: []
   };
 
   // ============================================================
@@ -1057,6 +1058,17 @@ strong { font-weight: 600; color: var(--color-heading); }
               state.proposalFollowups[fu.proposal_id].push(fu);
             });
             renderProposals();
+          }).catch(function() {});
+      }
+
+      // Load audit followups (async, re-renders audit tab when done)
+      state.auditFollowups = [];
+      if (state.entityAudit) {
+        fetch(SB + '/rest/v1/audit_followups?audit_id=eq.' + state.entityAudit.id + '&order=sequence_number.asc', { headers: { 'apikey': SK, 'Authorization': 'Bearer ' + SK } })
+          .then(function(r) { return r.json(); })
+          .then(function(afus) {
+            state.auditFollowups = afus || [];
+            renderEntityAudit();
           }).catch(function() {});
       }
 
@@ -1862,6 +1874,63 @@ strong { font-weight: 600; color: var(--color-heading); }
     h += '<button onclick="deleteEntityAudit()" style="padding:.5rem 1rem;border:1px solid var(--color-danger);color:var(--color-danger);background:rgba(239,68,68,.04);border-radius:8px;font-size:.82rem;font-weight:600;cursor:pointer;font-family:Outfit,sans-serif;margin-left:auto;">Delete Audit</button>';
     h += '</div>';
 
+    // ── Follow-up Sequence (only after delivery) ──
+    if (ea.status === 'delivered') {
+      var afus = state.auditFollowups || [];
+      var draftCount = afus.filter(function(f) { return f.status === 'draft'; }).length;
+      var pendingCount = afus.filter(function(f) { return f.status === 'pending'; }).length;
+      var sentCount = afus.filter(function(f) { return f.status === 'sent'; }).length;
+      var cancelledCount = afus.filter(function(f) { return f.status === 'cancelled'; }).length;
+
+      h += '<div class="card" style="margin-top:1rem;"><div class="card-header"><h3>Follow-up Sequence</h3></div>';
+      h += '<div style="padding:1rem 1.25rem;">';
+
+      if (afus.length === 0) {
+        h += '<p style="font-size:.84rem;color:var(--color-muted);margin:0 0 .75rem;">Generate a 3-email follow-up sequence personalized from the CORE scores. Emails are sent over 2 weeks and auto-cancel if the lead becomes a prospect.</p>';
+        h += '<button id="afuGenBtn" onclick="window._genAuditFollowups()" style="padding:.45rem 1rem;font-size:.82rem;font-weight:600;border:none;background:var(--color-primary);color:#fff;border-radius:6px;cursor:pointer;">&#128337; Generate Follow-ups</button>';
+      } else if (draftCount > 0) {
+        // Show draft previews
+        afus.filter(function(f) { return f.status === 'draft'; }).forEach(function(f, idx) {
+          h += '<div style="padding:.75rem;background:var(--color-bg);border-radius:8px;margin-bottom:.5rem;border:1px solid var(--color-border);">';
+          h += '<div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:.35rem;">';
+          h += '<span style="font-size:.78rem;font-weight:600;color:var(--color-heading);">Email ' + f.sequence_number + ' &middot; Day ' + f.day_offset + '</span>';
+          h += '<span class="prop-status-tag st-draft" style="font-size:.65rem;">Draft</span>';
+          h += '</div>';
+          h += '<div style="font-size:.82rem;color:var(--color-body);font-weight:500;">' + esc(f.subject) + '</div>';
+          h += '</div>';
+        });
+        h += '<div style="display:flex;gap:.5rem;margin-top:.75rem;">';
+        h += '<button onclick="window._approveAuditFollowups()" style="padding:.45rem 1rem;font-size:.82rem;font-weight:600;border:none;background:var(--color-primary);color:#fff;border-radius:6px;cursor:pointer;">Approve &amp; Schedule</button>';
+        h += '<button onclick="window._deleteAuditFollowups()" style="padding:.45rem 1rem;font-size:.82rem;font-weight:600;border:1px solid var(--color-border);background:var(--color-surface);color:var(--color-heading);border-radius:6px;cursor:pointer;">Discard</button>';
+        h += '</div>';
+      } else if (pendingCount > 0) {
+        var nextAfu = afus.filter(function(f) { return f.status === 'pending'; }).sort(function(a,b) { return new Date(a.scheduled_for) - new Date(b.scheduled_for); })[0];
+        afus.forEach(function(f) {
+          var stIcon = f.status === 'sent' ? '&#9989;' : f.status === 'pending' ? '&#128337;' : '&#10060;';
+          var stLabel = f.status === 'sent' ? 'Sent' : f.status === 'pending' ? 'Scheduled' : f.status;
+          var dateStr = f.status === 'sent' && f.sent_at ? new Date(f.sent_at).toLocaleDateString('en-US', { month: 'short', day: 'numeric' }) : f.scheduled_for ? new Date(f.scheduled_for).toLocaleDateString('en-US', { month: 'short', day: 'numeric' }) : '';
+          h += '<div style="display:flex;align-items:center;gap:.5rem;padding:.4rem 0;font-size:.82rem;">';
+          h += '<span>' + stIcon + '</span>';
+          h += '<span style="color:var(--color-heading);font-weight:500;">Email ' + f.sequence_number + '</span>';
+          h += '<span style="color:var(--color-muted);">' + esc(f.subject) + '</span>';
+          h += '<span style="margin-left:auto;font-size:.75rem;color:var(--color-muted);">' + stLabel + (dateStr ? ' ' + dateStr : '') + '</span>';
+          h += '</div>';
+        });
+        h += '<div style="margin-top:.75rem;">';
+        h += '<span class="epill" style="color:var(--color-info);border-color:rgba(59,130,246,.2);">&#128231; ' + sentCount + '/' + afus.length + ' sent</span>';
+        h += '<button onclick="window._cancelAuditFollowups()" style="margin-left:.5rem;padding:.3rem .65rem;font-size:.75rem;font-weight:500;border:1px solid rgba(239,68,68,.2);background:transparent;color:var(--color-danger);border-radius:6px;cursor:pointer;" title="Cancel remaining">&#10005; Cancel</button>';
+        h += '</div>';
+      } else if (sentCount === afus.length && sentCount > 0) {
+        h += '<span class="epill" style="color:var(--color-success);border-color:rgba(0,212,126,.2);">&#9989; Sequence complete (' + sentCount + '/' + afus.length + ')</span>';
+      } else if (cancelledCount > 0) {
+        var cReason = afus.find(function(f) { return f.cancel_reason; });
+        var cLabel = cReason && cReason.cancel_reason === 'converted_to_prospect' ? 'Converted to prospect' : cReason && cReason.cancel_reason === 'lost' ? 'Lost' : 'Cancelled';
+        h += '<span class="epill" style="color:var(--color-muted);border-color:rgba(107,117,153,.2);">' + cLabel + ' (' + sentCount + '/' + afus.length + ' sent)</span>';
+        h += '<button onclick="window._genAuditFollowups()" style="margin-left:.5rem;padding:.3rem .65rem;font-size:.75rem;font-weight:500;border:1px solid var(--color-border);background:transparent;color:var(--color-heading);border-radius:6px;cursor:pointer;">Regenerate</button>';
+      }
+      h += '</div></div>';
+    }
+
     container.innerHTML = h;
   }
 
@@ -2215,6 +2284,81 @@ strong { font-weight: 600; color: var(--color-heading); }
     }).catch(function(e) {
       toast('Error: ' + e.message, 'error');
     });
+  };
+
+  // ── Audit Follow-up Functions ──
+
+  window._genAuditFollowups = function() {
+    var ea = state.entityAudit;
+    if (!ea) return;
+    // Delete existing cancelled/draft followups first if regenerating
+    var existing = state.auditFollowups || [];
+    var deleteFirst = existing.length > 0;
+
+    var btn = document.getElementById('afuGenBtn');
+    if (btn) { btn.disabled = true; btn.textContent = 'Generating...'; }
+
+    var chain = deleteFirst
+      ? fetch('/api/action', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ action: 'delete_record', table: 'audit_followups', filters: { audit_id: ea.id } }) }).then(function() { return true; })
+      : Promise.resolve(true);
+
+    chain.then(function() {
+      return fetch('/api/generate-audit-followups', {
+        method: 'POST', headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ audit_id: ea.id })
+      }).then(function(r) { return r.json(); });
+    }).then(function(res) {
+      if (res.ok) {
+        state.auditFollowups = res.followups || [];
+        renderEntityAudit();
+        toast('Follow-up sequence generated', 'success');
+      } else {
+        toast('Failed: ' + (res.error || 'Unknown'), 'error');
+        if (btn) { btn.disabled = false; btn.textContent = '\u{1f557} Generate Follow-ups'; }
+      }
+    }).catch(function(e) {
+      toast('Error: ' + e.message, 'error');
+      if (btn) { btn.disabled = false; btn.textContent = '\u{1f557} Generate Follow-ups'; }
+    });
+  };
+
+  window._approveAuditFollowups = function() {
+    var ea = state.entityAudit;
+    if (!ea) return;
+    fetch('/api/approve-audit-followups', {
+      method: 'POST', headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ audit_id: ea.id })
+    }).then(function(r) { return r.json(); }).then(function(res) {
+      if (res.ok) { toast('Follow-ups scheduled'); loadDetailData(); }
+      else { toast('Failed: ' + (res.error || 'Unknown'), 'error'); }
+    }).catch(function(e) { toast('Error: ' + e.message, 'error'); });
+  };
+
+  window._deleteAuditFollowups = function() {
+    var ea = state.entityAudit;
+    if (!ea) return;
+    if (!confirm('Discard the draft follow-up sequence?')) return;
+    fetch('/api/action', {
+      method: 'POST', headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ action: 'delete_record', table: 'audit_followups', filters: { audit_id: ea.id } })
+    }).then(function(r) { return r.json(); }).then(function(res) {
+      if (res.success) { state.auditFollowups = []; renderEntityAudit(); toast('Follow-ups discarded'); }
+      else { toast('Failed to delete', 'error'); }
+    });
+  };
+
+  window._cancelAuditFollowups = function() {
+    var ea = state.entityAudit;
+    if (!ea) return;
+    if (!confirm('Cancel remaining follow-up emails?')) return;
+    var pending = (state.auditFollowups || []).filter(function(f) { return f.status === 'pending'; });
+    var promises = pending.map(function(f) {
+      return fetch('/api/action', {
+        method: 'POST', headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ action: 'update_record', table: 'audit_followups', filters: { id: f.id }, data: { status: 'cancelled', cancelled_at: new Date().toISOString(), cancel_reason: 'manual' } })
+      });
+    });
+    Promise.all(promises).then(function() { toast('Follow-ups cancelled'); loadDetailData(); });
   };
 
   // Activity log - fire-and-forget, never blocks the UI
