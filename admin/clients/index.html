@@ -1084,8 +1084,7 @@ strong { font-weight: 600; color: var(--color-heading); }
             scores: state.scores,
             deliverables: state.deliverables.map(function(d) { return { id: d.id, deliverable_type: d.deliverable_type, title: d.title, status: d.status, contact_id: d.contact_id }; }),
             snapshots: state.snapshots.map(function(s) { return { report_month: s.report_month, report_status: s.report_status, campaign_month: s.campaign_month, gsc_clicks: s.gsc_clicks, gsc_impressions: s.gsc_impressions }; }),
-            proposals: state.proposals.map(function(p) { return { id: p.id, status: p.status, campaign_lengths: p.campaign_lengths, created_at: p.created_at, sent_at: p.sent_at, view_count: p.view_count }; }),
-            introCall: state.introCall.map(function(s) { return { step_key: s.step_key, label: s.label, status: s.status }; })
+            proposals: state.proposals.map(function(p) { return { id: p.id, status: p.status, campaign_lengths: p.campaign_lengths, created_at: p.created_at, sent_at: p.sent_at, view_count: p.view_count }; })
           }
         });
       }
@@ -1670,7 +1669,7 @@ strong { font-weight: 600; color: var(--color-heading); }
             html += '<div style="color:var(--color-heading);font-weight:500;">' + esc(kw.keyword) + '</div>';
             html += '<input type="text" value="' + esc(kw.target_page || '') + '" placeholder="e.g. /anxiety-therapy/" style="font-family:inherit;font-size:.78rem;padding:.25rem .4rem;border:1px solid transparent;border-radius:5px;background:transparent;color:var(--color-muted);width:100%;transition:border-color .15s,background .15s;" onfocus="this.style.borderColor=\'var(--color-primary)\';this.style.background=\'var(--color-bg)\'" onblur="this.style.borderColor=\'transparent\';this.style.background=\'transparent\';updateKeyword(\'' + kw.id + '\', \'target_page\', this.value)">';
             html += '<select onchange="updateKeyword(\'' + kw.id + '\', \'priority\', parseInt(this.value))" style="font-family:inherit;font-size:.72rem;font-weight:600;padding:.15rem .3rem;border:1px solid transparent;border-radius:4px;background:' + (kw.priority === 1 ? 'rgba(0,212,126,.1)' : 'rgba(59,130,246,.1)') + ';color:' + (kw.priority === 1 ? '#00b86c' : '#3B82F6') + ';cursor:pointer;appearance:none;-webkit-appearance:none;text-align:center;"><option value="1"' + (kw.priority === 1 ? ' selected' : '') + '>P1</option><option value="2"' + (kw.priority !== 1 ? ' selected' : '') + '>P2</option></select>';
-            html += '<select onchange="updateKeyword(\'' + kw.id + '\', \'notes\', this.value === \'new\' ? \'New page to create\' : \'Existing page\')" style="font-family:inherit;font-size:.72rem;font-weight:500;padding:.15rem .3rem;border:1px solid transparent;border-radius:4px;background:transparent;color:' + (isNew ? 'var(--color-primary)' : 'var(--color-info)') + ';cursor:pointer;appearance:none;-webkit-appearance:none;"><option value="existing" style="color:var(--color-heading);background:var(--color-surface);"' + (pageVal === 'existing' ? ' selected' : '') + '>Existing</option><option value="new" style="color:var(--color-heading);background:var(--color-surface);"' + (pageVal === 'new' ? ' selected' : '') + '>New</option></select>';
+            html += '<select onchange="updateKeyword(\'' + kw.id + '\', \'notes\', this.value === \'new\' ? \'New page to create\' : \'Existing page\')" style="font-family:inherit;font-size:.72rem;font-weight:500;padding:.15rem .3rem;border:1px solid transparent;border-radius:4px;background:transparent;color:' + (isNew ? 'var(--color-primary)' : 'var(--color-info)') + ';cursor:pointer;appearance:none;-webkit-appearance:none;"><option value="existing"' + (pageVal === 'existing' ? ' selected' : '') + '>Existing</option><option value="new"' + (pageVal === 'new' ? ' selected' : '') + '>New</option></select>';
             html += '<button onclick="deleteICKeyword(\'' + kw.id + '\')" style="width:22px;height:22px;border:none;background:transparent;color:var(--color-muted);cursor:pointer;font-size:.75rem;border-radius:4px;display:flex;align-items:center;justify-content:center;" onmouseover="this.style.background=\'rgba(239,68,68,.1)\';this.style.color=\'var(--color-danger)\'" onmouseout="this.style.background=\'transparent\';this.style.color=\'var(--color-muted)\'" title="Delete">&#10005;</button>';
             html += '</div>';
           });
@@ -3468,7 +3467,39 @@ strong { font-weight: 600; color: var(--color-heading); }
     }
 
     try {
-      // Create proposal via action API
+      // Step 1: If lead, run full conversion (pages, onboarding steps, Drive folders)
+      if (c.status === 'lead') {
+        btn.textContent = 'Converting to prospect...';
+        var convertResp = await fetch('/api/convert-to-prospect', {
+          method: 'POST', headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ slug: c.slug, contact_id: c.id })
+        });
+        var convertData = await convertResp.json();
+        if (!convertResp.ok || !convertData.success) {
+          toast('Conversion failed: ' + (convertData.error || 'Unknown error'), 'error');
+          btn.disabled = false; btn.textContent = 'Create Proposal \u2192';
+          return;
+        }
+
+        // Save checkout_options on the contact
+        var checkoutPlans = billings.length ? billings : null;
+        if (campaigns.length === 1 && campaigns[0] === 'monthly') checkoutPlans = ['monthly'];
+        if (checkoutPlans) {
+          await fetch('/api/action', {
+            method: 'POST', headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({
+              action: 'update_record', table: 'contacts', filters: { id: c.id },
+              data: { checkout_options: { plans: checkoutPlans } }
+            })
+          });
+        }
+
+        state.contact.status = 'prospect';
+        renderDetail();
+      }
+
+      // Step 2: Create proposal record
+      btn.textContent = 'Creating proposal...';
       var result = await fetch('/api/action', {
         method: 'POST', headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
@@ -3485,23 +3516,23 @@ strong { font-weight: 600; color: var(--color-heading); }
         })
       }).then(function(r) { return r.json(); });
 
-      // Update contact to prospect if lead
-      if (c.status === 'lead') {
-        var checkoutPlans = billings.length ? billings : null;
-        if (campaigns.length === 1 && campaigns[0] === 'monthly') checkoutPlans = ['monthly'];
-        await fetch('/api/action', {
-          method: 'POST', headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({
-            action: 'update_record', table: 'contacts', filters: { id: c.id },
-            data: { status: 'prospect', converted_from_lead_at: new Date().toISOString(), checkout_options: checkoutPlans ? { plans: checkoutPlans } : undefined }
-          })
-        });
-        state.contact.status = 'prospect';
-        renderDetail();
-      }
-
       toast('Proposal created');
       loadDetailData();
+
+      // Step 3: Auto-enrich in background (non-blocking)
+      var newProposalId = result.data && result.data[0] ? result.data[0].id : (result.data ? result.data.id : null);
+      if (newProposalId) {
+        setTimeout(function() {
+          toast('Enriching proposal data...');
+          fetch('/api/enrich-proposal', {
+            method: 'POST', headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ proposal_id: newProposalId })
+          }).then(function(r) { return r.json(); }).then(function(data) {
+            if (data.ok) { toast('Enrichment complete'); loadDetailData(); }
+            else { toast('Enrichment needs manual trigger', 'warning'); }
+          }).catch(function() { /* silent - user can manually enrich */ });
+        }, 500);
+      }
     } catch(e) {
       toast('Failed to create proposal: ' + e.message, 'error');
       btn.disabled = false; btn.textContent = 'Create Proposal \u2192';
