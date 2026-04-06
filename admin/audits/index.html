@@ -306,7 +306,6 @@ a:hover { color: var(--color-primary-hover); }
   <div class="content">
     <div class="section-header">
       <h2>Audits</h2>
-      <button class="ea-btn" id="newEntityAuditBtn" style="visibility:hidden;background:var(--color-primary);color:#fff;border-color:var(--color-primary);padding:.45rem 1rem;font-size:.82rem;border-radius:8px;cursor:pointer;font-family:inherit;font-weight:500;flex-shrink:0;" onclick="toggleNewAuditForm()">+ New Entity Audit</button>
     </div>
 
     <div class="sub-tabs" id="subTabs">
@@ -333,33 +332,7 @@ a:hover { color: var(--color-primary-hover); }
 
     <!-- ENTITY AUDITS TAB (new) -->
     <div class="tab-content" id="tab-entity">
-    <p class="section-desc">Entity audit scorecards for leads and prospects. Manage free and premium audits, add Loom URLs, and track delivery status.</p>
-
-    <!-- New audit inline form -->
-    <div id="newAuditForm" style="display:none;background:var(--color-surface);border:1px solid var(--color-border);border-radius:12px;padding:1.5rem;margin-bottom:1.5rem;">
-      <h4 style="margin-bottom:1rem;font-size:1rem;">Create New Entity Audit</h4>
-      <p style="font-size:.85rem;color:var(--color-muted);margin-bottom:1rem;">This will create a new lead contact and a pending entity audit. The lead will also appear in the Clients directory.</p>
-      <div style="display:grid;grid-template-columns:1fr 1fr;gap:.75rem;">
-        <div><label style="font-size:.75rem;font-weight:600;color:var(--color-muted);display:block;margin-bottom:.25rem;">First Name *</label><input id="nea-first" style="width:100%;padding:.5rem .65rem;border:1px solid var(--color-border);border-radius:8px;font-size:.85rem;background:var(--color-bg);color:var(--color-body);font-family:inherit;" placeholder="Jane"></div>
-        <div><label style="font-size:.75rem;font-weight:600;color:var(--color-muted);display:block;margin-bottom:.25rem;">Last Name *</label><input id="nea-last" style="width:100%;padding:.5rem .65rem;border:1px solid var(--color-border);border-radius:8px;font-size:.85rem;background:var(--color-bg);color:var(--color-body);font-family:inherit;" placeholder="Smith"></div>
-        <div><label style="font-size:.75rem;font-weight:600;color:var(--color-muted);display:block;margin-bottom:.25rem;">Practice Name</label><input id="nea-practice" style="width:100%;padding:.5rem .65rem;border:1px solid var(--color-border);border-radius:8px;font-size:.85rem;background:var(--color-bg);color:var(--color-body);font-family:inherit;" placeholder="Wellness Therapy Group"></div>
-        <div><label style="font-size:.75rem;font-weight:600;color:var(--color-muted);display:block;margin-bottom:.25rem;">Email *</label><input id="nea-email" type="email" style="width:100%;padding:.5rem .65rem;border:1px solid var(--color-border);border-radius:8px;font-size:.85rem;background:var(--color-bg);color:var(--color-body);font-family:inherit;" placeholder="jane@practice.com"></div>
-        <div><label style="font-size:.75rem;font-weight:600;color:var(--color-muted);display:block;margin-bottom:.25rem;">Website URL *</label><input id="nea-url" type="url" style="width:100%;padding:.5rem .65rem;border:1px solid var(--color-border);border-radius:8px;font-size:.85rem;background:var(--color-bg);color:var(--color-body);font-family:inherit;" placeholder="https://practice.com"></div>
-        <div><label style="font-size:.75rem;font-weight:600;color:var(--color-muted);display:block;margin-bottom:.25rem;">Tier</label><select id="nea-tier" style="width:100%;padding:.5rem .65rem;border:1px solid var(--color-border);border-radius:8px;font-size:.85rem;background:var(--color-bg);color:var(--color-body);font-family:inherit;"><option value="free">Free</option><option value="premium">Premium</option></select></div>
-      </div>
-      <div style="margin-top:.75rem;">
-        <label style="font-size:.75rem;font-weight:600;color:var(--color-muted);display:block;margin-bottom:.25rem;">Slug (auto-generated, editable if conflict)</label>
-        <div style="display:flex;gap:.5rem;align-items:center;">
-          <input id="nea-slug" style="flex:1;padding:.5rem .65rem;border:1px solid var(--color-border);border-radius:8px;font-size:.85rem;background:var(--color-bg);color:var(--color-body);font-family:'SF Mono','Fira Code',monospace;" placeholder="auto-generated" readonly>
-          <span id="nea-slug-status" style="font-size:.75rem;white-space:nowrap;"></span>
-        </div>
-      </div>
-      <div style="display:flex;gap:.5rem;margin-top:1rem;">
-        <button id="nea-submit" class="ea-btn" style="background:var(--color-primary);color:#fff;border-color:var(--color-primary);padding:.45rem 1rem;" onclick="submitNewAudit()">Create Audit + Lead</button>
-        <button class="ea-btn" onclick="toggleNewAuditForm()" style="padding:.45rem 1rem;">Cancel</button>
-        <span id="nea-status" style="font-size:.8rem;color:var(--color-muted);align-self:center;margin-left:.5rem;"></span>
-      </div>
-    </div>
+    <p class="section-desc">Entity audit pipeline across all leads and prospects. Click any row to manage in the client deep-dive.</p>
 
     <div class="stat-grid" id="eaStatGrid"></div>
 
@@ -388,8 +361,7 @@ a:hover { color: var(--color-primary-hover); }
     </div>
 
     <div class="empty-state" id="eaEmpty" style="display:none;">
-      <p>No entity audits yet. Share the intake form to start collecting leads.</p>
-      <p style="margin-top:.5rem;font-size:.85rem;"><a href="/entity-audit" target="_blank">View landing page &#8250;</a></p>
+      <p>No entity audits yet. Create a new lead from the <a href="/admin/clients">Clients</a> page, then launch an audit from their deep-dive.</p>
     </div>
     </div>
 
@@ -635,8 +607,7 @@ a:hover { color: var(--color-primary-hover); }
     btn.classList.add('active');
     document.querySelectorAll('.tab-content').forEach(function(t) { t.classList.remove('active'); });
     document.getElementById('tab-' + tab).classList.add('active');
-    var eaBtn = document.getElementById('newEntityAuditBtn');
-    if (eaBtn) eaBtn.style.visibility = tab === 'entity' ? 'visible' : 'hidden';
+    // Load entity audits when switching to that tab
     if (tab === 'entity' && !eaLoaded) loadEntityAudits();
   });
 
@@ -701,13 +672,12 @@ a:hover { color: var(--color-primary-hover); }
       var name = (c.first_name || '') + ' ' + (c.last_name || '');
       var practice = c.practice_name || c.slug || '--';
       var scores = a.scores || {};
-      var isExpanded = expandedEaId === a.id;
 
-      // Data row
-      html += '<tr class="ea-row' + (isExpanded ? ' expanded' : '') + '" onclick="toggleEaExpand(\'' + a.id + '\')">';
+      // Data row - click through to client deep-dive Audit tab
+      html += '<tr class="ea-row" onclick="window.location.href=\'/admin/clients?slug=' + esc(c.slug || '') + '&tab=audit\'">';
 
-      // Contact (with expand arrow)
-      html += '<td><div style="display:flex;align-items:center;gap:.5rem;"><span class="ea-expand-arrow">&#9654;</span><div><div style="font-weight:500;color:var(--color-heading);">' + esc(name.trim() || '--') + '</div><div style="font-size:.75rem;color:var(--color-muted);">' + esc(c.email || '') + '</div></div></div></td>';
+      // Contact
+      html += '<td><div style="display:flex;align-items:center;gap:.5rem;"><div><div style="font-weight:500;color:var(--color-heading);">' + esc(name.trim() || '--') + '</div><div style="font-size:.75rem;color:var(--color-muted);">' + esc(c.email || '') + '</div></div></div></td>';
 
       // Practice
       html += '<td>' + esc(practice) + '</td>';
@@ -715,12 +685,9 @@ a:hover { color: var(--color-primary-hover); }
       // Tier badge
       html += '<td><span class="tag tag-' + a.audit_tier + '">' + a.audit_tier + '</span></td>';
 
-      // Status dropdown
-      html += '<td onclick="event.stopPropagation()"><select class="ea-status-select" data-audit-id="' + a.id + '" onchange="changeEaStatus(this)">';
-      ['pending','processing','complete','delivered'].forEach(function(s) {
-        html += '<option value="' + s + '"' + (a.status === s ? ' selected' : '') + '>' + s.replace('_',' ') + '</option>';
-      });
-      html += '</select></td>';
+      // Status tag (read-only)
+      var stClass = { pending: 'tag-prospect', processing: 'tag-onboarding', complete: 'tag-active', delivered: 'tag-active' };
+      html += '<td><span class="tag ' + (stClass[a.status] || '') + '">' + (a.status || '--').replace('_',' ') + '</span></td>';
 
       // Date
       html += '<td style="font-size:.8rem;white-space:nowrap;">' + formatDate(a.audit_date) + '</td>';
@@ -750,115 +717,13 @@ a:hover { color: var(--color-primary-hover); }
       if (c.referral_code) srcHtml += '<div style="font-size:.7rem;color:var(--color-primary);">ref: ' + esc(c.referral_code) + '</div>';
       html += '<td style="font-size:.8rem;">' + srcHtml + '</td>';
 
-      // Actions (status-aware)
-      html += '<td><div class="ea-actions">';
-      if (a.status === 'pending') {
-        html += '<button class="ea-btn surge-trigger" data-audit-id="' + a.id + '" data-practice="' + esc(practice) + '" style="border-color:var(--color-info);color:var(--color-info);">Process Surge</button>';
-      } else if (a.status === 'processing') {
-        html += '<span style="font-size:.78rem;color:var(--color-info);">&#9881; Processing...</span>';
-      } else if (a.status === 'complete') {
-        html += '<button class="ea-btn ea-btn-send" onclick="event.stopPropagation();sendAuditEmail(\'' + a.id + '\',this)">&#9993; Send</button>';
-      } else if (a.status === 'delivered') {
-        html += '<a href="/' + esc(c.slug || '') + '/entity-audit" target="_blank" class="ea-btn" onclick="event.stopPropagation()" style="border-color:var(--color-primary);color:var(--color-primary);">View Scorecard</a>';
-      }
-      html += '</div></td>';
+      // Actions - simple link to deep-dive
+      html += '<td style="text-align:right;"><span style="color:var(--color-muted);font-size:.8rem;">&#8250;</span></td>';
 
       html += '</tr>';
-
-      // Expand panel row
-      html += '<tr class="ea-expand-panel' + (isExpanded ? ' open' : '') + '"><td colspan="' + colCount + '">';
-      html += '<div class="ea-expand-inner">';
-
-      if (a.status === 'complete') {
-        // READY TO SEND panel
-        html += '<div class="ea-section-label">Send Scorecard Email</div>';
-        html += '<div class="ea-field-row">';
-        html += '<span class="ea-field-label">To</span>';
-        html += '<span class="ea-field-value">' + esc(c.email || 'No email') + '</span>';
-        html += '</div>';
-        html += '<div class="ea-field-row">';
-        html += '<span class="ea-field-label">Subject</span>';
-        html += '<input class="ea-subject-input" id="ea-subject-' + a.id + '" value="Your CORE Entity Audit Results Are Ready" onclick="event.stopPropagation()">';
-        html += '</div>';
-        html += '<div class="ea-actions-row">';
-        html += '<button class="ea-btn" onclick="event.stopPropagation();previewAuditEmail(\'' + a.id + '\')">&#128065; Preview Email</button>';
-        html += '<button class="ea-btn ea-btn-send" onclick="event.stopPropagation();sendAuditEmail(\'' + a.id + '\',this)">&#9993; Send to ' + esc(c.first_name || 'Prospect') + '</button>';
-        html += '<a href="/' + esc(c.slug || '') + '/entity-audit" target="_blank" class="ea-btn" onclick="event.stopPropagation()" style="border-color:var(--color-primary);color:var(--color-primary);">View Scorecard &#8250;</a>';
-        if (scores.credibility != null) {
-          var avg = ((scores.credibility + scores.optimization + scores.reputation + scores.engagement) / 4).toFixed(1);
-          html += '<span style="font-size:.78rem;color:var(--color-muted);margin-left:auto;">CORE avg: ' + avg + '/10</span>';
-        }
-        html += '</div>';
-
-      } else if (a.status === 'delivered') {
-        // DELIVERED panel
-        html += '<div style="display:flex;gap:2rem;flex-wrap:wrap;">';
-        // Left: sent info
-        html += '<div style="flex:1;min-width:200px;">';
-        html += '<div class="ea-section-label">Delivery Info</div>';
-        html += '<div class="ea-sent-info">';
-        if (a.sent_at) {
-          html += '<span>Sent: ' + formatDate(a.sent_at) + '</span>';
-          html += '<span>To: ' + esc(a.sent_to || c.email || '--') + '</span>';
-        } else {
-          html += '<span style="color:var(--color-warning);">Manually marked as delivered</span>';
-        }
-        html += '</div>';
-        html += '<div class="ea-actions-row" style="margin-top:.5rem;">';
-        html += '<a href="/' + esc(c.slug || '') + '/entity-audit" target="_blank" class="ea-btn" onclick="event.stopPropagation()" style="border-color:var(--color-primary);color:var(--color-primary);">View Scorecard &#8250;</a>';
-        html += '<a href="/' + esc(c.slug || '') + '/entity-audit-checkout" target="_blank" class="ea-btn" onclick="event.stopPropagation()">Checkout Page &#8250;</a>';
-        html += '<a href="/admin/clients?slug=' + esc(c.slug || '') + '" class="ea-btn" onclick="event.stopPropagation()">Client Profile &#8250;</a>';
-        html += '</div>';
-        html += '</div>';
-        // Right: Loom URL
-        if (a.audit_tier === 'premium') {
-          html += '<div style="min-width:280px;">';
-          html += '<div class="ea-section-label">Loom Walkthrough</div>';
-          if (a.loom_url) {
-            html += '<div class="ea-field-row"><a href="' + esc(a.loom_url) + '" target="_blank" class="loom-link" onclick="event.stopPropagation()">' + esc(a.loom_url) + '</a></div>';
-          } else {
-            html += '<div class="ea-field-row" onclick="event.stopPropagation()">';
-            html += '<input class="loom-input" placeholder="Paste Loom URL" data-audit-id="' + a.id + '">';
-            html += '<button class="loom-save" onclick="event.stopPropagation();saveLoom(this)">Save</button>';
-            html += '</div>';
-          }
-          html += '</div>';
-        }
-        html += '</div>';
-
-      } else if (a.status === 'pending') {
-        // PENDING panel
-        html += '<div class="ea-section-label">Audit Details</div>';
-        html += '<div class="ea-field-row">';
-        html += '<span class="ea-field-label">Website</span>';
-        html += '<a href="' + esc(a.homepage_url || '') + '" target="_blank" style="font-size:.82rem;" onclick="event.stopPropagation()">' + esc(a.homepage_url || '--') + '</a>';
-        html += '</div>';
-        html += '<div class="ea-field-row">';
-        html += '<span class="ea-field-label">Brand</span>';
-        html += '<span class="ea-field-value">' + esc(a.brand_query || '--') + '</span>';
-        html += '</div>';
-        html += '<div class="ea-actions-row">';
-        html += '<button class="ea-btn surge-trigger" data-audit-id="' + a.id + '" data-practice="' + esc(practice) + '" style="border-color:var(--color-info);color:var(--color-info);">Process Surge Data</button>';
-        html += '<a href="/admin/clients?slug=' + esc(c.slug || '') + '" class="ea-btn" onclick="event.stopPropagation()">Client Profile &#8250;</a>';
-        html += '</div>';
-
-      } else {
-        // PROCESSING panel
-        html += '<div style="text-align:center;padding:.5rem;color:var(--color-info);font-size:.82rem;">&#9881; Processing Surge data... this may take a few minutes.</div>';
-      }
-
-      html += '</div></td></tr>';
     });
 
     document.getElementById('eaBody').innerHTML = html;
-
-    // Wire up surge trigger buttons via delegation
-    document.querySelectorAll('.surge-trigger').forEach(function(btn) {
-      btn.addEventListener('click', function(e) {
-        e.stopPropagation();
-        openSurgeModal(this.dataset.auditId, this.dataset.practice);
-      });
-    });
   }
 
   window.saveLoom = function(btn) {
@@ -1267,6 +1132,7 @@ a:hover { color: var(--color-primary-hover); }
 <div class="toast" id="toast"></div>
 </body>
 </html>
+
 
 
 
