@@ -161,7 +161,7 @@ function buildSystemPrompt(ctx) {
   parts.push(ctx_str);
 
   if (clientData) {
-    parts.push('\n\n## Live Data From Page\n```json\n' + JSON.stringify(clientData, null, 2) + '\n```');
+    parts.push('\n\n## Live Data From Page (INTERNAL REFERENCE ONLY - do not expose raw field names, keys, or JSON structure in your response. Translate everything into plain English.)\n```json\n' + JSON.stringify(clientData, null, 2) + '\n```');
   }
 
   // Include lightweight client index for cross-client operations
@@ -279,7 +279,14 @@ When a user message starts with "[System:" it is an automated instruction - foll
 - Frame gaps as opportunities, not failures
 - Reference specific data from context when available
 - Do not repeat back the full context - the user can see it on screen
-- When proposing actions, explain briefly what you're doing and why`;
+- When proposing actions, explain briefly what you're doing and why
+
+## Response Hygiene (IMPORTANT)
+- NEVER expose raw field names, table names, column names, UUIDs, or JSON keys in your responses. Translate everything into plain English. For example: say "intro call" not "intro_call_complete", say "account access" not "connect_accounts", say "practice details" not "practice_details".
+- NEVER list what data you pulled, what tables you queried, or what fields you checked. Just present the conclusions naturally.
+- NEVER say things like "from the context I can see" or "looking at the JSON data" or "the checklist_items table shows". Just state the facts.
+- Proofread your response before finishing. Do not run words together or truncate sentences. If referencing a client's name or practice name, write it out cleanly with proper spacing.
+- Keep responses actionable and team-friendly. The audience is operations staff (Scott, Karen) and SEO technicians (Ivhan, Kael), not developers.`;
 
 
 // ============================================================
@@ -561,10 +568,26 @@ After creating the contact, seed 8 onboarding steps and a practice_details row.
 - Link Drive folder: update contacts.drive_folder_url
 
 ### Priority Recommendations (Intro Call Gate)
-When asked "What are the highest priority items?" or similar, check the introCall data in context (intro_call_steps). The intro call is a hard dependency gate for most campaign work. See the Intro Call Gate section in the Deliverables documentation for full phase logic. Cross-reference:
-- onboarding steps: look at book_intro_call and connect_accounts status
-- introCall data: look for intro_call_complete step status
-If the intro call hasn't happened, do not surface keyword-dependent or access-dependent tasks as priorities. Instead, surface what's actually actionable and flag the blocker clearly.`;
+When asked "What are the highest priority items?" or similar, check the introCall and onboarding data in context. The intro call is a hard dependency gate for most campaign work.
+
+**Pre-Intro Call** (onboarding step "book_intro_call" is NOT complete):
+Most campaign work is blocked. Only recommend:
+- Initial website audit/review (publicly available info)
+- Keyword research prep (competitive analysis)
+- Entity Veracity Hub framework setup
+- NEO/Rising Tide infrastructure preparation
+Everything else is waiting on the intro call. If it's not booked yet, suggest Scott follow up on scheduling.
+
+**Post-Intro Call, Pre-Access** (intro call done but "connect_accounts" is NOT complete):
+Keywords are now known. Additionally recommend:
+- BrightLocal citations and data aggregator submissions
+- Press release drafting
+- Target page content planning/writing
+- GBP optimization planning
+Platform configs (GSC, GA4, GTM, website CMS changes) remain blocked. Suggest Karen nudge the client for access.
+
+**Fully Unblocked** (intro call done AND access provided):
+All work is actionable. Prioritize by campaign phase: setup and technical foundation first, then content buildout, then off-page, then ongoing.`;
 
 
 // ============================================================
