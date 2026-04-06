@@ -1130,64 +1130,8 @@
       saveHistory();
     }
 
-    // Capture suppression count BEFORE re-render (re-render won't re-count due to executedReadIds)
-    var hadSuppressedReads = suppressedReadCount > 0;
-
     // Re-render to bind action buttons properly
     renderMessages();
-
-    // If reads were suppressed because data is already in context, redirect the model
-    if (hadSuppressedReads) {
-      // Sanitize the false-start message - strip action blocks so they don't repeat in history
-      if (messages.length > 0 && messages[messages.length - 1].role === 'assistant') {
-        messages[messages.length - 1].content = messages[messages.length - 1].content.replace(/```action[\s\S]*?```/g, '').trim();
-      }
-
-      // Tell the model to answer from context directly
-      messages.push({
-        role: 'user',
-        content: '[System: The data you tried to fetch is already available in your Live Data context. Answer the user\'s original question directly using the onboarding steps, intro call steps, tasks, deliverables, and contact data already provided. Do NOT attempt any more read_records. Do NOT expose raw field names or JSON. Just give a clean, actionable answer.]',
-        hidden: true
-      });
-
-      // Trigger follow-up stream
-      isAutoReadFollowUp = true;
-      isStreaming = true;
-      sendBtn.disabled = true;
-      currentStreamText = '';
-      displayedText = '';
-
-      var aiDiv = document.createElement('div');
-      aiDiv.className = 'mr-msg mr-msg-ai streaming';
-      aiDiv.innerHTML = '<div class="mr-msg-label">COREBot</div>';
-      messagesEl.appendChild(aiDiv);
-      currentStreamEl = aiDiv;
-      scrollToBottom(true);
-
-      var apiMessages = messages.filter(function(m) {
-        return m.role === 'user' || m.role === 'assistant';
-      }).map(function(m) {
-        return { role: m.role, content: m.content };
-      });
-
-      var ctx = getPageContext();
-
-      fetch(CHAT_API, {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ messages: apiMessages, context: ctx })
-      })
-      .then(function(response) {
-        if (!response.ok) throw new Error('API error: ' + response.status);
-        return readStream(response.body);
-      })
-      .catch(function(err) {
-        finishStream();
-        addSystemMessage('Error: ' + err.message);
-      });
-
-      return;
-    }
 
     currentStreamEl = null;
     currentStreamText = '';
