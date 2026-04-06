@@ -171,6 +171,23 @@ module.exports = async function handler(req, res) {
         results.action = 'status_flipped_to_onboarding';
         results.previous_status = 'prospect';
 
+        // Seed reporting deliverables (non-blocking)
+        try {
+          var reportingDeliverables = [
+            { contact_id: contact.id, deliverable_type: 'localfalcon_setup', title: 'LocalFalcon Location Setup', status: 'not_started' },
+            { contact_id: contact.id, deliverable_type: 'report_config', title: 'Report Pipeline Configuration', status: 'not_started' }
+          ];
+          await fetch(sbUrl + '/rest/v1/deliverables', {
+            method: 'POST',
+            headers: sbHeaders('return=minimal'),
+            body: JSON.stringify(reportingDeliverables)
+          });
+          results.deliverables_seeded = reportingDeliverables.length;
+        } catch (delErr) {
+          console.log('Failed to seed reporting deliverables:', delErr.message);
+          results.deliverables_seeded = 'error: ' + delErr.message;
+        }
+
         // Fire team notification (non-blocking)
         try {
           fetch('https://clients.moonraker.ai/api/notify-team', {
