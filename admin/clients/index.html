@@ -2250,6 +2250,22 @@ strong { font-weight: 600; color: var(--color-heading); }
         ea.sent_to = c.email;
         renderEntityAudit();
         toast('Audit email sent to ' + c.email, 'success');
+
+        // Auto-generate follow-up sequence in background
+        if (!state.auditFollowups || state.auditFollowups.length === 0) {
+          setTimeout(function() {
+            fetch('/api/generate-audit-followups', {
+              method: 'POST', headers: { 'Content-Type': 'application/json' },
+              body: JSON.stringify({ audit_id: ea.id })
+            }).then(function(r) { return r.json(); }).then(function(genRes) {
+              if (genRes.ok) {
+                state.auditFollowups = genRes.followups || [];
+                renderEntityAudit();
+                toast('Follow-up sequence generated. Review and approve below.', 'success');
+              }
+            }).catch(function() { /* silent - admin can generate manually */ });
+          }, 500);
+        }
       } else {
         if (btn) { btn.disabled = false; btn.textContent = '\u2709 Send to Client'; }
         toast('Send failed: ' + (res.error || 'Unknown error'), 'error');
