@@ -1,6 +1,7 @@
 // /api/convert-to-prospect.js
 // Converts a lead to a prospect: flips Supabase status, seeds onboarding steps,
-// and deploys router/proposal/checkout/onboarding pages from templates to GitHub.
+// deploys router/proposal/checkout/onboarding pages from templates to GitHub,
+// and creates Google Drive folder hierarchy for the client.
 
 module.exports = async function handler(req, res) {
   if (req.method !== 'POST') {
@@ -10,6 +11,7 @@ module.exports = async function handler(req, res) {
   var ghToken = process.env.GITHUB_PAT;
   var sbKey = process.env.SUPABASE_SERVICE_ROLE_KEY;
   var sbUrl = process.env.NEXT_PUBLIC_SUPABASE_URL || 'https://ofmmwcjhdrhvxxkhcuww.supabase.co';
+  var saJson = process.env.GOOGLE_SERVICE_ACCOUNT_JSON;
 
   if (!ghToken) return res.status(500).json({ error: 'GITHUB_PAT not configured' });
   if (!sbKey) return res.status(500).json({ error: 'SUPABASE_SERVICE_ROLE_KEY not configured' });
@@ -24,6 +26,8 @@ module.exports = async function handler(req, res) {
 
   var REPO = 'Moonraker-AI/client-hq';
   var BRANCH = 'main';
+  var CLIENTS_FOLDER_ID = '1dymrrowTe1szsOJJPf45x4qDUit6J5jB';
+  var DRIVE_SUBFOLDERS = ['Creative', 'Correspondence', 'Optimization', 'Web Design', 'SEO', 'Docs', 'Automation AI'];
   var sbHeaders = {
     'apikey': sbKey,
     'Authorization': 'Bearer ' + sbKey,
@@ -31,9 +35,18 @@ module.exports = async function handler(req, res) {
     'Prefer': 'return=representation'
   };
 
-  var results = { supabase: {}, github: [] };
+  var results = { supabase: {}, github: [], drive: {} };
 
   try {
+    // ============================================================
+    // STEP 0: Fetch contact practice_name for Drive folder naming
+    // ============================================================
+    var contactResp = await fetch(sbUrl + '/rest/v1/contacts?id=eq.' + contactId + '&select=practice_name', {
+      headers: { 'apikey': sbKey, 'Authorization': 'Bearer ' + sbKey }
+    });
+    var contactData = await contactResp.json();
+    var practiceName = (contactData && contactData[0] && contactData[0].practice_name) || slug;
+
     // ============================================================
     // STEP 1: Flip contact status to prospect
     // ============================================================
@@ -171,6 +184,67 @@ module.exports = async function handler(req, res) {
       }
     }
 
+    // ============================================================
+    // STEP 5: Create Google Drive folder hierarchy
+    // ============================================================
+    if (saJson) {
+      try {
+        var driveToken = await getDelegatedToken(saJson, 'support@moonraker.ai', 'https://www.googleapis.com/auth/drive');
+        if (driveToken && typeof driveToken === 'string') {
+          var driveHeaders = {
+            'Authorization': 'Bearer ' + driveToken,
+            'Content-Type': 'application/json'
+          };
+
+          // Create parent folder named after the practice
+          var parentFolder = await createDriveFolder(practiceName, CLIENTS_FOLDER_ID, driveHeaders);
+          if (parentFolder && parentFolder.id) {
+            results.drive.parent = { id: parentFolder.id, name: practiceName };
+
+            // Create all subfolders
+            var createdSubs = [];
+            var creativeFolderId = null;
+            var creativeFolderUrl = null;
+
+            for (var s = 0; s < DRIVE_SUBFOLDERS.length; s++) {
+              var subName = DRIVE_SUBFOLDERS[s];
+              var subFolder = await createDriveFolder(subName, parentFolder.id, driveHeaders);
+              if (subFolder && subFolder.id) {
+                createdSubs.push(subName);
+                if (subName === 'Creative') {
+                  creativeFolderId = subFolder.id;
+                  creativeFolderUrl = 'https://drive.google.com/drive/folders/' + subFolder.id;
+                }
+              }
+            }
+            results.drive.subfolders = createdSubs;
+
+            // Write Creative folder link to contacts for onboarding page
+            if (creativeFolderId) {
+              await fetch(sbUrl + '/rest/v1/contacts?id=eq.' + contactId, {
+                method: 'PATCH',
+                headers: sbHeaders,
+                body: JSON.stringify({
+                  drive_folder_id: creativeFolderId,
+                  drive_folder_url: creativeFolderUrl
+                })
+              });
+              results.drive.creative_folder = creativeFolderUrl;
+            }
+          } else {
+            results.drive.error = 'Failed to create parent folder: ' + JSON.stringify(parentFolder);
+          }
+        } else {
+          results.drive.error = 'Failed to get Drive token: ' + (driveToken && driveToken.error ? driveToken.error : 'unknown');
+        }
+      } catch (driveErr) {
+        // Drive folder creation is non-blocking: log error but don't fail the whole conversion
+        results.drive.error = driveErr.message || String(driveErr);
+      }
+    } else {
+      results.drive.skipped = 'GOOGLE_SERVICE_ACCOUNT_JSON not configured';
+    }
+
     // Build URLs
     results.urls = {
       router: 'https://clients.moonraker.ai/' + slug,
@@ -186,3 +260,72 @@ module.exports = async function handler(req, res) {
   }
 };
 
+
+// ═══════════════════════════════════════════════════════════════════
+// Helper: Get access token via domain-wide delegation
+// ═══════════════════════════════════════════════════════════════════
+async function getDelegatedToken(saJson, impersonateEmail, scope) {
+  try {
+    var sa = typeof saJson === 'string' ? JSON.parse(saJson) : saJson;
+    if (!sa.private_key || !sa.client_email) {
+      throw new Error('SA JSON missing private_key or client_email');
+    }
+    var crypto = require('crypto');
+
+    var header = Buffer.from(JSON.stringify({ alg: 'RS256', typ: 'JWT' })).toString('base64url');
+    var now = Math.floor(Date.now() / 1000);
+    var claims = Buffer.from(JSON.stringify({
+      iss: sa.client_email,
+      sub: impersonateEmail,
+      scope: scope,
+      aud: 'https://oauth2.googleapis.com/token',
+      iat: now,
+      exp: now + 3600
+    })).toString('base64url');
+
+    var signable = header + '.' + claims;
+    var signer = crypto.createSign('RSA-SHA256');
+    signer.update(signable);
+    var signature = signer.sign(sa.private_key, 'base64url');
+
+    var jwt = signable + '.' + signature;
+
+    var tokenResp = await fetch('https://oauth2.googleapis.com/token', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
+      body: 'grant_type=urn%3Aietf%3Aparams%3Aoauth%3Agrant-type%3Ajwt-bearer&assertion=' + jwt
+    });
+    var tokenData = await tokenResp.json();
+    if (!tokenData.access_token) {
+      throw new Error(tokenData.error_description || tokenData.error || JSON.stringify(tokenData));
+    }
+    return tokenData.access_token;
+  } catch (e) {
+    return { error: e.message || String(e) };
+  }
+}
+
+
+// ═══════════════════════════════════════════════════════════════════
+// Helper: Create a folder in Google Drive
+// ═══════════════════════════════════════════════════════════════════
+async function createDriveFolder(name, parentId, headers) {
+  try {
+    var resp = await fetch('https://www.googleapis.com/drive/v3/files', {
+      method: 'POST',
+      headers: headers,
+      body: JSON.stringify({
+        name: name,
+        mimeType: 'application/vnd.google-apps.folder',
+        parents: [parentId]
+      })
+    });
+    if (!resp.ok) {
+      var errBody = await resp.text();
+      return { error: 'Drive API ' + resp.status + ': ' + errBody };
+    }
+    return await resp.json();
+  } catch (e) {
+    return { error: e.message || String(e) };
+  }
+}
