@@ -1084,7 +1084,8 @@ strong { font-weight: 600; color: var(--color-heading); }
             scores: state.scores,
             deliverables: state.deliverables.map(function(d) { return { id: d.id, deliverable_type: d.deliverable_type, title: d.title, status: d.status, contact_id: d.contact_id }; }),
             snapshots: state.snapshots.map(function(s) { return { report_month: s.report_month, report_status: s.report_status, campaign_month: s.campaign_month, gsc_clicks: s.gsc_clicks, gsc_impressions: s.gsc_impressions }; }),
-            proposals: state.proposals.map(function(p) { return { id: p.id, status: p.status, campaign_lengths: p.campaign_lengths, created_at: p.created_at, sent_at: p.sent_at, view_count: p.view_count }; })
+            proposals: state.proposals.map(function(p) { return { id: p.id, status: p.status, campaign_lengths: p.campaign_lengths, created_at: p.created_at, sent_at: p.sent_at, view_count: p.view_count }; }),
+            introCall: state.introCall.map(function(s) { return { step_key: s.step_key, label: s.label, status: s.status }; })
           }
         });
       }
