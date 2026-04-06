@@ -23,7 +23,7 @@ module.exports = async function handler(req, res) {
       return res.status(400).json({ error: 'action and table required' });
     }
 
-    var allowed = ['contacts','practice_details','onboarding_steps','deliverables','checklist_items','audit_scores','report_snapshots','report_highlights','report_configs','bio_materials','social_profiles','signed_agreements','activity_log','settings','entity_audits','account_access','payments','scheduled_touchpoints','intro_call_steps','tracked_keywords','report_queue','performance_guarantees'];
+    var allowed = ['contacts','practice_details','onboarding_steps','deliverables','checklist_items','audit_scores','report_snapshots','report_highlights','report_configs','bio_materials','social_profiles','signed_agreements','activity_log','settings','entity_audits','account_access','payments','scheduled_touchpoints','intro_call_steps','tracked_keywords','report_queue','performance_guarantees','proposals','proposal_followups'];
     if (allowed.indexOf(table) === -1) {
       return res.status(400).json({ error: 'Table not allowed: ' + table });
     }
