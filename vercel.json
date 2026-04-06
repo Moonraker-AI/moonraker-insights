@@ -103,6 +103,9 @@
     },
     "api/stripe-webhook.js": {
       "maxDuration": 30
+    },
+    "api/delete-entity-audit.js": {
+      "maxDuration": 30
     }
   },
   "crons": [
