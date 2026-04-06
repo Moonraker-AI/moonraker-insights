@@ -153,54 +153,27 @@ a:hover { color: var(--color-primary-hover); }
 .empty-title { font-size: 1.15rem; font-weight: 600; color: var(--color-heading); margin-bottom: .35rem; }
 .empty-desc { font-size: .85rem; color: var(--color-muted); margin-bottom: 1.5rem; }
 
-/* Modal */
-.modal-backdrop { position: fixed; inset: 0; background: rgba(0,0,0,.45); z-index: 500; display: none; align-items: center; justify-content: center; padding: 1.5rem; animation: fadeIn .2s ease; }
-.modal-backdrop.open { display: flex; }
-.modal { background: var(--color-surface); border: 1px solid var(--color-border); border-radius: 16px; width: 100%; max-width: 640px; max-height: 90vh; overflow-y: auto; box-shadow: 0 20px 60px rgba(0,0,0,.15); animation: slideUp .25s ease; }
-.modal-header { padding: 1.25rem 1.5rem; border-bottom: 1px solid var(--color-border); display: flex; align-items: center; justify-content: space-between; position: sticky; top: 0; background: var(--color-surface); z-index: 1; border-radius: 16px 16px 0 0; }
-.modal-header h3 { font-size: 1.1rem; margin: 0; }
-.modal-close { background: none; border: none; font-size: 1.25rem; color: var(--color-muted); cursor: pointer; padding: .25rem; line-height: 1; border-radius: 6px; }
-.modal-close:hover { color: var(--color-heading); background: var(--sidebar-hover); }
-.modal-body { padding: 1.5rem; }
-.modal-footer { padding: 1rem 1.5rem; border-top: 1px solid var(--color-border); display: flex; align-items: center; justify-content: flex-end; gap: .5rem; position: sticky; bottom: 0; background: var(--color-surface); border-radius: 0 0 16px 16px; }
 
 @keyframes fadeIn { from { opacity: 0; } to { opacity: 1; } }
 @keyframes slideUp { from { opacity: 0; transform: translateY(16px); } to { opacity: 1; transform: translateY(0); } }
 
 /* Form elements */
-.form-group { margin-bottom: 1.25rem; }
-.form-label { display: block; font-size: .78rem; font-weight: 600; color: var(--color-heading); margin-bottom: .35rem; }
-.form-hint { font-size: .72rem; color: var(--color-muted); margin-top: .2rem; }
-.form-input, .form-select { width: 100%; padding: .4rem .6rem; border: 1px solid var(--color-border); border-radius: 8px; font-size: .84rem; font-family: inherit; background: var(--color-surface); color: var(--color-heading); transition: border-color .2s; }
-.form-input:focus, .form-select:focus { outline: none; border-color: var(--color-primary); box-shadow: 0 0 0 3px rgba(0,212,126,.1); }
-.form-input::placeholder { color: var(--color-muted); }
+
 
 /* Checkbox/chip selectors */
-.chip-group { display: flex; flex-wrap: wrap; gap: .4rem; }
-.chip { display: inline-flex; align-items: center; gap: .35rem; padding: .35rem .75rem; border-radius: 8px; font-size: .8rem; font-weight: 500; border: 1px solid var(--color-border); background: var(--color-surface); color: var(--color-muted); cursor: pointer; transition: all .2s; user-select: none; }
-.chip:hover { border-color: var(--color-primary); color: var(--color-heading); }
-.chip.selected { border-color: var(--color-primary); background: var(--color-primary-subtle); color: var(--color-primary); font-weight: 600; }
-.chip .chip-check { width: 14px; height: 14px; border-radius: 4px; border: 1.5px solid var(--color-border); display: flex; align-items: center; justify-content: center; font-size: .6rem; transition: all .2s; }
-.chip.selected .chip-check { border-color: var(--color-primary); background: var(--color-primary); color: #fff; }
+
 
 /* Inline create contact */
-.inline-create { background: var(--color-bg); border: 1px solid var(--color-border); border-radius: 10px; padding: 1rem; margin-top: .5rem; }
-.inline-create .form-row { display: grid; grid-template-columns: 1fr 1fr; gap: .75rem; }
-.inline-create .form-group { margin-bottom: .75rem; }
+
 
 /* Custom pricing section */
-.custom-pricing { background: var(--color-bg); border: 1px solid var(--color-border); border-radius: 10px; padding: 1rem; margin-top: .5rem; }
-.custom-pricing .form-row { display: grid; grid-template-columns: 1fr 1fr; gap: .75rem; }
+
 
 /* Divider */
-.form-divider { height: 1px; background: var(--color-border); margin: 1.5rem 0; }
+
 
 /* Toggle */
-.toggle-row { display: flex; align-items: center; justify-content: space-between; }
-.toggle { width: 36px; height: 20px; border-radius: 10px; background: var(--color-border); cursor: pointer; position: relative; transition: background .2s; border: none; padding: 0; flex-shrink: 0; }
-.toggle::after { content: ''; position: absolute; top: 2px; left: 2px; width: 16px; height: 16px; border-radius: 50%; background: #fff; transition: transform .2s; }
-.toggle.on { background: var(--color-primary); }
-.toggle.on::after { transform: translateX(16px); }
+
 
 /* Sidebar collapse */
 .sidebar.collapsed { width: 56px; }
@@ -242,7 +215,7 @@ a:hover { color: var(--color-primary-hover); }
 @media (max-width: 560px) {
   .content { padding: 1.25rem; }
   .stat-grid { grid-template-columns: 1fr 1fr; }
-  .inline-create .form-row, .custom-pricing .form-row { grid-template-columns: 1fr; }
+
 }
 .toast { position: fixed; top: 1.25rem; left: 50%; transform: translateX(-50%); padding: .65rem 1.25rem; border-radius: 10px; font-size: .82rem; font-weight: 500; z-index: 1000; box-shadow: 0 4px 16px rgba(0,0,0,.15); opacity: 0; pointer-events: none; transition: opacity .3s; }
 .toast.show { opacity: 1; pointer-events: auto; }
@@ -286,10 +259,9 @@ a:hover { color: var(--color-primary-hover); }
 
   <div class="content">
     <div class="section-header">
-      <h2>Proposals</h2>
-      <button class="btn btn-primary" style="padding:.45rem 1rem;font-size:.82rem;flex-shrink:0;" onclick="openNewProposal()">+ New Proposal</button>
+      <h2>Proposal Pipeline</h2>
     </div>
-    <p class="section-desc">Track proposals from draft through acceptance. Use the preview link to check without triggering view tracking.</p>
+    <p class="section-desc">Overview of all proposals. Click any row to manage in the client deep dive.</p>
 
     <div class="stat-grid" id="statsGrid">
       <div class="stat-card"><div class="stat-label">Drafts</div><div class="stat-value" id="statDraft">-</div><div class="stat-sub">In progress</div></div>
@@ -310,121 +282,12 @@ a:hover { color: var(--color-primary-hover); }
     <div id="emptyState" class="empty-state" style="display:none;">
       <div class="empty-icon">&#128203;</div>
       <div class="empty-title">No proposals yet</div>
-      <div class="empty-desc">Create your first proposal to start converting leads into clients.</div>
-      <button class="btn btn-primary" onclick="openNewProposal()">+ New Proposal</button>
+      <div class="empty-desc">Create a proposal from a client's deep dive page to get started.</div>
     </div>
   </div>
 </div>
 </div>
 
-<!-- New Proposal Modal -->
-<div class="modal-backdrop" id="newProposalModal">
-  <div class="modal">
-    <div class="modal-header">
-      <h3>New Proposal</h3>
-      <button class="modal-close" onclick="closeModal()">&times;</button>
-    </div>
-    <div class="modal-body">
-
-      <!-- Step 1: Contact -->
-      <div class="form-group">
-        <label class="form-label">Contact</label>
-        <select class="form-select" id="contactSelect" onchange="onContactChange()">
-          <option value="">Select a contact...</option>
-        </select>
-        <div class="form-hint">Choose an existing lead or prospect, or create a new contact.</div>
-      </div>
-      <div id="inlineCreateSection" class="inline-create" style="display:none;">
-        <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:.75rem;">
-          <span style="font-size:.82rem;font-weight:600;color:var(--color-heading);">New Contact</span>
-          <button class="btn btn-ghost btn-sm" onclick="cancelNewContact()">Cancel</button>
-        </div>
-        <div class="form-row">
-          <div class="form-group"><label class="form-label">First Name</label><input class="form-input" id="newFirst" placeholder="Jane"></div>
-          <div class="form-group"><label class="form-label">Last Name</label><input class="form-input" id="newLast" placeholder="Smith"></div>
-        </div>
-        <div class="form-row">
-          <div class="form-group"><label class="form-label">Email</label><input class="form-input" id="newEmail" type="email" placeholder="jane@practice.com"></div>
-          <div class="form-group"><label class="form-label">Credentials</label><input class="form-input" id="newCreds" placeholder="LMFT, LPC"></div>
-        </div>
-        <div class="form-group"><label class="form-label">Practice Name</label><input class="form-input" id="newPractice" placeholder="Harmony Counseling"></div>
-        <div class="form-row">
-          <div class="form-group"><label class="form-label">Website</label><input class="form-input" id="newWebsite" placeholder="https://practice.com"></div>
-          <div class="form-group"><label class="form-label">City, State</label><input class="form-input" id="newLocation" placeholder="Austin, TX"></div>
-        </div>
-      </div>
-
-      <div class="form-divider"></div>
-
-      <!-- Step 2: Campaign Length -->
-      <div class="form-group">
-        <label class="form-label">Campaign Length</label>
-        <div class="form-hint" style="margin-bottom:.5rem;">Select which options to show the prospect. Multiple allowed.</div>
-        <div class="chip-group" id="campaignChips">
-          <div class="chip selected" data-value="annual" onclick="toggleChip(this,'campaign')">
-            <span class="chip-check">&#10003;</span>Annual - $20,000
-          </div>
-          <div class="chip" data-value="quarterly" onclick="toggleChip(this,'campaign')">
-            <span class="chip-check">&#10003;</span>3 Months - $5,000
-          </div>
-          <div class="chip" data-value="monthly" onclick="toggleChip(this,'campaign')">
-            <span class="chip-check">&#10003;</span>Month-to-Month - $1,667/mo
-          </div>
-        </div>
-      </div>
-
-      <!-- Step 3: Billing Options -->
-      <div class="form-group" id="billingSection">
-        <label class="form-label">Billing Options</label>
-        <div class="form-hint" style="margin-bottom:.5rem;">Select which billing preferences to show. Depends on campaign lengths above.</div>
-        <div class="chip-group" id="billingChips"></div>
-      </div>
-
-      <div class="form-divider"></div>
-
-      <!-- Custom Pricing Toggle -->
-      <div class="form-group">
-        <div class="toggle-row">
-          <div>
-            <label class="form-label" style="margin-bottom:0;">Custom Pricing</label>
-            <div class="form-hint">Enable for non-standard arrangements (e.g. $1,250/mo x 4).</div>
-          </div>
-          <button class="toggle" id="customToggle" onclick="toggleCustomPricing()"></button>
-        </div>
-      </div>
-      <div id="customPricingSection" class="custom-pricing" style="display:none;">
-        <div class="custom-pricing form-row">
-          <div class="form-group"><label class="form-label">Amount</label><input class="form-input" id="customAmount" type="number" placeholder="1250"></div>
-          <div class="form-group"><label class="form-label">Period</label>
-            <select class="form-select" id="customPeriod">
-              <option value="month">Per Month</option>
-              <option value="quarter">Per Quarter</option>
-              <option value="one-time">One-Time</option>
-            </select>
-          </div>
-        </div>
-        <div class="form-row">
-          <div class="form-group"><label class="form-label">Duration (months)</label><input class="form-input" id="customDuration" type="number" placeholder="4"></div>
-          <div class="form-group"><label class="form-label">Label (shown to client)</label><input class="form-input" id="customLabel" placeholder="$1,250/mo x 4 months"></div>
-        </div>
-        <div class="form-hint">You'll need to create a Stripe price and payment link for custom pricing. We'll prompt for those after saving.</div>
-      </div>
-
-      <div class="form-divider"></div>
-
-      <!-- Notes -->
-      <div class="form-group">
-        <label class="form-label">Internal Notes</label>
-        <textarea class="form-input" id="proposalNotes" rows="3" placeholder="Any context for this proposal... referral source, special circumstances, etc."></textarea>
-      </div>
-
-    </div>
-    <div class="modal-footer">
-      <button class="btn btn-outline" onclick="closeModal()">Cancel</button>
-      <button class="btn btn-primary" id="createBtn" onclick="createProposal()">Create Proposal</button>
-    </div>
-  </div>
-</div>
 
 <script>
   function toast(msg, type) {
@@ -441,223 +304,32 @@ a:hover { color: var(--color-primary-hover); }
   var SB_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6Im9mbW13Y2poZHJodnh4a2hjdXd3Iiwicm9sZSI6ImFub24iLCJpYXQiOjE3NzQzMjM1NTcsImV4cCI6MjA4OTg5OTU1N30.zMMHW0Fk9ixWjORngyxJTIoPOfx7GFsD4wBV4Foqqms';
   var SB_SVC = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6Im9mbW13Y2poZHJodnh4a2hjdXd3Iiwicm9sZSI6InNlcnZpY2Vfcm9sZSIsImlhdCI6MTc3NDMyMzU1NywiZXhwIjoyMDg5ODk5NTU3fQ.EyEyVh6er79xjWGgMIgKaF2pErkDz0fOxQsrNSup2fk';
 
-  var state = { contacts: [], proposals: [], followups: {}, filter: 'all' };
+  var state = { proposals: [], followups: {}, filter: 'all' };
 
-  // BILLING OPTIONS MAP
-  var BILLING_MAP = {
-    annual: [
-      { key: 'annual_upfront', label: 'Annual - Pay Upfront ($20,000)' },
-      { key: 'annual_quarterly', label: 'Annual - Quarterly Billing ($5,000/qtr)' },
-      { key: 'annual_monthly', label: 'Annual - Monthly Billing ($1,667/mo)' }
-    ],
-    quarterly: [
-      { key: 'quarterly_upfront', label: '3-Month - Pay Upfront ($5,000)' },
-      { key: 'quarterly_monthly', label: '3-Month - Monthly Billing ($1,667/mo)' }
-    ],
-    monthly: [
-      { key: 'monthly', label: 'Month-to-Month ($1,667/mo)' }
-    ]
-  };
-
-  function sbFetch(path, opts) {
-    opts = opts || {};
-    var headers = { 'apikey': SB_SVC, 'Authorization': 'Bearer ' + SB_SVC, 'Content-Type': 'application/json' };
-    if (opts.headers) Object.keys(opts.headers).forEach(function(k) { headers[k] = opts.headers[k]; });
-    opts.headers = headers;
-    return fetch(SB_URL + '/rest/v1/' + path, opts).then(function(r) { return r.json(); });
+  function sbFetch(path) {
+    return fetch(SB_URL + '/rest/v1/' + path, { headers: { 'apikey': SB_SVC, 'Authorization': 'Bearer ' + SB_SVC, 'Content-Type': 'application/json' } }).then(function(r) { return r.json(); });
   }
+
+  function esc(s) { if (!s) return ''; var d = document.createElement('div'); d.textContent = s; return d.innerHTML; }
+  function formatDate(d) { if (!d) return '-'; return new Date(d).toLocaleDateString('en-US', { month: 'short', day: 'numeric' }); }
 
   async function loadData() {
     try {
-      var [contacts, proposals, followups] = await Promise.all([
-        sbFetch('contacts?select=id,slug,status,first_name,last_name,credentials,email,practice_name,website_url,city,state_province&order=last_name'),
+      var results = await Promise.all([
         sbFetch('proposals?select=*,contacts(slug,first_name,last_name,credentials,practice_name,email)&order=created_at.desc'),
         sbFetch('proposal_followups?select=*&order=sequence_number.asc')
       ]);
-      state.contacts = contacts || [];
-      state.proposals = proposals || [];
-      // Index followups by proposal_id
+      state.proposals = results[0] || [];
       state.followups = {};
-      (followups || []).forEach(function(fu) {
+      (results[1] || []).forEach(function(fu) {
         if (!state.followups[fu.proposal_id]) state.followups[fu.proposal_id] = [];
         state.followups[fu.proposal_id].push(fu);
       });
-      populateContactSelect();
       render();
-    } catch(e) {
-      console.error('Load error:', e);
-    }
+      document.getElementById('lastRefresh').textContent = 'Updated ' + new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
+    } catch(e) { console.error('Load error:', e); }
   }
 
-  function populateContactSelect() {
-    var sel = document.getElementById('contactSelect');
-    var html = '<option value="">Select a contact...</option>';
-    html += '<option value="__new__">+ Create New Contact</option>';
-    var leads = state.contacts.filter(function(c) { return c.status === 'lead'; });
-    var prospects = state.contacts.filter(function(c) { return c.status === 'prospect'; });
-    if (leads.length) {
-      html += '<optgroup label="Leads">';
-      leads.forEach(function(c) { html += '<option value="' + c.id + '">' + esc(c.first_name + ' ' + c.last_name) + ' - ' + esc(c.practice_name || '') + '</option>'; });
-      html += '</optgroup>';
-    }
-    if (prospects.length) {
-      html += '<optgroup label="Prospects">';
-      prospects.forEach(function(c) { html += '<option value="' + c.id + '">' + esc(c.first_name + ' ' + c.last_name) + ' - ' + esc(c.practice_name || '') + '</option>'; });
-      html += '</optgroup>';
-    }
-    sel.innerHTML = html;
-  }
-
-  window.onContactChange = function() {
-    var val = document.getElementById('contactSelect').value;
-    document.getElementById('inlineCreateSection').style.display = val === '__new__' ? 'block' : 'none';
-  };
-
-  window.cancelNewContact = function() {
-    document.getElementById('contactSelect').value = '';
-    document.getElementById('inlineCreateSection').style.display = 'none';
-  };
-
-  // Chip toggle
-  window.toggleChip = function(el, group) {
-    el.classList.toggle('selected');
-    if (group === 'campaign') updateBillingChips();
-  };
-
-  function getSelectedChips(containerId) {
-    var chips = document.querySelectorAll('#' + containerId + ' .chip.selected');
-    return Array.from(chips).map(function(c) { return c.dataset.value; });
-  }
-
-  function updateBillingChips() {
-    var campaigns = getSelectedChips('campaignChips');
-    var container = document.getElementById('billingChips');
-    var html = '';
-    var allOptions = [];
-    campaigns.forEach(function(c) {
-      (BILLING_MAP[c] || []).forEach(function(opt) {
-        if (!allOptions.some(function(o) { return o.key === opt.key; })) allOptions.push(opt);
-      });
-    });
-    allOptions.forEach(function(opt) {
-      html += '<div class="chip selected" data-value="' + opt.key + '" onclick="toggleChip(this,\'billing\')">';
-      html += '<span class="chip-check">&#10003;</span>' + esc(opt.label);
-      html += '</div>';
-    });
-    container.innerHTML = html;
-    document.getElementById('billingSection').style.display = allOptions.length ? 'block' : 'none';
-  }
-
-  // Custom pricing toggle
-  window.toggleCustomPricing = function() {
-    var btn = document.getElementById('customToggle');
-    btn.classList.toggle('on');
-    document.getElementById('customPricingSection').style.display = btn.classList.contains('on') ? 'block' : 'none';
-  };
-
-  // Create proposal
-  window.createProposal = async function() {
-    var contactId = document.getElementById('contactSelect').value;
-    var isNew = contactId === '__new__';
-    var btn = document.getElementById('createBtn');
-    btn.disabled = true;
-    btn.textContent = 'Creating...';
-
-    try {
-      // Create new contact if needed
-      if (isNew) {
-        var first = document.getElementById('newFirst').value.trim();
-        var last = document.getElementById('newLast').value.trim();
-        if (!first || !last) { alert('First and last name are required.'); btn.disabled = false; btn.textContent = 'Create Proposal'; return; }
-        var locParts = (document.getElementById('newLocation').value || '').split(',').map(function(s) { return s.trim(); });
-        var slug = (first + '-' + last).toLowerCase().replace(/[^a-z0-9-]/g, '');
-        var newContact = {
-          slug: slug,
-          status: 'lead',
-          first_name: first,
-          last_name: last,
-          email: document.getElementById('newEmail').value.trim() || null,
-          credentials: document.getElementById('newCreds').value.trim() || null,
-          practice_name: document.getElementById('newPractice').value.trim() || null,
-          website_url: document.getElementById('newWebsite').value.trim() || null,
-          city: locParts[0] || null,
-          state_province: locParts[1] || null
-        };
-        var created = await fetch(SB_URL + '/rest/v1/contacts', {
-          method: 'POST',
-          headers: { 'apikey': SB_SVC, 'Authorization': 'Bearer ' + SB_SVC, 'Content-Type': 'application/json', 'Prefer': 'return=representation' },
-          body: JSON.stringify(newContact)
-        }).then(function(r) { return r.json(); });
-        if (created && created.length) contactId = created[0].id;
-        else { alert('Failed to create contact. Check for duplicate slug.'); btn.disabled = false; btn.textContent = 'Create Proposal'; return; }
-      }
-
-      if (!contactId) { alert('Please select a contact.'); btn.disabled = false; btn.textContent = 'Create Proposal'; return; }
-
-      var campaigns = getSelectedChips('campaignChips');
-      var billings = getSelectedChips('billingChips');
-      if (campaigns.length === 0) { alert('Select at least one campaign length.'); btn.disabled = false; btn.textContent = 'Create Proposal'; return; }
-
-      // Build custom pricing if enabled
-      var customPricing = null;
-      if (document.getElementById('customToggle').classList.contains('on')) {
-        var amt = parseInt(document.getElementById('customAmount').value);
-        if (amt > 0) {
-          customPricing = {
-            amount_cents: amt * 100,
-            period: document.getElementById('customPeriod').value,
-            duration_months: parseInt(document.getElementById('customDuration').value) || null,
-            label: document.getElementById('customLabel').value.trim() || ('$' + amt + '/' + document.getElementById('customPeriod').value)
-          };
-        }
-      }
-
-      // Build the checkout_options for the contact
-      var checkoutPlans = billings.length ? billings : null;
-      if (campaigns.length === 1 && campaigns[0] === 'monthly') checkoutPlans = ['monthly'];
-
-      var proposal = {
-        contact_id: contactId,
-        status: 'draft',
-        campaign_lengths: campaigns,
-        billing_options: billings,
-        custom_pricing: customPricing,
-        notes: document.getElementById('proposalNotes').value.trim() || null,
-        created_by: 'chris'
-      };
-
-      var result = await fetch(SB_URL + '/rest/v1/proposals', {
-        method: 'POST',
-        headers: { 'apikey': SB_SVC, 'Authorization': 'Bearer ' + SB_SVC, 'Content-Type': 'application/json', 'Prefer': 'return=representation' },
-        body: JSON.stringify(proposal)
-      }).then(function(r) { return r.json(); });
-
-      // Update contact status to prospect if lead, and set checkout_options
-      var contact = state.contacts.find(function(c) { return c.id === contactId; });
-      if (contact) {
-        var patch = {};
-        if (contact.status === 'lead') { patch.status = 'prospect'; patch.converted_from_lead_at = new Date().toISOString(); }
-        if (checkoutPlans) patch.checkout_options = { plans: checkoutPlans };
-        if (Object.keys(patch).length) {
-          await fetch(SB_URL + '/rest/v1/contacts?id=eq.' + contactId, {
-            method: 'PATCH',
-            headers: { 'apikey': SB_SVC, 'Authorization': 'Bearer ' + SB_SVC, 'Content-Type': 'application/json' },
-            body: JSON.stringify(patch)
-          });
-        }
-      }
-
-      closeModal();
-      loadData();
-    } catch(e) {
-      console.error('Create error:', e);
-      alert('Something went wrong. Please try again.');
-    }
-    btn.disabled = false;
-    btn.textContent = 'Create Proposal';
-  };
-
-  // Render
   function render() {
     var proposals = state.proposals;
     var counts = { all: proposals.length, draft: 0, sent: 0, viewed: 0, accepted: 0 };
@@ -689,20 +361,12 @@ a:hover { color: var(--color-primary-hover); }
     var container = document.getElementById('proposalsList');
     var emptyState = document.getElementById('emptyState');
 
-    if (proposals.length === 0) {
-      container.innerHTML = '';
-      emptyState.style.display = 'block';
-      return;
-    }
+    if (proposals.length === 0) { container.innerHTML = ''; emptyState.style.display = 'block'; return; }
     emptyState.style.display = 'none';
-
-    if (filtered.length === 0) {
-      container.innerHTML = '<div style="text-align:center;padding:2rem;color:var(--color-muted);font-size:.85rem;">No proposals match this filter.</div>';
-      return;
-    }
+    if (filtered.length === 0) { container.innerHTML = '<div style="text-align:center;padding:2rem;color:var(--color-muted);font-size:.85rem;">No proposals match this filter.</div>'; return; }
 
     var html = '<table class="proposals-table"><thead><tr>';
-    html += '<th>Contact</th><th>Status</th><th>Campaign</th><th>Created</th><th>Sent</th><th>Views</th><th>Enrichment / Actions</th>';
+    html += '<th>Contact</th><th>Status</th><th>Campaign</th><th>Created</th><th>Sent</th><th>Views</th><th>Progress</th>';
     html += '</tr></thead><tbody>';
 
     filtered.forEach(function(p) {
@@ -711,8 +375,9 @@ a:hover { color: var(--color-primary-hover); }
       var initials = ((c.first_name || '')[0] || '') + ((c.last_name || '')[0] || '');
       var tagClass = 'tag-' + p.status;
       var statusLabel = p.status.charAt(0).toUpperCase() + p.status.slice(1);
+      var deepDiveUrl = '/admin/clients?slug=' + (c.slug || '') + '&tab=proposals';
 
-      html += '<tr>';
+      html += '<tr style="cursor:pointer;" onclick="window.location.href=\'' + deepDiveUrl + '\'">';
       html += '<td><div class="client-cell"><div class="client-avatar">' + esc(initials.toUpperCase()) + '</div><div><div class="client-name">' + esc(name) + '</div><div class="client-practice">' + esc(c.practice_name || '') + '</div></div></div></td>';
       html += '<td><span class="tag ' + tagClass + '">' + statusLabel + '</span></td>';
       html += '<td><div class="plan-pills">';
@@ -724,346 +389,31 @@ a:hover { color: var(--color-primary-hover); }
       html += '<td class="date-cell">' + formatDate(p.created_at) + '</td>';
       html += '<td class="date-cell">' + (p.sent_at ? formatDate(p.sent_at) : '-') + '</td>';
       html += '<td class="date-cell">' + (p.view_count || 0) + '</td>';
+
+      // Progress column
       html += '<td class="actions-cell">';
-      if (p.status === 'draft') {
-        html += '<button class="btn btn-outline btn-sm" onclick="event.stopPropagation();enrichProposal(\'' + p.id + '\',this)" title="Scan Gmail, Fathom, audits and website">&#128270; Enrich</button>';
-      } else if (p.status === 'enriching') {
-        html += '<span class="tag tag-enriching" style="gap:.35rem;"><span class="dot-pulse"></span>Enriching...</span>';
-      } else if (p.status === 'review') {
-        var es = p.enrichment_sources || {};
-        var ed = p.enrichment_data || {};
-        var emailCt = ed.emails ? ed.emails.length : 0;
-        var callCt = ed.calls ? ed.calls.length : 0;
-        var hasAudit = !!es.entity_audit;
-        var hasSite = !!es.website;
-        html += '<span style="display:inline-flex;align-items:center;gap:.5rem;">';
-        html += '<span style="display:inline-flex;gap:.4rem;flex-wrap:wrap;">';
-        if (emailCt) html += '<span class="plan-pill" style="color:var(--color-info);border-color:rgba(59,130,246,.2);">&#128231; ' + emailCt + ' emails</span>';
-        if (callCt) html += '<span class="plan-pill" style="color:#A855F7;border-color:rgba(168,85,247,.2);">&#127908; ' + callCt + ' calls</span>';
-        if (hasAudit) html += '<span class="plan-pill" style="color:var(--color-warning);border-color:rgba(245,158,11,.2);">&#128202; Audit</span>';
-        if (hasSite) html += '<span class="plan-pill" style="color:var(--color-success);border-color:rgba(0,212,126,.2);">&#127760; Site</span>';
-        if (!emailCt && !callCt && !hasAudit && !hasSite) html += '<span style="font-size:.72rem;color:var(--color-muted);">No data found</span>';
-        html += '</span>';
-        html += '<button class="btn btn-primary btn-sm" style="flex-shrink:0;" onclick="event.stopPropagation();generateProposal(\'' + p.id + '\',this)">&#9889; Generate</button>';
-        html += '</span>';
-      } else if (p.status === 'generating') {
-        html += '<span class="tag tag-enriching" style="gap:.35rem;"><span class="dot-pulse"></span>Generating...</span>';
-      } else if (p.status === 'ready') {
-        html += '<button class="btn btn-primary btn-sm" style="margin-right:.35rem;" onclick="event.stopPropagation();sendProposal(\'' + p.id + '\',this)">&#9993; Send</button>';
-        html += '<button class="btn btn-outline btn-sm" onclick="event.stopPropagation();previewEmail(\'' + p.id + '\')">Preview Email</button>';
-      } else if (p.status === 'sent' || p.status === 'viewed') {
-        html += '<span class="tag tag-' + p.status + '">' + statusLabel + (p.view_count > 0 ? ' (' + p.view_count + ' views)' : '') + '</span> ';
-        // Follow-up controls
-        var fus = state.followups[p.id] || [];
-        if (fus.length === 0) {
-          html += '<button class="btn btn-outline btn-sm" style="margin-left:.35rem;" onclick="event.stopPropagation();generateFollowups(\'' + p.id + '\',this)">&#128337; Schedule Follow-ups</button>';
-        } else {
-          var draftCount = fus.filter(function(f){return f.status==='draft'}).length;
-          var pendingCount = fus.filter(function(f){return f.status==='pending'}).length;
-          var sentCount = fus.filter(function(f){return f.status==='sent'}).length;
-          var cancelledCount = fus.filter(function(f){return f.status==='cancelled'}).length;
-          if (draftCount > 0) {
-            html += '<button class="btn btn-outline btn-sm" style="margin-left:.35rem;" onclick="event.stopPropagation();previewFollowupSequence(\'' + p.id + '\')">Preview Sequence</button>';
-            html += '<button class="btn btn-primary btn-sm" style="margin-left:.25rem;" onclick="event.stopPropagation();approveFollowups(\'' + p.id + '\',this)">Approve &amp; Schedule</button>';
-          } else if (pendingCount > 0) {
-            var nextFu = fus.filter(function(f){return f.status==='pending'}).sort(function(a,b){return new Date(a.scheduled_for)-new Date(b.scheduled_for)})[0];
-            var nextDate = nextFu ? formatDate(nextFu.scheduled_for) : '';
-            html += '<span class="plan-pill" style="margin-left:.35rem;color:var(--color-info);border-color:rgba(59,130,246,.2);">&#128231; ' + sentCount + '/' + fus.length + ' sent</span>';
-            html += '<span style="font-size:.72rem;color:var(--color-muted);margin-left:.25rem;">Next: ' + nextDate + '</span>';
-            html += '<button class="btn btn-ghost btn-sm" style="margin-left:.25rem;" onclick="event.stopPropagation();previewFollowupSequence(\'' + p.id + '\')" title="View sequence">&#128065;</button>';
-            html += '<button class="btn btn-ghost btn-sm" style="margin-left:.1rem;color:var(--color-danger);" onclick="event.stopPropagation();cancelFollowups(\'' + p.id + '\')" title="Cancel remaining">&#10005;</button>';
-          } else if (sentCount === fus.length) {
-            html += '<span class="plan-pill" style="margin-left:.35rem;color:var(--color-success);border-color:rgba(0,212,126,.2);">&#9989; Sequence complete</span>';
-          } else if (cancelledCount > 0) {
-            var reason = fus.find(function(f){return f.cancel_reason}) || {};
-            var label = reason.cancel_reason === 'signed_up' ? 'Signed up' : reason.cancel_reason === 'lost' ? 'Lost' : 'Cancelled';
-            html += '<span class="plan-pill" style="margin-left:.35rem;color:var(--color-muted);border-color:rgba(107,117,153,.2);">' + label + ' (' + sentCount + '/' + fus.length + ' sent)</span>';
-          }
-        }
+      var ed = p.enrichment_data || {};
+      var es = p.enrichment_sources || {};
+      if (ed.emails && ed.emails.length) html += '<span class="plan-pill" style="color:var(--color-info);border-color:rgba(59,130,246,.2);">&#128231; ' + ed.emails.length + '</span>';
+      if (ed.calls && ed.calls.length) html += '<span class="plan-pill" style="color:#A855F7;border-color:rgba(168,85,247,.2);">&#127908; ' + ed.calls.length + '</span>';
+      if (es.entity_audit) html += '<span class="plan-pill" style="color:var(--color-warning);border-color:rgba(245,158,11,.2);">&#128202;</span>';
+      if (es.website) html += '<span class="plan-pill" style="color:var(--color-success);border-color:rgba(0,212,126,.2);">&#127760;</span>';
+
+      var fus = state.followups[p.id] || [];
+      if (fus.length > 0) {
+        var sentCount = fus.filter(function(f) { return f.status === 'sent'; }).length;
+        var pendingCount = fus.filter(function(f) { return f.status === 'pending'; }).length;
+        if (pendingCount > 0) html += '<span class="plan-pill" style="color:var(--color-info);border-color:rgba(59,130,246,.2);">FU ' + sentCount + '/' + fus.length + '</span>';
+        else if (sentCount === fus.length) html += '<span class="plan-pill" style="color:var(--color-success);border-color:rgba(0,212,126,.2);">FU done</span>';
       }
-      if (p.proposal_url) html += ' <a href="' + esc(p.proposal_url) + '?preview=true" target="_blank" class="btn btn-ghost btn-sm" title="Preview (no tracking)" onclick="event.stopPropagation()" style="vertical-align:middle;">&#128065;</a>';
-      html += ' <button class="row-delete" title="Delete" onclick="event.stopPropagation();deleteProposal(\'' + p.id + '\')"><svg width="14" height="14" viewBox="0 0 14 14" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round"><path d="M3 3l8 8M11 3l-8 8"/></svg></button>';
-      html += '</td>';
-      html += '</tr>';
+
+      if (p.proposal_url) html += ' <a href="' + esc(p.proposal_url) + '?preview=true" target="_blank" class="btn btn-ghost btn-sm" title="Preview" onclick="event.stopPropagation()">&#128065;</a>';
+      html += '</td></tr>';
     });
 
     html += '</tbody></table>';
     container.innerHTML = html;
   }
-
-  // Modal
-  window.openNewProposal = function() {
-    document.getElementById('newProposalModal').classList.add('open');
-    // Reset form
-    document.getElementById('contactSelect').value = '';
-    document.getElementById('inlineCreateSection').style.display = 'none';
-    document.querySelectorAll('#campaignChips .chip').forEach(function(c, i) { c.classList.toggle('selected', i === 0); });
-    updateBillingChips();
-    document.getElementById('customToggle').classList.remove('on');
-    document.getElementById('customPricingSection').style.display = 'none';
-    document.getElementById('proposalNotes').value = '';
-    ['newFirst','newLast','newEmail','newCreds','newPractice','newWebsite','newLocation','customAmount','customDuration','customLabel'].forEach(function(id) {
-      var el = document.getElementById(id); if (el) el.value = '';
-    });
-  };
-
-  window.closeModal = function() {
-    document.getElementById('newProposalModal').classList.remove('open');
-  };
-
-  // Close modal on backdrop click
-  document.getElementById('newProposalModal').addEventListener('click', function(e) {
-    if (e.target === this) closeModal();
-  });
-
-  // Delete a proposal
-  window.deleteProposal = async function(proposalId) {
-    if (!confirm('Delete this proposal and remove all deployed pages (proposal, checkout, onboarding) for this prospect?')) return;
-    try {
-      var resp = await fetch('/api/delete-proposal', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ proposal_id: proposalId, delete_pages: true })
-      });
-      var data = await resp.json();
-      if (data.ok) {
-        await loadData();
-      } else {
-        alert('Delete failed: ' + (data.error || 'Unknown error'));
-      }
-    } catch(e) {
-      alert('Delete error: ' + e.message);
-    }
-  };
-
-  // Generate a proposal (after enrichment)
-  window.generateProposal = async function(proposalId, btn) {
-    btn.disabled = true;
-    btn.innerHTML = '<span class="dot-pulse"></span> Generating...';
-    try {
-      var resp = await fetch('/api/generate-proposal', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ proposal_id: proposalId })
-      });
-      var data = await resp.json();
-      if (data.ok) {
-        await loadData();
-      } else {
-        alert('Generation failed: ' + (data.error || 'Unknown error'));
-        btn.disabled = false;
-        btn.innerHTML = '&#9889; Generate';
-      }
-    } catch(e) {
-      alert('Generation error: ' + e.message);
-      btn.disabled = false;
-      btn.innerHTML = '&#9889; Generate';
-    }
-  };
-
-  // Send proposal email
-  window.sendProposal = async function(proposalId, btn) {
-    if (!confirm('Send the proposal email to the prospect?')) return;
-    btn.disabled = true;
-    btn.innerHTML = 'Sending...';
-    try {
-      var resp = await fetch('/api/send-proposal-email', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ proposal_id: proposalId })
-      });
-      var data = await resp.json();
-      if (data.ok) {
-        await loadData();
-      } else {
-        alert('Send failed: ' + (data.error || 'Unknown error'));
-        btn.disabled = false;
-        btn.innerHTML = '&#9993; Send';
-      }
-    } catch(e) {
-      alert('Send error: ' + e.message);
-      btn.disabled = false;
-      btn.innerHTML = '&#9993; Send';
-    }
-  };
-
-  // Preview email
-  window.previewEmail = async function(proposalId) {
-    try {
-      var resp = await fetch('/api/send-proposal-email', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ proposal_id: proposalId, preview_only: true })
-      });
-      var data = await resp.json();
-      if (data.ok) {
-        var w = window.open('', '_blank');
-        w.document.write('<html><head><title>Email Preview</title></head><body>');
-        w.document.write('<div style="padding:1rem;background:#f5f5f5;font-family:sans-serif;font-size:14px;margin-bottom:1rem;">');
-        w.document.write('<strong>To:</strong> ' + data.to + '<br>');
-        w.document.write('<strong>From:</strong> ' + data.from + '<br>');
-        w.document.write('<strong>Reply-To:</strong> ' + data.reply_to + '<br>');
-        w.document.write('<strong>CC:</strong> ' + data.cc + '<br>');
-        w.document.write('<strong>Subject:</strong> ' + data.subject);
-        w.document.write('</div>');
-        w.document.write(data.body_html);
-        w.document.write('</body></html>');
-        w.document.close();
-      } else {
-        alert('Preview failed: ' + (data.error || 'Unknown error'));
-      }
-    } catch(e) {
-      alert('Preview error: ' + e.message);
-    }
-  };
-
-  // ---- Follow-up sequence management ----
-
-  // Generate the 4-email follow-up sequence
-  window.generateFollowups = async function(proposalId, btn) {
-    btn.disabled = true;
-    btn.innerHTML = '&#128337; Generating...';
-    try {
-      var resp = await fetch('/api/generate-followups', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ proposal_id: proposalId })
-      });
-      var data = await resp.json();
-      if (data.ok) {
-        toast('Follow-up sequence generated. Preview and approve to schedule.');
-        await loadData();
-      } else {
-        alert('Failed: ' + (data.error || 'Unknown error'));
-        btn.disabled = false;
-        btn.innerHTML = '&#128337; Schedule Follow-ups';
-      }
-    } catch(e) {
-      alert('Error: ' + e.message);
-      btn.disabled = false;
-      btn.innerHTML = '&#128337; Schedule Follow-ups';
-    }
-  };
-
-  // Preview the full follow-up sequence in a new window
-  window.previewFollowupSequence = function(proposalId) {
-    var fus = state.followups[proposalId] || [];
-    if (fus.length === 0) return alert('No follow-ups found.');
-
-    var w = window.open('', '_blank');
-    w.document.write('<html><head><title>Follow-up Sequence Preview</title>');
-    w.document.write('<style>');
-    w.document.write('body{margin:0;padding:2rem;background:#f5f5f5;font-family:-apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,sans-serif;color:#1E2A5E;}');
-    w.document.write('.email-card{background:#fff;border-radius:12px;border:1px solid #e2e8f0;margin-bottom:2rem;overflow:hidden;}');
-    w.document.write('.email-header{padding:1rem 1.5rem;background:#f8fafc;border-bottom:1px solid #e2e8f0;display:flex;justify-content:space-between;align-items:center;}');
-    w.document.write('.email-meta{font-size:.85rem;color:#6B7599;}');
-    w.document.write('.email-meta strong{color:#1E2A5E;}');
-    w.document.write('.email-num{font-size:.75rem;font-weight:600;padding:.25rem .75rem;border-radius:99px;display:inline-block;}');
-    w.document.write('.status-draft{background:rgba(245,158,11,.1);color:#F59E0B;}');
-    w.document.write('.status-pending{background:rgba(59,130,246,.08);color:#3B82F6;}');
-    w.document.write('.status-sent{background:rgba(0,212,126,.1);color:#00D47E;}');
-    w.document.write('.status-cancelled{background:rgba(107,117,153,.1);color:#6B7599;}');
-    w.document.write('.status-failed{background:rgba(239,68,68,.1);color:#EF4444;}');
-    w.document.write('.email-body{padding:0;}');
-    w.document.write('.email-body iframe{width:100%;border:none;min-height:500px;}');
-    w.document.write('h1{font-size:1.3rem;margin:0 0 .25rem;}');
-    w.document.write('</style></head><body>');
-    w.document.write('<h1>Follow-up Sequence (' + fus.length + ' emails)</h1>');
-    w.document.write('<p style="color:#6B7599;font-size:.85rem;margin-bottom:1.5rem;">From: proposals@clients.moonraker.ai &middot; CC: chris@moonraker.ai, scott@moonraker.ai</p>');
-
-    fus.forEach(function(fu, idx) {
-      var statusClass = 'status-' + fu.status;
-      var statusLabel = fu.status.charAt(0).toUpperCase() + fu.status.slice(1);
-      var schedStr = fu.scheduled_for ? new Date(fu.scheduled_for).toLocaleDateString('en-US', { weekday: 'short', month: 'short', day: 'numeric' }) : 'Day ' + fu.day_offset;
-      if (fu.sent_at) schedStr = 'Sent ' + new Date(fu.sent_at).toLocaleDateString('en-US', { month: 'short', day: 'numeric' });
-      w.document.write('<div class="email-card">');
-      w.document.write('<div class="email-header">');
-      w.document.write('<div><span class="email-num ' + statusClass + '">Email ' + fu.sequence_number + ' &middot; ' + statusLabel + '</span>');
-      w.document.write('<span class="email-meta" style="margin-left:.75rem;">' + schedStr + '</span></div>');
-      w.document.write('<div class="email-meta"><strong>Subject:</strong> ' + (fu.subject || '(no subject)') + '</div>');
-      w.document.write('</div>');
-      w.document.write('<div class="email-body">');
-      // Use srcdoc to render HTML safely in iframe
-      var escaped = (fu.body_html || '').replace(/&/g,'&amp;').replace(/"/g,'&quot;');
-      w.document.write('<iframe srcdoc="' + escaped + '" style="width:100%;min-height:500px;border:none;" onload="this.style.height=this.contentDocument.body.scrollHeight+20+\'px\'"></iframe>');
-      w.document.write('</div></div>');
-    });
-
-    w.document.write('</body></html>');
-    w.document.close();
-  };
-
-  // Approve and schedule the follow-up sequence
-  window.approveFollowups = async function(proposalId, btn) {
-    if (!confirm('Approve and schedule all follow-up emails? They will be sent automatically on the scheduled dates.')) return;
-    btn.disabled = true;
-    btn.innerHTML = 'Scheduling...';
-    try {
-      var resp = await fetch('/api/approve-followups', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ proposal_id: proposalId })
-      });
-      var data = await resp.json();
-      if (data.ok) {
-        toast('Scheduled ' + data.scheduled + ' follow-up emails.');
-        await loadData();
-      } else {
-        alert('Failed: ' + (data.error || 'Unknown error'));
-        btn.disabled = false;
-        btn.innerHTML = 'Approve &amp; Schedule';
-      }
-    } catch(e) {
-      alert('Error: ' + e.message);
-      btn.disabled = false;
-      btn.innerHTML = 'Approve &amp; Schedule';
-    }
-  };
-
-  // Cancel remaining follow-ups manually
-  window.cancelFollowups = async function(proposalId) {
-    if (!confirm('Cancel all remaining follow-up emails for this proposal?')) return;
-    try {
-      var fus = state.followups[proposalId] || [];
-      var pending = fus.filter(function(f) { return f.status === 'pending'; });
-      for (var i = 0; i < pending.length; i++) {
-        await fetch(SB_URL + '/rest/v1/proposal_followups?id=eq.' + pending[i].id, {
-          method: 'PATCH',
-          headers: { 'apikey': SB_KEY, 'Authorization': 'Bearer ' + SB_KEY, 'Content-Type': 'application/json', 'Prefer': 'return=representation' },
-          body: JSON.stringify({ status: 'cancelled', cancelled_at: new Date().toISOString(), cancel_reason: 'manual', updated_at: new Date().toISOString() })
-        });
-      }
-      toast('Cancelled ' + pending.length + ' follow-up emails.');
-      await loadData();
-    } catch(e) {
-      alert('Cancel error: ' + e.message);
-    }
-  };
-
-  // Enrich a proposal
-  window.enrichProposal = async function(proposalId, btn) {
-    btn.disabled = true;
-    btn.innerHTML = '<span class="dot-pulse"></span> Scanning...';
-    try {
-      var resp = await fetch('/api/enrich-proposal', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ proposal_id: proposalId })
-      });
-      var data = await resp.json();
-      if (data.ok) {
-        await loadData();
-      } else {
-        alert('Enrichment failed: ' + (data.error || 'Unknown error'));
-        btn.disabled = false;
-        btn.innerHTML = '&#128270; Enrich';
-      }
-    } catch(e) {
-      alert('Enrichment error: ' + e.message);
-      btn.disabled = false;
-      btn.innerHTML = '&#128270; Enrich';
-    }
-  };
 
   // Filter tabs
   document.getElementById('filterBar').addEventListener('click', function(e) {
@@ -1075,17 +425,6 @@ a:hover { color: var(--color-primary-hover); }
     render();
   });
 
-  function formatDate(iso) {
-    if (!iso) return '';
-    var d = new Date(iso);
-    var months = ['Jan','Feb','Mar','Apr','May','Jun','Jul','Aug','Sep','Oct','Nov','Dec'];
-    return months[d.getMonth()] + ' ' + d.getDate() + ', ' + d.getFullYear();
-  }
-
-  function esc(s) { if (!s) return ''; var d = document.createElement('div'); d.textContent = s; return d.innerHTML; }
-
-  // Initialize billing chips on load
-  updateBillingChips();
 
   // ============================================================
   // SIDEBAR COLLAPSE
