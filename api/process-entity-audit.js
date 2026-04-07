@@ -248,9 +248,8 @@ ${surgeData}`;
                     (scores.reputation || 0) + (scores.engagement || 0);
 
     var updateBody = {
-      // JSONB columns (detailed data for templates)
+      // JSONB columns (scores + metadata for templates)
       scores: scores,
-      tasks: tasks,
       surge_data: { raw_length: surgeData.length, processed_at: new Date().toISOString() },
       // Promoted score columns (queryable across clients)
       variance_score: scores.variance || null,
@@ -544,3 +543,4 @@ ${surgeData}`;
     return res.end();
   }
 };
+
