@@ -120,6 +120,12 @@ section{padding:3.5rem 0}
 .filter-pill{padding:.35rem .85rem;border:1px solid var(--color-border);border-radius:100px;font-size:.75rem;font-weight:600;color:var(--color-muted);cursor:pointer;transition:all .2s;background:var(--color-surface)}
 .filter-pill:hover{border-color:var(--color-primary);color:var(--color-primary)}
 .filter-pill.active{background:var(--color-primary);color:#fff;border-color:var(--color-primary)}
+.filter-pill.active[data-owner="Moonraker"]{background:#00b86c;border-color:#00b86c}
+.filter-pill.active[data-owner="Collaboration"]{background:#D97706;border-color:#D97706}
+.filter-pill.active[data-owner="Client"]{background:#3B82F6;border-color:#3B82F6}
+.filter-pill[data-owner="Moonraker"]:hover{border-color:#00b86c;color:#00b86c}
+.filter-pill[data-owner="Collaboration"]:hover{border-color:#D97706;color:#D97706}
+.filter-pill[data-owner="Client"]:hover{border-color:#3B82F6;color:#3B82F6}
 .filter-pill .pill-count{opacity:.6;margin-left:.25rem}
 </style>
 </head>
@@ -243,7 +249,7 @@ section{padding:3.5rem 0}
     var filters=[{key:'all',label:'All',count:total},{key:'Moonraker',label:'Moonraker',count:moon},{key:'Collaboration',label:'Collaboration',count:collab},{key:'Client',label:'Client',count:cli}];
     var fp='';
     filters.forEach(function(f){
-      fp+='<span class="filter-pill'+(currentFilter===f.key?' active':'')+'" onclick="window._setFilter(\''+f.key+'\')">'+f.label+'<span class="pill-count">'+f.count+'</span></span>';
+      fp+='<span class="filter-pill'+(currentFilter===f.key?' active':'')+'" data-owner="'+f.key+'" onclick="window._setFilter(\''+f.key+'\')">'+f.label+'<span class="pill-count">'+f.count+'</span></span>';
     });
     document.getElementById('filterPills').innerHTML=fp;
     // Filter tasks
