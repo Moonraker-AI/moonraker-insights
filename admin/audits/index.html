@@ -305,54 +305,37 @@ a:hover { color: var(--color-primary-hover); }
 
   <div class="content">
     <div class="section-header">
-      <h2>Audits</h2>
+      <h2>Audit Pipeline</h2>
     </div>
+    <p class="section-desc">All audits across leads and active clients. Click any row to manage in the client deep-dive.</p>
 
-    <div class="sub-tabs" id="subTabs">
-      <button class="sub-tab active" data-tab="campaign">Campaign Audits<span class="tab-count" id="campaignCount"></span></button>
-      <button class="sub-tab" data-tab="entity">Entity Audits<span class="tab-count" id="entityCount"></span></button>
+    <div class="sub-tabs" id="filterTabs">
+      <button class="sub-tab active" data-filter="all">All<span class="tab-count" id="countAll"></span></button>
+      <button class="sub-tab" data-filter="lead">Leads<span class="tab-count" id="countLead"></span></button>
+      <button class="sub-tab" data-filter="active">Active<span class="tab-count" id="countActive"></span></button>
+      <button class="sub-tab" data-filter="pending">Pending<span class="tab-count" id="countPending"></span></button>
+      <button class="sub-tab" data-filter="needs_audit">Needs Audit<span class="tab-count" id="countNeedsAudit"></span></button>
     </div>
-
-    <!-- CAMPAIGN AUDITS TAB (existing) -->
-    <div class="tab-content active" id="tab-campaign">
-    <p class="section-desc">CORE audit task progress across all clients. Click any client to view their full audit details.</p>
 
     <div class="stat-grid" id="statGrid"></div>
-    <div class="audit-cards" id="auditCards"></div>
 
     <div id="loadingState" style="text-align:center;padding:4rem;">
       <div class="spinner" style="width:24px;height:24px;"></div>
       <p style="margin-top:.75rem;font-size:.85rem;color:var(--color-muted);">Loading audit data...</p>
     </div>
 
-    <div class="empty-state" id="emptyState" style="display:none;">
-      <p>No audits found yet. Run a Surge audit to get started.</p>
-    </div>
-    </div>
-
-    <!-- ENTITY AUDITS TAB (new) -->
-    <div class="tab-content" id="tab-entity">
-    <p class="section-desc">Entity audit pipeline across all leads and prospects. Click any row to manage in the client deep-dive.</p>
-
-    <div class="stat-grid" id="eaStatGrid"></div>
-
-    <div id="eaLoading" style="text-align:center;padding:4rem;">
-      <div class="spinner" style="width:24px;height:24px;"></div>
-      <p style="margin-top:.75rem;font-size:.85rem;color:var(--color-muted);">Loading entity audits...</p>
-    </div>
-
     <div class="ea-table-wrap" id="eaTableWrap" style="display:none;">
       <table class="ea-table">
         <thead>
           <tr>
+            <th></th>
             <th>Contact</th>
             <th>Practice</th>
-            <th>Tier</th>
             <th>Status</th>
-            <th>Date</th>
+            <th>Audit</th>
             <th>CORE</th>
-            <th>Loom</th>
-            <th>Source</th>
+            <th>Tasks</th>
+            <th>Date</th>
             <th>Actions</th>
           </tr>
         </thead>
@@ -360,9 +343,8 @@ a:hover { color: var(--color-primary-hover); }
       </table>
     </div>
 
-    <div class="empty-state" id="eaEmpty" style="display:none;">
-      <p>No entity audits yet. Create a new lead from the <a href="/admin/clients">Clients</a> page, then launch an audit from their deep-dive.</p>
-    </div>
+    <div class="empty-state" id="emptyState" style="display:none;">
+      <p>No audits match the current filter.</p>
     </div>
 
   </div>
@@ -384,176 +366,209 @@ a:hover { color: var(--color-primary-hover); }
   var SB = 'https://ofmmwcjhdrhvxxkhcuww.supabase.co';
   var SK = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6Im9mbW13Y2poZHJodnh4a2hjdXd3Iiwicm9sZSI6ImFub24iLCJpYXQiOjE3NzQzMjM1NTcsImV4cCI6MjA4OTg5OTU1N30.zMMHW0Fk9ixWjORngyxJTIoPOfx7GFsD4wBV4Foqqms';
 
-  var state = { contacts: [], tasks: {}, scores: {} };
+  var state = { contacts: [], contactMap: {}, audits: [], tasks: {}, currentFilter: 'all' };
 
   function loadData() {
     Promise.all([
-      fetch(SB + '/rest/v1/contacts?select=id,slug,status,practice_name,email,first_name,last_name,website_url&order=practice_name', { headers: { 'apikey': SK, 'Authorization': 'Bearer ' + SK } }).then(function(r) { return r.json(); }),
-      fetch(SB + '/rest/v1/checklist_items?select=client_slug,status,owner,priority,category,title&order=client_slug,sort_order', { headers: { 'apikey': SK, 'Authorization': 'Bearer ' + SK } }).then(function(r) { return r.json(); }),
-      fetch(SB + '/rest/v1/audit_scores?select=client_slug,variance_score,score_credibility,score_optimization,score_reputation,score_engagement,audit_date&order=audit_date.desc', { headers: { 'apikey': SK, 'Authorization': 'Bearer ' + SK } }).then(function(r) { return r.json(); })
+      fetch(SB + '/rest/v1/contacts?select=id,slug,status,practice_name,email,first_name,last_name,website_url,lost&order=practice_name', { headers: { 'apikey': SK, 'Authorization': 'Bearer ' + SK } }).then(function(r) { return r.json(); }),
+      fetch(SB + '/rest/v1/entity_audits?select=*&order=created_at.desc', { headers: { 'apikey': SK, 'Authorization': 'Bearer ' + SK } }).then(function(r) { return r.json(); }),
+      fetch(SB + '/rest/v1/checklist_items?select=client_slug,status,owner,priority,audit_id&order=client_slug,sort_order', { headers: { 'apikey': SK, 'Authorization': 'Bearer ' + SK } }).then(function(r) { return r.json(); })
     ]).then(function(res) {
       state.contacts = res[0] || [];
+      state.contactMap = {};
+      state.contacts.forEach(function(c) { state.contactMap[c.id] = c; state.contactMap[c.slug] = c; });
 
-      // Index tasks by slug
+      state.audits = res[1] || [];
+
+      // Index tasks by audit_id and by client_slug
       state.tasks = {};
-      (res[1] || []).forEach(function(t) {
-        if (!state.tasks[t.client_slug]) state.tasks[t.client_slug] = [];
-        state.tasks[t.client_slug].push(t);
+      state.tasksBySlug = {};
+      (res[2] || []).forEach(function(t) {
+        if (t.audit_id) {
+          if (!state.tasks[t.audit_id]) state.tasks[t.audit_id] = [];
+          state.tasks[t.audit_id].push(t);
+        }
+        if (!state.tasksBySlug[t.client_slug]) state.tasksBySlug[t.client_slug] = [];
+        state.tasksBySlug[t.client_slug].push(t);
       });
 
-      // Index scores by slug (latest only)
-      state.scores = {};
-      (res[2] || []).forEach(function(s) {
-        if (!state.scores[s.client_slug]) state.scores[s.client_slug] = s;
+      // Identify active/onboarding clients that need audits
+      state.needsAudit = [];
+      var auditedContactIds = {};
+      state.audits.forEach(function(a) { auditedContactIds[a.contact_id] = true; });
+      state.contacts.forEach(function(c) {
+        if ((c.status === 'active' || c.status === 'onboarding') && !c.lost && !auditedContactIds[c.id]) {
+          state.needsAudit.push(c);
+        }
       });
 
       document.getElementById('loadingState').style.display = 'none';
+      updateFilterCounts();
       renderStats();
-      renderCards();
+      renderTable();
       document.getElementById('lastRefresh').textContent = 'Updated ' + new Date().toLocaleTimeString();
-      document.getElementById('campaignCount').textContent = Object.keys(state.tasks).length || '';
 
-      // Wire up chat panel context
       if (window.MoonrakerChat) {
-        window.MoonrakerChat.setContext({
-          clientData: {
-            contacts: state.contacts,
-            tasks: state.tasks,
-            scores: state.scores
-          }
-        });
+        window.MoonrakerChat.setContext({ clientData: { contacts: state.contacts, audits: state.audits } });
       }
     });
+  }
+
+  function getFilteredAudits() {
+    var f = state.currentFilter;
+    if (f === 'all') return state.audits;
+    if (f === 'pending') return state.audits.filter(function(a) { return a.status === 'pending'; });
+    if (f === 'needs_audit') return []; // special case, rendered separately
+    return state.audits.filter(function(a) {
+      var c = state.contactMap[a.contact_id];
+      if (!c) return false;
+      if (f === 'lead') return c.status === 'lead' || c.status === 'prospect';
+      if (f === 'active') return c.status === 'active' || c.status === 'onboarding';
+      return true;
+    });
+  }
+
+  function updateFilterCounts() {
+    var a = state.audits;
+    var leads = a.filter(function(x) { var c = state.contactMap[x.contact_id]; return c && (c.status === 'lead' || c.status === 'prospect'); }).length;
+    var active = a.filter(function(x) { var c = state.contactMap[x.contact_id]; return c && (c.status === 'active' || c.status === 'onboarding'); }).length;
+    var pending = a.filter(function(x) { return x.status === 'pending'; }).length;
+    document.getElementById('countAll').textContent = a.length ? ' ' + a.length : '';
+    document.getElementById('countLead').textContent = leads ? ' ' + leads : '';
+    document.getElementById('countActive').textContent = active ? ' ' + active : '';
+    document.getElementById('countPending').textContent = pending ? ' ' + pending : '';
+    document.getElementById('countNeedsAudit').textContent = state.needsAudit.length ? ' ' + state.needsAudit.length : '';
   }
 
   function renderStats() {
+    var a = state.audits;
+    var free = a.filter(function(x) { return x.audit_tier === 'free'; }).length;
+    var premium = a.filter(function(x) { return x.audit_tier === 'premium'; }).length;
+    var pending = a.filter(function(x) { return x.status === 'pending'; }).length;
+    var complete = a.filter(function(x) { return x.status === 'complete'; }).length;
+    var delivered = a.filter(function(x) { return x.status === 'delivered'; }).length;
+    var withLoom = a.filter(function(x) { return x.loom_url; }).length;
+
+    // Task totals across all audits
     var allTasks = [];
-    Object.values(state.tasks).forEach(function(arr) { allTasks = allTasks.concat(arr); });
-
-    var complete = allTasks.filter(function(t) { return t.status === 'complete'; }).length;
-    var ip = allTasks.filter(function(t) { return t.status === 'in_progress'; }).length;
-    var ir = allTasks.filter(function(t) { return t.status === 'internal_review'; }).length;
-    var wc = allTasks.filter(function(t) { return t.status === 'waiting_on_client'; }).length;
-    var ns = allTasks.filter(function(t) { return t.status === 'not_started'; }).length;
-    var clientCount = Object.keys(state.tasks).length;
-    var pct = allTasks.length > 0 ? Math.round(complete / allTasks.length * 100) : 0;
-
-    // Owner counts
-    var owners = { Moonraker: 0, Client: 0, Collaboration: 0 };
-    allTasks.forEach(function(t) { if (t.owner && owners.hasOwnProperty(t.owner)) owners[t.owner]++; });
+    Object.values(state.tasksBySlug || {}).forEach(function(arr) { allTasks = allTasks.concat(arr); });
+    var taskComplete = allTasks.filter(function(t) { return t.status === 'complete'; }).length;
+    var taskPct = allTasks.length > 0 ? Math.round(taskComplete / allTasks.length * 100) : 0;
 
     document.getElementById('statGrid').innerHTML =
-      '<div class="stat-card"><div class="stat-label">Total Tasks</div><div class="stat-value">' + allTasks.length + '</div><div class="stat-sub">' + clientCount + ' clients, ' + pct + '% complete</div></div>' +
-      '<div class="stat-card"><div class="stat-label">Not Started</div><div class="stat-value">' + ns + '</div></div>' +
-      '<div class="stat-card"><div class="stat-label">In Progress</div><div class="stat-value" style="color:#3B82F6;">' + ip + '</div></div>' +
-      '<div class="stat-card"><div class="stat-label">Internal Review</div><div class="stat-value" style="color:#8B5CF6;">' + ir + '</div></div>' +
-      '<div class="stat-card"><div class="stat-label">Waiting on Client</div><div class="stat-value" style="color:#D97706;">' + wc + '</div></div>' +
-      '<div class="stat-card"><div class="stat-label">Complete</div><div class="stat-value" style="color:var(--color-success);">' + complete + '</div></div>' +
-      '<div class="stat-card"><div class="stat-label">Moonraker</div><div class="stat-value">' + owners.Moonraker + '</div><div class="stat-sub">' + owners.Client + ' client, ' + owners.Collaboration + ' collab</div></div>';
+      '<div class="stat-card"><div class="stat-label">Total Audits</div><div class="stat-value">' + a.length + '</div><div class="stat-sub">' + free + ' free, ' + premium + ' premium</div></div>' +
+      '<div class="stat-card"><div class="stat-label">Pending Surge</div><div class="stat-value" style="color:var(--color-muted);">' + pending + '</div></div>' +
+      '<div class="stat-card"><div class="stat-label">Ready to Send</div><div class="stat-value" style="color:var(--color-warning);">' + complete + '</div></div>' +
+      '<div class="stat-card"><div class="stat-label">Delivered</div><div class="stat-value" style="color:var(--color-success);">' + delivered + '</div></div>' +
+      '<div class="stat-card"><div class="stat-label">Campaign Tasks</div><div class="stat-value">' + allTasks.length + '</div><div class="stat-sub">' + taskPct + '% complete</div></div>' +
+      '<div class="stat-card"><div class="stat-label">Needs Audit</div><div class="stat-value" style="color:var(--color-danger);">' + state.needsAudit.length + '</div><div class="stat-sub">Active clients</div></div>';
   }
 
-  function renderCards() {
-    var slugs = Object.keys(state.tasks);
-    if (slugs.length === 0) {
+  function renderTable() {
+    var filtered = getFilteredAudits();
+    var showNeedsAudit = state.currentFilter === 'needs_audit';
+
+    if (filtered.length === 0 && !showNeedsAudit) {
       document.getElementById('emptyState').style.display = 'block';
+      document.getElementById('eaTableWrap').style.display = 'none';
       return;
     }
 
-    // Build client lookup
-    var contactMap = {};
-    state.contacts.forEach(function(c) { contactMap[c.slug] = c; });
-
-    // Sort by completion % ascending (most work remaining first)
-    slugs.sort(function(a, b) {
-      var ta = state.tasks[a], tb = state.tasks[b];
-      var pctA = ta.filter(function(t) { return t.status === 'complete'; }).length / ta.length;
-      var pctB = tb.filter(function(t) { return t.status === 'complete'; }).length / tb.length;
-      return pctA - pctB;
-    });
+    document.getElementById('emptyState').style.display = 'none';
+    document.getElementById('eaTableWrap').style.display = 'block';
 
     var html = '';
-    slugs.forEach(function(slug) {
-      var tasks = state.tasks[slug];
-      var c = contactMap[slug] || { slug: slug, practice_name: slug, first_name: '', last_name: '', email: '' };
-      var scores = state.scores[slug];
-      var initials = ((c.first_name || '')[0] || '') + ((c.last_name || '')[0] || '') || slug[0].toUpperCase();
 
-      var complete = tasks.filter(function(t) { return t.status === 'complete'; }).length;
-      var ip = tasks.filter(function(t) { return t.status === 'in_progress'; }).length;
-      var ns = tasks.filter(function(t) { return t.status === 'not_started'; }).length;
-      var pct = Math.round(complete / tasks.length * 100);
+    // Needs Audit section: active clients without an audit
+    if (showNeedsAudit) {
+      state.needsAudit.forEach(function(c) {
+        var initials = ((c.first_name || '')[0] || '') + ((c.last_name || '')[0] || '');
+        html += '<tr class="ea-row" onclick="window.location.href=\'/admin/clients?slug=' + esc(c.slug) + '&tab=audit\'" style="cursor:pointer;">';
+        html += '<td></td>';
+        html += '<td><strong>' + esc(c.first_name + ' ' + c.last_name) + '</strong></td>';
+        html += '<td>' + esc(c.practice_name || '') + '</td>';
+        html += '<td><span class="tag tag-' + c.status + '">' + c.status + '</span></td>';
+        html += '<td><span class="tag tag-pending" style="color:var(--color-danger);background:rgba(239,68,68,.08);">No audit</span></td>';
+        html += '<td>--</td>';
+        html += '<td>--</td>';
+        html += '<td>--</td>';
+        html += '<td><a href="/admin/clients?slug=' + esc(c.slug) + '&tab=audit" class="ea-btn" onclick="event.stopPropagation()">Create Audit</a></td>';
+        html += '</tr>';
+      });
+      document.getElementById('eaBody').innerHTML = html;
+      return;
+    }
 
-      var owners = {};
-      tasks.forEach(function(t) { if (t.owner) owners[t.owner] = (owners[t.owner] || 0) + 1; });
+    // Normal audit rows
+    filtered.forEach(function(ea) {
+      var c = state.contactMap[ea.contact_id] || {};
+      var slug = c.slug || ea.client_slug || '';
+      var initials = ((c.first_name || '')[0] || '') + ((c.last_name || '')[0] || '') || '';
+      var tasks = state.tasks[ea.id] || state.tasksBySlug[slug] || [];
+      var taskComplete = tasks.filter(function(t) { return t.status === 'complete'; }).length;
+      var taskTotal = ea.total_tasks || tasks.length;
+      var taskPct = taskTotal > 0 ? Math.round(taskComplete / taskTotal * 100) : 0;
 
-      html += '<div class="audit-card">';
-
-      // Header
-      html += '<div class="audit-card-header" onclick="window.location.href=\'/admin/clients?slug=' + slug + '&tab=audit\'">';
-      html += '<div class="audit-avatar">' + esc(initials.toUpperCase()) + '</div>';
-      html += '<div class="audit-card-info"><div class="audit-card-name">' + esc(c.practice_name || slug) + '</div>';
-      html += '<div class="audit-card-meta"><span class="tag tag-' + (c.status || 'lead') + '">' + (c.status || 'unknown') + '</span>';
-      if (scores) html += '<span>Variance: ' + (scores.variance_score || '--') + '/100</span>';
-      if (scores && scores.audit_date) html += '<span>Audited: ' + formatDate(scores.audit_date) + '</span>';
-      html += '</div></div>';
-
-      // Mini CORE scores
-      if (scores) {
-        html += '<div class="audit-card-scores">';
-        var pillars = [
-          { key: 'score_credibility', label: 'C' },
-          { key: 'score_optimization', label: 'O' },
-          { key: 'score_reputation', label: 'R' },
-          { key: 'score_engagement', label: 'E' }
-        ];
-        pillars.forEach(function(p) {
-          var val = scores[p.key];
-          html += '<div class="mini-score"><div class="mini-score-val">' + (val != null ? val.toFixed(1) : '--') + '</div><div class="mini-score-label">' + p.label + '</div></div>';
-        });
-        html += '</div>';
+      // Status styling
+      var statusTag = '<span class="tag tag-' + (c.status || 'lead') + '">' + (c.status || 'unknown') + '</span>';
+      var auditTag = '<span class="tag tag-' + ea.status + '">' + ea.status + '</span>';
+      if (ea.audit_tier === 'premium') {
+        auditTag += ' <span class="tag tag-premium" style="font-size:.65rem;">premium</span>';
       }
 
-      html += '<div class="audit-card-pct" style="color:' + (pct === 100 ? 'var(--color-success)' : 'var(--color-heading)') + ';">' + pct + '%</div>';
-      html += '</div>';
+      // CORE mini scores
+      var coreHtml = '--';
+      if (ea.score_credibility != null) {
+        coreHtml = '<div class="mini-core">';
+        coreHtml += '<span class="mini-core-pill" style="background:rgba(0,212,126,.1);color:#00b86c;">C' + ea.score_credibility + '</span>';
+        coreHtml += '<span class="mini-core-pill" style="background:rgba(59,130,246,.08);color:#3B82F6;">O' + ea.score_optimization + '</span>';
+        coreHtml += '<span class="mini-core-pill" style="background:rgba(245,158,11,.08);color:#D97706;">R' + ea.score_reputation + '</span>';
+        coreHtml += '<span class="mini-core-pill" style="background:rgba(139,92,246,.08);color:#8B5CF6;">E' + ea.score_engagement + '</span>';
+        coreHtml += '</div>';
+      } else if (ea.scores && ea.scores.credibility != null) {
+        // Fallback to JSONB scores for legacy audits
+        coreHtml = '<div class="mini-core">';
+        coreHtml += '<span class="mini-core-pill" style="background:rgba(0,212,126,.1);color:#00b86c;">C' + ea.scores.credibility + '</span>';
+        coreHtml += '<span class="mini-core-pill" style="background:rgba(59,130,246,.08);color:#3B82F6;">O' + ea.scores.optimization + '</span>';
+        coreHtml += '<span class="mini-core-pill" style="background:rgba(245,158,11,.08);color:#D97706;">R' + ea.scores.reputation + '</span>';
+        coreHtml += '<span class="mini-core-pill" style="background:rgba(139,92,246,.08);color:#8B5CF6;">E' + ea.scores.engagement + '</span>';
+        coreHtml += '</div>';
+      }
 
-      // Body
-      html += '<div class="audit-card-body">';
+      // Task progress
+      var taskHtml = '--';
+      if (taskTotal > 0) {
+        taskHtml = '<div style="display:flex;align-items:center;gap:.5rem;">';
+        taskHtml += '<div style="flex:1;min-width:40px;height:6px;background:var(--color-bg);border-radius:3px;overflow:hidden;">';
+        if (taskPct > 0) taskHtml += '<div style="width:' + taskPct + '%;height:100%;background:var(--color-success);"></div>';
+        taskHtml += '</div>';
+        taskHtml += '<span style="font-size:.75rem;color:var(--color-muted);white-space:nowrap;">' + taskComplete + '/' + taskTotal + '</span>';
+        taskHtml += '</div>';
+      }
 
-      // Stacked bar
-      var cPct = Math.round(complete / tasks.length * 100);
-      var iPct = Math.round(ip / tasks.length * 100);
-      html += '<div class="stacked-bar">';
-      if (cPct > 0) html += '<div class="seg seg-complete" style="width:' + cPct + '%;"></div>';
-      if (iPct > 0) html += '<div class="seg seg-ip" style="width:' + iPct + '%;"></div>';
-      html += '</div>';
-
-      // Task breakdown
-      html += '<div class="task-breakdown">';
-      html += '<div class="task-breakdown-item"><span class="task-breakdown-dot complete"></span> ' + complete + ' complete</div>';
-      html += '<div class="task-breakdown-item"><span class="task-breakdown-dot in_progress"></span> ' + ip + ' in progress</div>';
-      html += '<div class="task-breakdown-item"><span class="task-breakdown-dot not_started"></span> ' + ns + ' not started</div>';
-      html += '</div>';
-
-      // Owner breakdown
-      html += '<div class="owner-breakdown">';
-      Object.keys(owners).forEach(function(o) {
-        var cls = 'tag-' + o.toLowerCase();
-        html += '<span class="owner-pill tag ' + cls + '">' + esc(o) + ': ' + owners[o] + '</span>';
-      });
-      html += '</div>';
-
-      // Links
-      html += '<div class="audit-links" style="margin-top:.75rem;">';
-      html += '<a href="/' + slug + '/audits/diagnosis" target="_blank" class="audit-link">Diagnosis</a>';
-      html += '<a href="/' + slug + '/audits/action-plan" target="_blank" class="audit-link">Action Plan</a>';
-      html += '<a href="/' + slug + '/audits/progress" target="_blank" class="audit-link">Progress</a>';
-      html += '<a href="/admin/clients?slug=' + slug + '" class="audit-link" style="border-color:var(--color-primary);color:var(--color-primary);">Full Profile</a>';
-      html += '</div>';
-
-      html += '</div></div>';
+      html += '<tr class="ea-row" onclick="window.location.href=\'/admin/clients?slug=' + esc(slug) + '&tab=audit\'" style="cursor:pointer;">';
+      html += '<td><span class="ea-expand-arrow">&#9654;</span></td>';
+      html += '<td><strong style="font-size:.85rem;">' + esc((c.first_name || '') + ' ' + (c.last_name || '')) + '</strong></td>';
+      html += '<td style="font-size:.84rem;">' + esc(c.practice_name || ea.brand_query || '') + '</td>';
+      html += '<td>' + statusTag + '</td>';
+      html += '<td>' + auditTag + '</td>';
+      html += '<td>' + coreHtml + '</td>';
+      html += '<td style="min-width:100px;">' + taskHtml + '</td>';
+      html += '<td style="font-size:.78rem;color:var(--color-muted);white-space:nowrap;">' + formatDate(ea.audit_date || ea.created_at) + '</td>';
+      html += '<td onclick="event.stopPropagation()">';
+      html += '<div class="ea-actions">';
+      html += '<a href="/admin/clients?slug=' + esc(slug) + '&tab=audit" class="ea-btn">Open</a>';
+      if (ea.status === 'complete' || ea.status === 'delivered') {
+        html += '<a href="/' + esc(slug) + '/entity-audit" target="_blank" class="ea-btn">Scorecard</a>';
+      }
+      if ((c.status === 'active' || c.status === 'onboarding') && (ea.status === 'complete' || ea.status === 'delivered')) {
+        html += '<a href="/' + esc(slug) + '/audits/diagnosis" target="_blank" class="ea-btn">Diagnosis</a>';
+      }
+      html += '</div></td>';
+      html += '</tr>';
     });
 
-    document.getElementById('auditCards').innerHTML = html;
+    document.getElementById('eaBody').innerHTML = html;
   }
 
   function formatDate(d) {
@@ -596,135 +611,21 @@ a:hover { color: var(--color-primary-hover); }
       if (document.startViewTransition) { document.startViewTransition(apply); } else { apply(); }
     });
   }
+
   // ============================================================
-  // SUB-TAB SWITCHING
+  // FILTER TABS
   // ============================================================
-  document.getElementById('subTabs').addEventListener('click', function(e) {
+  document.getElementById('filterTabs').addEventListener('click', function(e) {
     var btn = e.target.closest('.sub-tab');
     if (!btn) return;
-    var tab = btn.dataset.tab;
-    document.querySelectorAll('.sub-tab').forEach(function(b) { b.classList.remove('active'); });
+    state.currentFilter = btn.dataset.filter;
+    document.querySelectorAll('#filterTabs .sub-tab').forEach(function(b) { b.classList.remove('active'); });
     btn.classList.add('active');
-    document.querySelectorAll('.tab-content').forEach(function(t) { t.classList.remove('active'); });
-    document.getElementById('tab-' + tab).classList.add('active');
-    // Load entity audits when switching to that tab
-    if (tab === 'entity' && !eaLoaded) loadEntityAudits();
+    renderTable();
   });
 
-  // ============================================================
-  // ENTITY AUDITS TAB
-  // ============================================================
-  var eaLoaded = false;
-  var eaState = { audits: [], contacts: {} };
-
-  function loadEntityAudits() {
-    Promise.all([
-      fetch(SB + '/rest/v1/entity_audits?select=*&order=created_at.desc', { headers: { 'apikey': SK, 'Authorization': 'Bearer ' + SK } }).then(function(r) { return r.json(); }),
-      fetch(SB + '/rest/v1/contacts?select=id,slug,first_name,last_name,practice_name,email,source,referral_code,audit_tier&order=practice_name', { headers: { 'apikey': SK, 'Authorization': 'Bearer ' + SK } }).then(function(r) { return r.json(); })
-    ]).then(function(res) {
-      eaState.audits = res[0] || [];
-      (res[1] || []).forEach(function(c) { eaState.contacts[c.id] = c; });
-      eaLoaded = true;
-      document.getElementById('eaLoading').style.display = 'none';
-      document.getElementById('entityCount').textContent = eaState.audits.length || '';
-      if (eaState.audits.length === 0) {
-        document.getElementById('eaEmpty').style.display = 'block';
-      } else {
-        renderEntityStats();
-        renderEntityTable();
-        document.getElementById('eaTableWrap').style.display = 'block';
-      }
-    });
-  }
-
-  function renderEntityStats() {
-    var a = eaState.audits;
-    var free = a.filter(function(x) { return x.audit_tier === 'free'; }).length;
-    var premium = a.filter(function(x) { return x.audit_tier === 'premium'; }).length;
-    var pending = a.filter(function(x) { return x.status === 'pending'; }).length;
-    var processing = a.filter(function(x) { return x.status === 'processing'; }).length;
-    var complete = a.filter(function(x) { return x.status === 'complete'; }).length;
-    var delivered = a.filter(function(x) { return x.status === 'delivered'; }).length;
-    var withLoom = a.filter(function(x) { return x.loom_url; }).length;
-
-    document.getElementById('eaStatGrid').innerHTML =
-      '<div class="stat-card"><div class="stat-label">Total Audits</div><div class="stat-value">' + a.length + '</div><div class="stat-sub">' + free + ' free, ' + premium + ' premium</div></div>' +
-      '<div class="stat-card"><div class="stat-label">Pending</div><div class="stat-value">' + pending + '</div></div>' +
-      '<div class="stat-card"><div class="stat-label">Processing</div><div class="stat-value" style="color:var(--color-info);">' + processing + '</div></div>' +
-      '<div class="stat-card"><div class="stat-label">Ready to Send</div><div class="stat-value" style="color:var(--color-warning);">' + complete + '</div></div>' +
-      '<div class="stat-card"><div class="stat-label">Delivered</div><div class="stat-value" style="color:var(--color-success);">' + delivered + '</div></div>' +
-      '<div class="stat-card"><div class="stat-label">Loom Videos</div><div class="stat-value">' + withLoom + '<span style="font-size:.75rem;opacity:.5">/' + premium + '</span></div></div>';
-  }
-
+  // Entity table expand (future: quarterly audit comparison)
   var expandedEaId = null;
-
-  function toggleEaExpand(id) {
-    expandedEaId = expandedEaId === id ? null : id;
-    renderEntityTable();
-  }
-  window.toggleEaExpand = toggleEaExpand;
-
-  function renderEntityTable() {
-    var html = '';
-    var colCount = document.querySelectorAll('.ea-table th').length;
-    eaState.audits.forEach(function(a) {
-      var c = eaState.contacts[a.contact_id] || {};
-      var name = (c.first_name || '') + ' ' + (c.last_name || '');
-      var practice = c.practice_name || c.slug || '--';
-      var scores = a.scores || {};
-
-      // Data row - click through to client deep-dive Audit tab
-      html += '<tr class="ea-row" onclick="window.location.href=\'/admin/clients?slug=' + esc(c.slug || '') + '&tab=audit\'">';
-
-      // Contact
-      html += '<td><div style="display:flex;align-items:center;gap:.5rem;"><div><div style="font-weight:500;color:var(--color-heading);">' + esc(name.trim() || '--') + '</div><div style="font-size:.75rem;color:var(--color-muted);">' + esc(c.email || '') + '</div></div></div></td>';
-
-      // Practice
-      html += '<td>' + esc(practice) + '</td>';
-
-      // Tier badge
-      html += '<td><span class="tag tag-' + a.audit_tier + '">' + a.audit_tier + '</span></td>';
-
-      // Status tag (read-only)
-      var stClass = { pending: 'tag-prospect', processing: 'tag-onboarding', complete: 'tag-active', delivered: 'tag-active' };
-      html += '<td><span class="tag ' + (stClass[a.status] || '') + '">' + (a.status || '--').replace('_',' ') + '</span></td>';
-
-      // Date
-      html += '<td style="font-size:.8rem;white-space:nowrap;">' + formatDate(a.audit_date) + '</td>';
-
-      // CORE mini scores
-      var coreHtml = '--';
-      if (scores.credibility != null) {
-        coreHtml = '<div class="mini-core">';
-        ['credibility','optimization','reputation','engagement'].forEach(function(p) {
-          var v = scores[p] || 0;
-          var color = v <= 3 ? 'rgba(239,68,68,.1);color:#EF4444' : v <= 6 ? 'rgba(245,158,11,.1);color:#D97706' : 'rgba(0,212,126,.1);color:#00b86c';
-          coreHtml += '<span class="mini-core-pill" style="background:' + color + '">' + v + '</span>';
-        });
-        coreHtml += '</div>';
-      }
-      html += '<td>' + coreHtml + '</td>';
-
-      // Loom (simplified: just show link or --)
-      if (a.loom_url) {
-        html += '<td><a href="' + esc(a.loom_url) + '" target="_blank" class="loom-link" onclick="event.stopPropagation()">View</a></td>';
-      } else {
-        html += '<td><span style="color:var(--color-muted);font-size:.78rem;">--</span></td>';
-      }
-
-      // Source / Referral
-      var srcHtml = esc(c.source || '--');
-      if (c.referral_code) srcHtml += '<div style="font-size:.7rem;color:var(--color-primary);">ref: ' + esc(c.referral_code) + '</div>';
-      html += '<td style="font-size:.8rem;">' + srcHtml + '</td>';
-
-      // Actions - simple link to deep-dive
-      html += '<td style="text-align:right;"><span style="color:var(--color-muted);font-size:.8rem;">&#8250;</span></td>';
-
-      html += '</tr>';
-    });
-
-    document.getElementById('eaBody').innerHTML = html;
-  }
 
   window.saveLoom = function(btn) {
     var input = btn.previousElementSibling;
@@ -739,10 +640,10 @@ a:hover { color: var(--color-primary-hover); }
     }).then(function(r) {
       if (r.ok) {
         toast('Loom URL saved');
-        var audit = eaState.audits.find(function(a) { return a.id === auditId; });
+        var audit = state.audits.find(function(a) { return a.id === auditId; });
         if (audit) audit.loom_url = url;
-        renderEntityTable();
-        renderEntityStats();
+        renderTable();
+        
       }
     });
   };
@@ -758,10 +659,11 @@ a:hover { color: var(--color-primary-hover); }
     }).then(function(r) {
       if (r.ok) {
         // Update local state
-        var audit = eaState.audits.find(function(a) { return a.id === auditId; });
+        var audit = state.audits.find(function(a) { return a.id === auditId; });
         if (audit) audit.status = newStatus;
-        renderEntityStats();
-        renderEntityTable();
+        renderStats();
+        renderTable();
+        
         // Flash the select green briefly
         var sel = document.querySelector('.ea-status-select[data-audit-id="' + auditId + '"]');
         if (sel) { sel.style.borderColor = 'var(--color-success)'; setTimeout(function() { sel.style.borderColor = ''; }, 1000); }
@@ -818,9 +720,8 @@ a:hover { color: var(--color-primary-hover); }
       var data = await resp.json();
       if (data.ok) {
         toast('Scorecard email sent!');
-        eaLoaded = false;
         expandedEaId = null;
-        loadEntityAudits();
+        loadData();
       } else {
         toast('Send failed: ' + (data.error || 'Unknown error'), 'error');
         btn.disabled = false;
@@ -979,12 +880,12 @@ a:hover { color: var(--color-primary-hover); }
 
       surgeProcessing = false;
       var overlay = document.getElementById('surgeOverlay');
-      if (!overlay) { eaLoaded = false; loadEntityAudits(); return; }
+      if (!overlay) { loadData(); return; }
 
       if (finalData && finalData.success) {
         var s = finalData.scores || {};
         var tc = finalData.task_counts || {};
-        var totalTasks = (tc.credibility || 0) + (tc.optimization || 0) + (tc.reputation || 0) + (tc.engagement || 0);
+        var totalTasks = tc.total || ((tc.credibility || 0) + (tc.optimization || 0) + (tc.reputation || 0) + (tc.engagement || 0));
         statusEl.className = 'surge-status success';
         statusEl.textContent = 'Scorecard deployed!';
         submitBtn.style.display = 'none';
@@ -1006,7 +907,7 @@ a:hover { color: var(--color-primary-hover); }
         cancelBtn.style.opacity = '1';
         cancelBtn.style.cursor = 'pointer';
         cancelBtn.textContent = 'Close';
-        cancelBtn.onclick = function() { overlay.remove(); eaLoaded = false; loadEntityAudits(); };
+        cancelBtn.onclick = function() { overlay.remove(); loadData(); };
       } else {
         statusEl.className = 'surge-status error';
         statusEl.textContent = 'Processing completed but no results received. Check console.';
@@ -1017,7 +918,7 @@ a:hover { color: var(--color-primary-hover); }
     } catch (err) {
       surgeProcessing = false;
       var overlay = document.getElementById('surgeOverlay');
-      if (!overlay) { eaLoaded = false; loadEntityAudits(); return; }
+      if (!overlay) { loadData(); return; }
       statusEl.className = 'surge-status error';
       statusEl.textContent = 'Network error: ' + err.message;
       unlockModal();
