@@ -317,11 +317,10 @@ section{padding:3.5rem 0}
     var vColor=variance<=30?'var(--color-success)':variance<=60?'var(--color-warning)':'var(--color-danger)';
     vEl.innerHTML=variance+'<span>/100</span>';
     vEl.style.color=vColor;
-    var vLabel=audit.variance_label||(scores.variance_desc?scores.variance_desc.split('.')[0]:'');
-    document.getElementById('varianceLabel').textContent=vLabel;
-    if(scores.variance_desc&&scores.variance_desc!==vLabel){
-      document.getElementById('varianceDesc').textContent=scores.variance_desc;
-    }
+    // Short label for uppercase line, full description for normal text below
+    var shortLabel=variance<=20?'Low Variance':variance<=40?'Moderate Variance':variance<=60?'High Variance':'Critical Variance';
+    document.getElementById('varianceLabel').textContent=shortLabel;
+    if(scores.variance_desc){document.getElementById('varianceDesc').textContent=scores.variance_desc}
 
     // Quick wins
     if(scores.quick_wins&&scores.quick_wins.length>0){
@@ -375,6 +374,9 @@ section{padding:3.5rem 0}
     pDefs.forEach(function(p){
       var findings=tasks[p.key]||[];
       if(findings.length===0)return;
+      // Sort: critical first, warning second, positive last
+      var sevOrder={critical:0,warning:1,positive:2};
+      findings.sort(function(a,b){return (sevOrder[a.severity]||1)-(sevOrder[b.severity]||1)});
       var critCount=findings.filter(function(f){return f.severity==='critical'}).length;
       var warnCount=findings.filter(function(f){return f.severity==='warning'}).length;
       var goodCount=findings.filter(function(f){return f.severity==='positive'}).length;
