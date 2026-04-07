@@ -1887,11 +1887,18 @@ strong { font-weight: 600; color: var(--color-heading); }
       h += '<div style="font-size:2rem;margin-bottom:.75rem;">' + (isActiveCampaign ? '&#9881;' : '&#128202;') + '</div>';
       h += '<h3 style="font-size:1.1rem;margin-bottom:.5rem;">' + launchTitle + '</h3>';
       h += '<p style="color:var(--color-muted);font-size:.88rem;margin-bottom:1.5rem;max-width:400px;margin-left:auto;margin-right:auto;line-height:1.6;">' + launchDesc + '</p>';
-      h += '<div style="display:grid;grid-template-columns:1fr 1fr;gap:.75rem;max-width:400px;margin:0 auto 1.25rem;">';
-      h += '<div><label style="font-size:.72rem;font-weight:600;color:var(--color-muted);display:block;margin-bottom:.25rem;text-transform:uppercase;letter-spacing:.04em;">Website URL</label>';
-      h += '<input id="eaUrl" type="url" value="' + esc(c.website_url || '') + '" placeholder="https://practice.com" style="width:100%;padding:.5rem .65rem;border:1px solid var(--color-border);border-radius:8px;font-size:.84rem;background:var(--color-bg);color:var(--color-heading);font-family:inherit;"></div>';
-      h += '<div><label style="font-size:.72rem;font-weight:600;color:var(--color-muted);display:block;margin-bottom:.25rem;text-transform:uppercase;letter-spacing:.04em;">Brand Query</label>';
-      h += '<input id="eaBrand" type="text" value="' + esc(c.practice_name || '') + '" placeholder="Practice Name City" style="width:100%;padding:.5rem .65rem;border:1px solid var(--color-border);border-radius:8px;font-size:.84rem;background:var(--color-bg);color:var(--color-heading);font-family:inherit;"></div>';
+      var fieldLabel = 'font-size:.72rem;font-weight:600;color:var(--color-muted);display:block;margin-bottom:.25rem;text-transform:uppercase;letter-spacing:.04em;';
+      var fieldInput = 'width:100%;padding:.5rem .65rem;border:1px solid var(--color-border);border-radius:8px;font-size:.84rem;background:var(--color-bg);color:var(--color-heading);font-family:inherit;';
+      var geoDefault = (c.city || '') + (c.city && c.state_province ? ', ' : '') + (c.state_province || '');
+      h += '<div style="display:grid;grid-template-columns:1fr 1fr;gap:.75rem;max-width:480px;margin:0 auto 1.25rem;">';
+      h += '<div><label style="' + fieldLabel + '">Website URL</label>';
+      h += '<input id="eaUrl" type="url" value="' + esc(c.website_url || '') + '" placeholder="https://practice.com" style="' + fieldInput + '"></div>';
+      h += '<div><label style="' + fieldLabel + '">Brand Query</label>';
+      h += '<input id="eaBrand" type="text" value="' + esc(c.practice_name || '') + '" placeholder="Practice Name" style="' + fieldInput + '"></div>';
+      h += '<div><label style="' + fieldLabel + '">Geographic Target</label>';
+      h += '<input id="eaGeo" type="text" value="' + esc(geoDefault) + '" placeholder="City, State" style="' + fieldInput + '"></div>';
+      h += '<div><label style="' + fieldLabel + '">GBP Share Link <span style="text-transform:none;font-weight:400;color:var(--color-muted);letter-spacing:0;">(optional)</span></label>';
+      h += '<input id="eaGbp" type="url" value="" placeholder="https://maps.app.goo.gl/..." style="' + fieldInput + '"></div>';
       h += '</div>';
       h += '<div style="display:flex;gap:.5rem;justify-content:center;align-items:center;">';
       if (!isActiveCampaign) {
@@ -2183,6 +2190,8 @@ strong { font-weight: 600; color: var(--color-heading); }
     if (!c) return;
     var url = (document.getElementById('eaUrl') || {}).value || '';
     var brand = (document.getElementById('eaBrand') || {}).value || '';
+    var geo = (document.getElementById('eaGeo') || {}).value || '';
+    var gbpLink = (document.getElementById('eaGbp') || {}).value || '';
     var tier = (document.getElementById('eaTier') || {}).value || 'free';
     var statusEl = document.getElementById('eaLaunchStatus');
 
@@ -2207,6 +2216,8 @@ strong { font-weight: 600; color: var(--color-heading); }
           audit_tier: tier,
           homepage_url: url,
           brand_query: brand,
+          geo_target: geo,
+          gbp_share_link: gbpLink || null,
           status: 'pending',
           audit_date: new Date().toISOString().split('T')[0]
         }
