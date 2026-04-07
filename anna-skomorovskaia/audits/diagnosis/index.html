@@ -85,7 +85,7 @@ section{padding:3.5rem 0}
 <header class="header"><div class="container header-inner"><img src="/assets/logo.png" alt="Moonraker"><div class="header-meta"><p class="name" id="headerName"></p><p id="headerMeta"></p><p id="headerDate"></p></div></div></header>
 <button class="theme-toggle" id="themeBtn">&#x1F319;</button>
 <section style="padding-top:3rem;padding-bottom:1rem;"><div class="container">
-  <div class="suite-nav" id="suiteNav"><a href="#" class="active">Diagnosis</a><a id="navActionPlan" href="#">Action Plan</a><a id="navProgress" href="#">Progress</a><a id="navScorecard" href="#">Scorecard</a></div>
+  <div class="suite-nav" id="suiteNav"><a href="#" class="active">Diagnosis</a><a id="navActionPlan" href="#">Action Plan</a><a id="navProgress" href="#">Progress</a></div>
 </div></section>
 <section style="padding-top:1rem;"><div class="container">
   <h1 id="heroTitle"></h1>
@@ -170,7 +170,6 @@ section{padding:3.5rem 0}
     var base='/'+SLUG;
     document.getElementById('navActionPlan').href=base+'/audits/action-plan';
     document.getElementById('navProgress').href=base+'/audits/progress';
-    document.getElementById('navScorecard').href=base+'/entity-audit';
     document.getElementById('ctaActionPlan').href=base+'/audits/action-plan';
     document.getElementById('ctaProgress').href=base+'/audits/progress';
     document.getElementById('heroTitle').textContent=name+': CORE Diagnosis';
