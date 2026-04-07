@@ -103,7 +103,7 @@ module.exports = async function handler(req, res) {
     if (!configs || configs.length === 0) return res.status(404).json({ error: 'No active report_config for ' + clientSlug });
     var config = configs[0];
 
-    var contactResp = await fetch(sbUrl + '/rest/v1/contacts?slug=eq.' + clientSlug + '&select=id,slug,first_name,last_name,practice_name,email,campaign_start,status', { headers: sbHeaders() });
+    var contactResp = await fetch(sbUrl + '/rest/v1/contacts?slug=eq.' + clientSlug + '&select=id,slug,first_name,last_name,practice_name,email,campaign_start,status,campaign_type', { headers: sbHeaders() });
     var contacts = await contactResp.json();
     if (!contacts || contacts.length === 0) return res.status(404).json({ error: 'Contact not found for ' + clientSlug });
     var contact = contacts[0];
@@ -294,6 +294,10 @@ module.exports = async function handler(req, res) {
   // Reads pre-existing scan results from campaigns scheduled to run on the 30th.
   // No on-demand scans. Fast: ~2-5s instead of 60-90s.
   var localFalconFn = safe('localfalcon', async function() {
+    if (contact.campaign_type === 'national') {
+      warnings.push('LocalFalcon: skipped (national campaign)');
+      return null;
+    }
     if (!lfKey) {
       warnings.push('LocalFalcon: skipped (no API key)');
       return null;
@@ -567,6 +571,7 @@ module.exports = async function handler(req, res) {
     report_month: reportMonth,
     campaign_start: contact.campaign_start || null,
     campaign_month: campaignMonth,
+    campaign_type: contact.campaign_type || 'local',
     report_status: 'draft',
 
     // GSC
@@ -1009,5 +1014,6 @@ async function generateHighlights(snapshot, prevSnap, practiceName, apiKey) {
     };
   });
 }
+
 
 
