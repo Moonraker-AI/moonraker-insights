@@ -273,7 +273,8 @@ section { padding: 4.5rem 0; }
 
 <nav class="section-nav" id="sectionNav">
   <a href="#hero"><span class="nav-dot"></span>Overview</a>
-  <a href="#walkthrough"><span class="nav-dot"></span>Walkthrough</a>
+  <a href="#walkthrough" id="navWalkthrough" style="display:none;"><span class="nav-dot"></span>Walkthrough</a>
+  <a href="#summary"><span class="nav-dot"></span>Summary</a>
   <a href="#scores"><span class="nav-dot"></span>CORE Scores</a>
   <a href="#findings"><span class="nav-dot"></span>Findings</a>
   <a href="#rtpbaSection" id="navRtpba" style="display:none;"><span class="nav-dot"></span>Best Answer</a>
@@ -548,7 +549,17 @@ section { padding: 4.5rem 0; }
   }
 
   function renderPillar(title, subtitle, findings) {
-    var html = '<div class="collapsible"><button class="collapsible-toggle"><span>' + escHtml(title) + ': ' + escHtml(subtitle) + '</span><span class="arrow">&#9660;</span></button>';
+    // Sort: critical first, warning second, positive last
+    var sevOrder = { critical: 0, warning: 1, positive: 2 };
+    findings.sort(function(a, b) { return (sevOrder[a.severity] || 1) - (sevOrder[b.severity] || 1); });
+    var critCount = findings.filter(function(f) { return f.severity === 'critical'; }).length;
+    var warnCount = findings.filter(function(f) { return f.severity === 'warning'; }).length;
+    var goodCount = findings.filter(function(f) { return f.severity === 'positive'; }).length;
+    var badge = '';
+    if (critCount > 0) badge += '<span style="color:var(--color-danger);font-size:.8rem;margin-left:.5rem;">' + critCount + ' critical</span>';
+    if (warnCount > 0) badge += '<span style="color:var(--color-warning);font-size:.8rem;margin-left:.5rem;">' + warnCount + ' warning</span>';
+    if (goodCount > 0) badge += '<span style="color:var(--color-success);font-size:.8rem;margin-left:.5rem;">' + goodCount + ' good</span>';
+    var html = '<div class="collapsible"><button class="collapsible-toggle"><span>' + escHtml(title) + ': ' + escHtml(subtitle) + badge + '</span><span class="arrow">&#9660;</span></button>';
     html += '<div class="collapsible-content"><div class="collapsible-content-inner">';
     findings.forEach(function(f, idx) { html += renderFinding(f, idx); });
     html += '</div></div></div>';
@@ -616,6 +627,8 @@ section { padding: 4.5rem 0; }
       var loomSection = document.getElementById('walkthrough');
       loomSection.classList.add('visible');
       document.getElementById('loomEmbed').src = audit.loom_url.replace('loom.com/share/', 'loom.com/embed/');
+      var navWalk = document.getElementById('navWalkthrough');
+      if (navWalk) navWalk.style.display = '';
     }
 
     // Hero
