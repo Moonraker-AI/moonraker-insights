@@ -50,7 +50,15 @@ section{padding:3.5rem 0}
 .section-nav .nav-dot{width:6px;height:6px;border-radius:50%;background:var(--color-border);flex-shrink:0;transition:all .25s}
 .section-nav a.active .nav-dot{background:var(--color-primary);width:8px;height:8px;box-shadow:0 0 6px rgba(0,212,126,.5)}
 @media print{.section-nav,.theme-toggle,.progress-line,.suite-nav{display:none !important}}
-/* Stats */
+.hero{padding:5.5rem 0 4rem;position:relative;overflow:hidden}
+.hero::before{content:'';position:absolute;top:-100px;right:-80px;width:500px;height:500px;background:radial-gradient(circle at 30% 40%,rgba(0,212,126,.06) 0%,transparent 60%);pointer-events:none}
+.hero-layout{display:grid;grid-template-columns:1fr 280px;gap:3rem;align-items:center}
+@media(max-width:768px){.hero-layout{grid-template-columns:1fr}.hero-visual{display:none}}
+.hero-content{position:relative;z-index:1}
+.hero h1{margin-bottom:1rem}
+.hero .subtitle{font-size:1.0625rem;color:var(--color-muted);max-width:520px;line-height:1.7}
+.badge{display:inline-block;background:var(--color-primary-subtle);color:var(--color-primary);font-weight:600;font-size:.75rem;padding:.4rem 1rem;border-radius:100px;letter-spacing:.04em;text-transform:uppercase;margin-bottom:1rem}
+.hero-visual svg{width:100%;height:auto}
 .stat-row{display:grid;grid-template-columns:repeat(auto-fit,minmax(120px,1fr));gap:1rem;margin:1.5rem 0 2rem}
 .stat-box{background:var(--color-surface);border:1px solid var(--color-border);border-radius:12px;padding:1.25rem;text-align:center}
 .stat-val{font-family:'Outfit',sans-serif;font-weight:800;font-size:1.75rem;color:var(--color-heading);line-height:1}
@@ -97,9 +105,26 @@ section{padding:3.5rem 0}
 <div class="suite-nav"><a id="navDiagnosis" href="#">Diagnosis</a><a href="#" class="active">Action Plan</a><a id="navProgress" href="#">Progress</a></div>
 <button class="theme-toggle" id="themeBtn">&#x1F319;</button>
 <nav class="section-nav" id="sectionNav"></nav>
-<section id="overview" style="padding-top:4rem;"><div class="container">
-  <h1 id="heroTitle"></h1>
-  <p style="font-size:1.0625rem;color:var(--color-muted);margin-top:.5rem;" id="heroSub">Prioritized tasks from your CORE audit, organized by implementation phase.</p>
+<section class="hero" id="overview"><div class="container">
+  <div class="hero-layout">
+    <div class="hero-content">
+      <span class="badge">Action Plan</span>
+      <h1 id="heroTitle">Your Action Plan</h1>
+      <p class="subtitle">Prioritized tasks from your CORE audit, organized by implementation phase.</p>
+    </div>
+    <div class="hero-visual">
+      <svg viewBox="0 0 280 280" fill="none" xmlns="http://www.w3.org/2000/svg">
+        <circle cx="140" cy="140" r="120" stroke="var(--color-primary)" stroke-width=".5" opacity=".2"/>
+        <circle cx="140" cy="140" r="90" stroke="var(--color-primary)" stroke-width=".5" opacity=".15"/>
+        <circle cx="140" cy="140" r="60" stroke="var(--color-primary)" stroke-width=".5" opacity=".1"/>
+        <circle cx="140" cy="60" r="8" fill="var(--color-primary)" opacity=".7"><animateTransform attributeName="transform" type="rotate" from="0 140 140" to="360 140 140" dur="20s" repeatCount="indefinite"/></circle>
+        <circle cx="230" cy="140" r="6" fill="var(--color-info)" opacity=".5"><animateTransform attributeName="transform" type="rotate" from="0 140 140" to="-360 140 140" dur="25s" repeatCount="indefinite"/></circle>
+        <circle cx="140" cy="200" r="5" fill="var(--color-warning)" opacity=".4"><animateTransform attributeName="transform" type="rotate" from="0 140 140" to="360 140 140" dur="30s" repeatCount="indefinite"/></circle>
+        <text x="140" y="130" text-anchor="middle" font-family="Outfit" font-weight="700" font-size="16" fill="var(--color-heading)">CORE</text>
+        <text x="140" y="148" text-anchor="middle" font-family="Inter" font-weight="400" font-size="10" fill="var(--color-muted)" letter-spacing=".06em">ACTION PLAN</text>
+      </svg>
+    </div>
+  </div>
 </div></section>
 <hr class="divider">
 <section id="tasks"><div class="container" id="phasesContainer"></div></section>
@@ -185,8 +210,13 @@ section{padding:3.5rem 0}
     sn+='<a href="#next"><span class="nav-dot"></span>Next Steps</a>';
     document.getElementById('sectionNav').innerHTML=sn;
     document.getElementById('footerText').textContent='Prepared for '+(contact.first_name||'')+' '+(contact.last_name||'')+creds+' \u00B7 '+name+' \u00B7 Confidential';
+    document.getElementById('heroTitle').textContent=name+': Action Plan';
     document.getElementById('loadingState').style.display='none';
     document.getElementById('mainContent').style.display='block';
+    setTimeout(function(){
+      document.querySelectorAll('.hero-visual animateTransform').forEach(function(a){if(a.beginElement)a.beginElement()});
+      var svg=document.querySelector('.hero-visual svg');if(svg){svg.style.display='none';svg.offsetHeight;svg.style.display=''}
+    },50);
     setTimeout(function(){onScroll()},100);
   }
   var tb=document.getElementById('themeBtn');
