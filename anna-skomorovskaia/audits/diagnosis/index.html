@@ -389,7 +389,7 @@ section{padding:3.5rem 0}
       fh+='<button class="collapsible-toggle" onclick="this.parentElement.classList.toggle(\'open\')"><span>'+esc(p.title)+': '+esc(p.sub)+badge+'</span><span class="arrow">&#9660;</span></button>';
       fh+='<div class="collapsible-content"><div class="collapsible-content-inner">';
       findings.forEach(function(f){
-        var icon=f.severity==='critical'?'&#128308;':f.severity==='warning'?'&#128992;':'&#9989;';
+        var icon=f.severity==='critical'?'&#128308;':f.severity==='warning'?'&#9888;&#65039;':'&#9989;';
         var ow=f.owner?'<span class="finding-owner '+f.owner.toLowerCase()+'">'+esc(f.owner)+'</span>':'';
         fh+='<div class="finding"><span class="finding-icon">'+icon+'</span><div>';
         fh+='<p><span class="highlight">'+esc(f.title)+'</span>'+ow+'</p>';
