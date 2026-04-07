@@ -269,6 +269,7 @@ section{padding:3.5rem 0}
     if(pLine)pLine.style.width=(dh>0?(st/dh)*100:0)+'%';
     var secs=document.querySelectorAll('section[id]');var cur='';
     secs.forEach(function(s){if(st>=s.offsetTop-200)cur=s.id});
+    if(!cur&&secs.length>0)cur=secs[0].id;
     document.querySelectorAll('.section-nav a').forEach(function(l){l.classList.toggle('active',l.getAttribute('href')==='#'+cur)});
   }
   window.addEventListener('scroll',onScroll);
