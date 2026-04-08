@@ -149,7 +149,6 @@ module.exports = async function handler(req, res) {
       headers: headers,
       body: JSON.stringify({
         lf_campaign_keys: campaignKeys,
-        active: true,
         updated_at: new Date().toISOString()
       })
     });
@@ -213,7 +212,7 @@ module.exports = async function handler(req, res) {
       credits_per_run: totalCredits,
       first_run: startDate + ' 6:00 AM UTC',
       frequency: 'monthly',
-      config_active: true,
+      config_active: config.active || false,
       campaign_errors: campaignErrors.length > 0 ? campaignErrors : undefined
     });
 
@@ -221,3 +220,4 @@ module.exports = async function handler(req, res) {
     return res.status(500).json({ error: e.message || 'Internal error' });
   }
 };
+
