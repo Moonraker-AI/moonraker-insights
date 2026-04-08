@@ -126,8 +126,9 @@ strong { font-weight: 600; color: var(--color-heading); }
 .detail-panel.open { display: block; }
 
 /* Tabs */
-.tabs { display: flex; gap: 0; border-bottom: 1px solid var(--color-border); margin-bottom: 1.5rem; }
-.tab { padding: .6rem 1.25rem; font-size: .85rem; font-weight: 500; color: var(--color-muted); cursor: pointer; border-bottom: 2px solid transparent; transition: all .2s; background: none; border-top: none; border-left: none; border-right: none; font-family: inherit; }
+.tabs { display: flex; gap: 0; border-bottom: 1px solid var(--color-border); margin-bottom: 1.5rem; overflow-x: auto; -webkit-overflow-scrolling: touch; scrollbar-width: none; }
+.tabs::-webkit-scrollbar { display: none; }
+.tab { padding: .6rem 1.25rem; font-size: .85rem; font-weight: 500; color: var(--color-muted); cursor: pointer; border-bottom: 2px solid transparent; transition: all .2s; background: none; border-top: none; border-left: none; border-right: none; font-family: inherit; white-space: nowrap; flex-shrink: 0; }
 .tab:hover { color: var(--color-heading); }
 .tab.active { color: var(--color-primary); border-bottom-color: var(--color-primary); }
 .tab-content { display: none; }
@@ -391,7 +392,7 @@ strong { font-weight: 600; color: var(--color-heading); }
       <span style="font-size:.78rem;color:var(--color-muted);" id="lastRefresh"></span>
     </div>
   </div>
-  <div class="content" style="padding: 2rem; max-width: 1400px;">
+  <div class="content" style="padding: 2rem; max-width: 1400px; overflow-x: hidden;">
 
 <div class="section-header" style="margin-bottom:.25rem;">
   <h2>Client Reports Overview</h2>
