@@ -176,19 +176,23 @@ a:hover { color: var(--color-primary-hover); }
 /* Mobile */
 .sidebar-overlay { display: none; position: fixed; top: 0; left: 0; right: 0; bottom: 0; background: rgba(0,0,0,.35); z-index: 199; }
 .sidebar.open ~ .sidebar-overlay { display: block; }
+.sidebar-close { display: none; margin-left: auto; background: none; border: none; color: var(--color-muted); font-size: 1.3rem; cursor: pointer; padding: .25rem; line-height: 1; }
+.sidebar-close:hover { color: var(--color-heading); }
 .mobile-toggle { display: none; background: none; border: none; color: var(--color-heading); font-size: 1.25rem; cursor: pointer; padding: .25rem; }
 @media (max-width: 860px) {
   .sidebar { transform: translateX(-100%); }
   .sidebar.open { transform: translateX(0); box-shadow: 4px 0 20px rgba(0,0,0,.15); }
   .main { margin-left: 0; }
   .mobile-toggle { display: block; }
-  .step-grid { grid-template-columns: repeat(4, 1fr); }
+  .sidebar-close { display: block; }
+  .step-grid { display: flex; overflow-x: auto; -webkit-overflow-scrolling: touch; scrollbar-width: none; }
+  .step-grid::-webkit-scrollbar { display: none; }
+  .step-cell { min-width: 64px; flex-shrink: 0; }
   .matrix-table .hide-mobile { display: none; }
 }
 @media (max-width: 560px) {
   .content { padding: 1rem; }
   .topbar { padding: 0 1rem; }
-  .step-grid { grid-template-columns: repeat(4, 1fr); }
 }
 
 /* ---- COLLAPSIBLE SIDEBAR ---- */
@@ -254,6 +258,7 @@ a:hover { color: var(--color-primary-hover); }
   <div class="sidebar-header">
     <img src="/assets/logo.png" alt="Moonraker">
     <span>Client HQ</span>
+    <button class="sidebar-close" id="sidebarClose" aria-label="Close menu">&times;</button>
   </div>
   <nav class="sidebar-nav">
     <div class="nav-section">Overview</div>
