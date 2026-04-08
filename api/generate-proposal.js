@@ -11,9 +11,11 @@
 //   4. Fill template with generated content + view tracking
 //   5. Deploy proposal + checkout + onboarding + router to GitHub
 //   6. Update proposal record with URLs and status
+//   7. Convert lead to prospect + seed 9 onboarding steps
+//   8. Create Google Drive folder hierarchy (Creative, Docs, Optimization, Web Design)
 //
 // ENV VARS:
-//   SUPABASE_SERVICE_ROLE_KEY, ANTHROPIC_API_KEY, GITHUB_PAT
+//   SUPABASE_SERVICE_ROLE_KEY, ANTHROPIC_API_KEY, GITHUB_PAT, GOOGLE_SERVICE_ACCOUNT_JSON
 
 module.exports = async function handler(req, res) {
   if (req.method !== 'POST') return res.status(405).json({ error: 'Method not allowed' });
@@ -549,6 +551,111 @@ Respond with ONLY valid JSON (no markdown, no backticks). The JSON must have the
     })
   }).catch(function(){});
 
+  // ─── 7. Convert lead to prospect + seed onboarding ────────────
+  results.conversion = {};
+  try {
+    // Flip status to prospect
+    var convResp = await fetch(sbUrl + '/rest/v1/contacts?id=eq.' + contact.id, {
+      method: 'PATCH', headers: sbHeaders(),
+      body: JSON.stringify({
+        status: 'prospect',
+        converted_from_lead_at: new Date().toISOString()
+      })
+    });
+    results.conversion.status = convResp.ok ? 'prospect' : 'failed';
+
+    // Seed 9 onboarding steps (delete existing first for idempotency)
+    await fetch(sbUrl + '/rest/v1/onboarding_steps?contact_id=eq.' + contact.id, {
+      method: 'DELETE', headers: sbHeaders()
+    });
+    var onboardingSteps = [
+      { contact_id: contact.id, step_key: 'confirm_info', label: 'Confirm Info', status: 'pending', sort_order: 1 },
+      { contact_id: contact.id, step_key: 'sign_agreement', label: 'Sign Agreement', status: 'pending', sort_order: 2 },
+      { contact_id: contact.id, step_key: 'book_intro_call', label: 'Book Intro Call', status: 'pending', sort_order: 3 },
+      { contact_id: contact.id, step_key: 'connect_accounts', label: 'Connect Accounts', status: 'pending', sort_order: 4 },
+      { contact_id: contact.id, step_key: 'practice_details', label: 'Practice Details', status: 'pending', sort_order: 5 },
+      { contact_id: contact.id, step_key: 'bio_materials', label: 'Bio Materials', status: 'pending', sort_order: 6 },
+      { contact_id: contact.id, step_key: 'social_profiles', label: 'Social Profiles', status: 'pending', sort_order: 7 },
+      { contact_id: contact.id, step_key: 'checkins_and_drive', label: 'Google Drive', status: 'pending', sort_order: 8 },
+      { contact_id: contact.id, step_key: 'performance_guarantee', label: 'Performance Guarantee', status: 'pending', sort_order: 9 }
+    ];
+    var seedResp = await fetch(sbUrl + '/rest/v1/onboarding_steps', {
+      method: 'POST', headers: sbHeaders(),
+      body: JSON.stringify(onboardingSteps)
+    });
+    results.conversion.onboarding_steps = seedResp.ok ? 9 : 'failed';
+  } catch (convErr) {
+    results.conversion.error = convErr.message || String(convErr);
+  }
+
+  // ─── 8. Create Google Drive folder hierarchy ──────────────────
+  var saJson = process.env.GOOGLE_SERVICE_ACCOUNT_JSON;
+  var CLIENTS_FOLDER_ID = '1dymrrowTe1szsOJJPf45x4qDUit6J5jB';
+  results.drive = {};
+
+  if (saJson) {
+    try {
+      var practiceName = contact.practice_name || slug;
+      var driveToken = await getDelegatedToken(saJson, 'support@moonraker.ai', 'https://www.googleapis.com/auth/drive');
+      if (driveToken && typeof driveToken === 'string') {
+        var driveHeaders = { 'Authorization': 'Bearer ' + driveToken, 'Content-Type': 'application/json' };
+
+        // Create parent folder: Drive > Clients > [Practice Name]
+        var parentFolder = await createDriveFolder(practiceName, CLIENTS_FOLDER_ID, driveHeaders);
+        if (parentFolder && parentFolder.id) {
+          results.drive.parent = { id: parentFolder.id, name: practiceName };
+
+          // Top-level subfolders with nested children
+          var folderTree = [
+            { name: 'Creative', children: ['Headshots', 'Logos', 'Pics', 'Vids', 'Other'] },
+            { name: 'Docs', children: ['GBP Posts', 'Press Releases'] },
+            { name: 'Optimization', children: [] },
+            { name: 'Web Design', children: [] }
+          ];
+
+          var creativeFolderId = null;
+          var createdSubs = [];
+
+          for (var f = 0; f < folderTree.length; f++) {
+            var node = folderTree[f];
+            var sub = await createDriveFolder(node.name, parentFolder.id, driveHeaders);
+            if (sub && sub.id) {
+              createdSubs.push(node.name);
+              if (node.name === 'Creative') creativeFolderId = sub.id;
+
+              // Create children
+              for (var c2 = 0; c2 < node.children.length; c2++) {
+                var child = await createDriveFolder(node.children[c2], sub.id, driveHeaders);
+                if (child && child.id) createdSubs.push(node.name + '/' + node.children[c2]);
+              }
+            }
+          }
+          results.drive.subfolders = createdSubs;
+
+          // Write Creative folder ID to contacts for onboarding page
+          if (creativeFolderId) {
+            await fetch(sbUrl + '/rest/v1/contacts?id=eq.' + contact.id, {
+              method: 'PATCH', headers: sbHeaders(),
+              body: JSON.stringify({
+                drive_folder_id: creativeFolderId,
+                drive_folder_url: 'https://drive.google.com/drive/folders/' + creativeFolderId
+              })
+            });
+            results.drive.creative_folder = 'https://drive.google.com/drive/folders/' + creativeFolderId;
+          }
+        } else {
+          results.drive.error = 'Failed to create parent folder: ' + JSON.stringify(parentFolder);
+        }
+      } else {
+        results.drive.error = 'Failed to get Drive token: ' + (driveToken && driveToken.error ? driveToken.error : 'unknown');
+      }
+    } catch (driveErr) {
+      results.drive.error = driveErr.message || String(driveErr);
+    }
+  } else {
+    results.drive.skipped = 'GOOGLE_SERVICE_ACCOUNT_JSON not configured';
+  }
+
   return res.status(200).json({
     ok: true,
     proposal_url: proposalUrl,
@@ -556,6 +663,77 @@ Respond with ONLY valid JSON (no markdown, no backticks). The JSON must have the
     results: results
   });
 };
+
+
+// ═══════════════════════════════════════════════════════════════════
+// Helper: Get access token via domain-wide delegation
+// ═══════════════════════════════════════════════════════════════════
+async function getDelegatedToken(saJson, impersonateEmail, scope) {
+  try {
+    var sa = typeof saJson === 'string' ? JSON.parse(saJson) : saJson;
+    if (!sa.private_key || !sa.client_email) {
+      throw new Error('SA JSON missing private_key or client_email');
+    }
+    var crypto = require('crypto');
+
+    var header = Buffer.from(JSON.stringify({ alg: 'RS256', typ: 'JWT' })).toString('base64url');
+    var now = Math.floor(Date.now() / 1000);
+    var claims = Buffer.from(JSON.stringify({
+      iss: sa.client_email,
+      sub: impersonateEmail,
+      scope: scope,
+      aud: 'https://oauth2.googleapis.com/token',
+      iat: now,
+      exp: now + 3600
+    })).toString('base64url');
+
+    var signable = header + '.' + claims;
+    var signer = crypto.createSign('RSA-SHA256');
+    signer.update(signable);
+    var signature = signer.sign(sa.private_key, 'base64url');
+
+    var jwt = signable + '.' + signature;
+
+    var tokenResp = await fetch('https://oauth2.googleapis.com/token', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
+      body: 'grant_type=urn%3Aietf%3Aparams%3Aoauth%3Agrant-type%3Ajwt-bearer&assertion=' + jwt
+    });
+    var tokenData = await tokenResp.json();
+    if (!tokenData.access_token) {
+      throw new Error(tokenData.error_description || tokenData.error || JSON.stringify(tokenData));
+    }
+    return tokenData.access_token;
+  } catch (e) {
+    return { error: e.message || String(e) };
+  }
+}
+
+
+// ═══════════════════════════════════════════════════════════════════
+// Helper: Create a folder in Google Drive
+// ═══════════════════════════════════════════════════════════════════
+async function createDriveFolder(name, parentId, headers) {
+  try {
+    var resp = await fetch('https://www.googleapis.com/drive/v3/files', {
+      method: 'POST',
+      headers: headers,
+      body: JSON.stringify({
+        name: name,
+        mimeType: 'application/vnd.google-apps.folder',
+        parents: [parentId]
+      })
+    });
+    if (!resp.ok) {
+      var errBody = await resp.text();
+      return { error: 'Drive API ' + resp.status + ': ' + errBody };
+    }
+    return await resp.json();
+  } catch (e) {
+    return { error: e.message || String(e) };
+  }
+}
+
 
 
 
