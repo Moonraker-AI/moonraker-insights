@@ -472,6 +472,7 @@ strong { font-weight: 600; color: var(--color-heading); }
 .cp-actions .btn { font-size: .75rem; padding: .35rem .65rem; }
 .paste-surge-area { width: 100%; min-height: 100px; background: var(--color-bg); border: 1px solid var(--color-border); border-radius: 8px; padding: .65rem; font-size: .78rem; font-family: 'Inter', sans-serif; color: var(--color-body); resize: vertical; margin-bottom: .5rem; }
 .paste-surge-area:focus { outline: none; border-color: var(--color-primary); }
+.cp-stale-banner { padding: .5rem; background: rgba(245,158,11,.08); border-radius: 6px; font-size: .75rem; color: #D97706; margin-bottom: .5rem; display: flex; align-items: center; gap: .35rem; }
 .content-filter-pill { padding: .3rem .65rem; border-radius: 6px; font-size: .72rem; font-weight: 500; border: 1px solid var(--color-border); background: transparent; color: var(--color-muted); cursor: pointer; font-family: inherit; transition: all .15s; }
 .content-filter-pill:hover { border-color: var(--color-primary); color: var(--color-heading); }
 .content-filter-pill.active { background: var(--color-primary-subtle); border-color: var(--color-primary); color: var(--color-primary); }
@@ -4454,7 +4455,7 @@ strong { font-weight: 600; color: var(--color-heading); }
         h += '<div class="content-page-row' + (isExp ? ' expanded' : '') + '" onclick="toggleContentExpand(\'' + cp.id + '\')">';
         h += '<div class="cp-expand-icon">&#9654;</div>';
         h += '<span class="cp-type-badge ' + cp.page_type + '">' + cp.page_type + '</span>';
-        h += '<div class="cp-info"><div class="cp-title">' + esc(cp.page_name) + '</div>';
+        h += '<div class="cp-info"><div class="cp-title">' + esc(cp.page_name) + (cp.stale ? ' <span style="font-size:.6rem;font-weight:600;padding:.1rem .35rem;border-radius:3px;background:rgba(245,158,11,.12);color:#D97706;vertical-align:middle;margin-left:.35rem;">STALE</span>' : '') + '</div>';
         if (cp.target_keyword) h += '<div class="cp-keyword">' + esc(cp.target_keyword) + '</div>';
         h += '</div>';
         h += '<select class="cp-status-select st-' + cp.status + '" onchange="setContentPageStatus(\'' + cp.id + '\', this.value)" onclick="event.stopPropagation()">';
@@ -4469,6 +4470,7 @@ strong { font-weight: 600; color: var(--color-heading); }
         h += '</div>';
 
         h += '<div class="cp-expand-panel' + (isExp ? ' show' : '') + '"><div class="cp-expand-inner">';
+        if (cp.stale) h += '<div class="cp-stale-banner">&#9888; New endorsements have been processed since this page was last generated. Re-generate to include them.</div>';
         h += '<div class="cp-detail-grid">';
         h += '<div class="cp-detail-item"><label>Type</label><div class="val">' + esc(cp.page_type) + '</div></div>';
         h += '<div class="cp-detail-item"><label>Slug</label><div class="val">' + esc(cp.page_slug || '') + '</div></div>';
@@ -4548,6 +4550,10 @@ strong { font-weight: 600; color: var(--color-heading); }
         endorse.forEach(function(e) {
           eh += '<div class="endorsement-row">';
           eh += '<div class="end-name">' + esc(e.endorser_name || 'Anonymous') + '</div>';
+          if (e.bio_material_id) {
+            var bm = state.bioMaterials ? state.bioMaterials.find(function(b) { return b.id === e.bio_material_id; }) : null;
+            if (bm) eh += '<span style="font-size:.68rem;color:var(--color-muted);">for ' + esc(bm.therapist_name) + '</span>';
+          }
           if (e.endorsement_type) eh += '<span class="end-type">' + esc(e.endorsement_type) + '</span>';
           eh += '<span style="font-size:.72rem;color:' + (e.status === 'processed' ? 'var(--color-success)' : '#D97706') + ';">' + (e.status === 'processed' ? 'Processed' : 'Submitted') + '</span>';
           if (e.status !== 'processed') {
