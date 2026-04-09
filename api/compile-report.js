@@ -18,6 +18,8 @@
 //   SUPABASE_SERVICE_ROLE_KEY, ANTHROPIC_API_KEY, RESEND_API_KEY,
 //   LOCALFALCON_API_KEY,
 //   GOOGLE_SERVICE_ACCOUNT_JSON (optional - graceful skip if missing)
+var email = require('./_lib/email-template');
+
 
 module.exports = async function handler(req, res) {
   if (req.method !== 'POST') return res.status(405).json({ error: 'Method not allowed' });
@@ -779,30 +781,47 @@ module.exports = async function handler(req, res) {
         ? (geogridData.grid_count + ' grids | Avg ARP ' + geogridData.avg_arp + ' | SoLV ' + geogridData.avg_solv + '%')
         : null;
 
-      var emailBody = '<div style="font-family:Inter,sans-serif;max-width:520px;margin:0 auto;background:#fff;border-radius:12px;padding:32px">'
-        + '<div style="text-align:center"><img src="https://clients.moonraker.ai/assets/logo.png" height="32" alt="Moonraker" style="margin-bottom:16px"/></div>'
-        + '<div style="background:#F8FAFC;border-radius:10px;padding:24px">'
-        + '<h2 style="margin:0 0 4px;color:#1E2A5E;font-size:18px">' + practiceName + '</h2>'
-        + '<p style="margin:0 0 16px;color:#6B7599;font-size:14px">Month ' + campaignMonth + ' report ready for review</p>'
-        + '<table style="width:100%;font-size:14px;border-collapse:collapse">'
-        + (gscSummary ? '<tr><td style="padding:8px 0;color:#6B7599;border-bottom:1px solid #E2E8F0">GSC</td><td style="padding:8px 0;text-align:right;font-weight:600;color:#1E2A5E;border-bottom:1px solid #E2E8F0">' + gscSummary + '</td></tr>' : '')
-        + (gbpPerfData ? '<tr><td style="padding:8px 0;color:#6B7599;border-bottom:1px solid #E2E8F0">GBP Engagement</td><td style="padding:8px 0;text-align:right;font-weight:600;color:#1E2A5E;border-bottom:1px solid #E2E8F0">' + gbpPerfData.calls + ' calls, ' + gbpPerfData.website_clicks + ' web clicks, ' + gbpPerfData.direction_requests + ' directions</td></tr>' : '')
-        + (lfLocation ? '<tr><td style="padding:8px 0;color:#6B7599;border-bottom:1px solid #E2E8F0">GBP Rating</td><td style="padding:8px 0;text-align:right;font-weight:600;color:#1E2A5E;border-bottom:1px solid #E2E8F0">' + lfLocation.rating + ' stars (' + lfLocation.reviews + ' reviews)</td></tr>' : '')
-        + (aiSummary ? '<tr><td style="padding:8px 0;color:#6B7599;border-bottom:1px solid #E2E8F0">AI Visibility</td><td style="padding:8px 0;text-align:right;font-weight:600;color:#1E2A5E;border-bottom:1px solid #E2E8F0">' + aiSummary + '</td></tr>' : '')
-        + (mapsSummary ? '<tr><td style="padding:8px 0;color:#6B7599;border-bottom:1px solid #E2E8F0">Maps (LocalFalcon)</td><td style="padding:8px 0;text-align:right;font-weight:600;color:#1E2A5E;border-bottom:1px solid #E2E8F0">' + mapsSummary + '</td></tr>' : '')
-        + '</table>'
-        + (errors.length > 0 ? '<p style="color:#EF4444;font-size:13px">Warnings: ' + errors.join('; ') + '</p>' : '')
-        + '<a href="' + reviewUrl + '" style="display:inline-block;background:#00D47E;color:#fff;font-weight:600;padding:12px 24px;border-radius:8px;text-decoration:none;margin-top:8px">Review Report</a>'
-        + '</div></div>';
+      // Build data rows as HTML table
+      var dataRows = '';
+      function dataRow(label, value) {
+        if (!value) return '';
+        return '<tr>' +
+          '<td style="padding:8px 0;color:#6B7599;font-family:Inter,sans-serif;font-size:14px;border-bottom:1px solid #E2E8F0">' + email.esc(label) + '</td>' +
+          '<td style="padding:8px 0;text-align:right;font-weight:600;color:#1E2A5E;font-family:Inter,sans-serif;font-size:14px;border-bottom:1px solid #E2E8F0">' + email.esc(value) + '</td>' +
+          '</tr>';
+      }
+      dataRows += dataRow('GSC', gscSummary);
+      if (gbpPerfData) dataRows += dataRow('GBP Engagement', gbpPerfData.calls + ' calls, ' + gbpPerfData.website_clicks + ' web clicks, ' + gbpPerfData.direction_requests + ' directions');
+      if (lfLocation) dataRows += dataRow('GBP Rating', lfLocation.rating + ' stars (' + lfLocation.reviews + ' reviews)');
+      dataRows += dataRow('AI Visibility', aiSummary);
+      dataRows += dataRow('Maps (LocalFalcon)', mapsSummary);
+
+      var warningHtml = '';
+      if (errors.length > 0) {
+        warningHtml = email.p('<span style="color:#EF4444">Warnings: ' + email.esc(errors.join('; ')) + '</span>');
+      }
+
+      var content =
+        email.sectionHeading(practiceName) +
+        email.p('Month ' + campaignMonth + ' report is ready for review.') +
+        (dataRows ? '<table cellpadding="0" cellspacing="0" border="0" width="100%" style="margin-bottom:20px">' + dataRows + '</table>' : '') +
+        warningHtml +
+        email.cta(reviewUrl, 'Review Report');
+
+      var emailHtml = email.wrap({
+        headerLabel: 'Team Notification',
+        content: content,
+        footerNote: 'This is an internal notification for the Moonraker team.'
+      });
 
       var emailResp = await fetch('https://api.resend.com/emails', {
         method: 'POST',
         headers: { 'Authorization': 'Bearer ' + resendKey, 'Content-Type': 'application/json' },
         body: JSON.stringify({
-          from: 'Client HQ <notifications@clients.moonraker.ai>',
+          from: email.FROM.notifications,
           to: ['chris@moonraker.ai', 'scott@moonraker.ai'],
           subject: 'Report Ready: ' + practiceName + ' - Month ' + campaignMonth,
-          html: emailBody
+          html: emailHtml
         })
       });
       notificationSent = emailResp.ok;
@@ -1207,5 +1226,6 @@ function ordinal(n) {
   var v = n % 100;
   return n + (s[(v - 20) % 10] || s[v] || s[0]);
 }
+
 
 
