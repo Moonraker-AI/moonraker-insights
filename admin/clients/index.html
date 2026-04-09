@@ -397,6 +397,9 @@ strong { font-weight: 600; color: var(--color-heading); }
 .del-expand-desc { max-height: 0; overflow: hidden; transition: max-height .3s ease; border-bottom: 1px solid transparent; }
 .del-expand-desc.show { max-height: 600px; border-bottom-color: var(--color-border); }
 .del-expand-desc-inner { padding: .65rem .75rem .65rem 3.25rem; font-size: .78rem; color: var(--color-body); line-height: 1.6; }
+.del-notes-edit { width: 100%; background: var(--color-bg); border: 1px solid var(--color-border); border-radius: 6px; padding: .5rem .65rem; font-size: .78rem; color: var(--color-body); line-height: 1.6; font-family: Inter, sans-serif; resize: vertical; min-height: 60px; transition: border-color .2s; }
+.del-notes-edit:focus { outline: none; border-color: var(--color-primary); }
+.del-notes-edit::placeholder { color: var(--color-muted); font-style: italic; }
 .del-status-select {
   padding: .25rem .4rem; border-radius: 6px; font-size: .72rem; font-weight: 500;
   font-family: inherit; cursor: pointer; border: 1px solid transparent;
@@ -527,14 +530,10 @@ strong { font-weight: 600; color: var(--color-heading); }
 
 /* Directory listings */
 .dir-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(260px, 1fr)); gap: .5rem; padding: 1rem; }
-.dir-item { display: flex; flex-direction: column; padding: .5rem .75rem; border: 1px solid var(--color-border); border-radius: 8px; font-size: .82rem; transition: background .15s, border-color .15s; }
+.dir-item { display: flex; justify-content: space-between; align-items: center; padding: .5rem .75rem; border: 1px solid var(--color-border); border-radius: 8px; font-size: .82rem; }
 .dir-name { font-weight: 500; }
 .dir-item.dir-live { border-color: rgba(0,212,126,.3); background: rgba(0,212,126,.04); }
 .dir-item.dir-live .dir-name { color: var(--color-heading); }
-.dir-item.dir-claimed { border-color: rgba(59,130,246,.25); background: rgba(59,130,246,.04); }
-.dir-item.dir-needs_update { border-color: rgba(245,158,11,.25); background: rgba(245,158,11,.04); }
-.dir-url-input { flex: 1; font-size: .75rem; padding: .25rem .4rem; border: 1px solid var(--color-border); border-radius: 4px; background: var(--color-surface); color: var(--color-heading); font-family: inherit; min-width: 0; }
-.dir-url-input:focus { border-color: var(--color-primary); outline: none; }
 .rt-delete-url { font-size: 1.1rem; color: var(--color-muted); cursor: pointer; line-height: 1; padding: .1rem .25rem; border-radius: 3px; transition: all .15s; }
 .rt-delete-url:hover { color: var(--color-danger); background: rgba(239,68,68,.08); }
 .sort-arrow.desc { transform: rotate(180deg); }
@@ -2015,7 +2014,6 @@ strong { font-weight: 600; color: var(--color-heading); }
       method: 'POST', headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({ action: 'update_record', table: 'social_platforms', filters: { id: id }, data: { status: newStatus, updated_at: new Date().toISOString() } })
     });
-    renderSocialPlatforms();
   };
 
   window.togglePlatformAccess = function(id) {
@@ -2078,6 +2076,7 @@ strong { font-weight: 600; color: var(--color-heading); }
       return;
     }
 
+    // Sort: live first, then by name
     var sorted = dirs.slice().sort(function(a, b) {
       if (a.status === 'live' && b.status !== 'live') return -1;
       if (b.status === 'live' && a.status !== 'live') return 1;
@@ -2089,25 +2088,23 @@ strong { font-weight: 600; color: var(--color-heading); }
     h += '<div class="dir-grid">';
     sorted.forEach(function(d) {
       var label = DIR_LABELS[d.directory] || d.directory.replace(/_/g, ' ');
-      var statusClass = d.status === 'live' ? ' dir-live' : (d.status === 'claimed' ? ' dir-claimed' : (d.status === 'needs_update' ? ' dir-needs_update' : ''));
-      h += '<div class="dir-item' + statusClass + '">';
-      h += '<div style="display:flex;justify-content:space-between;align-items:center;width:100%;gap:.5rem;">';
+      var isLive = d.status === 'live';
+      h += '<div class="dir-item' + (isLive ? ' dir-live' : '') + '">';
       h += '<span class="dir-name">' + esc(label) + '</span>';
-      h += '<select class="rt-status-select" onchange="updateDirStatus(\'' + d.id + '\', this.value)" style="font-size:.72rem;flex-shrink:0;">';
-      ['not_listed','claimed','live','needs_update'].forEach(function(s) {
-        var sl = s.replace(/_/g, ' ');
-        h += '<option value="' + s + '"' + (d.status === s ? ' selected' : '') + '>' + sl.charAt(0).toUpperCase() + sl.slice(1) + '</option>';
-      });
-      h += '</select>';
-      h += '</div>';
-      if (d.profile_url) {
+      if (isLive && d.profile_url) {
         var safeDirUrl = normalizeUrl(d.profile_url);
-        h += '<div style="display:flex;align-items:center;gap:.4rem;margin-top:.25rem;">';
-        h += '<a href="' + esc(safeDirUrl) + '" target="_blank" style="font-size:.72rem;color:var(--color-primary);text-decoration:none;flex:1;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;">' + esc(d.profile_url.replace(/^https?:\/\//, '').slice(0, 35)) + '</a>';
-        h += '<span class="rt-delete-url" onclick="clearDirUrl(\'' + d.id + '\')" title="Remove URL" style="font-size:.9rem;">&times;</span>';
+        h += '<div style="display:flex;align-items:center;gap:.4rem;">';
+        h += '<a href="' + esc(safeDirUrl) + '" target="_blank" style="font-size:.75rem;color:var(--color-primary);text-decoration:none;">View &#8599;</a>';
+        h += '<span style="font-size:.7rem;cursor:pointer;color:var(--color-primary);" onclick="editDirUrl(\'' + d.id + '\')" title="Edit">&#9998;</span>';
+        h += '<span class="rt-delete-url" onclick="clearDirUrl(\'' + d.id + '\')" title="Remove">&times;</span>';
         h += '</div>';
       } else {
-        h += '<div style="margin-top:.25rem;"><input type="text" class="dir-url-input" placeholder="Paste listing URL..." onkeydown="if(event.key===\'Enter\')saveDirUrlInline(\'' + d.id + '\',this.value)" onblur="saveDirUrlInline(\'' + d.id + '\',this.value)"></div>';
+        h += '<select class="rt-status-select" onchange="updateDirStatus(\'' + d.id + '\', this.value)" style="font-size:.72rem;">';
+        ['not_listed','claimed','live','needs_update'].forEach(function(s) {
+          var sl = s.replace(/_/g, ' ');
+          h += '<option value="' + s + '"' + (d.status === s ? ' selected' : '') + '>' + sl.charAt(0).toUpperCase() + sl.slice(1) + '</option>';
+        });
+        h += '</select>';
       }
       h += '</div>';
     });
@@ -2118,24 +2115,15 @@ strong { font-weight: 600; color: var(--color-heading); }
   window.updateDirStatus = function(id, newStatus) {
     var d = state.directoryListings.find(function(d) { return d.id === id; });
     if (!d) return;
+    if (newStatus === 'live' && !d.profile_url) {
+      var url = prompt('Enter the directory listing URL:');
+      if (!url || !url.trim()) return;
+      d.profile_url = normalizeUrl(url);
+    }
     d.status = newStatus;
     fetch('/api/action', {
       method: 'POST', headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({ action: 'update_record', table: 'directory_listings', filters: { id: id }, data: { status: newStatus, profile_url: d.profile_url, updated_at: new Date().toISOString() } })
-    });
-    renderDirectories();
-  };
-
-  window.saveDirUrlInline = function(id, rawUrl) {
-    var url = normalizeUrl(rawUrl);
-    if (!url) return;
-    var d = state.directoryListings.find(function(d) { return d.id === id; });
-    if (!d) return;
-    d.profile_url = url;
-    if (d.status === 'not_listed') d.status = 'live';
-    fetch('/api/action', {
-      method: 'POST', headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ action: 'update_record', table: 'directory_listings', filters: { id: id }, data: { profile_url: url, status: d.status, updated_at: new Date().toISOString() } })
     });
     renderDirectories();
   };
@@ -2248,45 +2236,35 @@ strong { font-weight: 600; color: var(--color-heading); }
 
   // ---- INTRO CALL TAB ----
   var IC_STEPS = [
-    { key: 'verify_website_access', label: 'Verify Website Access', cat: 'platform_access', sort: 1,
-      desc: '<div class="ic-detail-label">Talking Points</div><ul><li>Confirm we can log into the CMS (WordPress, Squarespace, Wix, etc.) with admin-level credentials</li><li>Check which website platform they are on and note it on the contact record</li><li>If WordPress: note any page builders (Elementor, Bricks, Divi) and caching plugins</li><li>If they don\'t have credentials handy, ask them to share via the Connect Accounts step in onboarding</li></ul><div class="ic-detail-label">Why This Matters</div><p>We need direct CMS access to implement schema, restructure headings, edit Hero sections, and build target pages with custom HTML blocks.</p>' },
-    { key: 'gsc_configured', label: 'GSC Configured + SA Added', cat: 'platform_access', sort: 2,
-      desc: '<div class="ic-detail-label">Post-Leadsie: Manual Step Required</div><ul><li>Once Leadsie grants <code>support@moonraker.ai</code> access to GSC, log in as support@ and manually add <code>reporting@moonraker-client-hq.iam.gserviceaccount.com</code> as a Restricted user</li><li>This is the <strong>only platform without a user management API</strong> - all others are automated via Bootstrap</li><li>GSC property auto-discovery runs when the GSC Setup deliverable is marked Delivered</li></ul>' },
-    { key: 'ga4_configured', label: 'GA4 Configured + SA Added', cat: 'platform_access', sort: 3,
-      desc: '<div class="ic-detail-label">Automated via Bootstrap</div><ul><li>Once Leadsie grants <code>support@</code> access to GA4, use the <strong>\u26a1 Setup</strong> button on the GA4 deliverable card</li><li>Bootstrap impersonates support@ to add the service account as Viewer and saves the <code>ga4_property</code></li><li>Confirm the measurement ID is firing correctly on the site</li></ul>' },
-    { key: 'gtm_configured', label: 'GTM Configured + SA Added', cat: 'platform_access', sort: 4,
-      desc: '<div class="ic-detail-label">Automated via Bootstrap</div><ul><li>Once Leadsie grants <code>support@</code> access to GTM, use the <strong>\u26a1 Setup</strong> button on the GTM deliverable card</li><li>Bootstrap impersonates support@ to add the service account with Read access</li><li>Confirm the GTM container is installed and GA4 fires through GTM</li></ul>' },
-    { key: 'gbp_access', label: 'GBP Access Confirmed', cat: 'platform_access', sort: 5,
-      desc: '<div class="ic-detail-label">Confirm During Intro Call</div><ul><li>Has the client claimed and verified their GBP listing?</li><li>Has Leadsie granted <code>support@moonraker.ai</code> Manager access?</li><li>Once confirmed, use Bootstrap to auto-add the service account and save the GBP location ID</li></ul>' },
-    { key: 'localfalcon_setup', label: 'LocalFalcon Location Added', cat: 'platform_access', sort: 6,
-      desc: '<div class="ic-detail-label">Automated via Bootstrap</div><ul><li>Use the <strong>\u26a1 Setup</strong> button on the LocalFalcon deliverable card, or <strong>\u26a1 Bootstrap All</strong> on Report Pipeline Config</li><li>Searches LocalFalcon by practice name + city, auto-adds location, saves <code>localfalcon_place_id</code></li><li>No Leadsie access required - runs directly against LocalFalcon API</li></ul>' },
-    { key: 'gbp_service_account', label: 'GBP Service Account Added', cat: 'platform_access', sort: 7,
-      desc: '<div class="ic-detail-label">Automated via Bootstrap</div><ul><li>Use the <strong>\u26a1 Setup</strong> button on the GBP Service Account deliverable card</li><li>Bootstrap impersonates <code>support@</code> (domain-wide delegation) to add the SA as Manager and extract the <code>gbp_location_id</code></li><li><strong>Prerequisite:</strong> Leadsie must have already granted support@ Manager access to the client GBP</li></ul>' },
-    { key: 'referral_source', label: 'Confirm Referral Source / Partner Commission', cat: 'campaign_setup', sort: 9,
-      desc: '<div class="ic-detail-label">Talking Points</div><ul><li>Ask the client how they heard about Moonraker</li><li>If they came through a partner referral, note the partner name so we can track commission</li><li>Check if they were part of an accelerator group, webinar, or other lead source</li><li>Record the referral source on their contact record for attribution</li></ul><div class="ic-detail-label">Why This Matters</div><p>Partner commissions depend on accurate attribution. If we don\'t capture where the client came from during the intro call, it becomes much harder to reconcile later. This also helps us understand which channels are driving the best clients.</p>' },
-    { key: 'pick_target_keywords', label: 'Pick Target Keywords (up to 5)', cat: 'campaign_setup', sort: 10,
-      desc: '<div class="ic-detail-label">Talking Points</div><ul><li>Review the client\'s specialties and modalities - which services drive the most revenue?</li><li>Select up to 5 primary keywords that map to target pages</li><li>Consider geographic modifiers (city, state/province)</li><li>For each keyword, decide if it maps to an existing page (update) or needs a new page</li></ul><div class="ic-detail-label">Naming Convention for Updated Pages</div><p>When updating an existing page, clone it to <code>domain.com/page-url-new</code> (append <code>-new</code>). This lets us track updates separately before merging upon client approval.</p><div class="ic-detail-label">Add Keywords Below</div><div id="icKeywordForm"></div>' },
-    { key: 'review_socials', label: 'Review Social Profiles + Marketing Account', cat: 'campaign_setup', sort: 11,
-      desc: '<div class="ic-detail-label">Talking Points</div><ul><li>Audit which social profiles already exist (YouTube, LinkedIn, Facebook, Instagram, Quora, Pinterest, TikTok, X)</li><li>Check if they have a dedicated Google marketing account (Workspace or Gmail)</li><li>Discuss Rising Tide strategy - we build and interlink 9 social profiles</li><li>Ask about platforms to skip (some clients prefer to omit TikTok or X)</li></ul><div class="ic-detail-label">Access Needed for Rising Tide</div><ul><li><strong>LinkedIn Business Page</strong> - client grants admin access via their personal LinkedIn</li><li><strong>Facebook Business Page</strong> - client grants admin access via their personal Facebook</li><li><strong>Quora Space</strong> - client creates from their device, invites us as admin</li><li><strong>YouTube Channel</strong> - client invites us as Manager via their Google marketing account</li></ul>' },
-    { key: 'check_booking_calendar', label: 'Check Booking Calendar', cat: 'campaign_setup', sort: 12,
-      desc: '<div class="ic-detail-label">Talking Points</div><ul><li>Confirm a booking calendar exists and is properly embedded on the website</li><li>Check the CTA copy - should be specific (e.g. "Book a Free 20-Min Consultation" not "Get Started")</li><li>Note the booking platform (SimplePractice, Calendly, Jane App, etc.)</li><li>We help install booking calendars but do NOT configure them (requires client calendar access)</li></ul>' },
-    { key: 'lead_attribution', label: 'Lead Attribution Setup', cat: 'campaign_setup', sort: 13,
-      desc: '<div class="ic-detail-label">Talking Points</div><p>Add a "How did you hear about us?" field to their contact/booking forms with these options:</p><ul><li><strong>Google Search</strong> - organic search results</li><li><strong>Google Maps</strong> - GBP listing / Maps results</li><li><strong>AI Search (Gemini, ChatGPT, etc.)</strong> - AI-generated answers</li><li><strong>Psychology Today</strong> - PT directory listing</li><li><strong>Referral</strong> - word of mouth / professional referral</li><li><strong>Other</strong> - catch-all for everything else</li></ul><div class="ic-detail-label">Why This Matters</div><p>This is how we track whether the campaign is driving new consultations. Without attribution, the client has no way to connect new leads back to our work. Also mention the Client Tracking Sheet as a companion tool.</p>' },
-    { key: 'google_marketing_account', label: 'Google Marketing Account', cat: 'campaign_setup', sort: 14,
-      desc: '<div class="ic-detail-label">Talking Points</div><ul><li>Ideally a paid Google Workspace account (e.g. <code>marketing@practicename.com</code>) - proves real human activity to Google</li><li>If Workspace isn\'t feasible, a free Gmail works (e.g. <code>practicemarketing@gmail.com</code>)</li><li>This account will own the YouTube channel, be used for DKIM/DMARC, and manage the campaign</li><li>If already on Workspace, we just create a new user for marketing</li></ul><div class="ic-detail-label">What We Need</div><p>The email address and password for the marketing account. Store securely - never share in plain text over email.</p>' },
+    { key: 'verify_website_access', label: 'Verify Website Platform & Access', cat: 'platform_access', sort: 1,
+      desc: '<div class="ic-detail-label">Quick Check</div><ul><li>Confirm the CMS platform (WordPress, Squarespace, Wix, etc.) and note it on the contact record</li><li>If WordPress: note page builder (Elementor, Bricks, Divi) and caching plugins</li><li>Verify we have or can get admin-level credentials</li><li>If credentials not handy, client shares via the Connect Accounts onboarding step</li></ul><p style="color:var(--color-muted);font-size:.78rem;">Actual platform setup (GSC, GA4, GTM, GBP) is tracked in Deliverables.</p>' },
+    { key: 'confirm_leadsie_access', label: 'Confirm Leadsie Access Requests', cat: 'platform_access', sort: 2,
+      desc: '<div class="ic-detail-label">Quick Check</div><ul><li>Confirm Leadsie invitation has been sent for GSC, GA4, GTM, and GBP access</li><li>Verify the client has accepted or knows to accept the Leadsie invite</li><li>Once Leadsie grants access, the team will complete setup via the Deliverables tab</li></ul><p style="color:var(--color-muted);font-size:.78rem;">Individual platform setup (access verification, service account config, LocalFalcon, report pipeline) is all tracked as deliverables.</p>' },
+    { key: 'referral_source', label: 'Confirm Referral Source', cat: 'campaign_setup', sort: 10,
+      desc: '<div class="ic-detail-label">Talking Points</div><ul><li>Ask how they heard about Moonraker</li><li>If partner referral, note the partner name for commission tracking</li><li>Check for accelerator group, webinar, or other lead source</li><li>Record the referral source on their contact record</li></ul>' },
+    { key: 'pick_target_keywords', label: 'Pick Target Keywords (up to 5)', cat: 'campaign_setup', sort: 11,
+      desc: '<div class="ic-detail-label">Talking Points</div><ul><li>Review specialties and modalities: which services drive the most revenue?</li><li>Select up to 5 primary keywords that map to target pages</li><li>Consider geographic modifiers (city, state/province)</li><li>For each keyword, decide if it maps to an existing page or needs a new one</li></ul><div class="ic-detail-label">Add Keywords Below</div><div id="icKeywordForm"></div>' },
+    { key: 'review_socials', label: 'Review Social Profiles', cat: 'campaign_setup', sort: 12,
+      desc: '<div class="ic-detail-label">Talking Points</div><ul><li>Audit existing social profiles (YouTube, LinkedIn, Facebook, Instagram, Quora, Pinterest, TikTok, X)</li><li>Discuss Rising Tide strategy: we build and interlink 9 social profiles</li><li>Ask about platforms to skip (some clients prefer to omit TikTok or X)</li><li>Check for a dedicated Google marketing account (Workspace or Gmail)</li></ul>' },
+    { key: 'check_booking_calendar', label: 'Check Booking Calendar', cat: 'campaign_setup', sort: 13,
+      desc: '<div class="ic-detail-label">Talking Points</div><ul><li>Confirm a booking calendar exists and is embedded on the website</li><li>Check CTA copy: should be specific (e.g. "Book a Free 20-Min Consultation")</li><li>Note the booking platform (SimplePractice, Calendly, Jane App, etc.)</li></ul>' },
+    { key: 'lead_attribution', label: 'Lead Attribution Setup', cat: 'campaign_setup', sort: 14,
+      desc: '<div class="ic-detail-label">Talking Points</div><p>Add a "How did you hear about us?" field to contact/booking forms:</p><ul><li><strong>Google Search</strong></li><li><strong>Google Maps</strong></li><li><strong>AI Search (Gemini, ChatGPT, etc.)</strong></li><li><strong>Psychology Today</strong></li><li><strong>Referral</strong></li><li><strong>Other</strong></li></ul><p>Also mention the Client Tracking Sheet as a companion tool.</p>' },
+    { key: 'google_marketing_account', label: 'Google Marketing Account', cat: 'campaign_setup', sort: 15,
+      desc: '<div class="ic-detail-label">Talking Points</div><ul><li>Ideally a paid Google Workspace account (e.g. <code>marketing@practicename.com</code>)</li><li>If Workspace not feasible, a free Gmail works</li><li>This account owns the YouTube channel and is used for DKIM/DMARC</li></ul>' },
     { key: 'content_turnaround', label: 'Set Content Feedback Expectations', cat: 'expectations', sort: 20,
-      desc: '<div class="ic-detail-label">Key Points to Communicate</div><ul><li><strong>Content feedback turnaround:</strong> approximately 1 week from when we send drafts</li><li><strong>Our response time:</strong> within 48 hours for all client communications</li><li><strong>Initial buildout target:</strong> 4-6 weeks to complete core deliverables</li><li><strong>Content approval:</strong> if no response within 7 days, we may publish and changes can be made after</li><li><strong>We handle all site content updates</strong> within our scope of work - client does not need to touch the site</li></ul>' },
+      desc: '<div class="ic-detail-label">Key Points</div><ul><li>Content feedback turnaround: ~1 week from when we send drafts</li><li>Our response time: within 48 hours</li><li>Initial buildout target: 4-6 weeks for core deliverables</li><li>If no response within 7 days, we may publish (changes can be made after)</li></ul>' },
     { key: 'scope_boundaries', label: 'Review Scope Boundaries', cat: 'expectations', sort: 21,
-      desc: '<div class="ic-detail-label">Key Boundaries to Set</div><ul><li><strong>NAP changes after buildout:</strong> $300 one-time (name, address, or phone update requires citation rebuild)</li><li><strong>Additional target pages beyond 5:</strong> $300 per page</li><li><strong>Additional press releases:</strong> $300 each</li><li><strong>WordPress plugins:</strong> we do not manage plugins long-term (outside scope)</li><li><strong>Email campaigns / EHR integrations:</strong> outside scope</li><li><strong>Website platform migration:</strong> we do not offer this</li></ul><div class="ic-detail-label">How to Frame It</div><p>We focus on what we do best: getting found and getting booked. Design, branding, messaging strategy, and platform management are separate disciplines.</p>' },
+      desc: '<div class="ic-detail-label">Key Boundaries</div><ul><li>NAP changes after buildout: $300 one-time</li><li>Additional target pages beyond 5: $300/page</li><li>Additional press releases: $300 each</li><li>WordPress plugins, email campaigns, EHR integrations, platform migrations: outside scope</li></ul>' },
     { key: 'schedule_checkins', label: 'Schedule Check-in Cadence', cat: 'expectations', sort: 22,
-      desc: '<div class="ic-detail-label">Talking Points</div><ul><li>Book the next check-in call before ending this one</li><li>Typical cadence: monthly for the first 3 months, then quarterly</li><li>Use Scott\'s calendar: <a href="https://msg.moonraker.ai/widget/bookings/scott-pope-calendar" target="_blank">Book a call</a></li><li>Between calls, Loom is preferred for async updates (always encourage Loom over calls)</li></ul>' },
+      desc: '<div class="ic-detail-label">Talking Points</div><ul><li>Book the next check-in before ending this call</li><li>Cadence: monthly for first 3 months, then quarterly</li><li>Use Scott\'s calendar: <a href="https://msg.moonraker.ai/widget/bookings/scott-pope-calendar" target="_blank">Book a call</a></li><li>Between calls, Loom preferred for async updates</li></ul>' },
     { key: 'client_tracking_sheet', label: 'Share Client Tracking Sheet', cat: 'expectations', sort: 23,
-      desc: '<div class="ic-detail-label">What to Share</div><p>The <a href="https://docs.google.com/spreadsheets/d/1N6gkmiJPAJsEMxmZG-4dfabiii7CoNCfrUDi6l1-txc/edit?gid=1346489400#gid=1346489400" target="_blank">Client Tracking Sheet</a> - a simple spreadsheet template for logging new client inquiries and attributing them to specific marketing channels.</p><div class="ic-detail-label">How to Frame It</div><p>This complements the "How did you hear about us?" form field. Even if attribution is on the forms, having a central tracking sheet helps the client see the pattern over time and gives us data to reference in monthly reports.</p>' },
+      desc: '<div class="ic-detail-label">What to Share</div><p>The <a href="https://docs.google.com/spreadsheets/d/1N6gkmiJPAJsEMxmZG-4dfabiii7CoNCfrUDi6l1-txc/edit?gid=1346489400#gid=1346489400" target="_blank">Client Tracking Sheet</a>: a simple template for logging new client inquiries and attributing them to marketing channels.</p>' },
     { key: 'intro_call_complete', label: 'Mark Intro Call Complete', cat: 'completion', sort: 99,
-      desc: '<div class="ic-detail-label">Final Step</div><p>Mark this step complete when the intro call is finished. This sends a notification to the team with a summary of which checklist items were covered and which still need follow-up.</p><p style="color:var(--color-muted);font-size:.8rem;">Not all tasks above need to be complete before marking this done. Pending items will be flagged in the notification so the team can follow up.</p>' }
+      desc: '<div class="ic-detail-label">Final Step</div><p>Mark complete when the intro call is finished. Sends a team notification summarizing which items were covered and which need follow-up.</p><p style="color:var(--color-muted);font-size:.8rem;">Not all tasks above need to be complete before marking this done.</p>' }
   ];
 
-  var IC_CATEGORIES = { platform_access: 'Platform Access & Configuration', campaign_setup: 'Campaign Setup', expectations: 'Expectations & Scheduling', completion: 'Completion' };
+  var IC_CATEGORIES = { platform_access: 'Platform Access (Quick Checks)', campaign_setup: 'Campaign Setup', expectations: 'Expectations & Scheduling', completion: 'Completion' };
   var IC_STATUSES = [{v:'pending',l:'Pending'},{v:'in_progress',l:'In Progress'},{v:'complete',l:'Complete'},{v:'not_applicable',l:'N/A'}];
   var expandedICId = null;
 
@@ -2320,9 +2298,8 @@ strong { font-weight: 600; color: var(--color-heading); }
         var def = IC_STEPS.find(function(d) { return d.key === s.step_key; });
         var isExp = expandedICId === s.id; var st = s.status || 'pending';
         var icIcons = {
-          verify_website_access: '&#127760;', gsc_configured: '&#128200;', ga4_configured: '&#128200;',
-          gtm_configured: '&#127991;', gbp_access: '&#128205;', localfalcon_setup: '&#128205;',
-          gbp_service_account: '&#128202;', referral_source: '&#129309;', pick_target_keywords: '&#127919;',
+          verify_website_access: '&#127760;', confirm_leadsie_access: '&#128279;',
+          referral_source: '&#129309;', pick_target_keywords: '&#127919;',
           review_socials: '&#128101;', check_booking_calendar: '&#128197;', lead_attribution: '&#128203;',
           google_marketing_account: '&#9993;', content_turnaround: '&#9200;', scope_boundaries: '&#128208;',
           schedule_checkins: '&#128197;', client_tracking_sheet: '&#128202;',
@@ -3476,21 +3453,21 @@ strong { font-weight: 600; color: var(--color-heading); }
   // ---- DELIVERABLES TAB ----
   var DEL_TYPES = [
     {v:'target_page',l:'Target Page'},{v:'bio_page',l:'Bio Page'},{v:'faq_page',l:'FAQ Page'},
-    {v:'location_page',l:'Location Page'},{v:'schema',l:'Schema Implementation'},
-    {v:'press_release',l:'Press Release'},{v:'citations',l:'Citations'},
-    {v:'gbp_optimization',l:'GBP Optimization'},{v:'social_profiles',l:'Social Profiles'},
-    {v:'entity_veracity_hub',l:'VHub Activation'},{v:'neo_images',l:'NEO Images'},
+    {v:'location_page',l:'Location Page'},
+    {v:'press_release',l:'Press Release'},{v:'citations',l:'Directory Listings & Citations'},
+    {v:'gbp_optimization',l:'GBP Optimization'},{v:'social_profiles',l:'Rising Tide Buildout'},
+    {v:'entity_veracity_hub',l:'VHub'},{v:'neo_images',l:'NEO Images'},
     {v:'social_posts',l:'Social Content'},{v:'neo_distribution',l:'NEO Distribution'},
     {v:'livedrive',l:'LiveDrive'},{v:'youtube_video',l:'YouTube Video'},
     {v:'endorsement',l:'Endorsements'},{v:'surge_page',l:'Surge Page Audit'},{v:'surge_sitewide',l:'Surge Sitewide Audit'},
-    {v:'surge_entity',l:'Surge Entity Audit'},{v:'gsc_setup',l:'GSC Setup'},{v:'sitemap_check',l:'Sitemap Check (GSC)'},
+    {v:'surge_entity',l:'Surge Entity Audit'},{v:'gsc_setup',l:'GSC Setup'},
     {v:'ga4_setup',l:'GA4 Setup'},{v:'gtm_setup',l:'GTM Setup'},{v:'gbp_setup',l:'GBP Setup'},
-    {v:'instant_page',l:'instant.page'},{v:'report',l:'Monthly Report'},
+    {v:'instant_page',l:'instant.page'},
     {v:'custom',l:'Custom'}
   ];
   var DEL_PHASE = {
-    gsc_setup:1,sitemap_check:1,ga4_setup:1,gtm_setup:1,gbp_setup:1,instant_page:1,
-    surge_entity:2,surge_page:2,surge_sitewide:2,target_page:2,bio_page:2,faq_page:2,location_page:2,schema:2,
+    gsc_setup:1,ga4_setup:1,gtm_setup:1,gbp_setup:1,instant_page:1,
+    surge_entity:2,surge_page:2,surge_sitewide:2,target_page:2,bio_page:2,faq_page:2,location_page:2,
     press_release:3,citations:3,gbp_optimization:3,social_profiles:3,entity_veracity_hub:3,
     social_posts:4,neo_images:4,neo_distribution:4,livedrive:4,youtube_video:4,endorsement:4
   };
@@ -3690,8 +3667,8 @@ strong { font-weight: 600; color: var(--color-heading); }
       }
 
       // Update local deliverable statuses
-      ['localfalcon_setup', 'gbp_service_account', 'ga4_setup', 'gtm_setup', 'report_config'].forEach(function(dt) {
-        var svcKey = { localfalcon_setup: 'localfalcon', gbp_service_account: 'gbp', ga4_setup: 'ga4', gtm_setup: 'gtm', report_config: null }[dt];
+      ['localfalcon_setup', 'ga4_setup', 'gtm_setup', 'report_config'].forEach(function(dt) {
+        var svcKey = { localfalcon_setup: 'localfalcon', ga4_setup: 'ga4', gtm_setup: 'gtm', report_config: null }[dt];
         var r = svcKey ? (data.results && data.results[svcKey]) : null;
         if (r && r.success) {
           var del = state.deliverables.find(function(d) { return d.deliverable_type === dt; });
@@ -3715,6 +3692,22 @@ strong { font-weight: 600; color: var(--color-heading); }
       setTimeout(function() { btn.classList.remove('fail'); btn.innerHTML = '&#9889; Retry All'; }, 4000);
     }
   };
+  window.saveDelNotes = function saveDelNotes(delId, newNotes) {
+    var del = state.deliverables.find(function(d) { return d.id === delId; });
+    if (!del) return;
+    var trimmed = newNotes.trim();
+    if (trimmed === (del.notes || '').trim()) return; // no change
+    del.notes = trimmed || null;
+    fetch('/api/action', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ action: 'update_record', table: 'deliverables', filters: { id: delId }, data: { notes: trimmed || null } })
+    }).then(function(r) { return r.json(); }).then(function(res) {
+      if (res.success) toast('Note saved', 'success');
+      else toast('Failed to save note', 'error');
+    }).catch(function() { toast('Failed to save note', 'error'); });
+  };
+
   window.setDelPhase = function setDelPhase(phase) {
     delPhaseFilter = phase;
     renderDeliverables();
@@ -3766,10 +3759,10 @@ strong { font-weight: 600; color: var(--color-heading); }
 
     // Phase category filter bar
     var phaseMap = {
-      setup: ['gsc_setup','ga4_setup','gtm_setup','gbp_setup','gbp_service_account','localfalcon_setup','report_config','instant_page','onboarding'],
-      content: ['surge_entity','surge_page','surge_sitewide','target_page','bio_page','faq_page','location_page','schema','audit_diagnosis','audit_action_plan','audit_progress'],
-      offpage: ['press_release','citations','gbp_optimization','social_profiles','entity_veracity_hub'],
-      ongoing: ['social_posts','neo_images','neo_distribution','livedrive','youtube_video','endorsement','report']
+      setup: ['gsc_setup','ga4_setup','gtm_setup','gbp_setup','localfalcon_setup','report_config','instant_page'],
+      content: ['surge_entity','surge_page','surge_sitewide','target_page','bio_page','faq_page','location_page','audit_diagnosis','audit_action_plan','audit_progress'],
+      offpage: ['gbp_optimization','citations','press_release','social_profiles','entity_veracity_hub'],
+      ongoing: ['social_posts','neo_images','neo_distribution','livedrive','youtube_video','endorsement']
     };
     var phaseLabels = [
       {key:'all',label:'All'}, {key:'setup',label:'Setup'}, {key:'content',label:'Content & Audits'},
@@ -3809,7 +3802,6 @@ strong { font-weight: 600; color: var(--color-heading); }
       social_profiles: '&#128100;',
       gbp_optimization: '&#128205;',
       localfalcon_setup: '&#128205;',
-      gbp_service_account: '&#128272;',
       report_config: '&#128200;',
       video: '&#127909;'
     };
@@ -3818,17 +3810,17 @@ strong { font-weight: 600; color: var(--color-heading); }
     var typeSortOrder = {
       // Setup (dependency order)
       gsc_setup: 1, ga4_setup: 2, gtm_setup: 3, gbp_setup: 4,
-      localfalcon_setup: 5, gbp_service_account: 5.5, report_config: 6, instant_page: 7, onboarding: 8,
+      localfalcon_setup: 5, report_config: 6, instant_page: 7,
       // Content & Audits
       surge_entity: 10, surge_page: 11, surge_sitewide: 12,
       target_page: 13, bio_page: 14, faq_page: 15, location_page: 16,
-      schema: 17, audit_diagnosis: 18, audit_action_plan: 19, audit_progress: 20,
-      // Off-Page
-      press_release: 30, citations: 31, gbp_optimization: 32,
+      audit_diagnosis: 18, audit_action_plan: 19, audit_progress: 20,
+      // Off-Page (GBP opt first, then citations)
+      gbp_optimization: 30, citations: 31, press_release: 32,
       social_profiles: 33, entity_veracity_hub: 34,
       // Ongoing
       social_posts: 40, neo_images: 41, neo_distribution: 42,
-      livedrive: 43, youtube_video: 44, endorsement: 45, report: 46
+      livedrive: 43, youtube_video: 44, endorsement: 45
     };
     var sorted = filtered.slice().sort(function(a, b) {
       var orderA = typeSortOrder[a.deliverable_type] || 50;
@@ -3856,14 +3848,6 @@ strong { font-weight: 600; color: var(--color-heading); }
       html += '<div class="del-date">' + (d.delivered_at ? formatDate(d.delivered_at) : 'Pending') + '</div>';
       html += '</div>';
 
-      // Bootstrap button for automatable service deliverables (placed before status dropdown for alignment)
-      var bootstrapMap = { localfalcon_setup: 'localfalcon', gbp_service_account: 'gbp', ga4_setup: 'ga4', gtm_setup: 'gtm' };
-      if (bootstrapMap[d.deliverable_type] && d.status !== 'delivered') {
-        var bSvc = bootstrapMap[d.deliverable_type];
-        html += '<button class="del-bootstrap" id="bs-' + d.id + '" onclick="event.stopPropagation(); bootstrapService(\'' + bSvc + '\', \'' + d.id + '\')" title="Auto-configure via bootstrap-access API">&#9889; Setup</button>';
-      } else if (d.deliverable_type === 'report_config' && d.status !== 'delivered') {
-        html += '<button class="del-bootstrap" id="bs-' + d.id + '" onclick="event.stopPropagation(); bootstrapAll(\'' + d.id + '\')" title="Run bootstrap-access for ALL services (GBP, GA4, GTM, LocalFalcon)">&#9889; Bootstrap All</button>';
-      }
 
       html += '<select class="del-status-select st-' + (d.status || 'not_started') + '" onchange="setDelStatus(\'' + d.id + '\', this.value)" onclick="event.stopPropagation()">';
       html += '<option value="not_started"' + (d.status === 'not_started' ? ' selected' : '') + '>Not Started</option>';
@@ -3882,13 +3866,11 @@ strong { font-weight: 600; color: var(--color-heading); }
       html += '<button class="del-delete" onclick="event.stopPropagation(); deleteDel(\'' + d.id + '\', \'' + esc(d.title).replace(/'/g, '') + '\')" title="Delete">&#10005;</button>';
       html += '</div>';
 
-      // Expandable description panel
+      // Expandable description panel with editable notes
       html += '<div class="del-expand-desc' + (isExp ? ' show' : '') + '">';
-      if (hasNotes) {
-        html += '<div class="del-expand-desc-inner">' + esc(d.notes) + '</div>';
-      } else {
-        html += '<div class="del-expand-desc-inner" style="color:var(--color-muted);font-style:italic;">No notes for this deliverable.</div>';
-      }
+      html += '<div class="del-expand-desc-inner">';
+      html += '<textarea class="del-notes-edit" id="del-notes-' + d.id + '" placeholder="Add a note..." onblur="saveDelNotes(\'' + d.id + '\', this.value)" onclick="event.stopPropagation()" rows="3">' + esc(d.notes || '') + '</textarea>';
+      html += '</div>';
       html += '</div>';
     });
     document.getElementById('delList').innerHTML = html;
