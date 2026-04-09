@@ -134,6 +134,22 @@ strong { font-weight: 600; color: var(--color-heading); }
 .tab-content { display: none; }
 .tab-content.active { display: block; }
 
+/* Filter bar */
+.filter-bar { display: flex; align-items: center; gap: .25rem; margin-bottom: 1.25rem; border-bottom: 1px solid var(--color-border); overflow-x: auto; -webkit-overflow-scrolling: touch; scrollbar-width: none; }
+.filter-bar::-webkit-scrollbar { display: none; }
+.filter-tab { padding: .55rem 1rem; font-size: .82rem; font-weight: 500; color: var(--color-muted); cursor: pointer; border: none; background: none; border-bottom: 2px solid transparent; margin-bottom: -1px; font-family: inherit; transition: all .15s; white-space: nowrap; flex-shrink: 0; }
+.filter-tab:hover { color: var(--color-heading); }
+.filter-tab.active { color: var(--color-primary); border-bottom-color: var(--color-primary); }
+.filter-tab.active[data-filter="configured"] { color: var(--color-primary); border-bottom-color: var(--color-primary); }
+.filter-tab.active[data-filter="configured"] .count { background: rgba(0,212,126,.12); }
+.filter-tab.active[data-filter="needs_config"] { color: #d97706; border-bottom-color: #d97706; }
+.filter-tab.active[data-filter="needs_config"] .count { background: rgba(245,158,11,.12); }
+.filter-tab.active[data-filter="compiled"] { color: #3b82f6; border-bottom-color: #3b82f6; }
+.filter-tab.active[data-filter="compiled"] .count { background: rgba(59,130,246,.12); }
+.filter-tab.active[data-filter="published"] { color: var(--color-primary); border-bottom-color: var(--color-primary); }
+.filter-tab .count { font-size: .7rem; padding: .05rem .4rem; border-radius: 4px; background: var(--color-bg); margin-left: .3rem; }
+.filter-tab.active .count { background: var(--color-primary-subtle); }
+
 /* Form elements */
 .form-group { margin-bottom: 1rem; }
 .form-label { display: block; font-size: .8rem; font-weight: 500; color: var(--color-muted); margin-bottom: .35rem; text-transform: uppercase; letter-spacing: .04em; }
@@ -437,6 +453,15 @@ strong { font-weight: 600; color: var(--color-heading); }
       <div class="stat-value" id="statCompiled">-</div>
       <div class="stat-sub">Reports generated</div>
     </div>
+  </div>
+
+  <!-- Report Status Filters -->
+  <div class="filter-bar" id="rptFilterBar" style="margin-bottom:1rem;">
+    <button class="filter-tab active" data-filter="all">All</button>
+    <button class="filter-tab" data-filter="configured">Configured</button>
+    <button class="filter-tab" data-filter="needs_config">Needs Config</button>
+    <button class="filter-tab" data-filter="compiled">Compiled</button>
+    <button class="filter-tab" data-filter="published">Published</button>
   </div>
 
   <div class="client-grid" id="clientGrid">
@@ -820,7 +845,8 @@ strong { font-weight: 600; color: var(--color-heading); }
     configs: {},
     snapshots: {},
     expanded: null,
-    saving: false
+    saving: false,
+    rptFilter: 'all'
   };
 
   // ============================================================
@@ -863,6 +889,20 @@ strong { font-weight: 600; color: var(--color-heading); }
       });
       render();
 
+      // Wire up report filters
+      var rptFilterBar = document.getElementById('rptFilterBar');
+      if (rptFilterBar && !rptFilterBar._wired) {
+        rptFilterBar._wired = true;
+        rptFilterBar.addEventListener('click', function(e) {
+          var tab = e.target.closest('.filter-tab');
+          if (!tab) return;
+          rptFilterBar.querySelectorAll('.filter-tab').forEach(function(t) { t.classList.remove('active'); });
+          tab.classList.add('active');
+          state.rptFilter = tab.dataset.filter;
+          render();
+        });
+      }
+
       // Wire up chat panel context
       if (window.MoonrakerChat) {
         window.MoonrakerChat.setContext({
@@ -891,11 +931,26 @@ strong { font-weight: 600; color: var(--color-heading); }
     var now = new Date();
     var thisMonth = now.getFullYear() + '-' + String(now.getMonth() + 1).padStart(2, '0');
 
+    // Classify clients for filtering
+    var filterCounts = { all: clients.length, configured: 0, needs_config: 0, compiled: 0, published: 0 };
     clients.forEach(function(c) {
       var cfg = state.configs[c.slug];
-      if (cfg && cfg.tracked_queries && cfg.tracked_queries.length > 0) configured++;
+      var isConfigured = cfg && cfg.tracked_queries && cfg.tracked_queries.length > 0;
+      if (isConfigured) { configured++; filterCounts.configured++; } else { filterCounts.needs_config++; }
       var snap = state.snapshots[c.slug];
-      if (snap && snap.report_month && snap.report_month.substring(0, 7) === thisMonth) compiled++;
+      if (snap && snap.report_month && snap.report_month.substring(0, 7) === thisMonth) { compiled++; filterCounts.compiled++; }
+      if (cfg && cfg.last_published_at) filterCounts.published++;
+    });
+
+    // Update filter count badges
+    document.querySelectorAll('#rptFilterBar .filter-tab').forEach(function(tab) {
+      var f = tab.dataset.filter;
+      var cnt = filterCounts[f] || 0;
+      var countEl = tab.querySelector('.count');
+      if (cnt > 0 || f === 'all') {
+        if (!countEl) { countEl = document.createElement('span'); countEl.className = 'count'; tab.appendChild(countEl); }
+        countEl.textContent = cnt;
+      } else if (countEl) { countEl.remove(); }
     });
 
     document.getElementById('statTotal').textContent = clients.length;
@@ -903,13 +958,36 @@ strong { font-weight: 600; color: var(--color-heading); }
     document.getElementById('statPending').textContent = clients.length - configured;
     document.getElementById('statCompiled').textContent = compiled;
 
+    // Apply filter
+    var rptFilter = state.rptFilter || 'all';
+    var filtered = clients;
+    if (rptFilter !== 'all') {
+      filtered = clients.filter(function(c) {
+        var cfg = state.configs[c.slug];
+        var isConfigured = cfg && cfg.tracked_queries && cfg.tracked_queries.length > 0;
+        var snap = state.snapshots[c.slug];
+        var isCompiled = snap && snap.report_month && snap.report_month.substring(0, 7) === thisMonth;
+        var isPublished = cfg && cfg.last_published_at;
+        if (rptFilter === 'configured') return isConfigured;
+        if (rptFilter === 'needs_config') return !isConfigured;
+        if (rptFilter === 'compiled') return isCompiled;
+        if (rptFilter === 'published') return isPublished;
+        return true;
+      });
+    }
+
+    if (filtered.length === 0 && clients.length > 0) {
+      grid.innerHTML = '<div style="padding:1.5rem;text-align:center;color:var(--color-muted);font-size:.84rem;">No clients match this filter.</div>';
+      return;
+    }
+
     if (clients.length === 0) {
       grid.innerHTML = '<div class="empty-state"><h3>No Active Clients</h3><p>Active clients from Supabase will appear here with their report configuration.</p></div>';
       return;
     }
 
     var html = '';
-    clients.forEach(function(client) {
+    filtered.forEach(function(client) {
       var cfg = state.configs[client.slug] || {};
       var snap = state.snapshots[client.slug];
       var queries = cfg.tracked_queries || [];
