@@ -196,6 +196,9 @@ strong { font-weight: 600; color: var(--color-heading); }
   .sidebar.open { transform: translateX(0); box-shadow: 4px 0 20px rgba(0,0,0,.15); }
   .main { margin-left: 0; }
   .mobile-toggle { display: block; }
+  .main { overflow-x: clip; }
+  .content { overflow-x: clip; }
+  .filter-bar { position: sticky; top: 56px; z-index: 50; background: var(--color-bg); padding-bottom: .5rem; }
   .sidebar-close { display: block; }
   .stat-grid { grid-template-columns: repeat(2, 1fr); }
   .client-table { font-size: .78rem; }
