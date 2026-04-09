@@ -345,10 +345,10 @@ a:hover { color: var(--color-primary-hover); }
         { key: 'gsc_setup', label: 'Search Console Setup' },
         { key: 'ga4_setup', label: 'Analytics Setup' },
         { key: 'gtm_setup', label: 'Tag Manager Setup' },
-        { key: 'gbp_setup', label: 'GBP Setup / Verification' },
-        { key: 'instant_page', label: 'instant.page Installation' },
-        { key: 'speed_optimization', label: 'Speed Optimization' },
-        { key: 'security_optimization', label: 'Security Optimization' }
+        { key: 'gbp_setup', label: 'GBP Setup' },
+        { key: 'localfalcon_setup', label: 'LocalFalcon Setup' },
+        { key: 'report_config', label: 'Report Pipeline Configuration' },
+        { key: 'instant_page', label: 'instant.page Installation' }
       ]
     },
     {
@@ -356,7 +356,6 @@ a:hover { color: var(--color-primary-hover); }
       types: [
         { key: 'surge_entity', label: 'Surge Entity Audit' },
         { key: 'surge_page', label: 'Surge Page Audit', multi: true },
-    { key: 'surge_sitewide', label: 'Surge Sitewide Audit', multi: false },
         { key: 'surge_sitewide', label: 'Surge Sitewide Audit' },
         { key: 'audit_diagnosis', label: 'Audit Diagnosis Page' },
         { key: 'audit_action_plan', label: 'Audit Action Plan Page' },
@@ -364,30 +363,28 @@ a:hover { color: var(--color-primary-hover); }
         { key: 'target_page', label: 'Target Page', multi: true, expected: 5 },
         { key: 'bio_page', label: 'Bio Page', multi: true },
         { key: 'faq_page', label: 'General FAQ Page' },
-        { key: 'location_page', label: 'Location Page' },
-        { key: 'schema', label: 'Schema Implementation' }
+        { key: 'location_page', label: 'Location Page' }
       ]
     },
     {
       key: 'offpage', label: 'Off-Page Foundation', icon: '&#127760;',
       types: [
-        { key: 'press_release', label: 'Press Release' },
-        { key: 'citations', label: 'Directory Listings' },
         { key: 'gbp_optimization', label: 'GBP Optimization' },
-        { key: 'social_profiles', label: 'Social Profile Buildout' },
-        { key: 'entity_veracity_hub', label: 'VHub Activation' },
-        { key: 'neo_images', label: 'NEO Image Placement' }
+        { key: 'citations', label: 'Directory Listings & Citations' },
+        { key: 'press_release', label: 'Press Release' },
+        { key: 'social_profiles', label: 'Rising Tide Buildout' },
+        { key: 'entity_veracity_hub', label: 'VHub' }
       ]
     },
     {
       key: 'ongoing', label: 'Ongoing (Month 3-12)', icon: '&#128260;',
       types: [
         { key: 'social_posts', label: 'Social Content Distribution' },
+        { key: 'neo_images', label: 'NEO Image Placement' },
         { key: 'neo_distribution', label: 'NEO Distribution' },
         { key: 'livedrive', label: 'LiveDrive' },
         { key: 'youtube_video', label: 'YouTube Video' },
         { key: 'endorsement', label: 'Endorsement Collection' },
-        { key: 'report', label: 'Monthly Report', multi: true },
         { key: 'quarterly_reaudit', label: 'Quarterly Re-Audit', multi: true }
       ]
     },
@@ -395,8 +392,7 @@ a:hover { color: var(--color-primary-hover); }
       key: 'sales', label: 'Sales / Pre-Campaign', icon: '&#128176;',
       types: [
         { key: 'proposal', label: 'Sales Proposal' },
-        { key: 'checkout', label: 'Checkout Page' },
-        { key: 'onboarding', label: 'Onboarding Wizard' }
+        { key: 'checkout', label: 'Checkout Page' }
       ]
     },
     {
@@ -474,11 +470,11 @@ a:hover { color: var(--color-primary-hover); }
   }
 
   var DEL_PHASE = {
-    gsc_setup:1,sitemap_check:1,ga4_setup:1,gtm_setup:1,gbp_setup:1,instant_page:1,
-    surge_entity:2,surge_page:2,surge_sitewide:2,target_page:2,bio_page:2,faq_page:2,location_page:2,schema:2,
-    press_release:3,citations:3,gbp_optimization:3,social_profiles:3,entity_veracity_hub:3,
+    gsc_setup:1,ga4_setup:1,gtm_setup:1,gbp_setup:1,localfalcon_setup:1,report_config:1,instant_page:1,
+    surge_entity:2,surge_page:2,surge_sitewide:2,target_page:2,bio_page:2,faq_page:2,location_page:2,
+    gbp_optimization:3,citations:3,press_release:3,social_profiles:3,entity_veracity_hub:3,
     social_posts:4,neo_images:4,neo_distribution:4,livedrive:4,youtube_video:4,endorsement:4,
-    audit_diagnosis:1,audit_action_plan:1,audit_progress:1,report:4,proposal:0,onboarding:0
+    audit_diagnosis:1,audit_action_plan:1,audit_progress:1,proposal:0
   };
 
   function getUrgency(d, contactMap) {
