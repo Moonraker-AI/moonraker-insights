@@ -2884,7 +2884,7 @@ strong { font-weight: 600; color: var(--color-heading); }
       })
     }).then(function(r) { return r.json(); }).then(function(res) {
       if (res.success && res.data) {
-        state.entityAudit = res.data;
+        state.entityAudit = Array.isArray(res.data) ? res.data[0] : res.data;
         renderAudit();
         toast('Entity audit created', 'success');
       } else {
