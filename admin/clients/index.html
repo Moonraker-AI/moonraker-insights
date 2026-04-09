@@ -4240,6 +4240,25 @@ strong { font-weight: 600; color: var(--color-heading); }
   };
 
 
+  window.deployEndorsementPage = function() {
+    if (!state.contact) return;
+    toast('Deploying endorsement form...', 'info');
+    fetch('/api/deploy-endorsement-page', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ slug: state.contact.slug })
+    }).then(function(r) { return r.json(); }).then(function(res) {
+      if (res.success) {
+        toast('Endorsement form deployed: ' + res.url, 'success');
+        renderContentAssets();
+      } else {
+        toast('Deploy failed: ' + (res.error || 'Unknown'), 'error');
+      }
+    }).catch(function(err) {
+      toast('Deploy error: ' + err.message, 'error');
+    });
+  };
+
   window.analyzeDesignSpec = function() {
     var cssEl = document.getElementById('specCssInput');
     var contentEl = document.getElementById('specContentInput');
