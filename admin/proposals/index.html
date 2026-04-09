@@ -206,6 +206,9 @@ a:hover { color: var(--color-primary-hover); }
   .sidebar.open { transform: translateX(0); box-shadow: 4px 0 20px rgba(0,0,0,.15); }
   .main { margin-left: 0 !important; }
   .mobile-toggle { display: block; }
+  .main { overflow-x: clip; }
+  .content { overflow-x: clip; }
+  .filter-bar { position: sticky; top: 56px; z-index: 50; background: var(--color-bg); padding-bottom: .5rem; }
   .sidebar-close { display: block; }
   .stat-grid { grid-template-columns: repeat(2, 1fr); }
 }
