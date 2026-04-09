@@ -1025,7 +1025,7 @@ strong { font-weight: 600; color: var(--color-heading); }
       if (cfg.last_published_at) {
         html += '<span class="tag tag-success">Published</span>';
       } else if (cfg.last_notified_at) {
-        html += '<span class="tag tag-info">Review pending</span>';
+        html += '<span class="tag tag-warning">Review pending</span>';
       } else {
         html += '<span class="tag tag-muted">--</span>';
       }
