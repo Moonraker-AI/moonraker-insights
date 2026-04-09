@@ -4135,6 +4135,79 @@ strong { font-weight: 600; color: var(--color-heading); }
     toast('Batch generation coming soon. Generate pages individually for now.', 'info');
   };
 
+  window.generateContentPage = function(cpId) {
+    var cp = state.contentPages.find(function(p) { return p.id === cpId; });
+    if (!cp) return;
+    if (!state.designSpec && cp.page_type !== 'faq') {
+      toast('Create a design spec first before generating pages.', 'error');
+      return;
+    }
+
+    // Update UI immediately
+    cp.status = 'generating';
+    renderContent();
+    toast('Generating ' + cp.page_name + '...', 'info');
+
+    // Call the NDJSON streaming endpoint
+    fetch('/api/generate-content-page', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ content_page_id: cpId })
+    }).then(function(response) {
+      if (!response.ok) {
+        return response.json().then(function(err) {
+          throw new Error(err.error || 'Generation failed');
+        });
+      }
+      // Read NDJSON stream
+      var reader = response.body.getReader();
+      var decoder = new TextDecoder();
+      var buffer = '';
+
+      function processStream() {
+        return reader.read().then(function(result) {
+          if (result.done) return;
+          buffer += decoder.decode(result.value, { stream: true });
+          var lines = buffer.split('\n');
+          buffer = lines.pop();
+          lines.forEach(function(line) {
+            if (!line.trim()) return;
+            try {
+              var msg = JSON.parse(line);
+              if (msg.step === 'complete') {
+                toast(cp.page_name + ' generated successfully!', 'success');
+                // Reload the content page data
+                fetch(SB + '/rest/v1/content_pages?id=eq.' + cpId + '&limit=1', {
+                  headers: { 'apikey': SK, 'Authorization': 'Bearer ' + SK }
+                }).then(function(r) { return r.json(); }).then(function(arr) {
+                  if (arr && arr[0]) {
+                    var idx = state.contentPages.findIndex(function(p) { return p.id === cpId; });
+                    if (idx !== -1) state.contentPages[idx] = arr[0];
+                    renderContent();
+                  }
+                });
+              } else if (msg.step === 'error') {
+                toast('Generation error: ' + (msg.message || 'Unknown'), 'error');
+                cp.status = 'audit_loaded';
+                renderContent();
+              } else if (msg.step === 'generating' || msg.step === 'saving') {
+                // Update inline status
+                var statusEl = document.getElementById('gen-status-' + cpId);
+                if (statusEl) statusEl.textContent = msg.message;
+              }
+            } catch (e) { /* ignore parse errors */ }
+          });
+          return processStream();
+        });
+      }
+      return processStream();
+    }).catch(function(err) {
+      toast('Generation failed: ' + err.message, 'error');
+      cp.status = 'audit_loaded';
+      renderContent();
+    });
+  };
+
   window.copyGeneratedHtml = function(cpId) {
     var cp = state.contentPages.find(function(p) { return p.id === cpId; });
     if (cp && cp.generated_html) {
@@ -4372,7 +4445,8 @@ strong { font-weight: 600; color: var(--color-heading); }
         }
         h += '<div class="cp-actions" style="margin-top:.75rem;">';
         if (cp.status === 'audit_loaded') {
-          h += '<button class="btn btn-primary btn-sm" onclick="event.stopPropagation(); toast(\'Page generation coming soon.\', \'info\')">Generate HTML</button>';
+          h += '<button class="btn btn-primary btn-sm" onclick="event.stopPropagation(); generateContentPage(\'' + cp.id + '\')">Generate HTML</button>';
+          h += '<span id="gen-status-' + cp.id + '" style="font-size:.72rem;color:var(--color-muted);margin-left:.5rem;"></span>';
         }
         if (cp.status === 'review' && cp.generated_html) {
           h += '<button class="btn btn-primary btn-sm" onclick="event.stopPropagation(); toast(\'Preview deployment coming soon.\', \'info\')">Deploy Preview</button>';
