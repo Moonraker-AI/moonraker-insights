@@ -4565,7 +4565,10 @@ strong { font-weight: 600; color: var(--color-heading); }
       }
     }
     if (endLink && state.contact) {
-      endLink.innerHTML = '<a href="/' + esc(state.contact.slug) + '/endorsements/" target="_blank" style="font-size:.78rem;color:var(--color-primary);">Client endorsement form &#8599;</a>';
+      endLink.innerHTML = '<div style="display:flex;gap:.75rem;align-items:center;">' +
+        '<a href="/' + esc(state.contact.slug) + '/endorsements/" target="_blank" style="font-size:.78rem;color:var(--color-primary);">Client form &#8599;</a>' +
+        '<button class="btn btn-ghost btn-sm" onclick="deployEndorsementPage()" style="font-size:.72rem;">Deploy Form</button>' +
+        '</div>';
     }
   }
 
