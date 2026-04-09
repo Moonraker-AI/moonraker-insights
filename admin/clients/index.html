@@ -854,6 +854,7 @@ strong { font-weight: 600; color: var(--color-heading); }
         <button class="tab-btn" data-tab="profile">Profile</button>
         <button class="tab-btn" data-tab="rising-tide">Rising Tide</button>
         <button class="tab-btn" data-tab="deliverables">Deliverables</button>
+        <button class="tab-btn" data-tab="content">Content</button>
         <button class="tab-btn" data-tab="audit">Audit</button>
         <button class="tab-btn" data-tab="reports">Reports</button>
         <button class="tab-btn" data-tab="billing">Billing</button>
@@ -966,6 +967,55 @@ strong { font-weight: 600; color: var(--color-heading); }
         <div id="delPhaseBar"></div>
         <div id="delList"></div>
         <div class="empty-state" id="delEmpty" style="display:none;"><p>No deliverables tracked yet.</p></div>
+      </div>
+
+      <!-- TAB: Content (Pagemaster) -->
+      <div class="tab-panel" id="tab-content">
+        <!-- Design Spec Card -->
+        <div class="card" id="contentDesignSpec" style="margin-bottom:1.25rem;">
+          <div class="card-header collapsible-header" onclick="toggleContentSection('designSpec')" style="cursor:pointer;">
+            <h3 style="display:flex;align-items:center;gap:.5rem;">
+              <span id="designSpecIcon" style="transition:transform .2s;display:inline-block;">&#9654;</span>
+              Design Spec
+              <span id="designSpecBadge" class="status-badge" style="font-size:.7rem;"></span>
+            </h3>
+          </div>
+          <div id="designSpecBody" class="collapsed" style="overflow:hidden;transition:max-height .3s ease;">
+            <div id="designSpecContent" style="padding:0 1rem 1rem;"></div>
+          </div>
+        </div>
+
+        <!-- Pages Section -->
+        <div style="margin-bottom:1.25rem;">
+          <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:.75rem;">
+            <h3 style="font-size:.95rem;font-weight:600;color:var(--color-heading);">Pages</h3>
+            <div style="display:flex;gap:.5rem;">
+              <button class="btn btn-sm btn-ghost" onclick="generateAllContent()" id="btnGenerateAll" style="display:none;" title="Generate HTML for all audit-loaded pages">&#9889; Generate All Ready</button>
+              <button class="btn btn-sm btn-primary" onclick="addContentPage()">+ Add Page</button>
+            </div>
+          </div>
+          <div id="contentPhaseBar"></div>
+          <div id="contentPageList"></div>
+          <div class="empty-state" id="contentPagesEmpty" style="display:none;"><p>No content pages yet. Add a page or wait for Surge audits to complete.</p></div>
+        </div>
+
+        <!-- Assets Section -->
+        <div>
+          <div style="display:flex;gap:.5rem;margin-bottom:.75rem;">
+            <button class="filter-tab active" id="assetTabNeo" onclick="switchAssetTab('neo')">NEO Images</button>
+            <button class="filter-tab" id="assetTabEndorsements" onclick="switchAssetTab('endorsements')">Endorsements</button>
+          </div>
+          <div id="assetNeoSection">
+            <div id="neoImageList"></div>
+            <div class="empty-state" id="neoEmpty" style="display:none;"><p>No NEO images tracked yet.</p></div>
+            <button class="btn btn-sm btn-ghost" onclick="addNeoImage()" style="margin-top:.5rem;">+ Add NEO Image</button>
+          </div>
+          <div id="assetEndorsementSection" style="display:none;">
+            <div id="endorsementList"></div>
+            <div class="empty-state" id="endorsementEmpty" style="display:none;"><p>No endorsements submitted yet. Share the endorsement collection link with the client.</p></div>
+            <div id="endorsementLink" style="margin-top:.5rem;"></div>
+          </div>
+        </div>
       </div>
 
       <!-- TAB: Audit -->
@@ -1097,7 +1147,13 @@ strong { font-weight: 600; color: var(--color-heading); }
     proposals: [],
     entityAudit: null,
     proposalFollowups: {},
-    auditFollowups: []
+    auditFollowups: [],
+    contentPages: [],
+    designSpec: null,
+    neoImages: [],
+    endorsements: [],
+    contentPhaseFilter: 'all',
+    expandedContentId: null
   };
 
   // ============================================================
