@@ -85,8 +85,8 @@ strong { font-weight: 600; color: var(--color-heading); }
 
 /* ---- TOP BAR ---- */
 .topbar { position: sticky; top: 0; z-index: 100; background: var(--color-surface); border-bottom: 1px solid var(--color-border); padding: 0 2rem; height: 56px; display: flex; align-items: center; gap: 1rem; }
-.dir-controls { position: sticky; top: 56px; z-index: 50; background: var(--color-bg); border-bottom: 1px solid var(--color-border); padding-bottom: .5rem; }
-.dir-controls .filter-bar { border-bottom: none; }
+.dir-controls { position: sticky; top: 56px; z-index: 50; background: var(--color-bg); padding-bottom: .25rem; }
+.dir-controls .filter-bar { border-bottom: 1px solid var(--color-border); }
 .search-box { flex: 1; max-width: 480px; position: relative; }
 .search-box input { width: 100%; padding: .45rem .75rem .45rem 2.25rem; border: 1px solid var(--color-border); border-radius: 8px; font-size: .82rem; font-family: inherit; color: var(--color-body); background: var(--color-bg); transition: border-color .2s, box-shadow .2s; }
 .search-box input:focus { outline: none; border-color: var(--color-primary); box-shadow: 0 0 0 3px rgba(0,212,126,.1); }
@@ -1303,7 +1303,7 @@ strong { font-weight: 600; color: var(--color-heading); }
         rptFilterBar.querySelectorAll('.filter-tab').forEach(function(t) { t.classList.remove('active'); });
         tab.classList.add('active');
         state.rptFilter = tab.dataset.filter;
-        renderReportHistory();
+        renderReports();
       });
     }
           }).catch(function() {});
@@ -4078,7 +4078,13 @@ strong { font-weight: 600; color: var(--color-heading); }
     }
 
     var html = '';
-    snaps.forEach(function(s) {
+    var rptFilter = state.rptFilter || 'all';
+    var filteredSnaps = rptFilter === 'all' ? snaps : snaps.filter(function(s) { return s.report_status === rptFilter; });
+    if (filteredSnaps.length === 0 && snaps.length > 0) {
+      document.getElementById('rptList').innerHTML = '<div style="padding:1.5rem;text-align:center;color:var(--color-muted);font-size:.84rem;">No reports with this status.</div>';
+      return;
+    }
+    filteredSnaps.forEach(function(s) {
       var statusTag = s.report_status === 'published' ? '<span class="tag tag-active">published</span>'
         : s.report_status === 'internal_review' ? '<span class="tag tag-prospect">internal review</span>'
         : s.report_status === 'draft' ? '<span class="tag tag-lead">draft</span>'
