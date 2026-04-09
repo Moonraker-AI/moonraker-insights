@@ -1,6 +1,6 @@
 // /api/content-chat.js
 // Streaming chat endpoint for the content preview chatbot (client-facing).
-// Uses Claude Sonnet 4.6 with context of the page HTML, design spec, and practice info.
+// Uses Claude Opus 4.6 with context of the page HTML, design spec, and practice info.
 // Supports content editing: when the client requests a change, Claude returns the
 // updated HTML which gets saved to content_pages + versioned.
 //
@@ -58,7 +58,7 @@ module.exports = async function handler(req, res) {
         'anthropic-version': '2023-06-01'
       },
       body: JSON.stringify({
-        model: 'claude-sonnet-4-6',
+        model: 'claude-opus-4-6',
         max_tokens: 4000,
         system: systemPrompt,
         messages: messages,
