@@ -8,6 +8,7 @@
 // 5. For active/onboarding clients, also deploys the 3-page audit suite
 
 var sb = require('./_lib/supabase');
+var monitor = require('./_lib/monitor');
 var gh = require('./_lib/github');
 
 module.exports = async function handler(req, res) {
