@@ -5,8 +5,6 @@
 
 var sb = require('./_lib/supabase');
 
-var sb = require('./_lib/supabase');
-
 module.exports = async function handler(req, res) {
   if (req.method === 'OPTIONS') {
     res.setHeader('Access-Control-Allow-Origin', '*');
