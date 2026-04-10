@@ -6,31 +6,26 @@
 // POST { audit_id }
 
 var email = require('./_lib/email-template');
+var sb = require('./_lib/supabase');
+var sb = require('./_lib/supabase');
 
 var FOOTER_NOTE = 'Questions? Reply to this email or <a href="' + email.CALENDAR_URL + '" style="font-family:Inter,sans-serif;color:#00D47E;text-decoration:none;font-weight:500;">book a call with Scott</a>.';
 
 module.exports = async function handler(req, res) {
   if (req.method !== 'POST') return res.status(405).json({ error: 'Method not allowed' });
 
-  var sbKey = process.env.SUPABASE_SERVICE_ROLE_KEY;
-  var sbUrl = process.env.NEXT_PUBLIC_SUPABASE_URL || 'https://ofmmwcjhdrhvxxkhcuww.supabase.co';
 
-  if (!sbKey) return res.status(500).json({ error: 'SUPABASE_SERVICE_ROLE_KEY not configured' });
+  if (!sb.isConfigured()) return res.status(500).json({ error: 'SUPABASE_SERVICE_ROLE_KEY not configured' });
 
   var auditId = (req.body || {}).audit_id;
   if (!auditId) return res.status(400).json({ error: 'audit_id required' });
 
-  function sbHeaders(prefer) {
-    var h = { 'apikey': sbKey, 'Authorization': 'Bearer ' + sbKey, 'Content-Type': 'application/json' };
-    if (prefer) h['Prefer'] = prefer;
-    return h;
-  }
 
   try {
     // Load audit + contact
     var auditResp = await fetch(
-      sbUrl + '/rest/v1/entity_audits?id=eq.' + auditId + '&select=*,contacts(id,slug,first_name,last_name,practice_name,email,city,state_province)&limit=1',
-      { headers: sbHeaders() }
+      sb.url() + '/rest/v1/entity_audits?id=eq.' + auditId + '&select=*,contacts(id,slug,first_name,last_name,practice_name,email,city,state_province)&limit=1',
+      { headers: sb.headers() }
     );
     var audits = await auditResp.json();
     if (!audits || audits.length === 0) return res.status(404).json({ error: 'Audit not found' });
@@ -41,8 +36,8 @@ module.exports = async function handler(req, res) {
 
     // Check for existing followups
     var existCheck = await fetch(
-      sbUrl + '/rest/v1/audit_followups?audit_id=eq.' + auditId + '&limit=1',
-      { headers: sbHeaders() }
+      sb.url() + '/rest/v1/audit_followups?audit_id=eq.' + auditId + '&limit=1',
+      { headers: sb.headers() }
     );
     var existing = await existCheck.json();
     if (existing && existing.length > 0) {
@@ -95,9 +90,9 @@ module.exports = async function handler(req, res) {
       };
     });
 
-    var insertResp = await fetch(sbUrl + '/rest/v1/audit_followups', {
+    var insertResp = await fetch(sb.url() + '/rest/v1/audit_followups', {
       method: 'POST',
-      headers: sbHeaders('return=representation'),
+      headers: sb.headers('return=representation'),
       body: JSON.stringify(rows)
     });
     var inserted = await insertResp.json();
