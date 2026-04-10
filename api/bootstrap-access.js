@@ -17,15 +17,15 @@
 // ENV VARS:
 //   SUPABASE_SERVICE_ROLE_KEY, GOOGLE_SERVICE_ACCOUNT_JSON, LOCALFALCON_API_KEY
 
+var sb = require('./_lib/supabase');
+
 module.exports = async function handler(req, res) {
   if (req.method !== 'POST') return res.status(405).json({ error: 'Method not allowed' });
 
-  var sbKey = process.env.SUPABASE_SERVICE_ROLE_KEY;
   var googleSA = process.env.GOOGLE_SERVICE_ACCOUNT_JSON;
   var lfKey = process.env.LOCALFALCON_API_KEY;
-  var sbUrl = process.env.NEXT_PUBLIC_SUPABASE_URL || 'https://ofmmwcjhdrhvxxkhcuww.supabase.co';
 
-  if (!sbKey) return res.status(500).json({ error: 'SUPABASE_SERVICE_ROLE_KEY not configured' });
+  if (!sb.isConfigured()) return res.status(500).json({ error: 'SUPABASE_SERVICE_ROLE_KEY not configured' });
 
   var body = req.body;
   var clientSlug = body.client_slug;
@@ -41,9 +41,6 @@ module.exports = async function handler(req, res) {
     { email: 'kalyn@moonraker.ai', name: 'Kalyn' }
   ];
 
-  function sbHeaders() {
-    return { 'apikey': sbKey, 'Authorization': 'Bearer ' + sbKey, 'Content-Type': 'application/json', 'Prefer': 'return=representation' };
-  }
 
   var results = {};
   var errors = [];
@@ -51,7 +48,7 @@ module.exports = async function handler(req, res) {
   // ─── Load contact ──────────────────────────────────────────────
   var contact;
   try {
-    var cResp = await fetch(sbUrl + '/rest/v1/contacts?slug=eq.' + clientSlug + '&select=*&limit=1', { headers: sbHeaders() });
+    var cResp = await fetch(sb.url() + '/rest/v1/contacts?slug=eq.' + clientSlug + '&select=*&limit=1', { headers: sb.headers() });
     var contacts = await cResp.json();
     if (!contacts || contacts.length === 0) return res.status(404).json({ error: 'Contact not found: ' + clientSlug });
     contact = contacts[0];
@@ -62,13 +59,13 @@ module.exports = async function handler(req, res) {
   // ─── Load or create report_configs ─────────────────────────────
   var config;
   try {
-    var cfResp = await fetch(sbUrl + '/rest/v1/report_configs?client_slug=eq.' + clientSlug + '&limit=1', { headers: sbHeaders() });
+    var cfResp = await fetch(sb.url() + '/rest/v1/report_configs?client_slug=eq.' + clientSlug + '&limit=1', { headers: sb.headers() });
     var configs = await cfResp.json();
     if (configs && configs.length > 0) {
       config = configs[0];
     } else {
-      var insertResp = await fetch(sbUrl + '/rest/v1/report_configs', {
-        method: 'POST', headers: sbHeaders(),
+      var insertResp = await fetch(sb.url() + '/rest/v1/report_configs', {
+        method: 'POST', headers: sb.headers(),
         body: JSON.stringify({ client_slug: clientSlug, active: true })
       });
       var inserted = await insertResp.json();
@@ -432,8 +429,8 @@ module.exports = async function handler(req, res) {
   if (Object.keys(configUpdates).length > 0) {
     try {
       configUpdates.updated_at = new Date().toISOString();
-      await fetch(sbUrl + '/rest/v1/report_configs?id=eq.' + config.id, {
-        method: 'PATCH', headers: sbHeaders(), body: JSON.stringify(configUpdates)
+      await fetch(sb.url() + '/rest/v1/report_configs?id=eq.' + config.id, {
+        method: 'PATCH', headers: sb.headers(), body: JSON.stringify(configUpdates)
       });
     } catch (e) { errors.push('Config save: ' + e.message); }
   }
@@ -455,8 +452,8 @@ module.exports = async function handler(req, res) {
     }
     for (var du = 0; du < deliverableUpdates.length; du++) {
       var upd = deliverableUpdates[du];
-      await fetch(sbUrl + '/rest/v1/deliverables?contact_id=eq.' + contact.id + '&deliverable_type=eq.' + upd.type + '&status=neq.delivered', {
-        method: 'PATCH', headers: sbHeaders(),
+      await fetch(sb.url() + '/rest/v1/deliverables?contact_id=eq.' + contact.id + '&deliverable_type=eq.' + upd.type + '&status=neq.delivered', {
+        method: 'PATCH', headers: sb.headers(),
         body: JSON.stringify({ status: 'delivered', delivered_at: new Date().toISOString(), notes: 'Auto: ' + upd.note, updated_at: new Date().toISOString() })
       });
     }
