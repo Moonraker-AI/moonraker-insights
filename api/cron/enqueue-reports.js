@@ -2,6 +2,8 @@
 // Called by Vercel Cron on 1st of month, or manually from admin
 // Staggers compilations 3 minutes apart to avoid API rate limits
 
+var sb = require('../_lib/supabase');
+
 module.exports = async function handler(req, res) {
   if (req.method !== 'POST' && req.method !== 'GET') {
     return res.status(405).json({ error: 'Method not allowed' });
@@ -17,17 +19,10 @@ module.exports = async function handler(req, res) {
     }
   }
 
-  var serviceKey = process.env.SUPABASE_SERVICE_ROLE_KEY;
-  var sbUrl = process.env.NEXT_PUBLIC_SUPABASE_URL || 'https://ofmmwcjhdrhvxxkhcuww.supabase.co';
 
-  if (!serviceKey) return res.status(500).json({ error: 'SUPABASE_SERVICE_ROLE_KEY not configured' });
+  if (!sb.isConfigured()) return res.status(500).json({ error: 'SUPABASE_SERVICE_ROLE_KEY not configured' });
 
-  var headers = {
-    'apikey': serviceKey,
-    'Authorization': 'Bearer ' + serviceKey,
-    'Content-Type': 'application/json',
-    'Prefer': 'return=representation'
-  };
+  var headers = sb.headers('return=representation');
 
   try {
     // Determine report month (default: PREVIOUS month since cron runs on the 1st)
@@ -43,8 +38,8 @@ module.exports = async function handler(req, res) {
     var dryRun = req.query && req.query.dry_run === 'true';
 
     // Fetch all active report configs
-    var configResp = await fetch(sbUrl + '/rest/v1/report_configs?active=eq.true&select=client_slug,gsc_property', {
-      headers: { 'apikey': serviceKey, 'Authorization': 'Bearer ' + serviceKey }
+    var configResp = await fetch(sb.url() + '/rest/v1/report_configs?active=eq.true&select=client_slug,gsc_property', {
+      headers: sb.headers()
     });
     var configs = await configResp.json();
 
@@ -53,8 +48,8 @@ module.exports = async function handler(req, res) {
     }
 
     // Check which clients already have a queue entry for this month
-    var existingResp = await fetch(sbUrl + '/rest/v1/report_queue?report_month=eq.' + reportMonth + '&select=client_slug,status', {
-      headers: { 'apikey': serviceKey, 'Authorization': 'Bearer ' + serviceKey }
+    var existingResp = await fetch(sb.url() + '/rest/v1/report_queue?report_month=eq.' + reportMonth + '&select=client_slug,status', {
+      headers: sb.headers()
     });
     var existing = await existingResp.json();
     var existingMap = {};
@@ -99,7 +94,7 @@ module.exports = async function handler(req, res) {
     // Insert queue entries
     var inserted = 0;
     if (queued.length > 0) {
-      var insertResp = await fetch(sbUrl + '/rest/v1/report_queue', {
+      var insertResp = await fetch(sb.url() + '/rest/v1/report_queue', {
         method: 'POST',
         headers: headers,
         body: JSON.stringify(queued)
