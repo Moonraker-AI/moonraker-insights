@@ -20,6 +20,8 @@
 
 var sb = require('./_lib/supabase');
 
+var sb = require('./_lib/supabase');
+
 module.exports = async function(req, res) {
   if (req.method !== 'POST') return res.status(405).json({ error: 'Method not allowed' });
 
@@ -28,8 +30,8 @@ module.exports = async function(req, res) {
   var contactId = req.body && req.body.contact_id;
   if (!contactId) return res.status(400).json({ error: 'contact_id required' });
 
-  var headers = { 'apikey': sbKey, 'Authorization': 'Bearer ' + sbKey };
-  var writeHeaders = { 'apikey': sbKey, 'Authorization': 'Bearer ' + sbKey, 'Content-Type': 'application/json', 'Prefer': 'return=representation' };
+  var headers = sb.headers();
+  var writeHeaders = sb.headers('return=representation');
 
   try {
     // 1. Fetch all needed data in parallel
