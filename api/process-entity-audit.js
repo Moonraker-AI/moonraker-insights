@@ -246,6 +246,34 @@ ${surgeData}`;
     var cresScore = (scores.credibility || 0) + (scores.optimization || 0) +
                     (scores.reputation || 0) + (scores.engagement || 0);
 
+    // Compute variance from previous audit (for quarterly comparisons)
+    var varianceFromPrevious = null;
+    if (audit.audit_period !== 'initial') {
+      try {
+        var prevAuditResp = await fetch(sb.url() + '/rest/v1/entity_audits?contact_id=eq.' + audit.contact_id +
+          '&id=neq.' + auditId +
+          '&status=in.(complete,delivered)' +
+          '&select=cres_score,score_credibility,score_optimization,score_reputation,score_engagement,audit_period,audit_date' +
+          '&order=audit_date.desc&limit=1', { headers: sb.headers() });
+        var prevAudits = await prevAuditResp.json();
+        if (prevAudits && prevAudits.length > 0) {
+          var prev = prevAudits[0];
+          varianceFromPrevious = {
+            compared_to: prev.audit_period,
+            compared_date: prev.audit_date,
+            cres: { previous: prev.cres_score, current: cresScore, delta: cresScore - (prev.cres_score || 0) },
+            credibility: { previous: prev.score_credibility, current: scores.credibility, delta: (scores.credibility || 0) - (prev.score_credibility || 0) },
+            optimization: { previous: prev.score_optimization, current: scores.optimization, delta: (scores.optimization || 0) - (prev.score_optimization || 0) },
+            reputation: { previous: prev.score_reputation, current: scores.reputation, delta: (scores.reputation || 0) - (prev.score_reputation || 0) },
+            engagement: { previous: prev.score_engagement, current: scores.engagement, delta: (scores.engagement || 0) - (prev.score_engagement || 0) }
+          };
+          send({ step: 'variance', message: 'Compared to ' + prev.audit_period + ': CRES ' + (prev.cres_score || 0) + ' -> ' + cresScore + ' (' + (varianceFromPrevious.cres.delta >= 0 ? '+' : '') + varianceFromPrevious.cres.delta + ')' });
+        }
+      } catch (varErr) {
+        send({ step: 'variance_warning', message: 'Could not compute variance: ' + varErr.message });
+      }
+    }
+
     var updateBody = {
       // JSONB columns (scores + metadata for templates)
       scores: scores,
@@ -277,7 +305,8 @@ ${surgeData}`;
       cited_meta: citations.meta || false,
       // Metadata
       client_slug: slug,
-      status: 'complete'
+      status: 'complete',
+      variance_from_previous: varianceFromPrevious
     };
 
     var updateResp = await fetch(sb.url() + '/rest/v1/entity_audits?id=eq.' + auditId, {
@@ -551,6 +580,50 @@ ${surgeData}`;
         }
       } catch (notifyEx) {
         send({ step: 'notify_team_warning', message: 'Team notification failed: ' + notifyEx.message });
+      }
+    } else if (contact.status === 'active' && audit.audit_period !== 'initial' && audit.audit_period !== 'baseline') {
+      // Quarterly active client audit: notify team with variance summary
+      send({ step: 'notify_team', message: 'Sending quarterly audit notification to team...' });
+      try {
+        var resendKey = process.env.RESEND_API_KEY;
+        if (resendKey) {
+          var varianceHtml = '';
+          if (varianceFromPrevious) {
+            var d = varianceFromPrevious;
+            function fmtDelta(val) {
+              if (!val) return '<span style="color:#6B7599;">-</span>';
+              var color = val > 0 ? '#00D47E' : val < 0 ? '#EF4444' : '#6B7599';
+              return '<span style="color:' + color + ';">' + (val > 0 ? '+' : '') + val + '</span>';
+            }
+            varianceHtml =
+              '<table cellpadding="0" cellspacing="0" border="0" style="font-size:14px;margin:12px 0;">' +
+              '<tr><td style="padding:4px 16px 4px 0;font-weight:600;">CRES</td><td>' + (d.cres.previous || 0) + ' &rarr; ' + d.cres.current + ' ' + fmtDelta(d.cres.delta) + '</td></tr>' +
+              '<tr><td style="padding:4px 16px 4px 0;">Credibility</td><td>' + (d.credibility.previous || 0) + ' &rarr; ' + d.credibility.current + ' ' + fmtDelta(d.credibility.delta) + '</td></tr>' +
+              '<tr><td style="padding:4px 16px 4px 0;">Optimization</td><td>' + (d.optimization.previous || 0) + ' &rarr; ' + d.optimization.current + ' ' + fmtDelta(d.optimization.delta) + '</td></tr>' +
+              '<tr><td style="padding:4px 16px 4px 0;">Reputation</td><td>' + (d.reputation.previous || 0) + ' &rarr; ' + d.reputation.current + ' ' + fmtDelta(d.reputation.delta) + '</td></tr>' +
+              '<tr><td style="padding:4px 16px 4px 0;">Engagement</td><td>' + (d.engagement.previous || 0) + ' &rarr; ' + d.engagement.current + ' ' + fmtDelta(d.engagement.delta) + '</td></tr>' +
+              '</table>';
+          }
+          await fetch('https://api.resend.com/emails', {
+            method: 'POST',
+            headers: { 'Authorization': 'Bearer ' + resendKey, 'Content-Type': 'application/json' },
+            body: JSON.stringify({
+              from: 'Moonraker Notifications <notifications@clients.moonraker.ai>',
+              to: ['notifications@clients.moonraker.ai'],
+              subject: 'Quarterly Audit Complete - ' + practiceName + ' (' + audit.audit_period + ')',
+              html: '<div style="font-family:Inter,sans-serif;">' +
+                '<p>A quarterly entity audit has been completed for <strong>' + practiceName + '</strong> (' + audit.audit_period + ').</p>' +
+                '<p><strong>CRES Score:</strong> ' + cresScore + '/40</p>' +
+                varianceHtml +
+                '<p>This audit is for internal reference ahead of the client check-in call. It will not be sent to the client automatically.</p>' +
+                '<p><a href="https://clients.moonraker.ai/admin/clients#audit-' + auditId + '" style="color:#00D47E;">View in Admin</a></p>' +
+                '</div>'
+            })
+          });
+          send({ step: 'notify_team_done', message: 'Team notified about quarterly audit completion.' });
+        }
+      } catch (qNotifyEx) {
+        send({ step: 'notify_team_warning', message: 'Quarterly notification failed: ' + qNotifyEx.message });
       }
     }
 
