@@ -44,7 +44,14 @@ module.exports = async function handler(req, res) {
     var configs = await configResp.json();
 
     if (!configs || configs.length === 0) {
-      return res.status(200).json({ success: true, message: 'No active report configs found', queued: 0 });
+      // Prune error logs older than 30 days (monthly housekeeping)
+    try {
+      await fetch(sb.url() + '/rest/v1/rpc/prune_old_errors', {
+        method: 'POST', headers: sb.headers()
+      });
+    } catch (e) { /* non-critical */ }
+
+    return res.status(200).json({ success: true, message: 'No active report configs found', queued: 0 });
     }
 
     // Check which clients already have a queue entry for this month
