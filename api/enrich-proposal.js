@@ -30,9 +30,7 @@ module.exports = async function handler(req, res) {
     return res.status(400).json({ error: 'proposal_id or contact_id required' });
   }
 
-  function sbHeaders() {
-    return { 'apikey': sbKey, 'Authorization': 'Bearer ' + sbKey, 'Content-Type': 'application/json', 'Prefer': 'return=representation' };
-  }
+  // Supabase calls via sb helper
 
   var enrichment = {
     sources: { gmail: [], fathom: [], entity_audit: null, website: null },
