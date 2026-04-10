@@ -148,7 +148,7 @@ function wrap(options) {
       '<table cellpadding="0" cellspacing="0" border="0" width="100%"><tr>' +
         '<td style="vertical-align:middle;"><img src="' + LOGO_URL + '" alt="Moonraker" height="28" style="display:block;"></td>' +
         (headerLabel
-          ? '<td style="text-align:right;vertical-align:middle;"><span style="color:rgba(232,245,239,.45);font-family:Inter,sans-serif;font-size:12px;letter-spacing:0.03em;">' + esc(headerLabel) + '</span></td>'
+          ? '<td style="text-align:right;vertical-align:middle;"><span style="color:#FFFFFF;font-family:Inter,sans-serif;font-size:12px;letter-spacing:0.03em;">' + esc(headerLabel) + '</span></td>'
           : '') +
       '</tr></table>' +
     '</td></tr>' +
