@@ -1,7 +1,6 @@
 // /api/digest.js - Team Digest email sender via Resend
 var email = require('./_lib/email-template');
 var sb = require('./_lib/supabase');
-var sb = require('./_lib/supabase');
 
 module.exports = async function handler(req, res) {
   if (req.method !== 'POST') {
@@ -127,7 +126,7 @@ function formatDateRange(fromStr, toStr) {
 }
 
 async function sbGet(url, headers, path) {
-  var r = await fetch(url + '/rest/v1/' + path, { headers: sb.headers() });
+  var r = await fetch(url + '/rest/v1/' + path, { headers: headers });
   return await r.json();
 }
 
@@ -314,5 +313,5 @@ function buildDigestEmail(data) {
   });
 }
 
-// email.esc() provided by ./_lib/email-template
+// esc() provided by email-template module via email.esc()
 
