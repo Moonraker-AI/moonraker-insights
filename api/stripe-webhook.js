@@ -127,6 +127,18 @@ module.exports = async function handler(req, res) {
         } catch (notifyErr) {
           console.log('Failed to trigger payment notification:', notifyErr.message);
         }
+
+        // Set up quarterly audit schedule (non-blocking)
+        // Adopts recent lead audit as baseline if within 30 days, otherwise triggers fresh
+        try {
+          fetch('https://clients.moonraker.ai/api/setup-audit-schedule', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ contact_id: contact.id })
+          }).catch(function(e) { console.log('Audit schedule fire-and-forget error:', e.message); });
+        } catch (schedErr) {
+          console.log('Failed to trigger audit schedule setup:', schedErr.message);
+        }
       } else {
         results.action = 'no_status_change';
         results.reason = 'Contact status is ' + contact.status + ', not prospect';
