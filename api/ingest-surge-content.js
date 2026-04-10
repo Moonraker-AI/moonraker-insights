@@ -13,6 +13,8 @@
  * 4. Sends team notification via Resend
  */
 
+var email = require('./_lib/email-template');
+
 module.exports = async function(req, res) {
   if (req.method !== 'POST') {
     return res.status(405).json({ error: 'Method not allowed' });
@@ -100,7 +102,7 @@ module.exports = async function(req, res) {
             'Content-Type': 'application/json'
           },
           body: JSON.stringify({
-            from: 'Moonraker Notifications <notifications@clients.moonraker.ai>',
+            from: email.FROM.notifications,
             to: ['support@moonraker.ai'],
             subject: 'Surge Content Audit Complete: ' + (cp.page_name || cp.target_keyword || 'Unknown') + ' (' + cp.client_slug + ')',
             html: buildNotificationHtml(cp, rtpba, body.agent_task_id)
@@ -236,16 +238,34 @@ function extractSchemaRecommendations(surgeData) {
  * Build notification email HTML
  */
 function buildNotificationHtml(cp, rtpba, taskId) {
-  var html = '<div style="font-family:Inter,sans-serif;max-width:600px;">';
-  html += '<h2 style="color:#1E2A5E;">Surge Content Audit Complete</h2>';
-  html += '<p><strong>Client:</strong> ' + (cp.client_slug || '') + '</p>';
-  html += '<p><strong>Page:</strong> ' + (cp.page_name || '') + ' (' + (cp.page_type || '') + ')</p>';
-  if (cp.target_keyword) html += '<p><strong>Keyword:</strong> ' + cp.target_keyword + '</p>';
-  if (taskId) html += '<p><strong>Agent Task:</strong> ' + taskId + '</p>';
-  html += '<p><strong>RTPBA Found:</strong> ' + (rtpba ? 'Yes (' + rtpba.length + ' chars)' : 'No') + '</p>';
-  html += '<hr style="border:none;border-top:1px solid #E2E8F0;margin:1rem 0;">';
-  html += '<p>The content page is now ready for HTML generation in the Content tab.</p>';
-  html += '<p><a href="https://clients.moonraker.ai/admin/clients?slug=' + (cp.client_slug || '') + '&tab=content" style="color:#00D47E;">Open in Client HQ &rarr;</a></p>';
-  html += '</div>';
-  return html;
+  var clientUrl = 'https://clients.moonraker.ai/admin/clients?slug=' + (cp.client_slug || '') + '&tab=content';
+
+  // Build detail rows as a simple table
+  var details = '<table cellpadding="0" cellspacing="0" border="0" width="100%" style="margin:16px 0;">';
+  details += detailRow('Client', cp.client_slug || '');
+  details += detailRow('Page', (cp.page_name || '') + ' (' + (cp.page_type || '') + ')');
+  if (cp.target_keyword) details += detailRow('Keyword', cp.target_keyword);
+  if (taskId) details += detailRow('Agent Task', taskId);
+  details += detailRow('RTPBA Found', rtpba ? 'Yes (' + rtpba.length + ' chars)' : 'No');
+  details += '</table>';
+
+  var content = email.sectionHeading('Surge Content Audit Complete') +
+    details +
+    email.divider() +
+    email.p('The content page is now ready for HTML generation in the Content tab.') +
+    email.cta(clientUrl, 'Open in Client HQ');
+
+  return email.wrap({
+    headerLabel: 'Team Notification',
+    content: content,
+    footerNote: 'This is an internal notification for the Moonraker team.',
+    year: new Date().getFullYear()
+  });
+}
+
+function detailRow(label, value) {
+  return '<tr>' +
+    '<td style="font-family:Inter,sans-serif;font-size:14px;color:#6B7599;padding:6px 0;width:120px;vertical-align:top;">' + email.esc(label) + '</td>' +
+    '<td style="font-family:Inter,sans-serif;font-size:14px;font-weight:600;color:#1E2A5E;padding:6px 0;">' + email.esc(value) + '</td>' +
+  '</tr>';
 }
