@@ -149,6 +149,9 @@
     },
     "api/seed-content-pages.js": {
       "maxDuration": 60
+    },
+    "api/lf-proxy.js": {
+      "maxDuration": 30
     }
   },
   "crons": [
