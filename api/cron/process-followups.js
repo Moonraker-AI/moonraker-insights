@@ -3,6 +3,8 @@
 // checks if the prospect has signed up or been marked lost, then sends or cancels.
 // Processes up to 10 followups per run to stay within function timeout.
 
+var email = require('../_lib/email-template');
+
 module.exports = async function handler(req, res) {
   if (req.method !== 'POST' && req.method !== 'GET') {
     return res.status(405).json({ error: 'Method not allowed' });
@@ -71,7 +73,7 @@ module.exports = async function handler(req, res) {
         continue;
       }
 
-      var sent = await sendFollowupEmail(resendKey, contact, fu, 'proposals@clients.moonraker.ai');
+      var sent = await sendFollowupEmail(resendKey, contact, fu, email.FROM.proposals);
       if (sent) {
         await patchRecord(sbUrl, sbHeaders, 'proposal_followups', fu.id, { status: 'sent', sent_at: now, updated_at: now });
         results.proposal.sent++;
@@ -117,7 +119,7 @@ module.exports = async function handler(req, res) {
         continue;
       }
 
-      var aSent = await sendFollowupEmail(resendKey, ac, afu, 'audits@clients.moonraker.ai');
+      var aSent = await sendFollowupEmail(resendKey, ac, afu, email.FROM.audits);
       if (aSent) {
         await patchRecord(sbUrl, sbHeaders, 'audit_followups', afu.id, { status: 'sent', sent_at: now, updated_at: now });
         results.audit.sent++;
@@ -139,7 +141,7 @@ async function sendFollowupEmail(resendKey, contact, followup, fromAddress) {
       method: 'POST',
       headers: { 'Authorization': 'Bearer ' + resendKey, 'Content-Type': 'application/json' },
       body: JSON.stringify({
-        from: 'Moonraker AI <' + fromAddress + '>',
+        from: fromAddress,
         to: [contact.email],
         cc: ['chris@moonraker.ai', 'scott@moonraker.ai'],
         reply_to: 'scott@moonraker.ai',
