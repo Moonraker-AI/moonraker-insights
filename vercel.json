@@ -128,8 +128,14 @@
     "api/setup-audit-schedule.js": {
       "maxDuration": 30
     },
+    "api/seed-batch-audits.js": {
+      "maxDuration": 120
+    },
     "api/cron/trigger-quarterly-audits.js": {
       "maxDuration": 60
+    },
+    "api/cron/process-audit-queue.js": {
+      "maxDuration": 30
     },
     "api/poll-agent.js": {
       "maxDuration": 15
@@ -182,6 +188,10 @@
     {
       "path": "/api/cron/trigger-quarterly-audits",
       "schedule": "0 11 * * *"
+    },
+    {
+      "path": "/api/cron/process-audit-queue",
+      "schedule": "*/15 * * * *"
     }
   ]
 }
