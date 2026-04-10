@@ -152,6 +152,9 @@
     },
     "api/lf-proxy.js": {
       "maxDuration": 30
+    },
+    "api/health.js": {
+      "maxDuration": 15
     }
   },
   "crons": [
