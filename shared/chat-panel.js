@@ -38,8 +38,8 @@
     }
 
     .mr-chat-panel {
-      position: fixed; top: 0; right: -440px; z-index: 9998;
-      width: 420px; height: 100vh;
+      position: fixed; top: 0; bottom: 0; right: -440px; z-index: 9998;
+      width: 420px;
       background: var(--color-surface, #0E1A14);
       border-left: 1px solid var(--color-border, #1E3530);
       display: flex; flex-direction: column;
