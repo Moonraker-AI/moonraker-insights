@@ -5,15 +5,15 @@
 // POST { client_slug, service: "gsc" | "localfalcon" }
 // Returns discovered properties/locations and saves to contact + report_configs
 
+var sb = require('./_lib/supabase');
+
 module.exports = async function handler(req, res) {
   if (req.method !== 'POST') return res.status(405).json({ error: 'Method not allowed' });
 
-  var sbKey = process.env.SUPABASE_SERVICE_ROLE_KEY;
   var googleSA = process.env.GOOGLE_SERVICE_ACCOUNT_JSON;
   var lfKey = process.env.LOCALFALCON_API_KEY;
-  var sbUrl = process.env.NEXT_PUBLIC_SUPABASE_URL || 'https://ofmmwcjhdrhvxxkhcuww.supabase.co';
 
-  if (!sbKey) return res.status(500).json({ error: 'SUPABASE_SERVICE_ROLE_KEY not configured' });
+  if (!sb.isConfigured()) return res.status(500).json({ error: 'SUPABASE_SERVICE_ROLE_KEY not configured' });
 
   var body = req.body;
   var clientSlug = body.client_slug;
@@ -28,7 +28,7 @@ module.exports = async function handler(req, res) {
 
   try {
     // Fetch contact
-    var contactResp = await fetch(sbUrl + '/rest/v1/contacts?slug=eq.' + clientSlug + '&limit=1', {
+    var contactResp = await fetch(sb.url() + '/rest/v1/contacts?slug=eq.' + clientSlug + '&limit=1', {
       headers: { 'apikey': sbKey, 'Authorization': 'Bearer ' + sbKey }
     });
     var contacts = await contactResp.json();
@@ -84,9 +84,9 @@ module.exports = async function handler(req, res) {
 
       if (matched) {
         // Save to contact record
-        await fetch(sbUrl + '/rest/v1/contacts?slug=eq.' + clientSlug, {
+        await fetch(sb.url() + '/rest/v1/contacts?slug=eq.' + clientSlug, {
           method: 'PATCH',
-          headers: sbHeaders(),
+          headers: sb.headers(),
           body: JSON.stringify({ gsc_property: matched })
         });
 
@@ -255,7 +255,7 @@ module.exports = async function handler(req, res) {
 
 async function upsertReportConfig(sbUrl, headers, clientSlug, data) {
   // Check if config exists
-  var checkResp = await fetch(sbUrl + '/rest/v1/report_configs?client_slug=eq.' + clientSlug + '&limit=1', {
+  var checkResp = await fetch(sb.url() + '/rest/v1/report_configs?client_slug=eq.' + clientSlug + '&limit=1', {
     headers: { 'apikey': headers['apikey'], 'Authorization': headers['Authorization'] }
   });
   var existing = await checkResp.json();
@@ -263,13 +263,13 @@ async function upsertReportConfig(sbUrl, headers, clientSlug, data) {
   data.active = true;
   if (existing && existing.length > 0) {
     // Update
-    await fetch(sbUrl + '/rest/v1/report_configs?client_slug=eq.' + clientSlug, {
+    await fetch(sb.url() + '/rest/v1/report_configs?client_slug=eq.' + clientSlug, {
       method: 'PATCH', headers: headers, body: JSON.stringify(data)
     });
   } else {
     // Create
     data.client_slug = clientSlug;
-    await fetch(sbUrl + '/rest/v1/report_configs', {
+    await fetch(sb.url() + '/rest/v1/report_configs', {
       method: 'POST', headers: headers, body: JSON.stringify(data)
     });
   }
