@@ -19,19 +19,18 @@
 //   LOCALFALCON_API_KEY,
 //   GOOGLE_SERVICE_ACCOUNT_JSON (optional - graceful skip if missing)
 var email = require('./_lib/email-template');
+var sb = require('./_lib/supabase');
 
 
 module.exports = async function handler(req, res) {
   if (req.method !== 'POST') return res.status(405).json({ error: 'Method not allowed' });
 
-  var sbKey = process.env.SUPABASE_SERVICE_ROLE_KEY;
   var anthropicKey = process.env.ANTHROPIC_API_KEY;
   var resendKey = process.env.RESEND_API_KEY;
   var lfKey = process.env.LOCALFALCON_API_KEY;
   var googleSA = process.env.GOOGLE_SERVICE_ACCOUNT_JSON;
-  var sbUrl = process.env.NEXT_PUBLIC_SUPABASE_URL || 'https://ofmmwcjhdrhvxxkhcuww.supabase.co';
 
-  if (!sbKey) return res.status(500).json({ error: 'SUPABASE_SERVICE_ROLE_KEY not configured' });
+  if (!sb.isConfigured()) return res.status(500).json({ error: 'SUPABASE_SERVICE_ROLE_KEY not configured' });
 
   var body = req.body;
   var clientSlug = body.client_slug;
@@ -50,9 +49,6 @@ module.exports = async function handler(req, res) {
   var warnings = [];
 
   // ─── Helpers ───────────────────────────────────────────────────
-  function sbHeaders() {
-    return { 'apikey': sbKey, 'Authorization': 'Bearer ' + sbKey, 'Content-Type': 'application/json', 'Prefer': 'return=representation' };
-  }
 
   function monthRange(monthStr) {
     var d = new Date(monthStr + 'T00:00:00Z');
@@ -100,12 +96,12 @@ module.exports = async function handler(req, res) {
 
   // ─── STEP 1: Load report config + contact ─────────────────────
   try {
-    var configResp = await fetch(sbUrl + '/rest/v1/report_configs?client_slug=eq.' + clientSlug + '&active=eq.true&limit=1', { headers: sbHeaders() });
+    var configResp = await fetch(sb.url() + '/rest/v1/report_configs?client_slug=eq.' + clientSlug + '&active=eq.true&limit=1', { headers: sb.headers() });
     var configs = await configResp.json();
     if (!configs || configs.length === 0) return res.status(404).json({ error: 'No active report_config for ' + clientSlug });
     var config = configs[0];
 
-    var contactResp = await fetch(sbUrl + '/rest/v1/contacts?slug=eq.' + clientSlug + '&select=id,slug,first_name,last_name,practice_name,email,campaign_start,status,campaign_type', { headers: sbHeaders() });
+    var contactResp = await fetch(sb.url() + '/rest/v1/contacts?slug=eq.' + clientSlug + '&select=id,slug,first_name,last_name,practice_name,email,campaign_start,status,campaign_type', { headers: sb.headers() });
     var contacts = await contactResp.json();
     if (!contacts || contacts.length === 0) return res.status(404).json({ error: 'Contact not found for ' + clientSlug });
     var contact = contacts[0];
@@ -127,7 +123,7 @@ module.exports = async function handler(req, res) {
   // ─── STEP 1b: Load tracked keywords ───────────────────────────
   var trackedKeywords = [];
   try {
-    var kwResp = await fetch(sbUrl + '/rest/v1/tracked_keywords?client_slug=eq.' + clientSlug + '&active=eq.true&order=priority.asc,keyword.asc', { headers: sbHeaders() });
+    var kwResp = await fetch(sb.url() + '/rest/v1/tracked_keywords?client_slug=eq.' + clientSlug + '&active=eq.true&order=priority.asc,keyword.asc', { headers: sb.headers() });
     var kwRows = await kwResp.json();
     if (Array.isArray(kwRows) && kwRows.length > 0) {
       trackedKeywords = kwRows;
@@ -163,7 +159,7 @@ module.exports = async function handler(req, res) {
   // ─── STEP 2: Load previous month snapshot for deltas ──────────
   var prevSnap = await safe('prev_snapshot', async function() {
     var pm = prevMonth(reportMonth);
-    var r = await fetch(sbUrl + '/rest/v1/report_snapshots?client_slug=eq.' + clientSlug + '&report_month=eq.' + pm + '&limit=1', { headers: sbHeaders() });
+    var r = await fetch(sb.url() + '/rest/v1/report_snapshots?client_slug=eq.' + clientSlug + '&report_month=eq.' + pm + '&limit=1', { headers: sb.headers() });
     var rows = await r.json();
     return (rows && rows.length > 0) ? rows[0] : null;
   });
@@ -201,8 +197,8 @@ module.exports = async function handler(req, res) {
       var corrected = await resolveGscProperty(token, config.gsc_property);
       if (corrected && corrected !== config.gsc_property) {
         // Update report_configs with the corrected property
-        await fetch(sbUrl + '/rest/v1/report_configs?client_slug=eq.' + clientSlug, {
-          method: 'PATCH', headers: sbHeaders(),
+        await fetch(sb.url() + '/rest/v1/report_configs?client_slug=eq.' + clientSlug, {
+          method: 'PATCH', headers: sb.headers(),
           body: JSON.stringify({ gsc_property: corrected, updated_at: new Date().toISOString() })
         });
         config.gsc_property = corrected;
@@ -557,7 +553,7 @@ module.exports = async function handler(req, res) {
 
   // --- 5. Tasks (unchanged) ---
   var taskFn = safe('tasks', async function() {
-    var taskResp = await fetchT(sbUrl + '/rest/v1/checklist_items?client_slug=eq.' + clientSlug + '&select=status', { headers: sbHeaders() }, 10000);
+    var taskResp = await fetchT(sb.url() + '/rest/v1/checklist_items?client_slug=eq.' + clientSlug + '&select=status', { headers: sb.headers() }, 10000);
     var tasks = await taskResp.json();
     if (!Array.isArray(tasks)) return { total: 0, complete: 0, in_progress: 0, not_started: 0 };
     return {
@@ -582,7 +578,7 @@ module.exports = async function handler(req, res) {
 
   // Fetch CORE scores from entity_audits (fallback when prevSnap has none)
   var auditScores = await safe('entity_audits', async function() {
-    var resp = await fetch(sbUrl + '/rest/v1/entity_audits?client_slug=eq.' + clientSlug + '&order=audit_date.desc&limit=1&select=score_credibility,score_optimization,score_reputation,score_engagement,variance_score,cres_score', { headers: sbHeaders() });
+    var resp = await fetch(sb.url() + '/rest/v1/entity_audits?client_slug=eq.' + clientSlug + '&order=audit_date.desc&limit=1&select=score_credibility,score_optimization,score_reputation,score_engagement,variance_score,cres_score', { headers: sb.headers() });
     var rows = await resp.json();
     return (Array.isArray(rows) && rows.length > 0) ? rows[0] : null;
   });
@@ -590,7 +586,7 @@ module.exports = async function handler(req, res) {
   // Build citation_trend from historical snapshots
   if (aiData) {
     try {
-      var histResp = await fetch(sbUrl + '/rest/v1/report_snapshots?client_slug=eq.' + clientSlug + '&select=report_month,ai_visibility&order=report_month.asc&limit=12', { headers: sbHeaders() });
+      var histResp = await fetch(sb.url() + '/rest/v1/report_snapshots?client_slug=eq.' + clientSlug + '&select=report_month,ai_visibility&order=report_month.asc&limit=12', { headers: sb.headers() });
       var histRows = await histResp.json();
       if (Array.isArray(histRows)) {
         aiData.citation_trend = histRows.map(function(r) {
@@ -694,19 +690,19 @@ module.exports = async function handler(req, res) {
   // ─── STEP 9: Upsert snapshot to Supabase ──────────────────────
   var snapshotId = null;
   try {
-    var existResp = await fetch(sbUrl + '/rest/v1/report_snapshots?client_slug=eq.' + clientSlug + '&report_month=eq.' + reportMonth + '&limit=1', { headers: sbHeaders() });
+    var existResp = await fetch(sb.url() + '/rest/v1/report_snapshots?client_slug=eq.' + clientSlug + '&report_month=eq.' + reportMonth + '&limit=1', { headers: sb.headers() });
     var existing = await existResp.json();
 
     if (existing && existing.length > 0) {
       snapshotId = existing[0].id;
       snapshot.updated_at = new Date().toISOString();
-      var updateResp = await fetch(sbUrl + '/rest/v1/report_snapshots?id=eq.' + snapshotId, {
-        method: 'PATCH', headers: sbHeaders(), body: JSON.stringify(snapshot)
+      var updateResp = await fetch(sb.url() + '/rest/v1/report_snapshots?id=eq.' + snapshotId, {
+        method: 'PATCH', headers: sb.headers(), body: JSON.stringify(snapshot)
       });
       if (!updateResp.ok) throw new Error('PATCH failed: ' + (await updateResp.text()));
     } else {
-      var insertResp = await fetch(sbUrl + '/rest/v1/report_snapshots', {
-        method: 'POST', headers: sbHeaders(), body: JSON.stringify(snapshot)
+      var insertResp = await fetch(sb.url() + '/rest/v1/report_snapshots', {
+        method: 'POST', headers: sb.headers(), body: JSON.stringify(snapshot)
       });
       if (!insertResp.ok) throw new Error('INSERT failed: ' + (await insertResp.text()));
       var inserted = await insertResp.json();
@@ -721,12 +717,12 @@ module.exports = async function handler(req, res) {
   if (anthropicKey) {
     try {
       highlights = await generateHighlights(snapshot, prevSnap, practiceName, anthropicKey);
-      await fetch(sbUrl + '/rest/v1/report_highlights?client_slug=eq.' + clientSlug + '&report_month=eq.' + reportMonth, {
-        method: 'DELETE', headers: sbHeaders()
+      await fetch(sb.url() + '/rest/v1/report_highlights?client_slug=eq.' + clientSlug + '&report_month=eq.' + reportMonth, {
+        method: 'DELETE', headers: sb.headers()
       });
       if (highlights.length > 0) {
-        var hlResp = await fetch(sbUrl + '/rest/v1/report_highlights', {
-          method: 'POST', headers: sbHeaders(), body: JSON.stringify(highlights)
+        var hlResp = await fetch(sb.url() + '/rest/v1/report_highlights', {
+          method: 'POST', headers: sb.headers(), body: JSON.stringify(highlights)
         });
         if (!hlResp.ok) warnings.push('Highlights insert: ' + (await hlResp.text()));
       }
@@ -735,11 +731,11 @@ module.exports = async function handler(req, res) {
       // Fallback: generate basic highlights from data
       highlights = buildFallbackHighlights(snapshot, practiceName);
       if (highlights.length > 0) {
-        await fetch(sbUrl + '/rest/v1/report_highlights?client_slug=eq.' + clientSlug + '&report_month=eq.' + reportMonth, {
-          method: 'DELETE', headers: sbHeaders()
+        await fetch(sb.url() + '/rest/v1/report_highlights?client_slug=eq.' + clientSlug + '&report_month=eq.' + reportMonth, {
+          method: 'DELETE', headers: sb.headers()
         });
-        await fetch(sbUrl + '/rest/v1/report_highlights', {
-          method: 'POST', headers: sbHeaders(), body: JSON.stringify(highlights)
+        await fetch(sb.url() + '/rest/v1/report_highlights', {
+          method: 'POST', headers: sb.headers(), body: JSON.stringify(highlights)
         });
       }
     }
@@ -747,8 +743,8 @@ module.exports = async function handler(req, res) {
 
   // ─── STEP 11: Flip status to internal_review ──────────────────
   try {
-    var statusResp = await fetch(sbUrl + '/rest/v1/report_snapshots?id=eq.' + snapshotId, {
-      method: 'PATCH', headers: sbHeaders(),
+    var statusResp = await fetch(sb.url() + '/rest/v1/report_snapshots?id=eq.' + snapshotId, {
+      method: 'PATCH', headers: sb.headers(),
       body: JSON.stringify({ report_status: 'internal_review', updated_at: new Date().toISOString() })
     });
     if (!statusResp.ok) {
@@ -759,8 +755,8 @@ module.exports = async function handler(req, res) {
 
   // ─── STEP 12: Update report_configs compile timestamp ─────────
   try {
-    await fetch(sbUrl + '/rest/v1/report_configs?id=eq.' + config.id, {
-      method: 'PATCH', headers: sbHeaders(),
+    await fetch(sb.url() + '/rest/v1/report_configs?id=eq.' + config.id, {
+      method: 'PATCH', headers: sb.headers(),
       body: JSON.stringify({
         last_compiled_at: new Date().toISOString(),
         last_compiled_status: errors.length > 0 ? 'partial' : 'success',
@@ -830,8 +826,8 @@ module.exports = async function handler(req, res) {
         warnings.push('Resend failed: ' + emailResp.status + ' ' + resendErr);
       }
       if (notificationSent) {
-        await fetch(sbUrl + '/rest/v1/report_configs?id=eq.' + config.id, {
-          method: 'PATCH', headers: sbHeaders(),
+        await fetch(sb.url() + '/rest/v1/report_configs?id=eq.' + config.id, {
+          method: 'PATCH', headers: sb.headers(),
           body: JSON.stringify({ last_notified_at: new Date().toISOString() })
         });
       }
