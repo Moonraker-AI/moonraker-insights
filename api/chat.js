@@ -28,7 +28,7 @@ module.exports = async function handler(req, res) {
 
     var systemPrompt = buildSystemPrompt(context);
 
-    // Try Opus first with retries, then fall back to Sonnet
+    // Sonnet 4.6 with retry logic
     var models = [
       { id: 'claude-sonnet-4-6', label: 'Sonnet 4.6', retries: 2 }
     ];
