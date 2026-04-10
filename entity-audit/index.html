@@ -179,6 +179,11 @@ section { padding: 5rem 0; }
 .form-row input:focus, .form-row select:focus { outline: none; border-color: var(--color-primary); box-shadow: 0 0 0 3px rgba(0,212,126,.15); }
 .referral-sub { display: none; margin-top: .5rem; }
 .referral-sub.visible { display: block; }
+.form-consent { display: flex; align-items: flex-start; gap: .6rem; margin-top: .25rem; margin-bottom: .25rem; }
+.form-consent input[type="checkbox"] { appearance: none; -webkit-appearance: none; width: 18px; height: 18px; min-width: 18px; border: 1px solid rgba(255,255,255,.25); border-radius: 4px; background: rgba(255,255,255,.08); cursor: pointer; margin-top: 2px; position: relative; transition: all .2s; }
+.form-consent input[type="checkbox"]:checked { background: var(--color-primary); border-color: var(--color-primary); }
+.form-consent input[type="checkbox"]:checked::after { content: ''; position: absolute; left: 5px; top: 1px; width: 5px; height: 10px; border: solid #fff; border-width: 0 2px 2px 0; transform: rotate(45deg); }
+.form-consent label { font-size: .8125rem; color: rgba(232,245,239,.5); line-height: 1.5; cursor: pointer; font-weight: 400; letter-spacing: 0; }
 .form-row-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 1rem; }
 @media (max-width: 480px) { .form-row-grid { grid-template-columns: 1fr; } }
 .form-btn { width: 100%; background: var(--color-primary); color: #fff; font-family: 'Outfit', sans-serif; font-weight: 700; font-size: 1.0625rem; padding: .875rem; border-radius: 10px; border: none; cursor: pointer; transition: all .25s; margin-top: .5rem; }
@@ -529,6 +534,10 @@ section { padding: 5rem 0; }
             <input type="text" id="referralOther" placeholder="Who referred you?" style="display:none;margin-top:.5rem;">
           </div>
         </div>
+        <div class="form-consent">
+          <input type="checkbox" id="marketingConsent" checked>
+          <label for="marketingConsent">I agree to receive occasional emails with tips and insights on growing my practice's visibility. You can unsubscribe at any time.</label>
+        </div>
         <button class="form-btn" id="submitBtn" onclick="submitIntake()">Request Free Entity Audit &#8594;</button>
         <div class="form-error" id="formError"></div>
         <p class="form-note">No credit card required. No spam. Just your scorecard.</p>
@@ -682,6 +691,7 @@ section { padding: 5rem 0; }
     var state = document.getElementById('state').value.trim();
     var gbpLink = document.getElementById('gbpLink').value.trim();
     var source = document.getElementById('auditSource').value || 'landing_page';
+    var marketingConsent = document.getElementById('marketingConsent').checked;
 
     // Build referral name from sub-dropdown
     var referralName = '';
@@ -726,7 +736,8 @@ section { padding: 5rem 0; }
         state: state,
         gbp_link: gbpLink,
         source: source,
-        referral_name: referralName
+        referral_name: referralName,
+        marketing_consent: marketingConsent
       })
     })
     .then(function(r) {
