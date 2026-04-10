@@ -3,6 +3,10 @@
 // Returns structured design tokens (typography, colors, layout, voice DNA)
 // Uses Sonnet 4.6 (non-streaming, structured JSON output)
 
+var sb = require('./_lib/supabase');
+
+var sb = require('./_lib/supabase');
+
 module.exports = async function handler(req, res) {
   if (req.method === 'OPTIONS') {
     res.setHeader('Access-Control-Allow-Origin', '*');
@@ -20,8 +24,6 @@ module.exports = async function handler(req, res) {
     return res.status(500).json({ error: 'ANTHROPIC_API_KEY not configured' });
   }
 
-  var supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL || 'https://ofmmwcjhdrhvxxkhcuww.supabase.co';
-  var serviceKey = process.env.SUPABASE_SERVICE_ROLE_KEY;
 
   try {
     var body = req.body;
@@ -197,17 +199,17 @@ Important rules:
     var sbMethod, sbUrl;
     if (existingSpecId) {
       sbMethod = 'PATCH';
-      sbUrl = supabaseUrl + '/rest/v1/design_specs?id=eq.' + existingSpecId;
+      sbUrl = sb.url() + '/rest/v1/design_specs?id=eq.' + existingSpecId;
     } else {
       sbMethod = 'POST';
-      sbUrl = supabaseUrl + '/rest/v1/design_specs';
+      sbUrl = sb.url() + '/rest/v1/design_specs';
     }
 
     var sbRes = await fetch(sbUrl, {
       method: sbMethod,
       headers: {
-        'apikey': serviceKey,
-        'Authorization': 'Bearer ' + serviceKey,
+        'apikey': sb.key(),
+        'Authorization': 'Bearer ' + sb.key(),
         'Content-Type': 'application/json',
         'Prefer': 'return=representation'
       },
