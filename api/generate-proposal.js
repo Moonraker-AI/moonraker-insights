@@ -17,15 +17,16 @@
 // ENV VARS:
 //   SUPABASE_SERVICE_ROLE_KEY, ANTHROPIC_API_KEY, GITHUB_PAT, GOOGLE_SERVICE_ACCOUNT_JSON
 
+var sb = require('./_lib/supabase');
+var gh = require('./_lib/github');
+
 module.exports = async function handler(req, res) {
   if (req.method !== 'POST') return res.status(405).json({ error: 'Method not allowed' });
 
-  var sbKey = process.env.SUPABASE_SERVICE_ROLE_KEY;
   var anthropicKey = process.env.ANTHROPIC_API_KEY;
   var ghToken = process.env.GITHUB_PAT;
-  var sbUrl = process.env.NEXT_PUBLIC_SUPABASE_URL || 'https://ofmmwcjhdrhvxxkhcuww.supabase.co';
 
-  if (!sbKey) return res.status(500).json({ error: 'SUPABASE_SERVICE_ROLE_KEY not configured' });
+  if (!sb.isConfigured()) return res.status(500).json({ error: 'SUPABASE_SERVICE_ROLE_KEY not configured' });
   if (!anthropicKey) return res.status(500).json({ error: 'ANTHROPIC_API_KEY not configured' });
   if (!ghToken) return res.status(500).json({ error: 'GITHUB_PAT not configured' });
 
@@ -36,9 +37,6 @@ module.exports = async function handler(req, res) {
   var BRANCH = 'main';
   var results = { generate: null, deploy: [] };
 
-  function sbHeaders() {
-    return { 'apikey': sbKey, 'Authorization': 'Bearer ' + sbKey, 'Content-Type': 'application/json', 'Prefer': 'return=representation' };
-  }
   function ghHeaders() {
     return { 'Authorization': 'Bearer ' + ghToken, 'Accept': 'application/vnd.github+json', 'Content-Type': 'application/json' };
   }
@@ -46,7 +44,7 @@ module.exports = async function handler(req, res) {
   // ─── 1. Load proposal + contact ───────────────────────────────
   var proposal, contact;
   try {
-    var pResp = await fetch(sbUrl + '/rest/v1/proposals?id=eq.' + proposalId + '&select=*,contacts(*)&limit=1', { headers: sbHeaders() });
+    var pResp = await fetch(sb.url() + '/rest/v1/proposals?id=eq.' + proposalId + '&select=*,contacts(*)&limit=1', { headers: sb.headers() });
     var proposals = await pResp.json();
     if (!proposals || proposals.length === 0) return res.status(404).json({ error: 'Proposal not found' });
     proposal = proposals[0];
@@ -64,7 +62,7 @@ module.exports = async function handler(req, res) {
   // Load practice_type for results section filtering
   var practiceType = 'group'; // default
   try {
-    var pdResp = await fetch(sbUrl + '/rest/v1/practice_details?contact_id=eq.' + contact.id + '&select=practice_type&limit=1', { headers: sbHeaders() });
+    var pdResp = await fetch(sb.url() + '/rest/v1/practice_details?contact_id=eq.' + contact.id + '&select=practice_type&limit=1', { headers: sb.headers() });
     var pdRows = await pdResp.json();
     if (pdRows && pdRows.length > 0 && pdRows[0].practice_type) {
       practiceType = pdRows[0].practice_type; // 'solo' or 'group'
@@ -72,8 +70,8 @@ module.exports = async function handler(req, res) {
   } catch (e) { /* default to group */ }
 
   // Update status
-  await fetch(sbUrl + '/rest/v1/proposals?id=eq.' + proposalId, {
-    method: 'PATCH', headers: sbHeaders(), body: JSON.stringify({ status: 'generating' })
+  await fetch(sb.url() + '/rest/v1/proposals?id=eq.' + proposalId, {
+    method: 'PATCH', headers: sb.headers(), body: JSON.stringify({ status: 'generating' })
   }).catch(function(){});
 
   // ─── 2. Read proposal template from GitHub ────────────────────
@@ -266,8 +264,8 @@ Respond with ONLY valid JSON (no markdown, no backticks). The JSON must have the
     results.generate = 'success';
   } catch (e) {
     results.generate = 'failed: ' + (e.message || String(e));
-    await fetch(sbUrl + '/rest/v1/proposals?id=eq.' + proposalId, {
-      method: 'PATCH', headers: sbHeaders(), body: JSON.stringify({ status: 'review', notes: 'Generation failed: ' + (e.message || String(e)) })
+    await fetch(sb.url() + '/rest/v1/proposals?id=eq.' + proposalId, {
+      method: 'PATCH', headers: sb.headers(), body: JSON.stringify({ status: 'review', notes: 'Generation failed: ' + (e.message || String(e)) })
     }).catch(function(){});
     return res.status(500).json({ error: 'AI generation failed', details: e.message, results: results });
   }
@@ -535,14 +533,14 @@ Respond with ONLY valid JSON (no markdown, no backticks). The JSON must have the
   // Also update checkout_options on the contact
   var checkoutPlans = billings.length ? billings : null;
   if (checkoutPlans) {
-    await fetch(sbUrl + '/rest/v1/contacts?id=eq.' + contact.id, {
-      method: 'PATCH', headers: sbHeaders(),
+    await fetch(sb.url() + '/rest/v1/contacts?id=eq.' + contact.id, {
+      method: 'PATCH', headers: sb.headers(),
       body: JSON.stringify({ checkout_options: { plans: checkoutPlans } })
     }).catch(function(){});
   }
 
-  await fetch(sbUrl + '/rest/v1/proposals?id=eq.' + proposalId, {
-    method: 'PATCH', headers: sbHeaders(),
+  await fetch(sb.url() + '/rest/v1/proposals?id=eq.' + proposalId, {
+    method: 'PATCH', headers: sb.headers(),
     body: JSON.stringify({
       status: 'ready',
       proposal_url: proposalUrl,
@@ -555,8 +553,8 @@ Respond with ONLY valid JSON (no markdown, no backticks). The JSON must have the
   results.conversion = {};
   try {
     // Flip status to prospect
-    var convResp = await fetch(sbUrl + '/rest/v1/contacts?id=eq.' + contact.id, {
-      method: 'PATCH', headers: sbHeaders(),
+    var convResp = await fetch(sb.url() + '/rest/v1/contacts?id=eq.' + contact.id, {
+      method: 'PATCH', headers: sb.headers(),
       body: JSON.stringify({
         status: 'prospect',
         converted_from_lead_at: new Date().toISOString()
@@ -565,8 +563,8 @@ Respond with ONLY valid JSON (no markdown, no backticks). The JSON must have the
     results.conversion.status = convResp.ok ? 'prospect' : 'failed';
 
     // Seed 9 onboarding steps (delete existing first for idempotency)
-    await fetch(sbUrl + '/rest/v1/onboarding_steps?contact_id=eq.' + contact.id, {
-      method: 'DELETE', headers: sbHeaders()
+    await fetch(sb.url() + '/rest/v1/onboarding_steps?contact_id=eq.' + contact.id, {
+      method: 'DELETE', headers: sb.headers()
     });
     var onboardingSteps = [
       { contact_id: contact.id, step_key: 'confirm_info', label: 'Confirm Info', status: 'pending', sort_order: 1 },
@@ -579,8 +577,8 @@ Respond with ONLY valid JSON (no markdown, no backticks). The JSON must have the
       { contact_id: contact.id, step_key: 'checkins_and_drive', label: 'Google Drive', status: 'pending', sort_order: 8 },
       { contact_id: contact.id, step_key: 'performance_guarantee', label: 'Performance Guarantee', status: 'pending', sort_order: 9 }
     ];
-    var seedResp = await fetch(sbUrl + '/rest/v1/onboarding_steps', {
-      method: 'POST', headers: sbHeaders(),
+    var seedResp = await fetch(sb.url() + '/rest/v1/onboarding_steps', {
+      method: 'POST', headers: sb.headers(),
       body: JSON.stringify(onboardingSteps)
     });
     results.conversion.onboarding_steps = seedResp.ok ? 9 : 'failed';
@@ -636,8 +634,8 @@ Respond with ONLY valid JSON (no markdown, no backticks). The JSON must have the
 
           // Write Creative folder ID to contacts for onboarding page
           if (creativeFolderId) {
-            await fetch(sbUrl + '/rest/v1/contacts?id=eq.' + contact.id, {
-              method: 'PATCH', headers: sbHeaders(),
+            await fetch(sb.url() + '/rest/v1/contacts?id=eq.' + contact.id, {
+              method: 'PATCH', headers: sb.headers(),
               body: JSON.stringify({
                 drive_folder_id: creativeFolderId,
                 drive_folder_url: 'https://drive.google.com/drive/folders/' + creativeFolderId
