@@ -4,6 +4,8 @@
 //
 // POST { audit_id }
 
+var email = require('./_lib/email-template');
+
 module.exports = async function handler(req, res) {
   if (req.method !== 'POST') return res.status(405).json({ error: 'Method not allowed' });
 
@@ -42,71 +44,67 @@ module.exports = async function handler(req, res) {
     var practiceName = contact.practice_name || '';
     var scorecardUrl = 'https://clients.moonraker.ai/' + slug + '/entity-audit';
 
-    // Build scores summary for the email
+    // Build scores summary
     var scores = audit.scores || {};
-    var coreScores = [];
-    if (scores.credibility !== undefined) coreScores.push({ label: 'Credibility', score: scores.credibility });
-    if (scores.optimization !== undefined) coreScores.push({ label: 'Optimization', score: scores.optimization });
-    if (scores.reputation !== undefined) coreScores.push({ label: 'Reputation', score: scores.reputation });
-    if (scores.engagement !== undefined) coreScores.push({ label: 'Engagement', score: scores.engagement });
     var overallScore = scores.overall || null;
 
-    // Build email HTML
-    var scoreCards = '';
-    if (coreScores.length > 0) {
-      scoreCards = '<div style="display:flex;gap:8px;margin:20px 0;">';
-      coreScores.forEach(function(s) {
-        var color = s.score >= 80 ? '#00D47E' : s.score >= 50 ? '#F59E0B' : '#EF4444';
-        scoreCards += '<div style="flex:1;text-align:center;padding:12px 8px;background:#1a1f2e;border-radius:8px;border:1px solid #2a2f3e;">' +
-          '<div style="font-size:22px;font-weight:700;color:' + color + ';">' + Math.round(s.score) + '</div>' +
-          '<div style="font-size:11px;color:#888;margin-top:4px;text-transform:uppercase;letter-spacing:.04em;">' + s.label + '</div>' +
-        '</div>';
-      });
-      scoreCards += '</div>';
-    }
-
+    // Build overall score display
     var overallHtml = '';
     if (overallScore !== null) {
       var oc = overallScore >= 80 ? '#00D47E' : overallScore >= 50 ? '#F59E0B' : '#EF4444';
-      overallHtml = '<div style="text-align:center;margin:16px 0 20px;">' +
-        '<div style="font-size:13px;color:#888;margin-bottom:4px;">Overall CORE Score</div>' +
-        '<div style="font-size:36px;font-weight:700;color:' + oc + ';">' + Math.round(overallScore) + '<span style="font-size:16px;color:#666;">/100</span></div>' +
-      '</div>';
+      overallHtml = '<table cellpadding="0" cellspacing="0" border="0" width="100%" style="margin:20px 0 8px;"><tr><td align="center">' +
+        '<div style="font-family:Inter,sans-serif;font-size:11px;font-weight:600;text-transform:uppercase;letter-spacing:.04em;color:#6B7599;margin-bottom:6px;">Overall CORE Score</div>' +
+        '<div style="font-family:Outfit,sans-serif;font-size:40px;font-weight:700;color:' + oc + ';">' + Math.round(overallScore) + '<span style="font-size:18px;color:#6B7599;">/100</span></div>' +
+        '</td></tr></table>';
     }
 
-    var greeting = firstName ? ('Hi ' + esc(firstName) + ',') : 'Hello,';
+    // Build CORE score cards matching shared template aesthetic
+    var coreKeys = [
+      { key: 'credibility', label: 'Credibility' },
+      { key: 'optimization', label: 'Optimization' },
+      { key: 'reputation', label: 'Reputation' },
+      { key: 'engagement', label: 'Engagement' }
+    ];
+    var scoreItems = [];
+    coreKeys.forEach(function(k) {
+      if (scores[k.key] !== undefined) {
+        var v = Math.round(scores[k.key]);
+        var color, bg, border;
+        if (v < 50) { color = '#EF4444'; bg = 'rgba(239,68,68,.06)'; border = 'rgba(239,68,68,.18)'; }
+        else if (v < 80) { color = '#F59E0B'; bg = 'rgba(245,158,11,.06)'; border = 'rgba(245,158,11,.18)'; }
+        else { color = '#00b86c'; bg = 'rgba(0,212,126,.06)'; border = 'rgba(0,212,126,.18)'; }
+        scoreItems.push({ value: String(v), label: k.label, color: color, bg: bg, border: border });
+      }
+    });
 
-    var htmlBody = '<!DOCTYPE html><html><head><meta charset="utf-8"></head>' +
-      '<body style="margin:0;padding:0;background:#0d1117;font-family:-apple-system,BlinkMacSystemFont,Segoe UI,Roboto,sans-serif;">' +
-      '<div style="max-width:560px;margin:0 auto;padding:32px 24px;">' +
-        '<div style="margin-bottom:24px;">' +
-          '<img src="https://clients.moonraker.ai/assets/logo.png" alt="Moonraker AI" style="height:28px;" />' +
-        '</div>' +
-        '<div style="background:#141922;border-radius:12px;border:1px solid #1e2533;padding:28px;">' +
-          '<p style="font-size:15px;color:#e0e0e0;margin:0 0 16px;line-height:1.6;">' + greeting + '</p>' +
-          '<p style="font-size:15px;color:#e0e0e0;margin:0 0 16px;line-height:1.6;">' +
-            'Your CORE Entity Audit' + (practiceName ? ' for <strong style="color:#fff;">' + esc(practiceName) + '</strong>' : '') + ' is ready. ' +
-            'This report evaluates your practice\'s digital presence across four key areas: Credibility, Optimization, Reputation, and Engagement.' +
-          '</p>' +
-          overallHtml +
-          scoreCards +
-          '<p style="font-size:14px;color:#ccc;margin:16px 0 24px;line-height:1.6;">' +
-            'Your scorecard includes a detailed breakdown of each area with specific findings and recommendations for improvement.' +
-          '</p>' +
-          '<div style="text-align:center;margin:24px 0 8px;">' +
-            '<a href="' + esc(scorecardUrl) + '" style="display:inline-block;padding:12px 28px;background:#00D47E;color:#0d1117;font-size:15px;font-weight:600;text-decoration:none;border-radius:6px;">View Your Scorecard</a>' +
-          '</div>' +
-        '</div>' +
-        '<p style="font-size:12px;color:#555;margin-top:20px;text-align:center;">Moonraker AI &middot; Digital Marketing for Therapy Practices</p>' +
-      '</div>' +
-      '</body></html>';
+    var scoreCardsHtml = '';
+    if (scoreItems.length > 0) {
+      scoreCardsHtml = email.statCards(scoreItems);
+    }
+
+    // Compose email content using shared helpers
+    var practiceRef = practiceName ? ' for <strong style="color:#1E2A5E;">' + email.esc(practiceName) + '</strong>' : '';
+
+    var content = email.greeting(firstName || 'there') +
+      email.p('Your CORE Entity Audit' + practiceRef + ' is ready. This report evaluates your practice\'s digital presence across four key areas: Credibility, Optimization, Reputation, and Engagement.') +
+      overallHtml +
+      scoreCardsHtml +
+      email.p('Your scorecard includes a detailed breakdown of each area with specific findings and recommendations for improvement.') +
+      email.cta(scorecardUrl, 'View Your Scorecard');
+
+    var htmlBody = email.wrap({
+      headerLabel: 'CORE Entity Audit',
+      content: content,
+      footerNote: '',
+      year: new Date().getFullYear()
+    });
 
     // Send via Resend
     var emailResp = await fetch('https://api.resend.com/emails', {
       method: 'POST',
       headers: { 'Authorization': 'Bearer ' + resendKey, 'Content-Type': 'application/json' },
       body: JSON.stringify({
-        from: 'Moonraker AI <audits@clients.moonraker.ai>',
+        from: email.FROM.audits,
         to: [contact.email],
         cc: ['scott@moonraker.ai'],
         subject: 'Your CORE Entity Audit is Ready' + (practiceName ? ' - ' + practiceName : ''),
@@ -139,8 +137,3 @@ module.exports = async function handler(req, res) {
     return res.status(500).json({ ok: false, error: err.message });
   }
 };
-
-function esc(str) {
-  if (!str) return '';
-  return String(str).replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;').replace(/"/g, '&quot;');
-}
