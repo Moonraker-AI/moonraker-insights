@@ -12,28 +12,23 @@
 //   4. Day 21 - Graceful close: have your priorities shifted?
 
 var email = require('./_lib/email-template');
+var sb = require('./_lib/supabase');
+var sb = require('./_lib/supabase');
 
 module.exports = async function handler(req, res) {
   if (req.method !== 'POST') return res.status(405).json({ error: 'Method not allowed' });
 
-  var sbKey = process.env.SUPABASE_SERVICE_ROLE_KEY;
-  var sbUrl = process.env.NEXT_PUBLIC_SUPABASE_URL || 'https://ofmmwcjhdrhvxxkhcuww.supabase.co';
-  if (!sbKey) return res.status(500).json({ error: 'SUPABASE_SERVICE_ROLE_KEY not configured' });
+  if (!sb.isConfigured()) return res.status(500).json({ error: 'SUPABASE_SERVICE_ROLE_KEY not configured' });
 
   var body = req.body || {};
   var proposalId = body.proposal_id;
   if (!proposalId) return res.status(400).json({ error: 'proposal_id required' });
 
-  function sbHeaders(prefer) {
-    var h = { 'apikey': sbKey, 'Authorization': 'Bearer ' + sbKey, 'Content-Type': 'application/json' };
-    if (prefer) h['Prefer'] = prefer;
-    return h;
-  }
 
   // Load proposal + contact
   var proposal, contact;
   try {
-    var pResp = await fetch(sbUrl + '/rest/v1/proposals?id=eq.' + proposalId + '&select=*,contacts(*)&limit=1', { headers: sbHeaders() });
+    var pResp = await fetch(sb.url() + '/rest/v1/proposals?id=eq.' + proposalId + '&select=*,contacts(*)&limit=1', { headers: sb.headers() });
     var proposals = await pResp.json();
     if (!proposals || proposals.length === 0) return res.status(404).json({ error: 'Proposal not found' });
     proposal = proposals[0];
@@ -47,7 +42,7 @@ module.exports = async function handler(req, res) {
 
   // Check if followups already exist
   try {
-    var existResp = await fetch(sbUrl + '/rest/v1/proposal_followups?proposal_id=eq.' + proposalId + '&select=id&limit=1', { headers: sbHeaders() });
+    var existResp = await fetch(sb.url() + '/rest/v1/proposal_followups?proposal_id=eq.' + proposalId + '&select=id&limit=1', { headers: sb.headers() });
     var existing = await existResp.json();
     if (existing && existing.length > 0) {
       return res.status(400).json({ error: 'Follow-ups already exist for this proposal. Delete existing ones first.' });
@@ -64,7 +59,7 @@ module.exports = async function handler(req, res) {
   // Load practice_type for results personalization
   var practiceType = 'group'; // default
   try {
-    var pdResp = await fetch(sbUrl + '/rest/v1/practice_details?contact_id=eq.' + contact.id + '&select=practice_type&limit=1', { headers: sbHeaders() });
+    var pdResp = await fetch(sb.url() + '/rest/v1/practice_details?contact_id=eq.' + contact.id + '&select=practice_type&limit=1', { headers: sb.headers() });
     var pdRows = await pdResp.json();
     if (pdRows && pdRows.length > 0 && pdRows[0].practice_type) {
       practiceType = pdRows[0].practice_type;
@@ -112,9 +107,9 @@ module.exports = async function handler(req, res) {
   });
 
   try {
-    var insertResp = await fetch(sbUrl + '/rest/v1/proposal_followups', {
+    var insertResp = await fetch(sb.url() + '/rest/v1/proposal_followups', {
       method: 'POST',
-      headers: sbHeaders('return=representation'),
+      headers: sb.headers('return=representation'),
       body: JSON.stringify(rows)
     });
     var inserted = await insertResp.json();
