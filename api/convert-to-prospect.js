@@ -7,16 +7,16 @@
 //
 // POST { slug, contact_id }
 
+var sb = require('./_lib/supabase');
+
 module.exports = async function handler(req, res) {
   if (req.method !== 'POST') {
     return res.status(405).json({ error: 'Method not allowed' });
   }
 
-  var sbKey = process.env.SUPABASE_SERVICE_ROLE_KEY;
-  var sbUrl = process.env.NEXT_PUBLIC_SUPABASE_URL || 'https://ofmmwcjhdrhvxxkhcuww.supabase.co';
   var saJson = process.env.GOOGLE_SERVICE_ACCOUNT_JSON;
 
-  if (!sbKey) return res.status(500).json({ error: 'SUPABASE_SERVICE_ROLE_KEY not configured' });
+  if (!sb.isConfigured()) return res.status(500).json({ error: 'SUPABASE_SERVICE_ROLE_KEY not configured' });
 
   var body = req.body;
   var slug = body.slug;
@@ -27,12 +27,7 @@ module.exports = async function handler(req, res) {
   }
 
   var CLIENTS_FOLDER_ID = '1dymrrowTe1szsOJJPf45x4qDUit6J5jB';
-  var sbHeaders = {
-    'apikey': sbKey,
-    'Authorization': 'Bearer ' + sbKey,
-    'Content-Type': 'application/json',
-    'Prefer': 'return=representation'
-  };
+  var sbHeaders = sb.headers('return=representation');
 
   var results = { supabase: {}, drive: {} };
 
@@ -40,8 +35,8 @@ module.exports = async function handler(req, res) {
     // ============================================================
     // STEP 0: Fetch contact for practice_name + existing drive_folder_id
     // ============================================================
-    var contactResp = await fetch(sbUrl + '/rest/v1/contacts?id=eq.' + contactId + '&select=practice_name,drive_folder_id', {
-      headers: { 'apikey': sbKey, 'Authorization': 'Bearer ' + sbKey }
+    var contactResp = await fetch(sb.url() + '/rest/v1/contacts?id=eq.' + contactId + '&select=practice_name,drive_folder_id', {
+      headers: sb.headers()
     });
     var contactData = await contactResp.json();
     var practiceName = (contactData && contactData[0] && contactData[0].practice_name) || slug;
@@ -50,7 +45,7 @@ module.exports = async function handler(req, res) {
     // ============================================================
     // STEP 1: Flip contact status to prospect
     // ============================================================
-    var patchResp = await fetch(sbUrl + '/rest/v1/contacts?id=eq.' + contactId, {
+    var patchResp = await fetch(sb.url() + '/rest/v1/contacts?id=eq.' + contactId, {
       method: 'PATCH',
       headers: sbHeaders,
       body: JSON.stringify({
@@ -79,12 +74,12 @@ module.exports = async function handler(req, res) {
       { contact_id: contactId, step_key: 'performance_guarantee', label: 'Performance Guarantee', status: 'pending', sort_order: 9 }
     ];
 
-    await fetch(sbUrl + '/rest/v1/onboarding_steps?contact_id=eq.' + contactId, {
+    await fetch(sb.url() + '/rest/v1/onboarding_steps?contact_id=eq.' + contactId, {
       method: 'DELETE',
       headers: sbHeaders
     });
 
-    var seedResp = await fetch(sbUrl + '/rest/v1/onboarding_steps', {
+    var seedResp = await fetch(sb.url() + '/rest/v1/onboarding_steps', {
       method: 'POST',
       headers: sbHeaders,
       body: JSON.stringify(steps)
@@ -138,7 +133,7 @@ module.exports = async function handler(req, res) {
             results.drive.subfolders = createdSubs;
 
             if (creativeFolderId) {
-              await fetch(sbUrl + '/rest/v1/contacts?id=eq.' + contactId, {
+              await fetch(sb.url() + '/rest/v1/contacts?id=eq.' + contactId, {
                 method: 'PATCH',
                 headers: sbHeaders,
                 body: JSON.stringify({
