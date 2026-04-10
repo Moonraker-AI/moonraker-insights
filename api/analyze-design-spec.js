@@ -205,12 +205,7 @@ Important rules:
 
     var sbRes = await fetch(sbUrl, {
       method: sbMethod,
-      headers: {
-        'apikey': sb.key(),
-        'Authorization': 'Bearer ' + sb.key(),
-        'Content-Type': 'application/json',
-        'Prefer': 'return=representation'
-      },
+      headers: sb.headers('return=representation'),
       body: JSON.stringify(specRecord)
     });
 
