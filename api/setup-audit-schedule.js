@@ -91,6 +91,56 @@ module.exports = async function handler(req, res) {
         }
       }
 
+      // Create checklist_items from the audit's tasks JSONB
+      // (Leads don't get checklist items; they're created here when the lead converts)
+      try {
+        var fullAudit = await sb.one('entity_audits?id=eq.' + adopted.id + '&select=tasks,audit_period&limit=1');
+        var tasks = (fullAudit && fullAudit.tasks) || [];
+        if (tasks.length > 0) {
+          // Clear any existing (shouldn't be any for leads, but safe)
+          await sb.mutate('checklist_items?audit_id=eq.' + adopted.id, 'DELETE', null, 'return=minimal');
+
+          function sevToPri(sev) { return sev === 'critical' ? 'P1' : sev === 'warning' ? 'P2' : 'P3'; }
+          function pillarToCat(p) {
+            if (p === 'credibility') return 'Credibility + Entity Identity';
+            if (p === 'optimization') return 'Optimization + Content';
+            if (p === 'reputation') return 'Reputation + Citations';
+            return 'Engagement + UX';
+          }
+          function pillarToPhase(p, pri) {
+            if (pri === 'P1') return 'Entity Identity + Schema';
+            if (pri === 'P2') return 'Content Structure';
+            return 'Growth + Amplification';
+          }
+
+          var rows = tasks.map(function(t, idx) {
+            var pri = sevToPri(t.severity);
+            return {
+              id: adopted.id.substring(0, 8) + '-' + String(idx + 1).padStart(3, '0'),
+              client_slug: contact.slug,
+              audit_id: adopted.id,
+              audit_period: fullAudit.audit_period || 'baseline',
+              task_id: String(idx + 1),
+              priority: pri,
+              category: pillarToCat(t.pillar),
+              scope: t.scope || 'on-page',
+              title: t.title,
+              description: (t.detail || '') + (t.fix ? '\n\n' + t.fix : ''),
+              owner: t.owner || 'Moonraker',
+              status: t.severity === 'positive' ? 'complete' : 'not_started',
+              phase: pillarToPhase(t.pillar, pri),
+              web_visible: true,
+              sort_order: idx + 1,
+              notes: ''
+            };
+          });
+
+          await sb.mutate('checklist_items', 'POST', rows, 'return=minimal');
+        }
+      } catch (clErr) {
+        console.log('Checklist creation warning:', clErr.message);
+      }
+
     } else {
       // Pull fresh: create new baseline audit and trigger agent
       var brandQuery = contact.practice_name || (contact.first_name + ' ' + contact.last_name);
