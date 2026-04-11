@@ -2,10 +2,15 @@
 
 var sb = require('./_lib/supabase');
 var crypt = require('./_lib/crypto');
+var auth = require('./_lib/auth');
 
 module.exports = async function handler(req, res) {
   if (req.method !== 'POST') return res.status(405).json({ error: 'Method not allowed' });
   if (!sb.isConfigured()) return res.status(500).json({ error: 'SUPABASE_SERVICE_ROLE_KEY not configured' });
+
+  // Require authenticated admin
+  var user = await auth.requireAdmin(req, res);
+  if (!user) return;
 
   try {
     var body = req.body;
