@@ -1,6 +1,7 @@
 // shared/admin-auth.js
 // Include on all /admin/* pages (except login).
 // Checks for a valid Supabase Auth session, redirects to login if missing.
+// Auto-injects Authorization header into all /api/* fetch calls.
 // Exposes window.adminAuth for use by page scripts.
 //
 // Usage in admin pages:
@@ -8,8 +9,8 @@
 //   <script src="/shared/admin-auth.js"></script>
 //   <script>
 //     adminAuth.ready(function(session, user) {
-//       // session.access_token is available for API calls
-//       // user = { id, email, role, name }
+//       // Auth confirmed. All fetch('/api/...') calls now auto-include auth.
+//       loadPageData();
 //     });
 //   </script>
 
@@ -27,7 +28,29 @@
     window.location.href = '/admin/login';
   }
 
-  // Get the current session, refresh if needed
+  // ── Fetch interceptor ──────────────────────────────────────────
+  // Monkey-patches window.fetch to auto-inject the Authorization header
+  // on any request to /api/* (same-origin). Existing headers are preserved.
+  var _origFetch = window.fetch;
+
+  window.fetch = function(input, init) {
+    if (_session) {
+      var url = typeof input === 'string' ? input : (input && input.url ? input.url : '');
+      // Only intercept same-origin /api/ calls (not external URLs)
+      if (url.indexOf('/api/') === 0) {
+        init = init || {};
+        init.headers = init.headers || {};
+        // Don't override if already set (e.g. for webhook callbacks)
+        if (!init.headers['Authorization'] && !init.headers['authorization']) {
+          init.headers['Authorization'] = 'Bearer ' + _session.access_token;
+        }
+      }
+    }
+    return _origFetch.call(window, input, init);
+  };
+
+  // ── Init ───────────────────────────────────────────────────────
+
   async function init() {
     try {
       var result = await client.auth.getSession();
@@ -36,7 +59,7 @@
       _session = result.data.session;
 
       // Verify admin profile
-      var resp = await fetch(SB_URL + '/rest/v1/admin_profiles?id=eq.' + _session.user.id + '&select=id,email,display_name,role&limit=1', {
+      var resp = await _origFetch(SB_URL + '/rest/v1/admin_profiles?id=eq.' + _session.user.id + '&select=id,email,display_name,role&limit=1', {
         headers: { 'apikey': SB_ANON, 'Authorization': 'Bearer ' + _session.access_token }
       });
       var profiles = await resp.json();
@@ -56,7 +79,7 @@
 
       _resolved = true;
       for (var i = 0; i < _readyCallbacks.length; i++) {
-        _readyCallbacks[i](_session, _user);
+        try { _readyCallbacks[i](_session, _user); } catch (e) { console.error('[admin-auth] ready callback error:', e); }
       }
       _readyCallbacks = [];
 
@@ -66,62 +89,46 @@
     }
   }
 
-  // Listen for token refresh
+  // Listen for token refresh and sign-out
   client.auth.onAuthStateChange(function(event, session) {
     if (event === 'SIGNED_OUT') {
+      _session = null;
       goLogin();
     } else if (event === 'TOKEN_REFRESHED' && session) {
       _session = session;
     }
   });
 
-  // Public API
+  // ── Public API ─────────────────────────────────────────────────
+
   window.adminAuth = {
-    // Register a callback for when auth is ready
+    // Register a callback for when auth is ready. If already ready, fires immediately.
     ready: function(cb) {
       if (_resolved) { cb(_session, _user); }
       else { _readyCallbacks.push(cb); }
     },
 
-    // Get current access token (for API calls)
+    // Get current access token
     token: function() { return _session ? _session.access_token : null; },
 
-    // Get current user info
+    // Get current user info { id, email, role, name }
     user: function() { return _user; },
 
-    // Get the Supabase client (for direct queries with user's JWT)
+    // The Supabase client instance
     supabase: client,
 
-    // Sign out and redirect
+    // Sign out and redirect to login
     signOut: async function() {
       await client.auth.signOut();
+      _session = null;
       goLogin();
     },
 
-    // Helper: make authenticated API call
-    apiFetch: function(url, opts) {
-      opts = opts || {};
-      opts.headers = opts.headers || {};
-      if (_session) {
-        opts.headers['Authorization'] = 'Bearer ' + _session.access_token;
-      }
-      if (!opts.headers['Content-Type'] && opts.body) {
-        opts.headers['Content-Type'] = 'application/json';
-      }
-      return fetch(url, opts);
-    },
-
-    // Helper: make authenticated Supabase read (uses user's JWT, not service key)
-    sbFetch: function(path) {
-      return fetch(SB_URL + '/rest/v1/' + path, {
-        headers: {
-          'apikey': SB_ANON,
-          'Authorization': 'Bearer ' + (_session ? _session.access_token : SB_ANON)
-        }
-      }).then(function(r) { return r.json(); });
-    }
+    // Constants
+    SB_URL: SB_URL,
+    SB_ANON: SB_ANON
   };
 
-  // Start auth check
+  // Start auth check immediately
   init();
 })();
