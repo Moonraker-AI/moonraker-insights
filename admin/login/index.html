@@ -22,6 +22,7 @@
   --color-body: #333F70;
   --color-muted: #6B7599;
   --color-danger: #EF4444;
+  --color-success: #00D47E;
 }
 [data-theme="dark"] {
   --color-primary: #00D47E;
@@ -35,6 +36,7 @@
   --color-body: #C8D8D0;
   --color-muted: #5A7A6E;
   --color-danger: #FF6B6B;
+  --color-success: #00D47E;
 }
 
 *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
@@ -47,9 +49,7 @@ body {
 }
 h1, h2 { font-family: 'Outfit', sans-serif; font-weight: 700; color: var(--color-heading); line-height: 1.2; }
 
-.login-container {
-  width: 100%; max-width: 400px; padding: 1.5rem;
-}
+.login-container { width: 100%; max-width: 400px; padding: 1.5rem; }
 .login-card {
   background: var(--color-surface); border: 1px solid var(--color-border);
   border-radius: 14px; padding: 2.5rem 2rem; box-shadow: 0 4px 24px rgba(0,0,0,.06);
@@ -66,9 +66,7 @@ h1, h2 { font-family: 'Outfit', sans-serif; font-weight: 700; color: var(--color
   font-family: 'Outfit', sans-serif; font-weight: 700; font-size: 1.15rem;
   color: var(--color-heading);
 }
-.login-title {
-  font-size: 1.3rem; text-align: center; margin-bottom: .35rem;
-}
+.login-title { font-size: 1.3rem; text-align: center; margin-bottom: .35rem; }
 .login-subtitle {
   font-size: .82rem; color: var(--color-muted); text-align: center;
   margin-bottom: 1.75rem;
@@ -109,6 +107,13 @@ h1, h2 { font-family: 'Outfit', sans-serif; font-weight: 700; color: var(--color
 }
 .error-msg.visible { display: block; }
 
+.pw-requirements {
+  font-size: .75rem; color: var(--color-muted); margin-top: .5rem; line-height: 1.5;
+}
+.pw-requirements .met { color: var(--color-success); }
+
+.hidden { display: none !important; }
+
 .theme-toggle {
   position: fixed; top: 1rem; right: 1rem; background: var(--color-surface);
   border: 1px solid var(--color-border); border-radius: 8px; width: 36px;
@@ -130,21 +135,44 @@ h1, h2 { font-family: 'Outfit', sans-serif; font-weight: 700; color: var(--color
       <img src="/assets/logo.png" alt="Moonraker">
       <span>Client HQ</span>
     </div>
-    <h1 class="login-title">Sign in</h1>
-    <p class="login-subtitle">Enter your credentials to access the admin dashboard.</p>
 
-    <div id="errorMsg" class="error-msg"></div>
-
-    <div class="form-group">
-      <label class="form-label" for="email">Email</label>
-      <input class="form-input" id="email" type="email" placeholder="you@moonraker.ai" autocomplete="email" autofocus>
+    <!-- LOGIN FORM -->
+    <div id="loginView">
+      <h1 class="login-title">Sign in</h1>
+      <p class="login-subtitle">Enter your credentials to access the admin dashboard.</p>
+      <div id="loginError" class="error-msg"></div>
+      <div class="form-group">
+        <label class="form-label" for="email">Email</label>
+        <input class="form-input" id="email" type="email" placeholder="you@moonraker.ai" autocomplete="email" autofocus>
+      </div>
+      <div class="form-group">
+        <label class="form-label" for="password">Password</label>
+        <input class="form-input" id="password" type="password" placeholder="Enter your password" autocomplete="current-password">
+      </div>
+      <button class="btn-login" id="loginBtn" onclick="handleLogin()">Sign in</button>
     </div>
-    <div class="form-group">
-      <label class="form-label" for="password">Password</label>
-      <input class="form-input" id="password" type="password" placeholder="Enter your password" autocomplete="current-password">
+
+    <!-- SET NEW PASSWORD FORM -->
+    <div id="passwordView" class="hidden">
+      <h1 class="login-title">Set your password</h1>
+      <p class="login-subtitle">Please create a strong password for your account.</p>
+      <div id="pwError" class="error-msg"></div>
+      <div class="form-group">
+        <label class="form-label" for="newPw">New password</label>
+        <input class="form-input" id="newPw" type="password" placeholder="Create a strong password" autocomplete="new-password" oninput="checkStrength()">
+        <div class="pw-requirements" id="pwReqs">
+          <span id="reqLen">&#x2717; At least 10 characters</span><br>
+          <span id="reqUpper">&#x2717; One uppercase letter</span><br>
+          <span id="reqNum">&#x2717; One number</span>
+        </div>
+      </div>
+      <div class="form-group">
+        <label class="form-label" for="confirmPw">Confirm password</label>
+        <input class="form-input" id="confirmPw" type="password" placeholder="Re-enter your password" autocomplete="new-password">
+      </div>
+      <button class="btn-login" id="pwBtn" onclick="handlePasswordChange()" disabled>Set password and continue</button>
     </div>
 
-    <button class="btn-login" id="loginBtn" onclick="handleLogin()">Sign in</button>
   </div>
 </div>
 
@@ -152,39 +180,44 @@ h1, h2 { font-family: 'Outfit', sans-serif; font-weight: 700; color: var(--color
 <script>
 var SB_URL = 'https://ofmmwcjhdrhvxxkhcuww.supabase.co';
 var SB_ANON = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6Im9mbW13Y2poZHJodnh4a2hjdXd3Iiwicm9sZSI6ImFub24iLCJpYXQiOjE3NzQzMjM1NTcsImV4cCI6MjA4OTg5OTU1N30.zMMHW0Fk9ixWjORngyxJTIoPOfx7GFsD4wBV4Foqqms';
+var sb = window.supabase.createClient(SB_URL, SB_ANON);
 
-var supabase = window.supabase.createClient(SB_URL, SB_ANON);
-
-// If already logged in, redirect
-supabase.auth.getSession().then(function(result) {
+// If already logged in with a valid session, redirect
+sb.auth.getSession().then(function(result) {
   if (result.data.session) {
-    // Verify they're actually an admin before redirecting
-    checkAdminAndRedirect(result.data.session);
+    checkProfileAndRoute(result.data.session);
   }
 });
 
-async function checkAdminAndRedirect(session) {
+async function checkProfileAndRoute(session) {
   try {
-    var resp = await fetch(SB_URL + '/rest/v1/admin_profiles?id=eq.' + session.user.id + '&select=id&limit=1', {
+    var resp = await fetch(SB_URL + '/rest/v1/admin_profiles?id=eq.' + session.user.id + '&select=id,must_change_password&limit=1', {
       headers: { 'apikey': SB_ANON, 'Authorization': 'Bearer ' + session.access_token }
     });
     var rows = await resp.json();
-    if (Array.isArray(rows) && rows.length > 0) {
+    if (!Array.isArray(rows) || rows.length === 0) return;
+    if (rows[0].must_change_password) {
+      showPasswordView();
+    } else {
       window.location.href = '/admin';
     }
-  } catch (e) {
-    // Not an admin, stay on login
-  }
+  } catch (e) {}
 }
+
+function showPasswordView() {
+  document.getElementById('loginView').classList.add('hidden');
+  document.getElementById('passwordView').classList.remove('hidden');
+  document.getElementById('newPw').focus();
+}
+
+// ── LOGIN ──────────────────────────────────────────────────────
 
 async function handleLogin() {
   var email = document.getElementById('email').value.trim();
   var password = document.getElementById('password').value;
   var btn = document.getElementById('loginBtn');
-  var errEl = document.getElementById('errorMsg');
-
+  var errEl = document.getElementById('loginError');
   errEl.className = 'error-msg';
-  errEl.textContent = '';
 
   if (!email || !password) {
     errEl.textContent = 'Please enter your email and password.';
@@ -196,28 +229,26 @@ async function handleLogin() {
   btn.textContent = 'Signing in...';
 
   try {
-    var result = await supabase.auth.signInWithPassword({ email: email, password: password });
-
+    var result = await sb.auth.signInWithPassword({ email: email, password: password });
     if (result.error) {
       errEl.textContent = result.error.message === 'Invalid login credentials'
-        ? 'Invalid email or password. Please try again.'
-        : result.error.message;
+        ? 'Invalid email or password.' : result.error.message;
       errEl.className = 'error-msg visible';
       btn.disabled = false;
       btn.textContent = 'Sign in';
       return;
     }
 
-    // Verify they're in admin_profiles
     var session = result.data.session;
-    var resp = await fetch(SB_URL + '/rest/v1/admin_profiles?id=eq.' + session.user.id + '&select=id,role&limit=1', {
+
+    // Verify admin profile
+    var resp = await fetch(SB_URL + '/rest/v1/admin_profiles?id=eq.' + session.user.id + '&select=id,role,must_change_password&limit=1', {
       headers: { 'apikey': SB_ANON, 'Authorization': 'Bearer ' + session.access_token }
     });
     var profiles = await resp.json();
 
     if (!Array.isArray(profiles) || profiles.length === 0) {
-      // Valid Supabase user but not an admin
-      await supabase.auth.signOut();
+      await sb.auth.signOut();
       errEl.textContent = 'Your account does not have admin access.';
       errEl.className = 'error-msg visible';
       btn.disabled = false;
@@ -225,8 +256,12 @@ async function handleLogin() {
       return;
     }
 
-    // Success: redirect to admin
-    window.location.href = '/admin';
+    // Check if password change required
+    if (profiles[0].must_change_password) {
+      showPasswordView();
+    } else {
+      window.location.href = '/admin';
+    }
 
   } catch (e) {
     errEl.textContent = 'Something went wrong. Please try again.';
@@ -236,12 +271,89 @@ async function handleLogin() {
   }
 }
 
-// Enter key submits
+// ── PASSWORD STRENGTH ──────────────────────────────────────────
+
+function checkStrength() {
+  var pw = document.getElementById('newPw').value;
+  var hasLen = pw.length >= 10;
+  var hasUpper = /[A-Z]/.test(pw);
+  var hasNum = /[0-9]/.test(pw);
+
+  setReq('reqLen', hasLen);
+  setReq('reqUpper', hasUpper);
+  setReq('reqNum', hasNum);
+
+  document.getElementById('pwBtn').disabled = !(hasLen && hasUpper && hasNum);
+}
+
+function setReq(id, met) {
+  var el = document.getElementById(id);
+  var text = el.textContent.substring(2);
+  el.innerHTML = (met ? '&#x2713; ' : '&#x2717; ') + text;
+  el.className = met ? 'met' : '';
+}
+
+// ── PASSWORD CHANGE ────────────────────────────────────────────
+
+async function handlePasswordChange() {
+  var newPw = document.getElementById('newPw').value;
+  var confirmPw = document.getElementById('confirmPw').value;
+  var btn = document.getElementById('pwBtn');
+  var errEl = document.getElementById('pwError');
+  errEl.className = 'error-msg';
+
+  if (newPw !== confirmPw) {
+    errEl.textContent = 'Passwords do not match.';
+    errEl.className = 'error-msg visible';
+    return;
+  }
+
+  btn.disabled = true;
+  btn.textContent = 'Updating...';
+
+  try {
+    // Update password via Supabase Auth
+    var result = await sb.auth.updateUser({ password: newPw });
+    if (result.error) {
+      errEl.textContent = result.error.message;
+      errEl.className = 'error-msg visible';
+      btn.disabled = false;
+      btn.textContent = 'Set password and continue';
+      return;
+    }
+
+    // Clear the must_change_password flag
+    var session = (await sb.auth.getSession()).data.session;
+    await fetch(SB_URL + '/rest/v1/admin_profiles?id=eq.' + session.user.id, {
+      method: 'PATCH',
+      headers: {
+        'apikey': SB_ANON,
+        'Authorization': 'Bearer ' + session.access_token,
+        'Content-Type': 'application/json',
+        'Prefer': 'return=minimal'
+      },
+      body: JSON.stringify({ must_change_password: false })
+    });
+
+    window.location.href = '/admin';
+
+  } catch (e) {
+    errEl.textContent = 'Something went wrong. Please try again.';
+    errEl.className = 'error-msg visible';
+    btn.disabled = false;
+    btn.textContent = 'Set password and continue';
+  }
+}
+
+// Enter key handlers
 document.getElementById('password').addEventListener('keydown', function(e) {
   if (e.key === 'Enter') handleLogin();
 });
 document.getElementById('email').addEventListener('keydown', function(e) {
   if (e.key === 'Enter') document.getElementById('password').focus();
+});
+document.getElementById('confirmPw').addEventListener('keydown', function(e) {
+  if (e.key === 'Enter' && !document.getElementById('pwBtn').disabled) handlePasswordChange();
 });
 
 // Theme toggle
