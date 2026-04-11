@@ -4,6 +4,7 @@
 // Uses Sonnet 4.6 (non-streaming, structured JSON output)
 
 var sb = require('./_lib/supabase');
+var auth = require('./_lib/auth');
 
 module.exports = async function handler(req, res) {
   if (req.method === 'OPTIONS') {
