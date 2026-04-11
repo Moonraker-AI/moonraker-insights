@@ -116,18 +116,17 @@ h1, h2 { font-family: 'Outfit', sans-serif; font-weight: 700; color: var(--color
 
 .theme-toggle {
   position: fixed; top: 1rem; right: 1rem; background: var(--color-surface);
-  border: 1px solid var(--color-border); border-radius: 8px; width: 36px;
-  height: 36px; display: flex; align-items: center; justify-content: center;
-  cursor: pointer; font-size: 1rem; color: var(--color-muted); transition: all .2s;
+  border: 1px solid var(--color-border); border-radius: 50%; width: 32px;
+  height: 32px; display: flex; align-items: center; justify-content: center;
+  cursor: pointer; font-size: .9rem; transition: all .2s; padding: 0;
 }
-.theme-toggle:hover { color: var(--color-heading); border-color: var(--color-primary); }
+.theme-toggle:hover { border-color: var(--color-primary); }
+::view-transition-old(root), ::view-transition-new(root) { animation-duration: .25s; }
 </style>
 </head>
 <body>
 
-<button class="theme-toggle" onclick="toggleTheme()" title="Toggle theme" aria-label="Toggle theme">
-  <span id="themeIcon">&#9789;</span>
-</button>
+<button class="theme-toggle" id="themeBtn" onclick="toggleTheme()" title="Toggle theme" aria-label="Toggle theme">&#x1F319;</button>
 
 <div class="login-container">
   <div class="login-card">
@@ -356,19 +355,26 @@ document.getElementById('confirmPw').addEventListener('keydown', function(e) {
   if (e.key === 'Enter' && !document.getElementById('pwBtn').disabled) handlePasswordChange();
 });
 
-// Theme toggle
+// Theme toggle (matches admin system)
 function toggleTheme() {
-  var current = document.documentElement.getAttribute('data-theme');
-  var next = current === 'dark' ? 'light' : 'dark';
-  document.documentElement.setAttribute('data-theme', next);
-  localStorage.setItem('moonraker-theme', next);
-  updateThemeIcon();
+  var h = document.documentElement;
+  var btn = document.getElementById('themeBtn');
+  function apply() {
+    if (h.getAttribute('data-theme') === 'light') {
+      h.setAttribute('data-theme', 'dark'); btn.innerHTML = '&#9728;&#65039;';
+      try { localStorage.setItem('moonraker-theme', 'dark'); } catch(e) {}
+    } else {
+      h.setAttribute('data-theme', 'light'); btn.innerHTML = '&#x1F319;';
+      try { localStorage.setItem('moonraker-theme', 'light'); } catch(e) {}
+    }
+  }
+  if (document.startViewTransition) { document.startViewTransition(apply); } else { apply(); }
 }
-function updateThemeIcon() {
-  var theme = document.documentElement.getAttribute('data-theme');
-  document.getElementById('themeIcon').innerHTML = theme === 'dark' ? '&#9788;' : '&#9789;';
-}
-updateThemeIcon();
+(function() {
+  var t = document.documentElement.getAttribute('data-theme');
+  var btn = document.getElementById('themeBtn');
+  if (btn) btn.innerHTML = t === 'dark' ? '&#9728;&#65039;' : '&#x1F319;';
+})();
 </script>
 </body>
 </html>
