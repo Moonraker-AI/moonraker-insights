@@ -25,6 +25,10 @@ var monitor = require('./_lib/monitor');
 
 module.exports = async function handler(req, res) {
   if (req.method !== 'POST') return res.status(405).json({ error: 'Method not allowed' });
+  // Require authenticated admin
+  var user = await auth.requireAdminOrInternal(req, res);
+  if (!user) return;
+
 
   var anthropicKey = process.env.ANTHROPIC_API_KEY;
   var resendKey = process.env.RESEND_API_KEY;
