@@ -6678,8 +6678,8 @@ strong { font-weight: 600; color: var(--color-heading); }
     if (opts.statusPill) {
       var isNA = value && /^n\/?a$/i.test(String(value).trim());
       var pillColor = isNA ? 'var(--color-muted)' : (isEmpty ? '#f59e0b' : 'var(--color-success)');
-      var pillLabel = isNA ? 'N/A' : (isEmpty ? 'Not connected' : 'Connected');
-      pillHtml = '<span style="display:inline-flex;align-items:center;gap:.25rem;margin-left:.5rem;font-size:.6rem;font-weight:600;text-transform:uppercase;letter-spacing:.04em;color:' + pillColor + ';vertical-align:middle;"><span style="width:6px;height:6px;border-radius:50%;background:' + pillColor + ';display:inline-block;"></span>' + pillLabel + '</span>';
+      var pillTitle = isNA ? 'N/A' : (isEmpty ? 'Not connected' : 'Connected');
+      pillHtml = '<span title="' + pillTitle + '" style="display:inline-block;width:7px;height:7px;border-radius:50%;background:' + pillColor + ';margin-left:.4rem;vertical-align:middle;flex-shrink:0;"></span>';
     }
 
     var id = 'ef-' + table + '-' + col;
