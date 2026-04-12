@@ -39,11 +39,14 @@
     document.documentElement.style.display = 'none';
   }
 
-  // ── Step 2: Patch window.fetch to inject auth on /api/* calls ──
+  // ── Step 2: Patch window.fetch to inject auth on /api/* and Supabase REST calls ──
   var _origFetch = window.fetch;
+  var _anonBearer = 'Bearer ' + SB_ANON;
   window.fetch = function(input, init) {
     if (_accessToken) {
       var url = typeof input === 'string' ? input : (input && input.url ? input.url : '');
+
+      // Inject auth header on /api/* calls (serverless routes)
       if (url.indexOf('/api/') === 0) {
         init = init || {};
         if (typeof init.headers === 'object' && !(init.headers instanceof Headers)) {
@@ -52,6 +55,20 @@
           }
         } else if (!init.headers) {
           init.headers = { 'Authorization': 'Bearer ' + _accessToken };
+        }
+      }
+
+      // Swap anon key for JWT on direct Supabase REST calls.
+      // This upgrades admin reads from the anon role to the authenticated role,
+      // enabling proper RLS admin policies. The apikey header stays as the anon
+      // key (PostgREST needs it for project identification).
+      if (url.indexOf(SB_URL + '/rest/v1/') === 0) {
+        init = init || {};
+        if (typeof init.headers === 'object' && !(init.headers instanceof Headers)) {
+          var authVal = init.headers['Authorization'] || init.headers['authorization'] || '';
+          if (authVal === _anonBearer) {
+            init.headers['Authorization'] = 'Bearer ' + _accessToken;
+          }
         }
       }
     }
