@@ -60,19 +60,21 @@ a { color: var(--color-primary); text-decoration: none; }
 a:hover { color: var(--color-primary-hover); }
 
 .admin-layout { display: flex; min-height: 100vh; }
-.sidebar { width: 240px; background: var(--sidebar-bg); border-right: 1px solid var(--sidebar-border); position: fixed; top: 0; left: 0; bottom: 0; z-index: 200; display: flex; flex-direction: column; transition: transform .25s ease; }
+.sidebar { width: 240px; background: var(--sidebar-bg); border-right: 1px solid var(--sidebar-border); position: fixed; top: 0; left: 0; bottom: 0; z-index: 200; display: flex; flex-direction: column; transition: width .2s ease, transform .25s ease; overflow: hidden; }
 .sidebar-header { padding: 1.25rem 19px .75rem 19px; display: flex; align-items: center; gap: .65rem; }
 .sidebar-header img { height: 34px; padding: 5px; background: var(--color-primary-subtle); border: 1px solid rgba(0,212,126,.15); border-radius: 8px; }
 .sidebar-header span { font-family: 'Outfit', sans-serif; font-weight: 700; font-size: 1.05rem; color: var(--color-heading); }
+.sidebar-header { white-space: nowrap; }
+.sidebar-header span { transition: color .15s; }
 .sidebar-nav { flex: 1; display: flex; flex-direction: column; gap: 2px; }
 .sidebar-nav a { display: flex; align-items: center; gap: .65rem; padding: .55rem 19px; border-radius: 8px; font-size: .82rem; font-weight: 500; color: var(--color-body); text-decoration: none; transition: all .15s; }
 .sidebar-nav a:hover { background: var(--sidebar-hover); color: var(--color-heading); }
 .sidebar-nav a.active { background: var(--color-primary-subtle); color: var(--color-primary); font-weight: 600; }
-.sidebar-nav .nav-icon { width: 18px; height: 18px; display: flex; align-items: center; justify-content: center; font-size: .95rem; flex-shrink: 0; opacity: .7; }
+.sidebar-nav .nav-icon { width: 18px; min-width: 18px; height: 18px; display: flex; align-items: center; justify-content: center; font-size: .95rem; flex-shrink: 0; opacity: .7; }
 .sidebar-nav a.active .nav-icon { opacity: 1; }
 .sidebar-nav .nav-icon svg { width: 15px; height: 15px; stroke: currentColor; fill: none; stroke-width: 1.25; stroke-linecap: round; stroke-linejoin: round; }
 .nav-section { font-size: .65rem; font-weight: 600; text-transform: uppercase; letter-spacing: .08em; color: var(--color-muted); padding: .75rem .75rem .25rem; opacity: .6; }
-.sidebar-footer { padding: .75rem 1rem; border-top: 1px solid var(--sidebar-border); display: flex; align-items: center; justify-content: space-between; }
+.sidebar-footer { padding: .5rem 0; border-top: 1px solid var(--sidebar-border); display: flex; flex-direction: column; gap: 2px; }
 
 .main { flex: 1; margin-left: 240px; min-width: 0; transition: margin-left .2s ease; }
 .topbar { position: sticky; top: 0; z-index: 100; background: var(--color-surface); border-bottom: 1px solid var(--color-border); padding: 0 2rem; height: 56px; display: flex; align-items: center; gap: 1rem; }
@@ -202,6 +204,7 @@ a:hover { color: var(--color-primary-hover); }
 .sidebar.collapsed:hover .sidebar-nav .nav-label { color: inherit; }
 .sidebar.collapsed:hover .nav-section { color: var(--color-muted); }
 
+.main { transition: margin-left .2s ease; }
 .sidebar.collapsed ~ .main { margin-left: 56px; }
 .collapse-btn .nav-icon svg { transition: transform .25s; }
 
@@ -211,7 +214,7 @@ a:hover { color: var(--color-primary-hover); }
 .footer-item:hover { background: var(--sidebar-hover); color: var(--color-heading); }
 .footer-item .nav-icon svg { width: 15px; height: 15px; stroke: currentColor; fill: none; stroke-width: 1.25; stroke-linecap: round; stroke-linejoin: round; opacity: .65; }
 .footer-item:hover .nav-icon svg { opacity: 1; }
-.theme-toggle { background: none; border: none; font-size: 1.05rem; cursor: pointer; padding: .25rem; }
+.theme-icon { font-size: .85rem; line-height: 1; }
 .sidebar-overlay { display: none; position: fixed; top: 0; left: 0; right: 0; bottom: 0; background: rgba(0,0,0,.35); z-index: 199; }
 .sidebar.open ~ .sidebar-overlay { display: block; }
 .sidebar-close { display: none; margin-left: auto; background: none; border: none; color: var(--color-muted); font-size: 1.3rem; cursor: pointer; padding: .25rem; line-height: 1; }
