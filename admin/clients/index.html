@@ -552,7 +552,9 @@ strong { font-weight: 600; color: var(--color-heading); }
 .bio-badge { font-size: .68rem; padding: .1rem .45rem; border-radius: 4px; background: var(--color-primary-subtle); color: var(--color-primary); font-weight: 600; margin-left: .5rem; }
 
 /* Rising Tide */
-.rt-platform-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(280px, 1fr)); gap: .75rem; padding: 1rem; }
+.rt-platform-grid { display: grid; grid-template-columns: repeat(3, 1fr); gap: .75rem; padding: 1rem; }
+@media (max-width: 900px) { .rt-platform-grid { grid-template-columns: repeat(2, 1fr); } }
+@media (max-width: 600px) { .rt-platform-grid { grid-template-columns: 1fr; } }
 .rt-platform-card { border: 1px solid var(--color-border); border-radius: 10px; padding: 1rem; display: flex; flex-direction: column; gap: .65rem; transition: background .15s, border-color .15s; }
 .rt-platform-card.rt-st-live { background: rgba(0,212,126,.04); border-color: rgba(0,212,126,.25); }
 .rt-platform-card.rt-st-in_progress { background: rgba(59,130,246,.04); border-color: rgba(59,130,246,.25); }
@@ -2039,10 +2041,9 @@ strong { font-weight: 600; color: var(--color-heading); }
     h += '<div class="ws-field"><span class="ws-label">2FA Enabled</span><span class="ws-value">' + (ws.two_fa_enabled ? '<span style="color:var(--color-success);">Yes</span>' : '<span style="color:var(--color-danger);">No</span>') + '</span></div>';
     h += '<div class="ws-field"><span class="ws-label">App Password</span><span class="ws-value">' + maskVal('app_password', ws.app_password) + '</span></div>';
     if ((ws.authenticator_backup_codes && ws.authenticator_backup_codes.length > 0) || ws.qr_code_image) {
-      h += '<div class="ws-field ws-full-width"><div style="display:flex;gap:2rem;align-items:flex-start;flex-wrap:wrap;">';
-      // Backup codes column
+      // Backup codes in left column
       if (ws.authenticator_backup_codes && ws.authenticator_backup_codes.length > 0) {
-        h += '<div style="flex:1;min-width:180px;"><span class="ws-label">Backup Codes</span>';
+        h += '<div class="ws-field"><span class="ws-label">Backup Codes</span>';
         if (wsRevealedFields['backup_codes']) {
           h += '<div style="display:grid;grid-template-columns:repeat(2,auto);gap:.2rem .75rem;justify-content:start;font-family:monospace;font-size:.82rem;margin-top:.25rem;">';
           ws.authenticator_backup_codes.forEach(function(c, i) {
@@ -2053,12 +2054,13 @@ strong { font-weight: 600; color: var(--color-heading); }
           h += '<span class="ws-value ws-masked" onclick="revealWsField(\'backup_codes\')" title="Click to reveal" style="display:block;margin-top:.25rem;">\u2022\u2022\u2022\u2022 (' + ws.authenticator_backup_codes.length + ' codes)</span>';
         }
         h += '</div>';
+      } else {
+        h += '<div class="ws-field"></div>';
       }
-      // QR code column
+      // QR code in right column
       if (ws.qr_code_image) {
-        h += '<div style="flex:0 0 auto;"><span class="ws-label">2FA QR Code</span><div style="margin-top:.25rem;"><img src="' + ws.qr_code_image + '" class="ws-qr-thumb" onclick="showQrFullsize()" alt="2FA QR Code"></div></div>';
+        h += '<div class="ws-field"><span class="ws-label">2FA QR Code</span><div style="margin-top:.25rem;"><img src="' + ws.qr_code_image + '" class="ws-qr-thumb" onclick="showQrFullsize()" alt="2FA QR Code"></div></div>';
       }
-      h += '</div></div>';
     }
     h += '</div>';
     el.innerHTML = h;
@@ -2177,9 +2179,8 @@ strong { font-weight: 600; color: var(--color-heading); }
     h += '<div class="ws-field"><span class="ws-label">Backup Phone</span>' + inp('backup_phone', ws.backup_phone, 'Recovery phone') + '</div>';
     h += '<div class="ws-field"><span class="ws-label">2FA Enabled</span><select id="ws_two_fa" style="width:100%;padding:.4rem .6rem;border:1px solid var(--color-border);border-radius:6px;font-size:.84rem;background:var(--color-surface);color:var(--color-heading);font-family:inherit;"><option value="false"' + (!ws.two_fa_enabled ? ' selected' : '') + '>No</option><option value="true"' + (ws.two_fa_enabled ? ' selected' : '') + '>Yes</option></select></div>';
     h += '<div class="ws-field"><span class="ws-label">App Password</span>' + inp('app_password', ws.app_password, '16-char app password') + '</div>';
-    h += '<div class="ws-field ws-full-width"><div style="display:flex;gap:1.5rem;align-items:flex-start;flex-wrap:wrap;">';
-    h += '<div style="flex:1;min-width:200px;"><span class="ws-label">Backup Codes</span><textarea id="ws_backup_codes" rows="5" placeholder="Paste backup codes in any format" style="width:100%;padding:.5rem .6rem;border:1px solid var(--color-border);border-radius:6px;font-size:.82rem;font-family:monospace;background:var(--color-surface);color:var(--color-heading);resize:vertical;line-height:1.6;margin-top:.25rem;">' + esc((ws.authenticator_backup_codes || []).join('\n')) + '</textarea></div>';
-    h += '<div style="flex:0 0 auto;"><span class="ws-label">2FA QR Code</span>';
+    h += '<div class="ws-field"><span class="ws-label">Backup Codes</span><textarea id="ws_backup_codes" rows="5" placeholder="Paste backup codes in any format" style="width:100%;padding:.5rem .6rem;border:1px solid var(--color-border);border-radius:6px;font-size:.82rem;font-family:monospace;background:var(--color-surface);color:var(--color-heading);resize:vertical;line-height:1.6;margin-top:.25rem;">' + esc((ws.authenticator_backup_codes || []).join('\n')) + '</textarea></div>';
+    h += '<div class="ws-field"><span class="ws-label">2FA QR Code</span>';
     h += '<div class="ws-qr-paste" id="wsQrPasteZone" tabindex="0" style="margin-top:.25rem;">';
     if (ws.qr_code_image) {
       h += '<img src="' + ws.qr_code_image + '" alt="QR Code"><div class="paste-hint">Paste or drop a new image to replace</div>';
@@ -2187,7 +2188,6 @@ strong { font-weight: 600; color: var(--color-heading); }
       h += '<svg width="24" height="24" fill="none" stroke="currentColor" stroke-width="1.5" viewBox="0 0 24 24" style="color:var(--color-muted);"><path d="M15.172 7l-6.586 6.586a2 2 0 102.828 2.828L18 9.828a4 4 0 00-5.656-5.656L5.757 10.757a6 6 0 008.486 8.486L20.5 13"/></svg>';
       h += '<div class="paste-hint">Paste (Ctrl+V) or drop a QR code screenshot</div>';
     }
-    h += '</div></div>';
     h += '</div></div>';
     h += '</div>';
     el.innerHTML = h;
@@ -2293,6 +2293,7 @@ strong { font-weight: 600; color: var(--color-heading); }
     var p = state.socialPlatforms.find(function(p) { return p.id === id; });
     if (!p) return;
     p.status = newStatus;
+    renderSocialPlatforms();
     fetch('/api/action', {
       method: 'POST', headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({ action: 'update_record', table: 'social_platforms', filters: { id: id }, data: { status: newStatus, updated_at: new Date().toISOString() } })
