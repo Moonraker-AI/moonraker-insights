@@ -2953,7 +2953,7 @@ strong { font-weight: 600; color: var(--color-heading); }
           h += '<span id="afuChevron_' + f.id + '" style="font-size:.7rem;color:var(--color-muted);transition:transform .2s;">&#9660;</span>';
           h += '</div>';
           // Expandable preview panel
-          h += '<div id="afuPreview_' + f.id + '" style="display:none;border-top:1px solid var(--color-border);">';
+          h += '<div id="afuPreview_' + f.id + '" style="max-height:0;overflow:hidden;transition:max-height .3s ease;border-top:0px solid var(--color-border);">';
           h += '<div style="padding:.75rem 1rem;background:var(--color-surface);font-size:.75rem;color:var(--color-muted);display:flex;flex-wrap:wrap;gap:.35rem .75rem;">';
           h += '<span><strong style="color:var(--color-heading);">From:</strong> Moonraker Audits &lt;audits@clients.moonraker.ai&gt;</span>';
           h += '<span><strong style="color:var(--color-heading);">Reply-to:</strong> scott@moonraker.ai</span>';
@@ -3466,8 +3466,26 @@ strong { font-weight: 600; color: var(--color-heading); }
     var panel = document.getElementById('afuPreview_' + id);
     var chevron = document.getElementById('afuChevron_' + id);
     if (!panel) return;
-    var isOpen = panel.style.display !== 'none';
-    panel.style.display = isOpen ? 'none' : 'block';
+    var isOpen = panel.getAttribute('data-open') === '1';
+    if (isOpen) {
+      // Collapse: set explicit height first so transition works, then to 0
+      panel.style.maxHeight = panel.scrollHeight + 'px';
+      requestAnimationFrame(function() {
+        panel.style.maxHeight = '0';
+        panel.style.borderTopWidth = '0';
+      });
+      panel.setAttribute('data-open', '0');
+    } else {
+      // Expand: measure content, animate to it, then remove cap
+      panel.style.borderTopWidth = '1px';
+      panel.style.maxHeight = panel.scrollHeight + 'px';
+      panel.setAttribute('data-open', '1');
+      var onEnd = function() {
+        if (panel.getAttribute('data-open') === '1') panel.style.maxHeight = 'none';
+        panel.removeEventListener('transitionend', onEnd);
+      };
+      panel.addEventListener('transitionend', onEnd);
+    }
     if (chevron) chevron.style.transform = isOpen ? '' : 'rotate(180deg)';
   };
 
