@@ -11,14 +11,13 @@ var sb = require('../_lib/supabase');
 var STALE_THRESHOLD_HOURS = 2;
 
 module.exports = async function handler(req, res) {
-  // Auth: verify cron secret
+  // Auth: require CRON_SECRET (hard-fail if not configured)
   var cronSecret = process.env.CRON_SECRET;
-  if (cronSecret) {
-    var authH = req.headers['authorization'];
-    var qSecret = req.query && req.query.secret;
-    if (authH !== 'Bearer ' + cronSecret && qSecret !== cronSecret) {
-      return res.status(401).json({ error: 'Unauthorized' });
-    }
+  if (!cronSecret) return res.status(500).json({ error: 'CRON_SECRET not configured' });
+  var authHeader = req.headers['authorization'] || '';
+  var querySecret = (req.query && req.query.secret) || '';
+  if (authHeader !== 'Bearer ' + cronSecret && querySecret !== cronSecret) {
+    return res.status(401).json({ error: 'Unauthorized' });
   }
 
   if (!sb.isConfigured()) return res.status(500).json({ error: 'SUPABASE_SERVICE_ROLE_KEY not configured' });
