@@ -1,7 +1,11 @@
 // /api/cron/trigger-quarterly-audits.js
 // Runs daily. Finds active clients where next_audit_due <= today,
-// creates entity_audit rows, triggers the agent, bumps next_audit_due by 3 months,
+// creates entity_audit rows in 'queued' status, bumps next_audit_due by 3 months,
 // and sends a single consolidated team notification.
+//
+// NOTE: This cron does NOT dispatch to the agent directly. It only inserts rows
+// as 'queued'. The process-audit-queue cron handles dispatch one at a time
+// to avoid overwhelming the agent with concurrent browser sessions.
 //
 // Vercel cron: daily at 7:00 AM ET (11:00 UTC)
 
@@ -19,8 +23,6 @@ module.exports = async function handler(req, res) {
 
   if (!sb.isConfigured()) return res.status(500).json({ error: 'SUPABASE_SERVICE_ROLE_KEY not configured' });
 
-  var AGENT_URL = process.env.AGENT_SERVICE_URL;
-  var AGENT_KEY = process.env.AGENT_API_KEY;
   var resendKey = process.env.RESEND_API_KEY;
 
   try {
@@ -67,14 +69,14 @@ module.exports = async function handler(req, res) {
           geoTarget = (contact.city || '') + (contact.city && contact.state_province ? ', ' : '') + (contact.state_province || '');
         }
 
-        // Create entity_audits row
+        // Create entity_audits row as 'queued' — process-audit-queue will dispatch
         var auditRows = await sb.mutate('entity_audits', 'POST', {
           contact_id: contact.id,
           client_slug: contact.slug,
           audit_tier: 'none',
           brand_query: brandQuery,
           homepage_url: contact.website_url,
-          status: 'pending',
+          status: 'queued',
           audit_period: auditPeriod,
           audit_scope: 'homepage',
           geo_target: geoTarget || null
@@ -83,38 +85,7 @@ module.exports = async function handler(req, res) {
         var audit = auditRows[0];
         result.audit_id = audit.id;
         result.period = auditPeriod;
-
-        // Trigger agent
-        if (AGENT_URL && AGENT_KEY) {
-          var agentResp = await fetch(AGENT_URL + '/tasks/surge-audit', {
-            method: 'POST',
-            headers: { 'Content-Type': 'application/json', 'Authorization': 'Bearer ' + AGENT_KEY },
-            body: JSON.stringify({
-              audit_id: audit.id,
-              practice_name: brandQuery,
-              website_url: contact.website_url,
-              city: contact.city || '',
-              state: contact.state_province || '',
-              geo_target: geoTarget,
-              client_slug: contact.slug
-            })
-          });
-
-          if (agentResp.ok) {
-            var agentResult = await agentResp.json();
-            await sb.mutate('entity_audits?id=eq.' + audit.id, 'PATCH', {
-              status: 'agent_running',
-              agent_task_id: agentResult.task_id
-            }, 'return=minimal');
-            result.agent_triggered = true;
-          } else {
-            result.agent_triggered = false;
-            result.agent_error = 'Status ' + agentResp.status;
-          }
-        } else {
-          result.agent_triggered = false;
-          result.agent_error = 'Agent not configured';
-        }
+        result.queued = true;
 
         // Bump next_audit_due by 3 months
         var nextDue = new Date(contact.next_audit_due);
@@ -131,11 +102,6 @@ module.exports = async function handler(req, res) {
       }
 
       results.push(result);
-
-      // Rate limit between agent triggers
-      if (i < dueClients.length - 1) {
-        await new Promise(function(r) { setTimeout(r, 1000); });
-      }
     }
 
     // Send consolidated team notification
@@ -145,8 +111,8 @@ module.exports = async function handler(req, res) {
     if (resendKey && results.length > 0) {
       var tableRows = results.map(function(r) {
         var statusBadge = r.success
-          ? '<span style="color:#00D47E;">Triggered</span>'
-          : '<span style="color:#EF4444;">Failed: ' + (r.error || r.agent_error || 'Unknown') + '</span>';
+          ? '<span style="color:#00D47E;">Queued</span>'
+          : '<span style="color:#EF4444;">Failed: ' + (r.error || 'Unknown') + '</span>';
         return '<tr><td style="padding:8px 12px;border-bottom:1px solid #E2E8F0;">' + r.name + '</td>' +
           '<td style="padding:8px 12px;border-bottom:1px solid #E2E8F0;">' + (r.period || '-') + '</td>' +
           '<td style="padding:8px 12px;border-bottom:1px solid #E2E8F0;">' + statusBadge + '</td>' +
@@ -159,11 +125,12 @@ module.exports = async function handler(req, res) {
         body: JSON.stringify({
           from: 'Moonraker Notifications <notifications@clients.moonraker.ai>',
           to: ['notifications@clients.moonraker.ai'],
-          subject: 'Quarterly Audits Triggered: ' + successCount + ' clients',
+          subject: 'Quarterly Audits Queued: ' + successCount + ' clients',
           html: '<div style="font-family:Inter,sans-serif;max-width:600px;">' +
             '<h2 style="font-family:Outfit,sans-serif;color:#1E2A5E;">Quarterly Entity Audits</h2>' +
-            '<p>' + successCount + ' audit' + (successCount !== 1 ? 's' : '') + ' triggered' +
+            '<p>' + successCount + ' audit' + (successCount !== 1 ? 's' : '') + ' queued for processing' +
             (failCount > 0 ? ', ' + failCount + ' failed' : '') + '.</p>' +
+            '<p style="font-size:13px;color:#64748B;">Audits will be processed one at a time by the agent service (approximately 35 minutes each).</p>' +
             '<table cellpadding="0" cellspacing="0" border="0" width="100%" style="font-size:14px;">' +
             '<thead><tr style="background:#F7FDFB;">' +
             '<th style="padding:8px 12px;text-align:left;font-weight:600;">Client</th>' +
@@ -178,8 +145,8 @@ module.exports = async function handler(req, res) {
     }
 
     return res.status(200).json({
-      message: successCount + ' quarterly audit(s) triggered, ' + failCount + ' failed.',
-      triggered: successCount,
+      message: successCount + ' quarterly audit(s) queued, ' + failCount + ' failed.',
+      queued: successCount,
       failed: failCount,
       results: results
     });
