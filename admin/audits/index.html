@@ -201,8 +201,10 @@ a:hover { color: var(--color-primary-hover); }
 .sub-tab.active[data-filter="lead"] { color: #6b7280; border-bottom-color: #6b7280; }
 .sub-tab.active[data-filter="lead"] .tab-count { background: rgba(107,114,128,.12); }
 .sub-tab.active[data-filter="active"] { color: var(--color-primary); border-bottom-color: var(--color-primary); }
-.sub-tab.active[data-filter="pending"] { color: var(--color-muted); border-bottom-color: var(--color-muted); }
-.sub-tab.active[data-filter="pending"] .tab-count { background: rgba(107,114,128,.12); }
+.sub-tab.active[data-filter="in_progress"] { color: var(--color-info); border-bottom-color: var(--color-info); }
+.sub-tab.active[data-filter="in_progress"] .tab-count { background: rgba(59,130,246,.12); }
+.sub-tab.active[data-filter="errors"] { color: var(--color-danger); border-bottom-color: var(--color-danger); }
+.sub-tab.active[data-filter="errors"] .tab-count { background: rgba(239,68,68,.12); }
 .sub-tab.active[data-filter="needs_audit"] { color: #d97706; border-bottom-color: #d97706; }
 .sub-tab.active[data-filter="needs_audit"] .tab-count { background: rgba(245,158,11,.12); }
 .sub-tab .tab-count { font-size: .7rem; padding: .05rem .4rem; border-radius: 4px; background: var(--color-bg); margin-left: .3rem; }
@@ -236,6 +238,9 @@ a:hover { color: var(--color-primary-hover); }
 .tag-free { background: rgba(107,117,153,.08); color: var(--color-muted); }
 .tag-premium { background: rgba(139,92,246,.1); color: #8B5CF6; }
 .tag-pending { background: rgba(107,117,153,.08); color: var(--color-muted); }
+.tag-queued { background: rgba(107,117,153,.08); color: var(--color-muted); }
+.tag-agent_running { background: rgba(59,130,246,.08); color: var(--color-info); }
+.tag-agent_error { background: rgba(239,68,68,.08); color: var(--color-danger); }
 .tag-processing { background: rgba(59,130,246,.08); color: var(--color-info); }
 .tag-complete { background: rgba(245,158,11,.1); color: var(--color-warning); }
 .tag-delivered { background: rgba(0,212,126,.1); color: var(--color-success); }
@@ -342,7 +347,8 @@ a:hover { color: var(--color-primary-hover); }
       <button class="sub-tab active" data-filter="all">All<span class="tab-count" id="countAll"></span></button>
       <button class="sub-tab" data-filter="lead">Leads<span class="tab-count" id="countLead"></span></button>
       <button class="sub-tab" data-filter="active">Active<span class="tab-count" id="countActive"></span></button>
-      <button class="sub-tab" data-filter="pending">Pending<span class="tab-count" id="countPending"></span></button>
+      <button class="sub-tab" data-filter="in_progress">In Progress<span class="tab-count" id="countInProgress"></span></button>
+      <button class="sub-tab" data-filter="errors">Errors<span class="tab-count" id="countErrors"></span></button>
       <button class="sub-tab" data-filter="needs_audit">Needs Audit<span class="tab-count" id="countNeedsAudit"></span></button>
     </div>
 
@@ -443,7 +449,8 @@ a:hover { color: var(--color-primary-hover); }
   function getFilteredAudits() {
     var f = state.currentFilter;
     if (f === 'all') return state.audits;
-    if (f === 'pending') return state.audits.filter(function(a) { return a.status === 'pending'; });
+    if (f === 'in_progress') return state.audits.filter(function(a) { return a.status === 'queued' || a.status === 'agent_running' || a.status === 'pending'; });
+    if (f === 'errors') return state.audits.filter(function(a) { return a.status === 'agent_error'; });
     if (f === 'needs_audit') return []; // special case, rendered separately
     return state.audits.filter(function(a) {
       var c = state.contactMap[a.contact_id];
@@ -458,11 +465,13 @@ a:hover { color: var(--color-primary-hover); }
     var a = state.audits;
     var leads = a.filter(function(x) { var c = state.contactMap[x.contact_id]; return c && (c.status === 'lead' || c.status === 'prospect'); }).length;
     var active = a.filter(function(x) { var c = state.contactMap[x.contact_id]; return c && (c.status === 'active' || c.status === 'onboarding'); }).length;
-    var pending = a.filter(function(x) { return x.status === 'pending'; }).length;
+    var inProgress = a.filter(function(x) { return x.status === 'queued' || x.status === 'agent_running' || x.status === 'pending'; }).length;
+    var errors = a.filter(function(x) { return x.status === 'agent_error'; }).length;
     document.getElementById('countAll').textContent = a.length ? ' ' + a.length : '';
     document.getElementById('countLead').textContent = leads ? ' ' + leads : '';
     document.getElementById('countActive').textContent = active ? ' ' + active : '';
-    document.getElementById('countPending').textContent = pending ? ' ' + pending : '';
+    document.getElementById('countInProgress').textContent = inProgress ? ' ' + inProgress : '';
+    document.getElementById('countErrors').textContent = errors ? ' ' + errors : '';
     document.getElementById('countNeedsAudit').textContent = state.needsAudit.length ? ' ' + state.needsAudit.length : '';
   }
 
@@ -470,10 +479,11 @@ a:hover { color: var(--color-primary-hover); }
     var a = state.audits;
     var free = a.filter(function(x) { return x.audit_tier === 'free'; }).length;
     var premium = a.filter(function(x) { return x.audit_tier === 'premium'; }).length;
-    var pending = a.filter(function(x) { return x.status === 'pending'; }).length;
+    var queued = a.filter(function(x) { return x.status === 'queued'; }).length;
+    var processing = a.filter(function(x) { return x.status === 'agent_running' || x.status === 'pending'; }).length;
+    var errored = a.filter(function(x) { return x.status === 'agent_error'; }).length;
     var complete = a.filter(function(x) { return x.status === 'complete'; }).length;
     var delivered = a.filter(function(x) { return x.status === 'delivered'; }).length;
-    var withLoom = a.filter(function(x) { return x.loom_url; }).length;
 
     // Task totals across all audits
     var allTasks = [];
@@ -481,9 +491,19 @@ a:hover { color: var(--color-primary-hover); }
     var taskComplete = allTasks.filter(function(t) { return t.status === 'complete'; }).length;
     var taskPct = allTasks.length > 0 ? Math.round(taskComplete / allTasks.length * 100) : 0;
 
+    // Processing sub-text
+    var procSub = '';
+    if (processing > 0 || errored > 0) {
+      var parts = [];
+      if (processing > 0) parts.push(processing + ' running');
+      if (errored > 0) parts.push(errored + ' error' + (errored !== 1 ? 's' : ''));
+      procSub = '<div class="stat-sub">' + parts.join(', ') + '</div>';
+    }
+
     document.getElementById('statGrid').innerHTML =
       '<div class="stat-card"><div class="stat-label">Total Audits</div><div class="stat-value">' + a.length + '</div><div class="stat-sub">' + free + ' free, ' + premium + ' premium</div></div>' +
-      '<div class="stat-card"><div class="stat-label">Pending Surge</div><div class="stat-value" style="color:var(--color-muted);">' + pending + '</div></div>' +
+      '<div class="stat-card"><div class="stat-label">Queued</div><div class="stat-value" style="color:var(--color-muted);">' + queued + '</div><div class="stat-sub">Awaiting agent</div></div>' +
+      '<div class="stat-card"><div class="stat-label">Processing</div><div class="stat-value" style="color:var(--color-info);">' + processing + '</div>' + procSub + '</div>' +
       '<div class="stat-card"><div class="stat-label">Ready to Send</div><div class="stat-value" style="color:var(--color-warning);">' + complete + '</div></div>' +
       '<div class="stat-card"><div class="stat-label">Delivered</div><div class="stat-value" style="color:var(--color-success);">' + delivered + '</div></div>' +
       '<div class="stat-card"><div class="stat-label">Campaign Tasks</div><div class="stat-value">' + allTasks.length + '</div><div class="stat-sub">' + taskPct + '% complete</div></div>' +
@@ -537,7 +557,9 @@ a:hover { color: var(--color-primary-hover); }
 
       // Status styling
       var statusTag = '<span class="tag tag-' + (c.status || 'lead') + '">' + (c.status || 'unknown') + '</span>';
-      var auditTag = '<span class="tag tag-' + ea.status + '">' + ea.status + '</span>';
+      var auditStatusLabels = { pending: 'pending', queued: 'queued', agent_running: 'processing', agent_error: 'error', complete: 'complete', delivered: 'delivered' };
+      var auditLabel = auditStatusLabels[ea.status] || ea.status;
+      var auditTag = '<span class="tag tag-' + ea.status + '">' + auditLabel + '</span>';
       if (ea.audit_tier === 'premium') {
         auditTag += ' <span class="tag tag-premium" style="font-size:.65rem;">premium</span>';
       }
@@ -961,6 +983,7 @@ a:hover { color: var(--color-primary-hover); }
 <div class="toast" id="toast"></div>
 </body>
 </html>
+
 
 
 
