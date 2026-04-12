@@ -8,7 +8,7 @@ var auth = require('./_lib/auth');
 var nl = require('./_lib/newsletter-template');
 
 var RESEND_KEY = process.env.RESEND_API_KEY;
-var FROM_ADDRESS = 'Moonraker Weekly <newsletter@clients.moonraker.ai>';
+var FROM_ADDRESS = 'Moonraker Weekly <newsletter@newsletter.moonraker.ai>';
 var BATCH_SIZE = 50;
 
 module.exports = async function handler(req, res) {
