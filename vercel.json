@@ -180,10 +180,6 @@
     },
     "api/newsletter-webhook.js": {
       "maxDuration": 10
-    },
-    "api/seed-audit-followups.js": {
-      "maxDuration": 120,
-      "memory": 1024
     }
   },
   "crons": [
