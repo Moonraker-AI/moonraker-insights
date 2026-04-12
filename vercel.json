@@ -170,6 +170,16 @@
     },
     "api/health.js": {
       "maxDuration": 15
+    },
+    "api/send-newsletter.js": {
+      "maxDuration": 120,
+      "memory": 1024
+    },
+    "api/newsletter-unsubscribe.js": {
+      "maxDuration": 10
+    },
+    "api/newsletter-webhook.js": {
+      "maxDuration": 10
     }
   },
   "crons": [
