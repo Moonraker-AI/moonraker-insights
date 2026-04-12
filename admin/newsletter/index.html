@@ -61,23 +61,30 @@ strong { font-weight: 600; color: var(--color-heading); }
 
 /* Layout */
 .layout { display: flex; min-height: 100vh; }
-.sidebar { width: 220px; background: var(--sidebar-bg); border-right: 1px solid var(--sidebar-border); padding: 1.25rem 0; position: fixed; top: 0; left: 0; bottom: 0; overflow-y: auto; z-index: 50; transition: transform .3s; }
-.sidebar-logo { display: flex; align-items: center; gap: .75rem; padding: .5rem 1.25rem 1.5rem; }
-.sidebar-logo img { height: 26px; opacity: .8; }
-.sidebar-nav { display: flex; flex-direction: column; }
-.nav-section { font-size: .72rem; font-weight: 600; text-transform: uppercase; letter-spacing: .04em; color: var(--color-muted); padding: 1rem 1.25rem .4rem; }
-.sidebar-nav a { display: flex; align-items: center; gap: .65rem; padding: .45rem 1.25rem; font-size: .84rem; color: var(--color-body); transition: all .15s; border-left: 2px solid transparent; }
+.sidebar { width: 240px; background: var(--sidebar-bg); border-right: 1px solid var(--sidebar-border); position: fixed; top: 0; left: 0; bottom: 0; z-index: 200; display: flex; flex-direction: column; transition: transform .25s ease; }
+.sidebar-header { padding: 1.25rem .75rem .75rem; display: flex; align-items: center; gap: .65rem; }
+.sidebar-header img { height: 34px; padding: 5px; background: var(--color-primary-subtle); border: 1px solid rgba(0,212,126,.15); border-radius: 8px; }
+.sidebar-header span { font-family: 'Outfit', sans-serif; font-weight: 700; font-size: 1.05rem; color: var(--color-heading); }
+.sidebar-close { display: none; margin-left: auto; background: none; border: none; color: var(--color-muted); font-size: 1.3rem; cursor: pointer; padding: .25rem; line-height: 1; }
+.sidebar-close:hover { color: var(--color-heading); }
+.sidebar-nav { flex: 1; display: flex; flex-direction: column; gap: 2px; padding: 0 .5rem; overflow-y: auto; }
+.nav-section { font-size: .65rem; font-weight: 600; text-transform: uppercase; letter-spacing: .08em; color: var(--color-muted); padding: .75rem .75rem .25rem; opacity: .6; }
+.sidebar-nav a { display: flex; align-items: center; gap: .65rem; padding: .55rem .75rem; border-radius: 8px; font-size: .82rem; font-weight: 500; color: var(--color-muted); text-decoration: none; transition: all .15s; }
 .sidebar-nav a:hover { background: var(--sidebar-hover); color: var(--color-heading); }
-.sidebar-nav a.active { background: var(--color-primary-subtle); color: var(--color-primary); border-left-color: var(--color-primary); font-weight: 500; }
-.nav-icon { width: 18px; height: 18px; display: flex; align-items: center; justify-content: center; flex-shrink: 0; }
-.nav-icon svg { width: 16px; height: 16px; fill: none; stroke: currentColor; stroke-width: 1.5; stroke-linecap: round; stroke-linejoin: round; }
-.main { flex: 1; margin-left: 220px; min-height: 100vh; }
+.sidebar-nav a.active { background: var(--color-primary-subtle); color: var(--color-primary); font-weight: 600; }
+.sidebar-nav .nav-icon { width: 18px; min-width: 18px; display: flex; align-items: center; justify-content: center; flex-shrink: 0; }
+.sidebar-nav .nav-icon svg { width: 15px; height: 15px; stroke: currentColor; fill: none; stroke-width: 1.25; stroke-linecap: round; stroke-linejoin: round; opacity: .65; }
+.sidebar-nav a.active .nav-icon svg { opacity: 1; }
+.sidebar-nav a:hover .nav-icon svg { opacity: 1; }
+.sidebar-footer { display: flex; align-items: center; justify-content: space-between; padding: .75rem 1rem; border-top: 1px solid var(--sidebar-border); }
+.hamburger { display: none; background: none; border: none; color: var(--color-muted); cursor: pointer; padding: .25rem; margin-right: .5rem; }
+.main { flex: 1; margin-left: 240px; min-height: 100vh; }
+@media (max-width: 900px) { .sidebar { transform: translateX(-100%); } .sidebar.open { transform: translateX(0); } .sidebar-close { display: block; } .hamburger { display: block; } .main { margin-left: 0; } }
 
 /* Header */
-.header { background: var(--color-surface); border-bottom: 1px solid var(--color-border); padding: 1rem 2rem; position: sticky; top: 0; z-index: 40; display: flex; align-items: center; justify-content: space-between; }
+.header { background: var(--color-surface); border-bottom: 1px solid var(--color-border); padding: .75rem 2rem; position: sticky; top: 0; z-index: 40; display: flex; align-items: center; gap: .5rem; }
 .header h1 { font-size: 1.15rem; font-weight: 600; }
-.header-right { display: flex; align-items: center; gap: .75rem; }
-.theme-toggle { background: var(--color-surface); border: 1px solid var(--color-border); border-radius: 50%; width: 36px; height: 36px; cursor: pointer; display: flex; align-items: center; justify-content: center; font-size: 1rem; transition: all .2s; }
+.theme-toggle { background: none; border: 1px solid var(--sidebar-border); border-radius: 50%; width: 30px; height: 30px; cursor: pointer; display: flex; align-items: center; justify-content: center; font-size: .85rem; transition: all .2s; }
 .theme-toggle:hover { border-color: var(--color-primary); }
 
 /* Content */
@@ -146,9 +153,9 @@ textarea.form-input { resize: vertical; min-height: 80px; line-height: 1.6; }
 .story-fields.collapsed { display: none; }
 
 /* Subscriber rows */
-.sub-row { display: grid; grid-template-columns: 1fr auto auto auto; gap: 1rem; align-items: center; padding: .75rem 1rem; border-bottom: 1px solid var(--color-border); font-size: .84rem; }
+.sub-row { display: grid; grid-template-columns: 1fr 70px 70px 90px; gap: .75rem; align-items: center; padding: .75rem 1rem; border-bottom: 1px solid var(--color-border); font-size: .84rem; }
 .sub-row:last-child { border-bottom: none; }
-.sub-email { font-weight: 500; color: var(--color-heading); }
+.sub-email { font-weight: 500; color: var(--color-heading); text-align: left; }
 .sub-name { color: var(--color-muted); font-size: .78rem; }
 
 /* Preview iframe */
@@ -171,8 +178,6 @@ textarea.form-input { resize: vertical; min-height: 80px; line-height: 1.6; }
 .modal-actions { display: flex; gap: .75rem; justify-content: flex-end; margin-top: 1.5rem; }
 
 @media (max-width: 900px) {
-  .sidebar { transform: translateX(-100%); }
-  .main { margin-left: 0; }
   .stat-row { grid-template-columns: repeat(2, 1fr); }
   .edition-row { grid-template-columns: 50px 1fr auto; }
   .edition-stats { display: none; }
@@ -185,31 +190,39 @@ textarea.form-input { resize: vertical; min-height: 80px; line-height: 1.6; }
 <div class="layout">
 
   <!-- Sidebar -->
-  <aside class="sidebar">
-    <div class="sidebar-logo"><a href="/admin"><img src="/assets/logo.png" alt="Moonraker"></a></div>
-    <nav class="sidebar-nav">
-      <div class="nav-section">Overview</div>
-      <a href="/admin"><span class="nav-icon"><svg viewBox="0 0 16 16"><rect x="1.5" y="1.5" width="5" height="5" rx="1"/><rect x="9.5" y="1.5" width="5" height="5" rx="1"/><rect x="1.5" y="9.5" width="5" height="5" rx="1"/><rect x="9.5" y="9.5" width="5" height="5" rx="1"/></svg></span><span class="nav-label">Dashboard</span></a>
-      <a href="/admin/clients"><span class="nav-icon"><svg viewBox="0 0 16 16"><circle cx="8" cy="4.5" r="2.5"/><path d="M2.5 15c0-3 2.5-5.5 5.5-5.5s5.5 2.5 5.5 5.5"/></svg></span><span class="nav-label">Clients</span></a>
-      <div class="nav-section">Workflows</div>
-      <a href="/admin/proposals"><span class="nav-icon"><svg viewBox="0 0 16 16"><path d="M3 2h7l3 3v9a1 1 0 01-1 1H3a1 1 0 01-1-1V3a1 1 0 011-1z"/><path d="M10 2v3h3"/><path d="M5 9h6M5 12h4"/></svg></span><span class="nav-label">Proposals</span></a>
-      <a href="/admin/onboarding"><span class="nav-icon"><svg viewBox="0 0 16 16"><path d="M8 1v10M4.5 7.5L8 11l3.5-3.5"/><path d="M2.5 13.5h11"/></svg></span><span class="nav-label">Onboarding</span></a>
-      <a href="/admin/audits"><span class="nav-icon"><svg viewBox="0 0 16 16"><circle cx="6.5" cy="6.5" r="4"/><path d="M14.5 14.5l-4-4"/></svg></span><span class="nav-label">Audits</span></a>
-      <a href="/admin/deliverables"><span class="nav-icon"><svg viewBox="0 0 16 16"><rect x="2" y="2" width="12" height="12" rx="2"/><path d="M5.5 8l2 2 3.5-3.5"/></svg></span><span class="nav-label">Deliverables</span></a>
-      <a href="/admin/reports"><span class="nav-icon"><svg viewBox="0 0 16 16"><path d="M2 14V6l3.5-2v10"/><path d="M6.25 14V4.5l3.5-2v11.5"/><path d="M10.5 14V3l3.5-2v13"/></svg></span><span class="nav-label">Reports</span></a>
-      <div class="nav-section">Marketing</div>
-      <a href="/admin/newsletter" class="active"><span class="nav-icon"><svg viewBox="0 0 16 16"><path d="M2 3h12a1 1 0 011 1v8a1 1 0 01-1 1H2a1 1 0 01-1-1V4a1 1 0 011-1z"/><path d="M1 4l7 5 7-5"/></svg></span><span class="nav-label">Newsletter</span></a>
-    </nav>
-  </aside>
+  <aside class="sidebar" id="sidebar">
+  <div class="sidebar-header">
+    <img src="/assets/logo.png" alt="Moonraker">
+    <span>Client HQ</span>
+    <button class="sidebar-close" id="sidebarClose" aria-label="Close menu">&times;</button>
+  </div>
+  <nav class="sidebar-nav">
+    <div class="nav-section">Overview</div>
+    <a href="/admin"><span class="nav-icon"><svg viewBox="0 0 16 16"><rect x="1.5" y="1.5" width="5" height="5" rx="1"/><rect x="9.5" y="1.5" width="5" height="5" rx="1"/><rect x="1.5" y="9.5" width="5" height="5" rx="1"/><rect x="9.5" y="9.5" width="5" height="5" rx="1"/></svg></span><span class="nav-label">Dashboard</span></a>
+    <a href="/admin/clients"><span class="nav-icon"><svg viewBox="0 0 16 16"><circle cx="8" cy="4.5" r="2.5"/><path d="M2.5 15c0-3 2.5-5.5 5.5-5.5s5.5 2.5 5.5 5.5"/></svg></span><span class="nav-label">Clients</span></a>
+    <div class="nav-section">Workflows</div>
+    <a href="/admin/proposals"><span class="nav-icon"><svg viewBox="0 0 16 16"><path d="M3 2h7l3 3v9a1 1 0 01-1 1H3a1 1 0 01-1-1V3a1 1 0 011-1z"/><path d="M10 2v3h3"/><path d="M5 9h6M5 12h4"/></svg></span><span class="nav-label">Proposals</span></a>
+    <a href="/admin/onboarding"><span class="nav-icon"><svg viewBox="0 0 16 16"><path d="M8 1v10M4.5 7.5L8 11l3.5-3.5"/><path d="M2.5 13.5h11"/></svg></span><span class="nav-label">Onboarding</span></a>
+    <a href="/admin/audits"><span class="nav-icon"><svg viewBox="0 0 16 16"><circle cx="6.5" cy="6.5" r="4"/><path d="M14.5 14.5l-4-4"/></svg></span><span class="nav-label">Audits</span></a>
+    <a href="/admin/deliverables"><span class="nav-icon"><svg viewBox="0 0 16 16"><rect x="2" y="2" width="12" height="12" rx="2"/><path d="M5.5 8l2 2 3.5-3.5"/></svg></span><span class="nav-label">Deliverables</span></a>
+    <a href="/admin/reports"><span class="nav-icon"><svg viewBox="0 0 16 16"><path d="M2 14V6l3.5-2v10"/><path d="M6.25 14V4.5l3.5-2v11.5"/><path d="M10.5 14V3l3.5-2v13"/></svg></span><span class="nav-label">Reports</span></a>
+    <div class="nav-section">Marketing</div>
+    <a href="/admin/newsletter" class="active"><span class="nav-icon"><svg viewBox="0 0 16 16"><path d="M2 3h12a1 1 0 011 1v8a1 1 0 01-1 1H2a1 1 0 01-1-1V4a1 1 0 011-1z"/><path d="M1 4l7 5 7-5"/></svg></span><span class="nav-label">Newsletter</span></a>
+  </nav>
+  <div class="sidebar-footer">
+    <button onclick="adminAuth.signOut()" style="display:inline-flex;align-items:center;gap:.4rem;padding:.35rem .5rem;border-radius:8px;font-size:.8rem;font-weight:500;font-family:inherit;border:none;background:none;color:var(--color-muted);cursor:pointer;"><svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M9 21H5a2 2 0 01-2-2V5a2 2 0 012-2h4"/><polyline points="16 17 21 12 16 7"/><line x1="21" y1="12" x2="9" y2="12"/></svg> Sign out</button>
+    <div style="display:flex;align-items:center;gap:.35rem;margin-left:auto;">
+      <button class="theme-toggle" id="themeBtn" onclick="toggleTheme()" aria-label="Toggle theme">&#x1F319;</button>
+    </div>
+  </div>
+</aside>
 
   <div class="main">
     <!-- Header -->
-    <div class="header">
+    <header class="header">
+      <button class="hamburger" id="hamburger" aria-label="Open menu"><svg viewBox="0 0 20 20" width="20" height="20"><path d="M3 5h14M3 10h14M3 15h14" stroke="currentColor" stroke-width="1.5" stroke-linecap="round"/></svg></button>
       <h1>Newsletter</h1>
-      <div class="header-right">
-        <button class="theme-toggle" onclick="toggleTheme()">🌙</button>
-      </div>
-    </div>
+    </header>
 
     <div class="content">
       <!-- Stat cards -->
@@ -292,6 +305,7 @@ textarea.form-input { resize: vertical; min-height: 80px; line-height: 1.6; }
       <div class="tab-content" id="tab-subscribers">
         <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:1rem;">
           <div style="display:flex;gap:.5rem;align-items:center;">
+            <input type="text" class="form-input" id="subSearch" placeholder="Search by email or name..." style="width:220px;font-size:.82rem;" oninput="filterSubscribers()" />
             <select class="form-input" style="width:auto;font-size:.82rem;" id="subFilter" onchange="loadSubscribers()">
               <option value="all">All Subscribers</option>
               <option value="active">Active</option>
@@ -309,7 +323,7 @@ textarea.form-input { resize: vertical; min-height: 80px; line-height: 1.6; }
           </div>
         </div>
         <div class="card" style="padding:0;overflow:hidden;">
-          <div style="padding:.75rem 1rem;border-bottom:1px solid var(--color-border);display:grid;grid-template-columns:1fr auto auto auto;gap:1rem;font-size:.72rem;font-weight:600;text-transform:uppercase;letter-spacing:.04em;color:var(--color-muted);">
+          <div style="padding:.75rem 1rem;border-bottom:1px solid var(--color-border);display:grid;grid-template-columns:1fr 70px 70px 90px;gap:.75rem;font-size:.72rem;font-weight:600;text-transform:uppercase;letter-spacing:.04em;color:var(--color-muted);">
             <div>Subscriber</div>
             <div>Tier</div>
             <div>Status</div>
@@ -498,7 +512,15 @@ function renderEditions() {
 // ---- Subscriber stats ----
 async function loadSubscriberStats() {
   try {
-    var all = await sb('newsletter_subscribers', 'select=id,status,engagement_tier&limit=5000');
+    // Paginate to get ALL subscribers for accurate count
+    var all = [];
+    var offset = 0;
+    while (true) {
+      var batch = await sb('newsletter_subscribers', 'select=id,status,engagement_tier&limit=1000&offset=' + offset);
+      all = all.concat(batch);
+      if (batch.length < 1000) break;
+      offset += 1000;
+    }
     var active = all.filter(function(s) { return s.status === 'active'; });
     subscriberCounts = {
       total: all.length,
@@ -536,7 +558,22 @@ async function loadSubscribers() {
       return;
     }
 
-    container.innerHTML = subscribers.map(function(s) {
+    allLoadedSubs = subscribers;
+    renderSubscriberList(subscribers);
+  } catch (e) {
+    container.innerHTML = '<div style="padding:2rem;color:var(--color-danger);font-size:.85rem;">Failed to load subscribers</div>';
+    console.error(e);
+  }
+}
+
+function renderSubscriberList(list) {
+  var container = document.getElementById('subscribersList');
+  document.getElementById('subCount').textContent = list.length + ' shown';
+  if (!list.length) {
+    container.innerHTML = '<div style="padding:2rem;text-align:center;color:var(--color-muted);font-size:.85rem;">No subscribers found</div>';
+    return;
+  }
+  container.innerHTML = list.map(function(s) {
       var tierTag = s.engagement_tier === 'hot' ? '<span class="tag tag-success">Hot</span>'
         : s.engagement_tier === 'warm' ? '<span class="tag tag-warning">Warm</span>'
         : '<span class="tag tag-muted">Cold</span>';
@@ -553,10 +590,6 @@ async function loadSubscribers() {
         '<div style="font-size:.78rem;color:var(--color-muted);">' + escHtml(sourceLabel) + '</div>' +
         '</div>';
     }).join('');
-  } catch (e) {
-    container.innerHTML = '<div style="padding:2rem;color:var(--color-danger);font-size:.85rem;">Failed to load subscribers</div>';
-    console.error(e);
-  }
 }
 
 // ---- Compose tab ----
@@ -1009,6 +1042,31 @@ function escHtml(s) {
   var toggle = document.querySelector('.theme-toggle');
   if (toggle) toggle.textContent = theme === 'dark' ? '☀️' : '🌙';
 })();
+
+// ---- Search filter ----
+var allLoadedSubs = [];
+function filterSubscribers() {
+  var q = (document.getElementById('subSearch').value || '').toLowerCase().trim();
+  if (!q) {
+    renderSubscriberList(allLoadedSubs);
+    return;
+  }
+  var filtered = allLoadedSubs.filter(function(s) {
+    return (s.email || '').toLowerCase().indexOf(q) >= 0 ||
+      ((s.first_name || '') + ' ' + (s.last_name || '')).toLowerCase().indexOf(q) >= 0;
+  });
+  renderSubscriberList(filtered);
+}
+window.filterSubscribers = filterSubscribers;
+
+// ---- Hamburger / sidebar ----
+document.addEventListener('DOMContentLoaded', function() {
+  var hamburger = document.getElementById('hamburger');
+  var sidebar = document.getElementById('sidebar');
+  var sidebarClose = document.getElementById('sidebarClose');
+  if (hamburger) hamburger.onclick = function() { sidebar.classList.add('open'); };
+  if (sidebarClose) sidebarClose.onclick = function() { sidebar.classList.remove('open'); };
+});
 
 // ---- Boot ----
 init();
