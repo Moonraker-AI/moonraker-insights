@@ -23,6 +23,7 @@ module.exports = async function handler(req, res) {
   if (!resendKey) return res.status(500).json({ error: 'RESEND_API_KEY not configured' });
 
   var auditId = (req.body || {}).audit_id;
+  var previewOnly = (req.body || {}).preview_only === true;
   if (!auditId) return res.status(400).json({ error: 'audit_id required' });
 
   try {
@@ -86,13 +87,25 @@ module.exports = async function handler(req, res) {
       footerNote: '', year: new Date().getFullYear()
     });
 
+    var emailSubject = 'Your CORE Entity Audit is Ready' + (practiceName ? ' - ' + practiceName : '');
+
+    // Preview mode: return email without sending
+    if (previewOnly) {
+      return res.status(200).json({
+        ok: true, preview: true, to: contact.email,
+        from: email.FROM.audits, reply_to: 'scott@moonraker.ai',
+        cc: 'scott@moonraker.ai',
+        subject: emailSubject, body_html: htmlBody
+      });
+    }
+
     // Send via Resend
     var emailResp = await fetch('https://api.resend.com/emails', {
       method: 'POST',
       headers: { 'Authorization': 'Bearer ' + resendKey, 'Content-Type': 'application/json' },
       body: JSON.stringify({
         from: email.FROM.audits, to: [contact.email], cc: ['scott@moonraker.ai'],
-        subject: 'Your CORE Entity Audit is Ready' + (practiceName ? ' - ' + practiceName : ''),
+        subject: emailSubject,
         html: htmlBody
       })
     });
