@@ -161,7 +161,7 @@ h1, h2 { font-family: 'Outfit', sans-serif; font-weight: 700; color: var(--color
         <label class="form-label" for="newPw">New password</label>
         <input class="form-input" id="newPw" type="password" placeholder="Create a strong password" autocomplete="new-password" oninput="checkStrength()">
         <div class="pw-requirements" id="pwReqs">
-          <span id="reqLen">&#x2717; At least 10 characters</span><br>
+          <span id="reqLen">&#x2717; At least 20 characters</span><br>
           <span id="reqUpper">&#x2717; One uppercase letter</span><br>
           <span id="reqNum">&#x2717; One number</span>
         </div>
@@ -275,7 +275,7 @@ async function handleLogin() {
 
 function checkStrength() {
   var pw = document.getElementById('newPw').value;
-  var hasLen = pw.length >= 10;
+  var hasLen = pw.length >= 20;
   var hasUpper = /[A-Z]/.test(pw);
   var hasNum = /[0-9]/.test(pw);
 
