@@ -1104,6 +1104,18 @@ strong { font-weight: 600; color: var(--color-heading); }
           </div>
         </div>
 
+        <!-- Batch Audit Card -->
+        <div class="card" id="contentBatchAudit" style="margin-bottom:1.25rem;">
+          <div class="card-header" style="display:flex;justify-content:space-between;align-items:center;">
+            <h3 style="display:flex;align-items:center;gap:.5rem;font-size:.95rem;">
+              Batch Content Audit
+              <span id="batchAuditBadge" class="status-badge" style="font-size:.7rem;"></span>
+            </h3>
+            <button class="btn btn-sm btn-primary" id="btnTriggerBatch" onclick="triggerBatchAudit()" style="display:none;">Run Batch Audit</button>
+          </div>
+          <div id="batchAuditContent" style="padding:0 1rem .75rem;"></div>
+        </div>
+
         <!-- Pages Section -->
         <div style="margin-bottom:1.25rem;">
           <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:.75rem;">
@@ -1832,13 +1844,17 @@ strong { font-weight: 600; color: var(--color-heading); }
           sb('content_pages?select=*&contact_id=eq.' + cid + '&order=created_at.desc'),
           sb('design_specs?select=*&contact_id=eq.' + cid + '&limit=1'),
           sb('neo_images?select=*&contact_id=eq.' + cid + '&order=created_at.desc'),
-          sb('endorsements?select=*&contact_id=eq.' + cid + '&order=created_at.desc')
+          sb('endorsements?select=*&contact_id=eq.' + cid + '&order=created_at.desc'),
+          sb('content_audit_batches?select=*&client_slug=eq.' + s + '&order=created_at.desc&limit=5'),
+          sb('tracked_keywords?select=*&client_slug=eq.' + s + '&active=eq.true&order=keyword.asc')
         ];
         return Promise.all(queries).then(function(res) {
           state.contentPages = res[0] || [];
           state.designSpec = (res[1] && res[1][0]) || null;
           state.neoImages = res[2] || [];
           state.endorsements = res[3] || [];
+          state.contentBatches = res[4] || [];
+          state.trackedKeywords = res[5] || [];
           state.tabLoaded['content'] = true;
           renderTab(tabName);
         });
@@ -5042,6 +5058,9 @@ strong { font-weight: 600; color: var(--color-heading); }
       specEl.innerHTML = sHtml;
     }
 
+    // -- BATCH AUDIT STATUS --
+    renderBatchAuditStatus();
+
     // -- FILTER BAR --
     var filterEl = document.getElementById('contentPhaseBar');
     if (filterEl) {
@@ -5182,6 +5201,116 @@ strong { font-weight: 600; color: var(--color-heading); }
     listEl.innerHTML = h;
     renderContentAssets();
   }
+
+  function renderBatchAuditStatus() {
+    var badge = document.getElementById('batchAuditBadge');
+    var contentEl = document.getElementById('batchAuditContent');
+    var triggerBtn = document.getElementById('btnTriggerBatch');
+    if (!badge || !contentEl) return;
+
+    var batches = state.contentBatches || [];
+    var activeBatch = batches.find(function(b) { return b.status === 'queued' || b.status === 'agent_running' || b.status === 'extracting' || b.status === 'processing'; });
+    var lastBatch = batches[0]; // most recent
+    var kws = state.trackedKeywords || [];
+    var p1Keywords = kws.filter(function(k) { return k.priority === 1 && k.active && k.target_page; });
+
+    if (activeBatch) {
+      // Active batch in progress
+      var statusColors = {queued:'#D97706',agent_running:'#3B82F6',extracting:'#8B5CF6',processing:'#3B82F6'};
+      var statusLabels = {queued:'Queued',agent_running:'Running',extracting:'Extracting',processing:'Processing'};
+      badge.textContent = statusLabels[activeBatch.status] || activeBatch.status;
+      badge.style.background = 'rgba(59,130,246,.1)';
+      badge.style.color = statusColors[activeBatch.status] || '#3B82F6';
+      if (triggerBtn) triggerBtn.style.display = 'none';
+
+      var progress = '';
+      if (activeBatch.status === 'agent_running') {
+        progress = '<div style="margin-top:.5rem;"><div style="height:4px;background:var(--color-border);border-radius:2px;overflow:hidden;"><div style="height:100%;background:#3B82F6;width:' + Math.max(5, (activeBatch.pages_extracted / activeBatch.pages_total * 100)) + '%;transition:width .3s;border-radius:2px;"></div></div><p style="font-size:.72rem;color:var(--color-muted);margin-top:.25rem;">' + activeBatch.pages_extracted + ' / ' + activeBatch.pages_total + ' pages extracted</p></div>';
+      } else if (activeBatch.status === 'processing') {
+        progress = '<div style="margin-top:.5rem;"><div style="height:4px;background:var(--color-border);border-radius:2px;overflow:hidden;"><div style="height:100%;background:#8B5CF6;width:' + Math.max(5, (activeBatch.pages_processed / activeBatch.pages_total * 100)) + '%;transition:width .3s;border-radius:2px;"></div></div><p style="font-size:.72rem;color:var(--color-muted);margin-top:.25rem;">' + activeBatch.pages_processed + ' / ' + activeBatch.pages_total + ' pages processed</p></div>';
+      }
+
+      contentEl.innerHTML = '<p style="font-size:.82rem;color:var(--color-body);">Batch audit is in progress for ' + activeBatch.pages_total + ' keyword pages.</p>' + progress;
+
+      // Poll for updates every 30s while active
+      if (!window._batchPollTimer) {
+        window._batchPollTimer = setInterval(function() {
+          sb('content_audit_batches?select=*&client_slug=eq.' + state.contact.slug + '&order=created_at.desc&limit=5').then(function(res) {
+            state.contentBatches = res || [];
+            renderBatchAuditStatus();
+            // If no longer active, stop polling and refresh pages
+            var still = (state.contentBatches || []).find(function(b) { return b.status === 'queued' || b.status === 'agent_running' || b.status === 'extracting' || b.status === 'processing'; });
+            if (!still) {
+              clearInterval(window._batchPollTimer);
+              window._batchPollTimer = null;
+              // Refresh content pages
+              sb('content_pages?select=*&contact_id=eq.' + state.contact.id + '&order=created_at.desc').then(function(cp) {
+                state.contentPages = cp || [];
+                renderContent();
+              });
+            }
+          });
+        }, 30000);
+      }
+
+    } else if (lastBatch && lastBatch.status === 'complete') {
+      badge.textContent = 'Complete';
+      badge.style.background = 'rgba(0,212,126,.1)';
+      badge.style.color = '#00b86c';
+      if (triggerBtn) triggerBtn.style.display = p1Keywords.length > 0 ? 'inline-flex' : 'none';
+      if (triggerBtn) triggerBtn.textContent = 'Re-run Batch Audit';
+
+      var synthNote = lastBatch.synthesis_raw ? ' Synthesis captured.' : '';
+      contentEl.innerHTML = '<p style="font-size:.82rem;color:var(--color-body);">Last batch: ' + lastBatch.pages_processed + '/' + lastBatch.pages_total + ' pages processed.' + synthNote + ' <span style="color:var(--color-muted);font-size:.78rem;">(' + formatDate(lastBatch.updated_at) + ')</span></p>';
+
+    } else if (lastBatch && (lastBatch.status === 'failed' || lastBatch.status === 'agent_error')) {
+      badge.textContent = 'Error';
+      badge.style.background = 'rgba(239,68,68,.1)';
+      badge.style.color = '#EF4444';
+      if (triggerBtn) { triggerBtn.style.display = 'inline-flex'; triggerBtn.textContent = 'Retry Batch Audit'; }
+
+      contentEl.innerHTML = '<p style="font-size:.82rem;color:#EF4444;">' + esc(lastBatch.error_message || 'Batch audit failed.') + '</p>';
+
+    } else {
+      // No batches yet
+      if (p1Keywords.length > 0) {
+        badge.textContent = 'Ready';
+        badge.style.background = 'rgba(245,158,11,.1)';
+        badge.style.color = '#D97706';
+        if (triggerBtn) { triggerBtn.style.display = 'inline-flex'; triggerBtn.textContent = 'Run Batch Audit'; }
+        contentEl.innerHTML = '<p style="font-size:.82rem;color:var(--color-muted);">' + p1Keywords.length + ' P1 keyword' + (p1Keywords.length !== 1 ? 's' : '') + ' with target pages ready for batch audit. This will run a multi-page Surge analysis and extract RTPBA content and schema for each page.</p>';
+      } else {
+        badge.textContent = 'No Keywords';
+        badge.style.background = 'rgba(107,117,153,.1)';
+        badge.style.color = 'var(--color-muted)';
+        if (triggerBtn) triggerBtn.style.display = 'none';
+        contentEl.innerHTML = '<p style="font-size:.82rem;color:var(--color-muted);">Set up P1 keyword targets in the Reporting tab first. Each keyword needs a target page URL.</p>';
+      }
+    }
+  }
+
+  window.triggerBatchAudit = function() {
+    var slug = state.contact.slug;
+    var btn = document.getElementById('btnTriggerBatch');
+    if (btn) { btn.disabled = true; btn.textContent = 'Starting...'; }
+
+    apiAction('/api/trigger-batch-audit', { client_slug: slug }).then(function(res) {
+      if (res.success) {
+        showToast('Batch audit triggered for ' + res.pages_count + ' keywords', 'success');
+        // Refresh batches
+        sb('content_audit_batches?select=*&client_slug=eq.' + slug + '&order=created_at.desc&limit=5').then(function(batches) {
+          state.contentBatches = batches || [];
+          renderBatchAuditStatus();
+        });
+      } else {
+        showToast(res.error || 'Failed to trigger batch audit', 'error');
+        if (btn) { btn.disabled = false; btn.textContent = 'Run Batch Audit'; }
+      }
+    }).catch(function(err) {
+      showToast('Error: ' + (err.message || 'Unknown error'), 'error');
+      if (btn) { btn.disabled = false; btn.textContent = 'Run Batch Audit'; }
+    });
+  };
 
   function renderContentAssets() {
     var neos = state.neoImages;
