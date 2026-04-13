@@ -543,12 +543,21 @@ textarea.form-input { resize: vertical; min-height: 80px; line-height: 1.6; }
         <option value="warm">Hot + Warm Tiers</option>
       </select>
     </div>
+    <div id="warmupInfo" style="display:none;"></div>
     <div class="modal-actions">
       <button class="btn btn-secondary" onclick="closeSendModal()">Cancel</button>
       <button class="btn btn-primary" onclick="executeSend()">Send Now</button>
     </div>
   </div>
 </div>
+
+<style>
+.ramp-bar { display:flex; align-items:center; gap:4px; flex-wrap:wrap; }
+.ramp-step { font-size:.7rem; padding:3px 8px; border-radius:4px; background:var(--color-bg); color:var(--color-muted); font-weight:500; }
+.ramp-step.done { background:var(--color-primary); color:#fff; opacity:.6; }
+.ramp-step.current { background:var(--color-primary); color:#fff; font-weight:700; box-shadow:0 0 0 2px rgba(0,212,126,.3); }
+.ramp-arrow { font-size:.65rem; color:var(--color-muted); }
+</style>
 
 <div class="toast" id="toast"></div>
 
@@ -563,6 +572,7 @@ var editions = [];
 var subscribers = [];
 var currentEditionId = null;
 var subscriberCounts = { total: 0, active: 0, hot: 0, warm: 0, cold: 0 };
+var warmupSettings = null;
 var researchCandidates = [];
 
 // ---- Supabase helpers ----
@@ -1011,13 +1021,47 @@ function buildPreviewHtml(data) {
 }
 
 // ---- Send ----
+async function loadWarmupSettings() {
+  try {
+    var rows = await sb('settings', 'key=eq.newsletter_warmup&select=value');
+    if (rows.length && rows[0].value) warmupSettings = rows[0].value;
+  } catch (e) { /* non-fatal */ }
+}
+
 async function confirmSend() {
   if (!currentEditionId) { toast('Save as draft first', 'error'); return; }
-  // Refresh count
-  await loadSubscriberStats();
+  await Promise.all([loadSubscriberStats(), loadWarmupSettings()]);
   var data = gatherContent();
   document.getElementById('sendEditionLabel').textContent = 'Newsletter #' + (data.edition_number || '--');
-  document.getElementById('sendRecipientCount').textContent = subscriberCounts.active.toLocaleString();
+
+  // Warmup display
+  var warmupEl = document.getElementById('warmupInfo');
+  if (warmupSettings && warmupSettings.enabled) {
+    var step = warmupSettings.current_step || 0;
+    var schedule = warmupSettings.ramp_schedule || [250, 500, 750, 1000, 1500, 2000];
+    var currentLimit = step < schedule.length ? schedule[step] : null;
+    var sendCount = currentLimit ? Math.min(currentLimit, subscriberCounts.active) : subscriberCounts.active;
+    document.getElementById('sendRecipientCount').textContent = sendCount.toLocaleString();
+
+    // Build ramp progress bar
+    var stepsHtml = schedule.map(function(s, i) {
+      var cls = i < step ? 'done' : (i === step ? 'current' : '');
+      return '<span class="ramp-step ' + cls + '">' + s.toLocaleString() + '</span>';
+    }).join('<span class="ramp-arrow">&rarr;</span>');
+
+    warmupEl.innerHTML = '<div style="margin-bottom:.75rem;">' +
+      '<div style="display:flex;align-items:center;gap:6px;margin-bottom:6px;">' +
+        '<span style="width:8px;height:8px;border-radius:50%;background:var(--color-primary);display:inline-block;"></span>' +
+        '<span style="font-size:.8rem;font-weight:600;color:var(--color-heading);">Warm-up Active: Sending ' + sendCount.toLocaleString() + ' of ' + subscriberCounts.active.toLocaleString() + '</span>' +
+      '</div>' +
+      '<div class="ramp-bar">' + stepsHtml + '</div>' +
+      '<p style="font-size:.7rem;color:var(--color-muted);margin:6px 0 0;">Limit auto-advances after each send. Send the rest via GHL this week.</p>' +
+    '</div>';
+    warmupEl.style.display = 'block';
+  } else {
+    document.getElementById('sendRecipientCount').textContent = subscriberCounts.active.toLocaleString();
+    warmupEl.style.display = 'none';
+  }
   document.getElementById('sendModal').classList.add('open');
 }
 window.confirmSend = confirmSend;
@@ -1035,7 +1079,11 @@ async function executeSend() {
     });
     if (!res.ok) { var err = await res.json().catch(function() { return {}; }); throw new Error(err.error || 'Send failed'); }
     var result = await res.json();
-    toast('Newsletter sent to ' + (result.sent || 0) + ' subscribers!');
+    var msg = 'Newsletter sent to ' + (result.sent || 0) + ' subscribers!';
+    if (result.warmup_enabled && result.send_limit) {
+      msg += ' (warm-up limit: ' + result.send_limit + ')';
+    }
+    toast(msg);
     loadEditions();
   } catch (e) {
     toast('Send failed: ' + e.message, 'error');
@@ -1562,6 +1610,7 @@ init();
 </script>
 </body>
 </html>
+
 
 
 
