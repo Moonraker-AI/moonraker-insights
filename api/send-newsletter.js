@@ -1,7 +1,8 @@
 // api/send-newsletter.js
 // Sends a newsletter to active subscribers via Resend.
-// POST { newsletter_id, tier: 'all' | 'hot' | 'warm' }
+// POST { newsletter_id, tier: 'all' | 'hot' | 'warm', override_limit: number (optional) }
 // Chunks into batches of 50, logs each send to newsletter_sends.
+// Warm-up: reads newsletter_warmup setting to limit sends and auto-ramp.
 
 var sb = require('./_lib/supabase');
 var auth = require('./_lib/auth');
@@ -17,10 +18,12 @@ module.exports = async function handler(req, res) {
   var user = await auth.requireAdminOrInternal(req, res);
   if (!user) return;
 
+  var body = req.body || {};
+
   try {
-    var body = req.body || {};
     var newsletterId = body.newsletter_id;
     var tier = body.tier || 'all';
+    var overrideLimit = body.override_limit ? parseInt(body.override_limit, 10) : null;
 
     if (!newsletterId) return res.status(400).json({ error: 'newsletter_id required' });
     if (!RESEND_KEY) return res.status(500).json({ error: 'RESEND_API_KEY not configured' });
@@ -33,36 +36,84 @@ module.exports = async function handler(req, res) {
     if (newsletter.status === 'sent') return res.status(400).json({ error: 'Newsletter already sent' });
     if (newsletter.status === 'sending') return res.status(400).json({ error: 'Newsletter is currently sending' });
 
+    // Read warm-up settings
+    var warmup = null;
+    var sendLimit = null;
+    try {
+      var settings = await sb.query('settings', 'key=eq.newsletter_warmup&select=value');
+      if (settings.length && settings[0].value) {
+        warmup = settings[0].value;
+        if (warmup.enabled) {
+          var step = warmup.current_step || 0;
+          var schedule = warmup.ramp_schedule || [250, 500, 750, 1000, 1500, 2000];
+          if (step < schedule.length) {
+            sendLimit = schedule[step];
+          }
+          // null sendLimit = no limit (past ramp schedule)
+        }
+      }
+    } catch (e) {
+      // Non-fatal, continue without warmup
+      console.error('Failed to read warmup settings:', e.message);
+    }
+
+    // Override limit takes precedence
+    if (overrideLimit && overrideLimit > 0) {
+      sendLimit = overrideLimit;
+    }
+
     // Mark as sending
     await sb.mutate('newsletters', 'id=eq.' + newsletterId, 'PATCH', {
       status: 'sending'
     });
 
     // Fetch subscribers based on tier
+    // Order: hot engagement first, then warm, then cold; oldest first within each tier
     var subFilter = 'status=eq.active';
     if (tier === 'hot') {
       subFilter += '&engagement_tier=eq.hot';
     } else if (tier === 'warm') {
       subFilter += '&engagement_tier=in.(hot,warm)';
     }
-    // else 'all' = all active subscribers
 
-    var subscribers = await sb.query('newsletter_subscribers', subFilter + '&select=id,email,first_name&limit=5000');
+    // Determine how many to fetch
+    var fetchLimit = sendLimit ? sendLimit + 100 : 5000; // fetch extra for safety
+    var orderBy = 'order=engagement_tier.asc,subscribed_at.asc'; // hot < warm < cold alphabetically
+
+    var subscribers = await sb.query('newsletter_subscribers', subFilter + '&select=id,email,first_name&' + orderBy + '&limit=' + fetchLimit);
 
     if (!subscribers.length) {
       await sb.mutate('newsletters', 'id=eq.' + newsletterId, 'PATCH', { status: 'draft' });
       return res.status(400).json({ error: 'No subscribers match the selected tier' });
     }
 
+    // Check which subscribers already received this newsletter (for re-sends / partial sends)
+    var alreadySent = {};
+    try {
+      var existing = await sb.query('newsletter_sends', 'newsletter_id=eq.' + newsletterId + '&status=eq.sent&select=subscriber_id&limit=5000');
+      for (var e = 0; e < existing.length; e++) {
+        alreadySent[existing[e].subscriber_id] = true;
+      }
+    } catch (e) {
+      // Non-fatal
+    }
+
+    // Filter out already-sent subscribers
+    var eligibleSubscribers = subscribers.filter(function(s) {
+      return !alreadySent[s.id];
+    });
+
+    // Apply send limit
+    var sendList = sendLimit ? eligibleSubscribers.slice(0, sendLimit) : eligibleSubscribers;
+
     var totalSent = 0;
     var totalFailed = 0;
     var errors = [];
 
     // Process in batches
-    for (var i = 0; i < subscribers.length; i += BATCH_SIZE) {
-      var batch = subscribers.slice(i, i + BATCH_SIZE);
+    for (var i = 0; i < sendList.length; i += BATCH_SIZE) {
+      var batch = sendList.slice(i, i + BATCH_SIZE);
 
-      // Send each email individually (Resend batch API sends individual emails)
       var sendPromises = batch.map(function(sub) {
         var emailHtml = nl.build(newsletter, sub.id);
 
@@ -128,29 +179,54 @@ module.exports = async function handler(req, res) {
       }
 
       // Small delay between batches to avoid rate limits
-      if (i + BATCH_SIZE < subscribers.length) {
+      if (i + BATCH_SIZE < sendList.length) {
         await new Promise(function(resolve) { setTimeout(resolve, 200); });
       }
     }
 
     // Update newsletter stats and status
+    var finalStatus = totalSent > 0 ? 'sent' : 'failed';
     await sb.mutate('newsletters', 'id=eq.' + newsletterId, 'PATCH', {
-      status: totalSent > 0 ? 'sent' : 'failed',
+      status: finalStatus,
       sent_at: new Date().toISOString(),
-      stats_total_sent: totalSent,
-      stats_bounced: totalFailed
+      stats_total_sent: (newsletter.stats_total_sent || 0) + totalSent,
+      stats_bounced: (newsletter.stats_bounced || 0) + totalFailed
     });
+
+    // Auto-advance warm-up step after successful send
+    if (warmup && warmup.enabled && totalSent > 0 && !overrideLimit) {
+      try {
+        var nextStep = (warmup.current_step || 0) + 1;
+        var newWarmup = {
+          enabled: nextStep < (warmup.ramp_schedule || []).length,
+          current_step: nextStep,
+          ramp_schedule: warmup.ramp_schedule || [250, 500, 750, 1000, 1500, 2000],
+          sends_completed: (warmup.sends_completed || 0) + 1,
+          last_send_date: new Date().toISOString().split('T')[0],
+          last_send_count: totalSent
+        };
+        await sb.mutate('settings', 'key=eq.newsletter_warmup', 'PATCH', {
+          value: newWarmup,
+          updated_at: new Date().toISOString()
+        });
+      } catch (e) {
+        console.error('Failed to advance warmup:', e.message);
+      }
+    }
 
     return res.status(200).json({
       sent: totalSent,
       failed: totalFailed,
       total_subscribers: subscribers.length,
+      eligible: eligibleSubscribers.length,
+      send_limit: sendLimit,
+      warmup_step: warmup ? (warmup.current_step || 0) : null,
+      warmup_enabled: warmup ? warmup.enabled : false,
       errors: errors.slice(0, 5)
     });
 
   } catch (e) {
     console.error('send-newsletter error:', e);
-    // Try to reset status
     try {
       if (body && body.newsletter_id) {
         await sb.mutate('newsletters', 'id=eq.' + body.newsletter_id, 'PATCH', { status: 'failed' });
@@ -159,4 +235,3 @@ module.exports = async function handler(req, res) {
     return res.status(500).json({ error: e.message });
   }
 };
-
