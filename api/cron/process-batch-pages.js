@@ -139,11 +139,35 @@ async function checkBatchComplete(batchId) {
   }).length;
 
   if (remaining === 0) {
+    var finalStatus = errors > 0 && processed === 0 ? 'failed' : 'complete';
     await sb.mutate('content_audit_batches?id=eq.' + batchId, 'PATCH', {
-      status: errors > 0 && processed === 0 ? 'failed' : 'complete',
+      status: finalStatus,
       pages_processed: processed,
       updated_at: new Date().toISOString()
     }, 'return=minimal');
+
+    // Auto-trigger synthesis processing if batch completed successfully and has synthesis
+    if (finalStatus === 'complete') {
+      var batchCheck = await sb.one('content_audit_batches?id=eq.' + batchId + '&limit=1');
+      if (batchCheck && batchCheck.synthesis_raw && !batchCheck.synthesis_processed) {
+        try {
+          var synthResp = await fetch('https://clients.moonraker.ai/api/process-batch-synthesis', {
+            method: 'POST',
+            headers: {
+              'Authorization': 'Bearer ' + (process.env.CRON_SECRET || ''),
+              'Content-Type': 'application/json'
+            },
+            body: JSON.stringify({ batch_id: batchId })
+          });
+          if (synthResp.ok) {
+            var synthResult = await synthResp.json();
+            console.log('Auto-processed synthesis:', synthResult);
+          }
+        } catch(synthErr) {
+          console.error('Auto-synthesis processing failed (can retry manually):', synthErr.message);
+        }
+      }
+    }
   }
 }
 
