@@ -2819,6 +2819,8 @@ strong { font-weight: 600; color: var(--color-heading); }
       desc: '<div class="ic-detail-label">Talking Points</div><p>Add a "How did you hear about us?" field to contact/booking forms:</p><ul><li><strong>Google Search</strong></li><li><strong>Google Maps</strong></li><li><strong>AI Search (Gemini, ChatGPT, etc.)</strong></li><li><strong>Psychology Today</strong></li><li><strong>Referral</strong></li><li><strong>Other</strong></li></ul><p>Also mention the Client Tracking Sheet as a companion tool.</p>' },
     { key: 'google_marketing_account', label: 'Google Marketing Account', cat: 'campaign_setup', sort: 15,
       desc: '<div class="ic-detail-label">Talking Points</div><ul><li>Ideally a paid Google Workspace account (e.g. <code>marketing@practicename.com</code>)</li><li>If Workspace not feasible, a free Gmail works</li><li>This account owns the YouTube channel and is used for DKIM/DMARC</li></ul>' },
+    { key: 'trigger_batch_audit', label: 'Trigger Batch Content Audit', cat: 'campaign_setup', sort: 16,
+      desc: '<div class="ic-detail-label">Post-Call Action</div><p style="margin-bottom:.5rem;">Once target keywords and pages are set, trigger the batch Surge audit. This runs a multi-page analysis and extracts RTPBA content and schema recommendations for each service page.</p><div id="icBatchTriggerArea"></div>' },
     { key: 'content_turnaround', label: 'Set Content Feedback Expectations', cat: 'expectations', sort: 20,
       desc: '<div class="ic-detail-label">Key Points</div><ul><li>Content feedback turnaround: ~1 week from when we send drafts</li><li>Our response time: within 48 hours</li><li>Initial buildout target: 4-6 weeks for core deliverables</li><li>If no response within 7 days, we may publish (changes can be made after)</li></ul>' },
     { key: 'scope_boundaries', label: 'Review Scope Boundaries', cat: 'expectations', sort: 21,
@@ -2890,6 +2892,8 @@ strong { font-weight: 600; color: var(--color-heading); }
     document.getElementById('icCategories').innerHTML = html;
     var kwStep = steps.find(function(s) { return s.step_key === 'pick_target_keywords' && expandedICId === s.id; });
     if (kwStep) renderKeywordForm();
+    var batchStep = steps.find(function(s) { return s.step_key === 'trigger_batch_audit' && expandedICId === s.id; });
+    if (batchStep) renderIcBatchTrigger();
   }
 
   window.toggleICExpand = function(id) { expandedICId = expandedICId === id ? null : id; renderIntroCall(); };
@@ -3063,6 +3067,55 @@ strong { font-weight: 600; color: var(--color-heading); }
       renderIntroCall();
     }).catch(function(err) { console.error('Seed failed:', err); alert('Failed to create checklist.'); });
   };
+  function renderIcBatchTrigger() {
+    var area = document.getElementById('icBatchTriggerArea');
+    if (!area) return;
+    var slug = state.contact ? state.contact.slug : '';
+    if (!slug) return;
+
+    // Check if batch already exists
+    fetch(SB + '/rest/v1/content_audit_batches?client_slug=eq.' + slug + '&order=created_at.desc&limit=1', {
+      headers: { 'apikey': SK, 'Authorization': 'Bearer ' + SK }
+    }).then(function(r) { return r.json(); }).then(function(batches) {
+      var batch = batches && batches[0];
+      if (batch && (batch.status === 'agent_running' || batch.status === 'processing' || batch.status === 'queued')) {
+        area.innerHTML = '<span style="font-size:.82rem;color:#3B82F6;font-weight:500;">Batch audit in progress (' + batch.pages_extracted + '/' + batch.pages_total + ' pages)</span>';
+      } else if (batch && batch.status === 'complete') {
+        area.innerHTML = '<span style="font-size:.82rem;color:#00b86c;font-weight:500;">Batch audit complete (' + batch.pages_processed + '/' + batch.pages_total + ' pages)</span>' +
+          ' <button class="btn btn-ghost btn-sm" style="font-size:.75rem;margin-left:.5rem;" onclick="triggerBatchFromIntroCall()">Re-run</button>';
+      } else {
+        area.innerHTML = '<button class="btn btn-primary btn-sm" id="btnIcBatchTrigger" style="font-size:.78rem;" onclick="triggerBatchFromIntroCall()">Run Batch Audit</button>' +
+          '<span id="icBatchStatus" style="font-size:.78rem;color:var(--color-muted);margin-left:.5rem;"></span>';
+      }
+    }).catch(function() {
+      area.innerHTML = '<button class="btn btn-primary btn-sm" id="btnIcBatchTrigger" style="font-size:.78rem;" onclick="triggerBatchFromIntroCall()">Run Batch Audit</button>';
+    });
+  }
+
+  window.triggerBatchFromIntroCall = function() {
+    var slug = state.contact.slug;
+    var btn = document.getElementById('btnIcBatchTrigger');
+    if (btn) { btn.disabled = true; btn.textContent = 'Starting...'; }
+    toast('Triggering batch audit...', 'info');
+
+    fetch('/api/trigger-batch-audit', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ client_slug: slug, triggered_by: 'intro_call' })
+    }).then(function(r) { return r.json(); }).then(function(res) {
+      if (res.success) {
+        toast('Batch audit triggered for ' + res.pages_count + ' keywords', 'success');
+        renderIcBatchTrigger();
+      } else {
+        toast(res.error || 'Failed to trigger', 'error');
+        if (btn) { btn.disabled = false; btn.textContent = 'Run Batch Audit'; }
+      }
+    }).catch(function(err) {
+      toast('Error: ' + err.message, 'error');
+      if (btn) { btn.disabled = false; btn.textContent = 'Run Batch Audit'; }
+    });
+  };
+
   // ---- AUDIT TAB ----
   function renderAudit() {
     var c = state.contact;
@@ -5140,10 +5193,15 @@ strong { font-weight: 600; color: var(--color-heading); }
     } else {
       filtered.forEach(function(cp) {
         var isExp = expandedContentId === cp.id;
+        var varianceBadge = '';
+        if (cp.variance_score) {
+          var vColor = cp.variance_score >= 80 ? '#EF4444' : cp.variance_score >= 60 ? '#F59E0B' : cp.variance_score >= 40 ? '#3B82F6' : '#00b86c';
+          varianceBadge = '<span style="font-size:.68rem;font-weight:600;padding:.1rem .35rem;border-radius:4px;background:' + vColor + '20;color:' + vColor + ';margin-left:.35rem;">' + cp.variance_score + '/100</span>';
+        }
         h += '<div class="content-page-row' + (isExp ? ' expanded' : '') + '" onclick="toggleContentExpand(\'' + cp.id + '\')">';
         h += '<div class="cp-expand-icon">&#9654;</div>';
         h += '<span class="cp-type-badge ' + cp.page_type + '">' + cp.page_type + '</span>';
-        h += '<div class="cp-info"><div class="cp-title">' + esc(cp.page_name) + (cp.stale ? ' <span style="font-size:.6rem;font-weight:600;padding:.1rem .35rem;border-radius:3px;background:rgba(245,158,11,.12);color:#D97706;vertical-align:middle;margin-left:.35rem;">STALE</span>' : '') + '</div>';
+        h += '<div class="cp-info"><div class="cp-title">' + esc(cp.page_name) + varianceBadge + (cp.stale ? ' <span style="font-size:.6rem;font-weight:600;padding:.1rem .35rem;border-radius:3px;background:rgba(245,158,11,.12);color:#D97706;vertical-align:middle;margin-left:.35rem;">STALE</span>' : '') + '</div>';
         if (cp.target_keyword) h += '<div class="cp-keyword">' + esc(cp.target_keyword) + '</div>';
         h += '</div>';
         h += '<select class="cp-status-select st-' + cp.status + '" onchange="setContentPageStatus(\'' + cp.id + '\', this.value)" onclick="event.stopPropagation()">';
