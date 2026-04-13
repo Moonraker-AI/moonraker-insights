@@ -125,7 +125,7 @@ module.exports = async function(req, res) {
     }
 
     // ── HOMEPAGE ──
-    if ((seedType === 'all' || seedType === 'service') && !pageExists('homepage', null, null)) {
+    if ((seedType === 'all' || seedType === 'homepage') && !pageExists('homepage', null, null)) {
       var hp = await createPage({
         contact_id: contactId,
         client_slug: slug,
