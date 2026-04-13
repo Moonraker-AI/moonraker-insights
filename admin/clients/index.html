@@ -1286,10 +1286,10 @@ strong { font-weight: 600; color: var(--color-heading); }
   function loadDirectoryData() {
     Promise.all([
       fetch(SB + '/rest/v1/contacts?select=id,slug,status,practice_name,email,first_name,last_name,campaign_start,website_url,phone,state_province,city,team_size,lost,follow_up_date,audit_tier,referral_code,source&order=practice_name', { headers: { 'apikey': SK, 'Authorization': 'Bearer ' + SK } }).then(function(r) { return r.json(); }),
-      fetch(SB + '/rest/v1/onboarding_steps?select=contact_id,step_key,status', { headers: { 'apikey': SK, 'Authorization': 'Bearer ' + SK } }).then(function(r) { return r.json(); }),
-      fetch(SB + '/rest/v1/checklist_items?select=client_slug,status', { headers: { 'apikey': SK, 'Authorization': 'Bearer ' + SK } }).then(function(r) { return r.json(); }),
-      fetch(SB + '/rest/v1/intro_call_steps?select=contact_id,step_key,status', { headers: { 'apikey': SK, 'Authorization': 'Bearer ' + SK } }).then(function(r) { return r.json(); }).catch(function() { return []; }),
-      fetch(SB + '/rest/v1/deliverables?select=contact_id,status', { headers: { 'apikey': SK, 'Authorization': 'Bearer ' + SK } }).then(function(r) { return r.json(); }).catch(function() { return []; })
+      fetch(SB + '/rest/v1/onboarding_steps?select=contact_id,step_key,status&limit=5000', { headers: { 'apikey': SK, 'Authorization': 'Bearer ' + SK } }).then(function(r) { return r.json(); }),
+      fetch(SB + '/rest/v1/rpc/get_checklist_summary', { method: 'POST', headers: { 'apikey': SK, 'Authorization': 'Bearer ' + SK, 'Content-Type': 'application/json' }, body: '{}' }).then(function(r) { return r.json(); }),
+      fetch(SB + '/rest/v1/intro_call_steps?select=contact_id,step_key,status&limit=5000', { headers: { 'apikey': SK, 'Authorization': 'Bearer ' + SK } }).then(function(r) { return r.json(); }).catch(function() { return []; }),
+      fetch(SB + '/rest/v1/rpc/get_deliverable_summary', { method: 'POST', headers: { 'apikey': SK, 'Authorization': 'Bearer ' + SK, 'Content-Type': 'application/json' }, body: '{}' }).then(function(r) { return r.json(); }).catch(function() { return []; })
     ]).then(function(res) {
       state.contacts = res[0] || [];
 
@@ -1301,9 +1301,7 @@ strong { font-weight: 600; color: var(--color-heading); }
 
       state.allTasks = {};
       (res[2] || []).forEach(function(t) {
-        if (!state.allTasks[t.client_slug]) state.allTasks[t.client_slug] = { total: 0, complete: 0 };
-        state.allTasks[t.client_slug].total++;
-        if (t.status === 'complete') state.allTasks[t.client_slug].complete++;
+        state.allTasks[t.client_slug] = { total: Number(t.total) || 0, complete: Number(t.complete) || 0 };
       });
 
       // Index intro call steps by contact_id
@@ -1313,11 +1311,10 @@ strong { font-weight: 600; color: var(--color-heading); }
         allIntroCall[s.contact_id][s.step_key] = s.status;
       });
 
-      // Index deliverables by contact_id
+      // Index deliverables by contact_id (RPC returns pre-aggregated counts)
       var allDeliverables = {};
       (res[4] || []).forEach(function(d) {
-        if (!allDeliverables[d.contact_id]) allDeliverables[d.contact_id] = { not_started: 0, in_progress: 0, internal_review: 0, waiting_on_client: 0, delivered: 0 };
-        if (allDeliverables[d.contact_id][d.status] !== undefined) allDeliverables[d.contact_id][d.status]++;
+        allDeliverables[d.contact_id] = { not_started: Number(d.not_started) || 0, in_progress: Number(d.in_progress) || 0, internal_review: Number(d.internal_review) || 0, waiting_on_client: Number(d.waiting_on_client) || 0, delivered: Number(d.delivered) || 0 };
       });
 
       document.getElementById('loadingState').style.display = 'none';
