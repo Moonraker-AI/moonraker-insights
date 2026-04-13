@@ -456,7 +456,7 @@ a:hover { color: var(--color-primary-hover); }
   function loadData() {
     Promise.all([
       fetch(SB + '/rest/v1/contacts?select=id,slug,status,practice_name,email,first_name,last_name,website_url,lost&order=practice_name', { headers: { 'apikey': SK, 'Authorization': 'Bearer ' + SK } }).then(function(r) { return r.json(); }),
-      fetch(SB + '/rest/v1/entity_audits?select=id,contact_id,client_slug,status,audit_tier,audit_date,audit_period,score_credibility,score_optimization,score_reputation,score_engagement,scores,total_tasks,total_complete,created_at,updated_at&order=created_at.desc', { headers: { 'apikey': SK, 'Authorization': 'Bearer ' + SK } }).then(function(r) { return r.json(); }),
+      fetch(SB + '/rest/v1/entity_audits?select=id,contact_id,client_slug,status,audit_tier,audit_date,audit_period,score_credibility,score_optimization,score_reputation,score_engagement,scores,total_tasks,created_at,updated_at&order=created_at.desc', { headers: { 'apikey': SK, 'Authorization': 'Bearer ' + SK } }).then(function(r) { return r.json(); }),
       fetch(SB + '/rest/v1/checklist_items?select=client_slug,status,owner,priority,audit_id&order=client_slug,sort_order&limit=5000', { headers: { 'apikey': SK, 'Authorization': 'Bearer ' + SK } }).then(function(r) { return r.json(); })
     ]).then(function(res) {
       state.contacts = res[0] || [];
