@@ -1,0 +1,215 @@
+/**
+ * /api/cron/process-batch-pages.js
+ *
+ * Cron: runs every 5 minutes.
+ * Picks up content_audit_batches in 'processing' status and processes
+ * the next unprocessed page in each batch.
+ *
+ * One page per batch per cron run to stay within serverless timeout.
+ * Each page: parse raw Surge text -> extract RTPBA + schema -> update content_pages.
+ *
+ * When all pages in a batch are processed, marks batch as 'complete'.
+ */
+
+var sb = require('../_lib/supabase');
+
+module.exports = async function(req, res) {
+  // Cron auth
+  var cronSecret = process.env.CRON_SECRET;
+  var authHeader = req.headers.authorization || '';
+  if (cronSecret && authHeader !== 'Bearer ' + cronSecret) {
+    return res.status(401).json({ error: 'Unauthorized' });
+  }
+
+  if (!sb.isConfigured()) return res.status(500).json({ error: 'Not configured' });
+
+  try {
+    // Find batches in processing status
+    var batchResp = await fetch(
+      sb.url() + '/rest/v1/content_audit_batches?status=eq.processing&order=created_at.asc&limit=5',
+      { headers: sb.headers() }
+    );
+    var batches = await batchResp.json();
+
+    if (!batches || batches.length === 0) {
+      return res.status(200).json({ message: 'No batches to process', processed: 0 });
+    }
+
+    var results = [];
+
+    for (var b = 0; b < batches.length; b++) {
+      var batch = batches[b];
+      var result = { batch_id: batch.id, client_slug: batch.client_slug };
+
+      try {
+        // Find next page to process
+        var pageResp = await fetch(
+          sb.url() + '/rest/v1/content_pages?batch_id=eq.' + batch.id +
+          '&surge_status=eq.raw_stored&order=created_at.asc&limit=1',
+          { headers: sb.headers() }
+        );
+        var pages = await pageResp.json();
+
+        if (!pages || pages.length === 0) {
+          // All pages done, check completion
+          await checkBatchComplete(batch.id);
+          result.action = 'checked_completion';
+          results.push(result);
+          continue;
+        }
+
+        var page = pages[0];
+        result.content_page_id = page.id;
+        result.keyword = page.target_keyword || page.page_name;
+
+        // Mark processing
+        await sb.mutate('content_pages?id=eq.' + page.id, 'PATCH', {
+          surge_status: 'processing',
+          updated_at: new Date().toISOString()
+        }, 'return=minimal');
+
+        // Extract RTPBA and schema
+        var raw = page.surge_raw_data || '';
+        var rtpba = extractRtpba(raw);
+        var schemaRecs = extractSchemaRecommendations(raw);
+
+        // Update page
+        await sb.mutate('content_pages?id=eq.' + page.id, 'PATCH', {
+          surge_data: { raw_text: raw.substring(0, 500000) }, // Cap at 500K for JSONB
+          rtpba: rtpba || null,
+          schema_recommendations: schemaRecs || null,
+          surge_status: 'processed',
+          status: 'audit_loaded',
+          updated_at: new Date().toISOString()
+        }, 'return=minimal');
+
+        // Update batch progress
+        await sb.mutate('content_audit_batches?id=eq.' + batch.id, 'PATCH', {
+          pages_processed: (batch.pages_processed || 0) + 1,
+          updated_at: new Date().toISOString()
+        }, 'return=minimal');
+
+        result.action = 'processed';
+        result.has_rtpba = !!rtpba;
+
+      } catch(pageErr) {
+        console.error('Batch page processing error:', pageErr.message);
+        result.action = 'error';
+        result.error = pageErr.message;
+
+        // Mark page as error
+        if (result.content_page_id) {
+          try {
+            await sb.mutate('content_pages?id=eq.' + result.content_page_id, 'PATCH', {
+              surge_status: 'error',
+              generation_notes: 'Cron processing error: ' + (pageErr.message || '').substring(0, 500),
+              updated_at: new Date().toISOString()
+            }, 'return=minimal');
+          } catch(e) {}
+        }
+      }
+
+      results.push(result);
+    }
+
+    return res.status(200).json({
+      message: 'Processed ' + results.length + ' batch(es)',
+      results: results
+    });
+
+  } catch (err) {
+    console.error('process-batch-pages cron error:', err);
+    return res.status(500).json({ error: err.message || 'Internal error' });
+  }
+};
+
+
+async function checkBatchComplete(batchId) {
+  var pagesResp = await fetch(
+    sb.url() + '/rest/v1/content_pages?batch_id=eq.' + batchId + '&select=surge_status',
+    { headers: sb.headers() }
+  );
+  var allPages = await pagesResp.json();
+  if (!allPages) return;
+
+  var processed = allPages.filter(function(p) { return p.surge_status === 'processed'; }).length;
+  var errors = allPages.filter(function(p) { return p.surge_status === 'error'; }).length;
+  var remaining = allPages.filter(function(p) {
+    return p.surge_status === 'raw_stored' || p.surge_status === 'processing';
+  }).length;
+
+  if (remaining === 0) {
+    await sb.mutate('content_audit_batches?id=eq.' + batchId, 'PATCH', {
+      status: errors > 0 && processed === 0 ? 'failed' : 'complete',
+      pages_processed: processed,
+      updated_at: new Date().toISOString()
+    }, 'return=minimal');
+  }
+}
+
+
+function extractRtpba(raw) {
+  if (!raw || typeof raw !== 'string') return null;
+
+  var markers = [
+    'Ready-to-Publish Best Answer',
+    'Ready to Publish Best Answer',
+    'READY-TO-PUBLISH',
+    'Best Answer Content',
+    'Recommended Page Content'
+  ];
+
+  for (var i = 0; i < markers.length; i++) {
+    var idx = raw.indexOf(markers[i]);
+    if (idx > -1) {
+      var startIdx = raw.indexOf('\n', idx);
+      if (startIdx === -1) startIdx = idx + markers[i].length;
+
+      var endMarkers = [
+        'Action Plan', 'Brand Beacon', 'Off-Page', 'Technical SEO',
+        'Schema Recommendations', 'Schema Markup', 'Implementation',
+        'Site structure', 'Journey coverage', 'Visibility & Coverage',
+        '---', '==='
+      ];
+
+      var endIdx = raw.length;
+      for (var j = 0; j < endMarkers.length; j++) {
+        var eIdx = raw.indexOf(endMarkers[j], startIdx + 100);
+        if (eIdx > -1 && eIdx < endIdx) endIdx = eIdx;
+      }
+
+      var content = raw.substring(startIdx, endIdx).trim();
+      if (content.length > 100) return content;
+    }
+  }
+
+  return null;
+}
+
+
+function extractSchemaRecommendations(raw) {
+  if (!raw || typeof raw !== 'string') return null;
+
+  var schemaIdx = raw.indexOf('Schema');
+  if (schemaIdx === -1) schemaIdx = raw.indexOf('Structured Data');
+  if (schemaIdx === -1) return null;
+
+  var section = raw.substring(schemaIdx, schemaIdx + 3000);
+  var types = [];
+  var knownTypes = [
+    'MedicalBusiness', 'MedicalWebPage', 'FAQPage', 'Person', 'Service',
+    'BreadcrumbList', 'AggregateRating', 'VideoObject', 'Article',
+    'LocalBusiness', 'HealthAndBeautyBusiness', 'ProfessionalService',
+    'MedicalCondition', 'MedicalTherapy', 'Physician', 'ContactPoint',
+    'Organization', 'WebPage', 'HowTo', 'ItemList'
+  ];
+
+  knownTypes.forEach(function(t) {
+    if (section.indexOf(t) > -1) types.push(t);
+  });
+
+  if (types.length > 0) {
+    return { recommended_types: types, raw_section: section.substring(0, 1000) };
+  }
+  return null;
+}
