@@ -29,7 +29,7 @@ module.exports = async function handler(req, res) {
     if (!RESEND_KEY) return res.status(500).json({ error: 'RESEND_API_KEY not configured' });
 
     // Fetch newsletter
-    var newsletters = await sb.query('newsletters', 'id=eq.' + newsletterId + '&select=*');
+    var newsletters = await sb.query('newsletters?id=eq.' + newsletterId + '&select=*');
     if (!newsletters.length) return res.status(404).json({ error: 'Newsletter not found' });
     var newsletter = newsletters[0];
 
@@ -40,7 +40,7 @@ module.exports = async function handler(req, res) {
     var warmup = null;
     var sendLimit = null;
     try {
-      var settings = await sb.query('settings', 'key=eq.newsletter_warmup&select=value');
+      var settings = await sb.query('settings?key=eq.newsletter_warmup&select=value');
       if (settings.length && settings[0].value) {
         warmup = settings[0].value;
         if (warmup.enabled) {
@@ -80,7 +80,7 @@ module.exports = async function handler(req, res) {
     var fetchLimit = sendLimit ? sendLimit + 100 : 5000; // fetch extra for safety
     var orderBy = 'order=engagement_tier.asc,subscribed_at.asc'; // hot < warm < cold alphabetically
 
-    var subscribers = await sb.query('newsletter_subscribers', subFilter + '&select=id,email,first_name&' + orderBy + '&limit=' + fetchLimit);
+    var subscribers = await sb.query('newsletter_subscribers?' + subFilter + '&select=id,email,first_name&' + orderBy + '&limit=' + fetchLimit);
 
     if (!subscribers.length) {
       await sb.mutate('newsletters?id=eq.' + newsletterId, 'PATCH', { status: 'draft' });
@@ -90,7 +90,7 @@ module.exports = async function handler(req, res) {
     // Check which subscribers already received this newsletter (for re-sends / partial sends)
     var alreadySent = {};
     try {
-      var existing = await sb.query('newsletter_sends', 'newsletter_id=eq.' + newsletterId + '&status=eq.sent&select=subscriber_id&limit=5000');
+      var existing = await sb.query('newsletter_sends?newsletter_id=eq.' + newsletterId + '&status=eq.sent&select=subscriber_id&limit=5000');
       for (var e = 0; e < existing.length; e++) {
         alreadySent[existing[e].subscriber_id] = true;
       }
