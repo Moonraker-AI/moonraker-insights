@@ -146,7 +146,7 @@ module.exports = async function handler(req, res) {
     enrichmentContext += '\n\nENTITY AUDIT SCORES: ' + JSON.stringify(enrichment.audit_scores) + '\n';
   }
   if (enrichment.campaign_audit) {
-    enrichmentContext += '\nCORE AUDIT SCORES: C=' + enrichment.campaign_audit.c_score + ' O=' + enrichment.campaign_audit.o_score + ' R=' + enrichment.campaign_audit.r_score + ' E=' + enrichment.campaign_audit.e_score + '\n';
+    enrichmentContext += '\nCORE AUDIT SCORES: C=' + enrichment.campaign_audit.c_score + ' O=' + enrichment.campaign_audit.o_score + ' R=' + enrichment.campaign_audit.r_score + ' E=' + enrichment.campaign_audit.e_score + ' (CRES Total=' + enrichment.campaign_audit.cres_score + ', Variance=' + enrichment.campaign_audit.variance_score + ')\n';
   }
   if (enrichment.audit_tasks) {
     enrichmentContext += '\nAUDIT TASKS: ' + JSON.stringify(enrichment.audit_tasks).substring(0, 1500) + '\n';
