@@ -103,7 +103,7 @@ module.exports = async function handler(req, res) {
       headers: {
         'Content-Type': 'application/json',
         'x-api-key': anthropicKey,
-        'anthropic-version': '2023-06-01'
+        'anthropic-version': '2025-04-14'
       },
       body: JSON.stringify({
         model: 'claude-sonnet-4-6',
@@ -113,6 +113,11 @@ module.exports = async function handler(req, res) {
         tools: [{ type: 'web_search_20250305', name: 'web_search' }]
       })
     });
+
+    if (!aiResp.ok) {
+      var errBody = await aiResp.text();
+      return res.status(500).json({ error: 'Anthropic API error: ' + aiResp.status, detail: errBody.substring(0, 500) });
+    }
 
     var aiData = await aiResp.json();
 
