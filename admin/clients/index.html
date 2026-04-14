@@ -5366,14 +5366,14 @@ strong { font-weight: 600; color: var(--color-heading); }
     // -- DESIGN SPEC --
     var badge = document.getElementById('designSpecBadge');
     if (badge) {
-      if (spec && spec.summary_text) {
-        badge.textContent = 'Configured';
-        badge.style.background = 'rgba(0,212,126,.1)';
-        badge.style.color = '#00b86c';
-      } else if (spec && spec.capture_status === 'capturing') {
+      if (spec && spec.capture_status === 'capturing') {
         badge.textContent = 'Capturing...';
         badge.style.background = 'rgba(59,130,246,.1)';
         badge.style.color = '#3B82F6';
+      } else if (spec && spec.summary_text) {
+        badge.textContent = 'Configured';
+        badge.style.background = 'rgba(0,212,126,.1)';
+        badge.style.color = '#00b86c';
       } else if (spec && spec.capture_status === 'complete') {
         badge.textContent = 'Assets Ready';
         badge.style.background = 'rgba(245,158,11,.1)';
@@ -5399,7 +5399,7 @@ strong { font-weight: 600; color: var(--color-heading); }
         // Poll for completion
         if (!window._specCapturePoll) {
           window._specCapturePoll = setInterval(function() {
-            sb('design_specs?contact_id=eq.' + c.id + '&limit=1').then(function(res) {
+            fetch(SB + '/rest/v1/design_specs?contact_id=eq.' + c.id + '&limit=1', { headers: { 'apikey': SK, 'Authorization': 'Bearer ' + SK } }).then(function(r) { return r.json(); }).then(function(res) {
               var updated = res && res[0];
               if (updated && updated.capture_status !== 'capturing') {
                 clearInterval(window._specCapturePoll);
