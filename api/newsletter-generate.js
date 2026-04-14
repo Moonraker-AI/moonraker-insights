@@ -10,6 +10,34 @@
 var sb = require('./_lib/supabase');
 var auth = require('./_lib/auth');
 
+var PEXELS_KEY = process.env.PEXELS_API_KEY || '';
+
+async function searchPexelsImage(query) {
+  if (!PEXELS_KEY || !query) return null;
+  try {
+    var searchTerms = query.replace(/[^a-zA-Z0-9 ]/g, '').trim();
+    if (!searchTerms) return null;
+    var resp = await fetch('https://api.pexels.com/v1/search?query=' + encodeURIComponent(searchTerms) + '&per_page=1&orientation=landscape', {
+      headers: { 'Authorization': PEXELS_KEY }
+    });
+    if (!resp.ok) return null;
+    var data = await resp.json();
+    if (data.photos && data.photos.length > 0) {
+      var photo = data.photos[0];
+      // Build a 600x300 cropped URL for consistent email sizing
+      var baseUrl = photo.src.original.split('?')[0];
+      return {
+        url: baseUrl + '?auto=compress&cs=tinysrgb&w=600&h=300&fit=crop',
+        alt: photo.alt || searchTerms,
+        photographer: photo.photographer || ''
+      };
+    }
+  } catch (e) {
+    console.error('Pexels search failed for "' + query + '":', e.message);
+  }
+  return null;
+}
+
 module.exports = async function handler(req, res) {
   if (req.method !== 'POST') return res.status(405).json({ error: 'Method not allowed' });
   var user = await auth.requireAdmin(req, res);
@@ -148,6 +176,18 @@ module.exports = async function handler(req, res) {
       return res.status(500).json({ error: 'Expected 5 stories in response', got: content.stories ? content.stories.length : 0 });
     }
 
+    // Search Pexels for story images
+    if (PEXELS_KEY) {
+      for (var p = 0; p < content.stories.length; p++) {
+        var suggestion = content.stories[p].image_suggestion || content.stories[p].headline || '';
+        var img = await searchPexelsImage(suggestion);
+        if (img) {
+          content.stories[p].image_url = img.url;
+          content.stories[p].image_alt = img.alt;
+        }
+      }
+    }
+
     // Update each newsletter_story with the generated body/actions
     for (var s = 0; s < content.stories.length; s++) {
       var generated = content.stories[s];
@@ -160,6 +200,15 @@ module.exports = async function handler(req, res) {
           image_suggestion: generated.image_suggestion || original.image_suggestion || '',
           updated_at: new Date().toISOString()
         });
+        // Update image URL on the story record if we found one
+        if (generated.image_url) {
+          try {
+            await sb.mutate('newsletter_stories?id=eq.' + original.id, 'PATCH', {
+              image_url: generated.image_url,
+              image_alt: generated.image_alt || ''
+            });
+          } catch (imgErr) { /* non-fatal */ }
+        }
       } catch (e) {
         console.error('Failed to update story:', original.id, e.message);
       }
