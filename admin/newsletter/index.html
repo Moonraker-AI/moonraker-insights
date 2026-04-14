@@ -369,6 +369,7 @@ textarea.form-input { resize: vertical; min-height: 80px; line-height: 1.6; }
           <h2 style="font-size:1.1rem;" id="composeTitle">New Edition</h2>
           <div style="display:flex;gap:.5rem;">
             <button class="btn btn-secondary" onclick="previewNewsletter()">Preview</button>
+            <button class="btn btn-secondary" onclick="copyNewsletterHtml()" id="copyHtmlBtn" title="Copy rendered HTML for pasting into GHL">Copy HTML</button>
             <button class="btn btn-secondary" onclick="saveDraft()">Save Draft</button>
             <button class="btn btn-primary" onclick="confirmSend()" id="sendBtn" disabled>Send</button>
           </div>
@@ -954,6 +955,33 @@ function previewNewsletter() {
 window.previewNewsletter = previewNewsletter;
 window.closePreview = function() { document.getElementById('previewModal').classList.remove('open'); };
 
+async function copyNewsletterHtml() {
+  if (!currentEditionId) { toast('Save as draft first', 'error'); return; }
+  var btn = document.getElementById('copyHtmlBtn');
+  btn.disabled = true;
+  btn.textContent = 'Rendering...';
+  try {
+    // Save current state first
+    await saveDraft();
+    // Fetch server-rendered HTML
+    var resp = await fetch('/api/newsletter-preview?id=' + currentEditionId + '&raw=1', {
+      headers: window.adminAuth ? window.adminAuth.authHeaders() : {}
+    });
+    if (!resp.ok) { var err = await resp.json().catch(function() { return {}; }); throw new Error(err.error || 'Preview failed'); }
+    var data = await resp.json();
+    if (!data.html) throw new Error('No HTML returned');
+    await navigator.clipboard.writeText(data.html);
+    toast('HTML copied to clipboard! Paste into GHL email builder (HTML mode).');
+    btn.textContent = 'Copied!';
+    setTimeout(function() { btn.textContent = 'Copy HTML'; btn.disabled = false; }, 2000);
+  } catch (e) {
+    toast('Copy failed: ' + e.message, 'error');
+    btn.textContent = 'Copy HTML';
+    btn.disabled = false;
+  }
+}
+window.copyNewsletterHtml = copyNewsletterHtml;
+
 // Client-side preview builder (mirrors newsletter-template.js logic)
 function buildPreviewHtml(data) {
   var C = { navy: '#141C3A', white: '#FFFFFF', bg: '#F7FDFB', primary: '#00D47E', heading: '#1E2A5E', body: '#333F70', muted: '#6B7599', border: '#E2E8F0', subtleBg: '#F0FAF5', lightGreen: '#DDF8F2' };
@@ -1006,7 +1034,7 @@ function buildPreviewHtml(data) {
     '<body style="margin:0;padding:0;background:' + C.bg + ';">' +
     '<table cellpadding="0" cellspacing="0" border="0" width="100%" style="background:' + C.bg + ';"><tr><td align="center" style="padding:24px 16px;">' +
     '<table cellpadding="0" cellspacing="0" border="0" width="600" style="max-width:600px;width:100%;">' +
-    '<tr><td style="background:' + C.navy + ';padding:24px 32px;border-radius:14px 14px 0 0;text-align:center;"><img src="/assets/logo.png" alt="Moonraker" height="32" style="display:inline-block;" /></td></tr>' +
+    '<tr><td style="background:' + C.navy + ';padding:24px 32px;border-radius:14px 14px 0 0;"><table cellpadding="0" cellspacing="0" border="0" width="100%"><tr><td style="vertical-align:middle;"><img src="/assets/logo.png" alt="Moonraker" height="28" style="display:block;" /></td><td style="text-align:right;vertical-align:middle;"><span style="color:#FFFFFF;font-family:Inter,sans-serif;font-size:12px;letter-spacing:0.03em;">Weekly Newsletter</span></td></tr></table></td></tr>' +
     '<tr><td style="background:' + C.white + ';padding:32px;border-left:1px solid ' + C.border + ';border-right:1px solid ' + C.border + ';">' +
     '<table cellpadding="0" cellspacing="0" border="0" width="100%">' +
     '<tr><td style="padding:0 0 24px;"><p style="font-family:' + Fb + ';font-size:15px;color:' + C.body + ';line-height:1.7;margin:0;">We know running a therapy practice is more than sessions. It\'s managing visibility, trust, and compliance in a digital-first world. At Moonraker, we\'re here to make that easier, so every week you\'ll get a short, practical update on SEO + AI trends that affect therapists across the U.S. and Canada.</p></td></tr>' +
