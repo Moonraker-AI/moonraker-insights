@@ -39,6 +39,7 @@ async function searchPexelsImage(query) {
 }
 
 module.exports = async function handler(req, res) {
+  try {
   if (req.method !== 'POST') return res.status(405).json({ error: 'Method not allowed' });
   var user = await auth.requireAdmin(req, res);
   if (!user) return;
@@ -125,7 +126,6 @@ module.exports = async function handler(req, res) {
     '- Final Thoughts (2-3 paragraphs connecting themes, include the required closing line verbatim)\n' +
     '- 3 subject line options (specific, urgent, name a threat or opportunity)\n' +
     '- 3 preview text options\n\n' +
-    'Use web search if you need to verify any facts, dates, or penalties mentioned in the stories.\n\n' +
     'Return ONLY the JSON object. No markdown fences.';
 
   try {
@@ -141,7 +141,6 @@ module.exports = async function handler(req, res) {
         max_tokens: 10000,
         system: systemPrompt,
         messages: [{ role: 'user', content: userPrompt }],
-        tools: [{ type: 'web_search_20250305', name: 'web_search' }]
       })
     });
 
@@ -245,4 +244,9 @@ module.exports = async function handler(req, res) {
   } catch (e) {
     return res.status(500).json({ error: 'Generation failed: ' + e.message });
   }
+  } catch (fatal) {
+    console.error('Newsletter generate FATAL:', fatal.message, fatal.stack);
+    try { return res.status(500).json({ error: 'Fatal: ' + fatal.message }); } catch(e2) {}
+  }
 };
+
