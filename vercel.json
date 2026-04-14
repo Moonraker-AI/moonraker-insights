@@ -7,10 +7,17 @@
       "headers": [
         { "key": "X-Robots-Tag", "value": "noindex, nofollow" }
       ]
+    },
+    {
+      "source": "/:slug/img/(.*)",
+      "headers": [
+        { "key": "Cache-Control", "value": "public, max-age=31536000, immutable" }
+      ]
     }
   ],
   "rewrites": [
-    { "source": "/favicon.ico", "destination": "/assets/logo.png" }
+    { "source": "/favicon.ico", "destination": "/assets/logo.png" },
+    { "source": "/:slug/img/:path*", "destination": "https://ofmmwcjhdrhvxxkhcuww.supabase.co/storage/v1/object/public/images/:slug/:path*" }
   ],
   "functions": {
     "api/activate-reporting.js": { "maxDuration": 120, "memory": 1024 },
