@@ -67,7 +67,7 @@ module.exports = async function handler(req, res) {
     '- Stories without verifiable sources\n\n' +
     'BALANCE: Roughly 70% urgent compliance/risk news, 30% positive AI opportunities.\n\n' +
     'Today\'s date: ' + today + '\n\n' +
-    'IMPORTANT: Search multiple source categories. Do at least 6-8 searches covering: Google/SEO updates, HIPAA/healthcare compliance, AI/LLM developments for therapists, telehealth policy, FTC enforcement, and platform changes.\n\n' +
+    'IMPORTANT: Do 3-4 focused searches covering the most impactful topics: Google/SEO updates, healthcare compliance changes, and AI developments for therapists.\n\n' +
     'Respond with ONLY a JSON array of story objects. No markdown, no backticks, no preamble. Each object:\n' +
     '{\n' +
     '  "headline": "Clear, specific headline",\n' +
@@ -98,21 +98,34 @@ module.exports = async function handler(req, res) {
   userPrompt += 'Return ONLY a JSON array of story objects. No markdown fences, no commentary.';
 
   try {
-    var aiResp = await fetch('https://api.anthropic.com/v1/messages', {
-      method: 'POST',
-      headers: {
-        'Content-Type': 'application/json',
-        'x-api-key': anthropicKey,
-        'anthropic-version': '2023-06-01'
-      },
-      body: JSON.stringify({
-        model: 'claude-sonnet-4-6',
-        max_tokens: 8000,
-        system: systemPrompt,
-        messages: [{ role: 'user', content: userPrompt }],
-        tools: [{ type: 'web_search_20250305', name: 'web_search' }]
-      })
-    });
+    // 240s timeout for the Anthropic API call (web_search does multiple internal searches)
+    var controller = new AbortController();
+    var timeout = setTimeout(function() { controller.abort(); }, 240000);
+
+    var aiResp;
+    try {
+      aiResp = await fetch('https://api.anthropic.com/v1/messages', {
+        method: 'POST',
+        signal: controller.signal,
+        headers: {
+          'Content-Type': 'application/json',
+          'x-api-key': anthropicKey,
+          'anthropic-version': '2023-06-01'
+        },
+        body: JSON.stringify({
+          model: 'claude-sonnet-4-6',
+          max_tokens: 6000,
+          system: systemPrompt,
+          messages: [{ role: 'user', content: userPrompt }],
+          tools: [{ type: 'web_search_20250305', name: 'web_search' }]
+        })
+      });
+    } catch (fetchErr) {
+      clearTimeout(timeout);
+      var errMsg = fetchErr.name === 'AbortError' ? 'Anthropic API timed out after 240s' : 'Anthropic API connection failed: ' + fetchErr.message;
+      return res.status(500).json({ error: errMsg });
+    }
+    clearTimeout(timeout);
 
     if (!aiResp.ok) {
       var errBody = await aiResp.text();
