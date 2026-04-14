@@ -182,8 +182,10 @@ textarea.form-input { resize: vertical; min-height: 80px; line-height: 1.6; }
 /* Story editor card */
 .story-editor { background: var(--color-surface); border: 1px solid var(--color-border); border-radius: 12px; padding: 1.25rem; margin-bottom: 1rem; }
 .story-editor .story-num { font-family: 'Outfit', sans-serif; font-size: 1.1rem; font-weight: 700; color: var(--color-primary); margin-bottom: .75rem; display: flex; align-items: center; gap: .5rem; }
-.story-editor .collapse-toggle { font-size: .78rem; color: var(--color-muted); cursor: pointer; margin-left: auto; }
-.story-editor .collapse-toggle:hover { color: var(--color-primary); }
+.story-editor .collapse-toggle { color: var(--color-muted); cursor: pointer; margin-left: auto; display:flex;align-items:center;justify-content:center;width:24px;height:24px;border-radius:6px;transition:all .15s; }
+.story-editor .collapse-toggle:hover { color: var(--color-primary);background:var(--color-primary-subtle); }
+.story-editor .collapse-toggle svg { transition:transform .2s ease; }
+.story-editor .collapse-toggle.is-collapsed svg { transform:rotate(-90deg); }
 .story-fields { display: grid; gap: .75rem; }
 .story-fields.collapsed { display: none; }
 
@@ -787,7 +789,7 @@ function storyEditorHtml(index) {
   return '<div class="story-editor" id="story-' + index + '">' +
     '<div class="story-num">' +
       '<span>Story ' + num + '</span>' +
-      '<span class="collapse-toggle" onclick="event.stopPropagation();toggleStory(' + index + ')">Collapse</span>' +
+      '<span class="collapse-toggle" onclick="event.stopPropagation();toggleStory(' + index + ')"><svg width="16" height="16" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"><path d="M4 6l4 4 4-4"/></svg></span>' +
     '</div>' +
     '<div class="story-fields" id="storyFields-' + index + '">' +
       '<div class="form-group"><label class="form-label">Headline</label>' +
@@ -810,7 +812,7 @@ function toggleStory(index) {
   var fields = document.getElementById('storyFields-' + index);
   var toggle = fields.previousElementSibling.querySelector('.collapse-toggle');
   fields.classList.toggle('collapsed');
-  toggle.textContent = fields.classList.contains('collapsed') ? 'Expand' : 'Collapse';
+  toggle.classList.toggle('is-collapsed', fields.classList.contains('collapsed'));
 }
 
 function addQuickWinField(container) {
