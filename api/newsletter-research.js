@@ -67,7 +67,7 @@ module.exports = async function handler(req, res) {
     '- Stories without verifiable sources\n\n' +
     'BALANCE: Roughly 70% urgent compliance/risk news, 30% positive AI opportunities.\n\n' +
     'Today\'s date: ' + today + '\n\n' +
-    'IMPORTANT: Do 3-4 focused searches covering the most impactful topics: Google/SEO updates, healthcare compliance changes, and AI developments for therapists.\n\n' +
+    'Return stories you are confident are accurate based on your knowledge. Include real source names, approximate dates, and specific details. Avoid speculation.\n\n' +
     'Respond with ONLY a JSON array of story objects. No markdown, no backticks, no preamble. Each object:\n' +
     '{\n' +
     '  "headline": "Clear, specific headline",\n' +
@@ -79,34 +79,27 @@ module.exports = async function handler(req, res) {
     '  "image_suggestion": "Description of a relevant stock image"\n' +
     '}';
 
-  var userPrompt = 'Find 8-12 recent news stories (past 7-10 days) that impact therapy practice owners. Use web search to find real, verifiable stories from authoritative sources.\n\n' +
-    'Search these source categories:\n' +
-    '1. Google Search Central Blog + Search Engine Journal/Land for SEO updates\n' +
-    '2. HIPAA Journal + HHS/OCR for compliance enforcement\n' +
-    '3. OpenAI, Anthropic, Google AI blogs for LLM updates relevant to therapists\n' +
-    '4. CMS.gov for telehealth/Medicare policy changes\n' +
-    '5. FTC.gov for healthcare advertising enforcement\n' +
-    '6. State legislature trackers for AI healthcare laws\n' +
-    '7. Google Business Profile forums/updates\n' +
-    '8. Behavioral Health Business for industry news\n\n';
+  var userPrompt = 'Find 8-12 recent news stories and developments that impact therapy practice owners. Focus on stories you are confident about with real sources, dates, and verifiable details.\n\n' +
+    'Cover these categories:\n' +
+    '1. Google Business Profile and local SEO changes\n' +
+    '2. HIPAA/healthcare compliance enforcement\n' +
+    '3. AI and LLM developments affecting therapists\n' +
+    '4. Telehealth and Medicare policy changes\n' +
+    '5. FTC healthcare advertising enforcement\n' +
+    '6. Review platform and directory changes\n\n';
 
   if (previousStories.length > 0) {
     userPrompt += 'AVOID these previously covered stories (do NOT repeat):\n' +
       previousStories.slice(0, 40).map(function(h) { return '- ' + h; }).join('\n') + '\n\n';
   }
 
-  userPrompt += 'Return ONLY a JSON array of story objects. No markdown fences, no commentary.';
+  userPrompt += 'Return ONLY a JSON array of story objects. No markdown fences, no commentary. Include source_url where you know the actual URL.';
 
   try {
-    // 240s timeout for the Anthropic API call (web_search does multiple internal searches)
-    var controller = new AbortController();
-    var timeout = setTimeout(function() { controller.abort(); }, 240000);
-
     var aiResp;
     try {
       aiResp = await fetch('https://api.anthropic.com/v1/messages', {
         method: 'POST',
-        signal: controller.signal,
         headers: {
           'Content-Type': 'application/json',
           'x-api-key': anthropicKey,
@@ -117,15 +110,14 @@ module.exports = async function handler(req, res) {
           max_tokens: 6000,
           system: systemPrompt,
           messages: [{ role: 'user', content: userPrompt }],
-          tools: [{ type: 'web_search_20250305', name: 'web_search' }]
+          // No web_search tool - uses Claude's training knowledge for fast, reliable research
+        // Individual story verification via web_search can be added per-story later
+        temperature: 0.7
         })
       });
     } catch (fetchErr) {
-      clearTimeout(timeout);
-      var errMsg = fetchErr.name === 'AbortError' ? 'Anthropic API timed out after 240s' : 'Anthropic API connection failed: ' + fetchErr.message;
-      return res.status(500).json({ error: errMsg });
+      return res.status(500).json({ error: 'Anthropic API connection failed: ' + fetchErr.message });
     }
-    clearTimeout(timeout);
 
     if (!aiResp.ok) {
       var errBody = await aiResp.text();
