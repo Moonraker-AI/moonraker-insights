@@ -1307,36 +1307,30 @@ strong { font-weight: 600; color: var(--color-heading); }
   }
 
   function loadDirectoryData() {
-    Promise.all([
-      fetch(SB + '/rest/v1/contacts?select=id,slug,status,practice_name,email,first_name,last_name,campaign_start,website_url,phone,state_province,city,team_size,lost,follow_up_date,audit_tier,referral_code,source&order=practice_name', { headers: { 'apikey': SK, 'Authorization': 'Bearer ' + SK } }).then(function(r) { return r.json(); }),
-      fetch(SB + '/rest/v1/onboarding_steps?select=contact_id,step_key,status&limit=5000', { headers: { 'apikey': SK, 'Authorization': 'Bearer ' + SK } }).then(function(r) { return r.json(); }),
-      fetch(SB + '/rest/v1/rpc/get_checklist_summary', { method: 'POST', headers: { 'apikey': SK, 'Authorization': 'Bearer ' + SK, 'Content-Type': 'application/json' }, body: '{}' }).then(function(r) { return r.json(); }),
-      fetch(SB + '/rest/v1/intro_call_steps?select=contact_id,step_key,status&limit=5000', { headers: { 'apikey': SK, 'Authorization': 'Bearer ' + SK } }).then(function(r) { return r.json(); }).catch(function() { return []; }),
-      fetch(SB + '/rest/v1/rpc/get_deliverable_summary', { method: 'POST', headers: { 'apikey': SK, 'Authorization': 'Bearer ' + SK, 'Content-Type': 'application/json' }, body: '{}' }).then(function(r) { return r.json(); }).catch(function() { return []; })
-    ]).then(function(res) {
-      state.contacts = res[0] || [];
+    // Single server-side aggregation call (replaces 5 browser-to-Supabase requests)
+    fetch('/api/admin/clients-directory').then(function(r) { return r.json(); }).then(function(data) {
+      state.contacts = data.contacts || [];
 
+      // Onboarding is now pre-aggregated: {contact_id, total, complete, book_intro_call_done, connect_accounts_done}
       state.allOnboarding = {};
-      (res[1] || []).forEach(function(s) {
-        if (!state.allOnboarding[s.contact_id]) state.allOnboarding[s.contact_id] = [];
-        state.allOnboarding[s.contact_id].push(s);
+      (data.onboarding || []).forEach(function(o) {
+        state.allOnboarding[o.contact_id] = { total: Number(o.total) || 0, complete: Number(o.complete) || 0, book_intro_call_done: o.book_intro_call_done, connect_accounts_done: o.connect_accounts_done };
       });
 
       state.allTasks = {};
-      (res[2] || []).forEach(function(t) {
+      (data.checklist || []).forEach(function(t) {
         state.allTasks[t.client_slug] = { total: Number(t.total) || 0, complete: Number(t.complete) || 0 };
       });
 
-      // Index intro call steps by contact_id
+      // Intro calls now pre-aggregated: {contact_id, intro_call_complete}
       var allIntroCall = {};
-      (res[3] || []).forEach(function(s) {
-        if (!allIntroCall[s.contact_id]) allIntroCall[s.contact_id] = {};
-        allIntroCall[s.contact_id][s.step_key] = s.status;
+      (data.introCalls || []).forEach(function(ic) {
+        allIntroCall[ic.contact_id] = { intro_call_complete: ic.intro_call_complete };
       });
 
-      // Index deliverables by contact_id (RPC returns pre-aggregated counts)
+      // Deliverables pre-aggregated (same as before)
       var allDeliverables = {};
-      (res[4] || []).forEach(function(d) {
+      (data.deliverables || []).forEach(function(d) {
         allDeliverables[d.contact_id] = { not_started: Number(d.not_started) || 0, in_progress: Number(d.in_progress) || 0, internal_review: Number(d.internal_review) || 0, waiting_on_client: Number(d.waiting_on_client) || 0, delivered: Number(d.delivered) || 0 };
       });
 
@@ -1357,13 +1351,13 @@ strong { font-weight: 600; color: var(--color-heading); }
         var clientSummaries = state.contacts.filter(function(c) {
           return !c.lost && (c.status === 'active' || c.status === 'onboarding');
         }).map(function(c) {
-          var ob = state.allOnboarding[c.id] || [];
-          var obComplete = ob.filter(function(s) { return s.status === 'complete'; }).length;
-          var introCallBooked = ob.some(function(s) { return s.step_key === 'book_intro_call' && s.status === 'complete'; });
-          var accountsConnected = ob.some(function(s) { return s.step_key === 'connect_accounts' && s.status === 'complete'; });
+          var ob = state.allOnboarding[c.id] || { total: 0, complete: 0 };
+          var obComplete = ob.complete;
+          var introCallBooked = ob.book_intro_call_done || false;
+          var accountsConnected = ob.connect_accounts_done || false;
 
           var ic = allIntroCall[c.id] || {};
-          var introCallDone = ic.intro_call_complete === 'complete';
+          var introCallDone = ic.intro_call_complete || false;
 
           var tasks = state.allTasks[c.slug] || { total: 0, complete: 0 };
           var dels = allDeliverables[c.id] || { not_started: 0, in_progress: 0, internal_review: 0, waiting_on_client: 0, delivered: 0 };
@@ -1376,7 +1370,7 @@ strong { font-weight: 600; color: var(--color-heading); }
             intro_call_booked: introCallBooked,
             intro_call_complete: introCallDone,
             accounts_connected: accountsConnected,
-            onboarding: obComplete + '/' + ob.length + ' steps done',
+            onboarding: obComplete + '/' + ob.total + ' steps done',
             tasks: tasks.complete + '/' + tasks.total + ' complete',
             deliverables: dels
           };
@@ -1394,13 +1388,13 @@ strong { font-weight: 600; color: var(--color-heading); }
   }
 
   function loadDetailData() {
-    // Step 1: Get the contact + all contacts for search
-    Promise.all([
-      fetch(SB + '/rest/v1/contacts?slug=eq.' + slug + '&limit=1', { headers: { 'apikey': SK, 'Authorization': 'Bearer ' + SK } }).then(function(r) { return r.json(); }),
-      fetch(SB + '/rest/v1/contacts?select=id,slug,status,practice_name,email,first_name,last_name', { headers: { 'apikey': SK, 'Authorization': 'Bearer ' + SK } }).then(function(r) { return r.json(); })
-    ]).then(function(first) {
-      state.contact = (first[0] && first[0][0]) || null;
-      state.contacts = first[1] || [];
+    // Single server-side aggregation call (replaces 2-phase sequential 7-request load)
+    fetch('/api/admin/client-detail?slug=' + encodeURIComponent(slug)).then(function(r) {
+      if (!r.ok) throw new Error('Failed to load client');
+      return r.json();
+    }).then(function(data) {
+      state.contact = data.contact || null;
+      state.contacts = data.allContacts || [];
 
       if (!state.contact) {
         document.getElementById('loadingState').style.display = 'none';
@@ -1409,28 +1403,16 @@ strong { font-weight: 600; color: var(--color-heading); }
         return;
       }
 
-      var cid = state.contact.id;
       state.tabLoaded = {};
       state.tabCounts = null;
       state.proposalFollowups = {};
       state.auditFollowups = [];
 
-      // Step 2: Lightweight load — overview essentials + tab badge counts
-      return Promise.all([
-        fetch(SB + '/rest/v1/practice_details?select=*&contact_id=eq.' + cid, { headers: { 'apikey': SK, 'Authorization': 'Bearer ' + SK } }).then(function(r) { return r.json(); }).catch(function() { return []; }),
-        fetch(SB + '/rest/v1/rpc/get_tab_counts', { method: 'POST', headers: { 'apikey': SK, 'Authorization': 'Bearer ' + SK, 'Content-Type': 'application/json' }, body: JSON.stringify({ p_contact_id: cid, p_slug: slug }) }).then(function(r) { return r.json(); }).catch(function() { return {}; }),
-        fetch(SB + '/rest/v1/entity_audits?select=id,contact_id,client_slug,status,audit_tier,audit_date,audit_period,audit_scope,score_credibility,score_optimization,score_reputation,score_engagement,scores,variance_score,variance_label,cres_score,total_tasks,tasks_p1,tasks_p2,tasks_p3,tasks_moonraker,tasks_client,tasks_collaboration,cited_google_ai,cited_chatgpt,cited_claude,cited_perplexity,cited_bing,cited_youtube,cited_reddit,cited_meta,agent_task_id,geo_target,gbp_share_link,variance_from_previous,brand_query,homepage_url,loom_url,sent_at,sent_to,email_subject,stripe_payment_id,created_at,updated_at&contact_id=eq.' + cid + '&order=created_at.desc&limit=1', { headers: { 'apikey': SK, 'Authorization': 'Bearer ' + SK } }).then(function(r) { return r.json(); }).catch(function() { return []; }),
-        fetch(SB + '/rest/v1/performance_guarantees?select=*&contact_id=eq.' + cid + '&limit=1', { headers: { 'apikey': SK, 'Authorization': 'Bearer ' + SK } }).then(function(r) { return r.json(); }).catch(function() { return []; }),
-        fetch(SB + '/rest/v1/bio_materials?select=*&contact_id=eq.' + cid + '&order=sort_order,is_primary.desc', { headers: { 'apikey': SK, 'Authorization': 'Bearer ' + SK } }).then(function(r) { return r.json(); }).catch(function() { return []; })
-      ]);
-    }).then(function(res) {
-      if (!res) return; // Contact not found, already handled
-
-      state.practice = (res[0] && res[0][0]) || null;
-      state.tabCounts = res[1] || {};
-      state.entityAudit = (res[2] && res[2][0]) || null;
-      state.guarantee = (res[3] && res[3][0]) || null;
-      state.bioMaterials = res[4] || [];
+      state.practice = data.practice || null;
+      state.tabCounts = data.tabCounts || {};
+      state.entityAudit = data.entityAudit || null;
+      state.guarantee = data.guarantee || null;
+      state.bioMaterials = data.bioMaterials || [];
 
       // Derive CORE scores from latest entity audit
       if (state.entityAudit) {
@@ -1523,6 +1505,11 @@ strong { font-weight: 600; color: var(--color-heading); }
         if (recent.length > 10) recent = recent.slice(0, 10);
         localStorage.setItem('moonraker-recent-clients', JSON.stringify(recent));
       } catch(e) {}
+    }).catch(function(e) {
+      console.error('[loadDetailData]', e);
+      document.getElementById('loadingState').style.display = 'none';
+      document.getElementById('detailView').style.display = 'block';
+      document.getElementById('detailView').innerHTML = '<div class="empty-state"><p>Error loading client data</p><p style="margin-top:.5rem;"><a href="/admin/clients">Back to directory</a></p></div>';
     });
   }
 
@@ -1619,9 +1606,9 @@ strong { font-weight: 600; color: var(--color-heading); }
         ? esc(c.practice_name || c.email || c.slug)
         : esc(c.email || c.slug);
 
-      var obSteps = state.allOnboarding[c.id] || [];
-      var obC = obSteps.filter(function(s) { return s.status === 'complete'; }).length;
-      var obT = obSteps.length;
+      var obSteps = state.allOnboarding[c.id] || { total: 0, complete: 0 };
+      var obC = obSteps.complete;
+      var obT = obSteps.total;
       var obPct = obT > 0 ? Math.round(obC / obT * 100) : 0;
       var obHtml = obT > 0
         ? '<div class="progress-mini"><div class="bar"><div class="bar-fill" style="width:' + obPct + '%"></div></div><span class="bar-label">' + obC + '/' + obT + '</span></div>'
@@ -1745,10 +1732,7 @@ strong { font-weight: 600; color: var(--color-heading); }
       renderTab(tabName);
       return Promise.resolve();
     }
-    var cid = state.contact.id;
     var s = slug;
-    var h = { 'apikey': SK, 'Authorization': 'Bearer ' + SK };
-    var sb = function(path) { return fetch(SB + '/rest/v1/' + path, { headers: h }).then(function(r) { return r.json(); }).catch(function() { return []; }); };
 
     // Show loading indicator in the tab panel
     var panel = document.getElementById('tab-' + tabName);
@@ -1763,140 +1747,89 @@ strong { font-weight: 600; color: var(--color-heading); }
       }
     }
 
-    var queries;
-    switch(tabName) {
-      case 'proposals':
-        queries = [
-          sb('proposals?select=*&contact_id=eq.' + cid + '&order=created_at.desc')
-        ];
-        return Promise.all(queries).then(function(res) {
-          state.proposals = res[0] || [];
-          state.tabLoaded['proposals'] = true;
-          // Async load followups
-          if (state.proposals.length > 0) {
-            var pids = state.proposals.map(function(p) { return p.id; }).join(',');
-            sb('proposal_followups?proposal_id=in.(' + pids + ')&order=sequence_number.asc').then(function(fus) {
-              (fus || []).forEach(function(fu) {
-                if (!state.proposalFollowups[fu.proposal_id]) state.proposalFollowups[fu.proposal_id] = [];
-                state.proposalFollowups[fu.proposal_id].push(fu);
-              });
-              renderProposals();
-            });
-          }
-          renderTab(tabName);
-        });
-
-      case 'onboarding':
-        queries = [
-          sb('onboarding_steps?select=*&order=sort_order&contact_id=eq.' + cid),
-          sb('signed_agreements?select=*&contact_id=eq.' + cid + '&limit=1')
-        ];
-        return Promise.all(queries).then(function(res) {
-          state.onboarding = res[0] || [];
-          state.signed = (res[1] && res[1][0]) || null;
-          state.tabLoaded['onboarding'] = true;
-          renderTab(tabName);
-        });
-
-      case 'intro-call':
-        return sb('intro_call_steps?select=*&order=sort_order&contact_id=eq.' + cid).then(function(res) {
-          state.introCall = res || [];
-          state.tabLoaded['intro-call'] = true;
-          renderTab(tabName);
-        });
-
-      case 'profile':
-        queries = [
-          fetch('/api/action', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ action: 'read_records', table: 'workspace_credentials', filters: { contact_id: cid }, limit: 1 }) }).then(function(r) { return r.json(); }).then(function(d) { return d.data || []; }).catch(function() { return []; })
-        ];
-        return Promise.all(queries).then(function(res) {
-          state.workspace = (res[0] && res[0][0]) || null;
+    // Profile tab still uses /api/action (not a Supabase read)
+    if (tabName === 'profile') {
+      return fetch('/api/action', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ action: 'read_records', table: 'workspace_credentials', filters: { contact_id: state.contact.id }, limit: 1 }) })
+        .then(function(r) { return r.json(); })
+        .then(function(d) {
+          state.workspace = (d.data && d.data[0]) || null;
           state.tabLoaded['profile'] = true;
           renderTab(tabName);
         });
+    }
 
-      case 'rising-tide':
-        queries = [
-          sb('social_platforms?select=*&contact_id=eq.' + cid + '&order=platform'),
-          sb('directory_listings?select=*&contact_id=eq.' + cid + '&order=directory')
-        ];
-        return Promise.all(queries).then(function(res) {
-          state.socialPlatforms = res[0] || [];
-          state.directoryListings = res[1] || [];
-          state.tabLoaded['rising-tide'] = true;
-          renderTab(tabName);
-        });
+    // All other tabs use the server-side aggregation endpoint
+    return fetch('/api/admin/client-tab?slug=' + encodeURIComponent(s) + '&tab=' + encodeURIComponent(tabName))
+      .then(function(r) { return r.json(); })
+      .then(function(data) {
+        switch(tabName) {
+          case 'proposals':
+            state.proposals = data.proposals || [];
+            state.proposalFollowups = {};
+            (data.followups || []).forEach(function(fu) {
+              if (!state.proposalFollowups[fu.proposal_id]) state.proposalFollowups[fu.proposal_id] = [];
+              state.proposalFollowups[fu.proposal_id].push(fu);
+            });
+            break;
 
-      case 'deliverables':
-        queries = [
-          sb('deliverables?select=*&order=created_at.desc&contact_id=eq.' + cid),
-          sb('tracked_keywords?select=id,keyword&client_slug=eq.' + s + '&active=eq.true')
-        ];
-        return Promise.all(queries).then(function(res) {
-          state.deliverables = res[0] || [];
-          state.trackedKeywords = res[1] || [];
-          state.tabLoaded['deliverables'] = true;
-          renderTab(tabName);
-        });
+          case 'onboarding':
+            state.onboarding = data.onboarding || [];
+            state.signed = data.agreement || null;
+            break;
 
-      case 'content':
-        queries = [
-          sb('content_pages?select=*&contact_id=eq.' + cid + '&order=created_at.desc'),
-          sb('design_specs?select=*&contact_id=eq.' + cid + '&limit=1'),
-          sb('neo_images?select=*&contact_id=eq.' + cid + '&order=created_at.desc'),
-          sb('endorsements?select=*&contact_id=eq.' + cid + '&order=created_at.desc'),
-          sb('content_audit_batches?select=*&client_slug=eq.' + s + '&order=created_at.desc&limit=5'),
-          sb('tracked_keywords?select=*&client_slug=eq.' + s + '&active=eq.true&order=keyword.asc'),
-          sb('entity_audits?select=id,status,surge_data&contact_id=eq.' + cid + '&status=in.(complete,delivered)&order=created_at.desc&limit=1')
-        ];
-        return Promise.all(queries).then(function(res) {
-          state.contentPages = res[0] || [];
-          state.designSpec = (res[1] && res[1][0]) || null;
-          state.neoImages = res[2] || [];
-          state.endorsements = res[3] || [];
-          state.contentBatches = res[4] || [];
-          state.trackedKeywords = res[5] || [];
-          if (!state.allAudits || state.allAudits.length === 0) state.allAudits = res[6] || [];
-          state.tabLoaded['content'] = true;
-          renderTab(tabName);
-        });
+          case 'intro-call':
+            state.introCall = data.steps || [];
+            break;
 
-      case 'audit':
-        queries = [
-          sb('entity_audits?select=id,contact_id,client_slug,status,audit_tier,audit_date,audit_period,audit_scope,score_credibility,score_optimization,score_reputation,score_engagement,scores,variance_score,variance_label,cres_score,total_tasks,tasks_p1,tasks_p2,tasks_p3,tasks_moonraker,tasks_client,tasks_collaboration,cited_google_ai,cited_chatgpt,cited_claude,cited_perplexity,cited_bing,cited_youtube,cited_reddit,cited_meta,agent_task_id,geo_target,gbp_share_link,variance_from_previous,brand_query,homepage_url,loom_url,sent_at,sent_to,email_subject,stripe_payment_id,created_at,updated_at&contact_id=eq.' + cid + '&order=created_at.desc'),
-          sb('checklist_items?select=*&client_slug=eq.' + s + '&order=sort_order')
-        ];
-        return Promise.all(queries).then(function(res) {
-          state.allAudits = res[0] || [];
-          state.tasks = res[1] || [];
-          if (state.allAudits.length > 0) state.entityAudit = state.allAudits[0];
-          state.tabLoaded['audit'] = true;
-          // Async load audit followups
-          if (state.entityAudit) {
-            sb('audit_followups?audit_id=eq.' + state.entityAudit.id + '&order=sequence_number.asc').then(function(afus) {
+          case 'rising-tide':
+            state.socialPlatforms = data.socialPlatforms || [];
+            state.directoryListings = data.directoryListings || [];
+            break;
+
+          case 'deliverables':
+            state.deliverables = data.deliverables || [];
+            state.trackedKeywords = data.keywords || [];
+            break;
+
+          case 'content':
+            state.contentPages = data.contentPages || [];
+            state.designSpec = data.designSpec || null;
+            state.neoImages = data.neoImages || [];
+            state.endorsements = data.endorsements || [];
+            state.contentBatches = data.auditBatches || [];
+            state.trackedKeywords = data.keywords || [];
+            break;
+
+          case 'audit':
+            state.allAudits = data.audits || [];
+            state.tasks = data.checklistItems || [];
+            if (state.allAudits.length > 0) state.entityAudit = state.allAudits[0];
+            break;
+
+          case 'reports':
+            state.reportConfig = data.config || null;
+            state.snapshots = data.snapshots || [];
+            break;
+        }
+
+        state.tabLoaded[tabName] = true;
+        renderTab(tabName);
+
+        // Async load audit followups after render
+        if (tabName === 'audit' && state.entityAudit) {
+          var h = { 'apikey': SK, 'Authorization': 'Bearer ' + SK };
+          fetch(SB + '/rest/v1/audit_followups?audit_id=eq.' + state.entityAudit.id + '&order=sequence_number.asc', { headers: h })
+            .then(function(r) { return r.json(); })
+            .then(function(afus) {
               state.auditFollowups = afus || [];
               renderEntityAudit();
-            });
-          }
-          renderTab(tabName);
-        });
-
-      case 'reports':
-        queries = [
-          sb('report_configs?select=*&client_slug=eq.' + s + '&limit=1'),
-          sb('report_snapshots?select=*&client_slug=eq.' + s + '&order=report_month.desc&limit=20')
-        ];
-        return Promise.all(queries).then(function(res) {
-          state.reportConfig = (res[0] && res[0][0]) || null;
-          state.snapshots = res[1] || [];
-          state.tabLoaded['reports'] = true;
-          renderTab(tabName);
-        });
-
-      default:
+            }).catch(function() {});
+        }
+      }).catch(function(e) {
+        console.error('[ensureTabData] Error loading tab=' + tabName + ':', e);
         state.tabLoaded[tabName] = true;
-        return Promise.resolve();
-    }
+        renderTab(tabName);
+      });
   }
 
   function renderTab(tabName) {
