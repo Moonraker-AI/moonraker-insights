@@ -28,11 +28,11 @@ module.exports = async function handler(req, res) {
 
   if (!event || !slug) return res.status(400).json({ error: 'Missing event or slug' });
 
-  var validEvents = ['payment_received', 'intro_call_complete', 'onboarding_complete'];
+  var validEvents = ['payment_received', 'intro_call_complete', 'onboarding_complete', 'referral_partner'];
   if (validEvents.indexOf(event) === -1) return res.status(400).json({ error: 'Invalid event type' });
 
   try {
-    var contact = await sb.one('contacts?slug=eq.' + slug + '&select=id,first_name,last_name,practice_name,email,status,plan_type,city,state_province&limit=1');
+    var contact = await sb.one('contacts?slug=eq.' + slug + '&select=id,first_name,last_name,practice_name,email,status,plan_type,plan_amount_cents,city,state_province&limit=1');
     if (!contact) return res.status(404).json({ error: 'Contact not found' });
 
     var clientName = (contact.first_name || '') + ' ' + (contact.last_name || '');
@@ -57,6 +57,13 @@ module.exports = async function handler(req, res) {
       subject = 'Onboarding Complete: ' + clientName.trim();
       headerLabel = 'Onboarding Complete';
       content = buildOnboardingContent(contact, clientName, deepDiveUrl);
+
+    } else if (event === 'referral_partner') {
+      var partner = body.partner || 'Unknown';
+      var partnerEmail = body.partner_email || '';
+      subject = 'Referral Partner Logged: ' + clientName.trim() + ' via ' + partner.split(' (')[0];
+      headerLabel = 'Referral Partner';
+      content = buildReferralContent(contact, clientName, deepDiveUrl, partner, partnerEmail);
     }
 
     var htmlBody = email.wrap({
@@ -64,7 +71,9 @@ module.exports = async function handler(req, res) {
       footerNote: 'This is an internal notification for the Moonraker team.'
     });
 
-    var recipients = ['support@moonraker.ai', 'scott@moonraker.ai', 'chris@moonraker.ai'];
+    var recipients = event === 'referral_partner'
+      ? ['chris@moonraker.ai']
+      : ['support@moonraker.ai', 'scott@moonraker.ai', 'chris@moonraker.ai'];
 
     var emailResp = await fetch('https://api.resend.com/emails', {
       method: 'POST',
@@ -168,5 +177,29 @@ function buildOnboardingContent(contact, clientName, deepDiveUrl) {
   return clientHeader(contact, clientName) +
     email.p('All onboarding steps are complete. Status promoted to <strong style="color:#00D47E">Active</strong>. The client is now ready for ongoing campaign work, reporting, and deliverables.') +
     email.p('<span style="color:#6B7599;font-size:13px">Monthly report scheduling can now be configured in the Reports tab.</span>') +
+    email.cta(deepDiveUrl, 'View Client');
+}
+
+function buildReferralContent(contact, clientName, deepDiveUrl, partner, partnerEmail) {
+  var planCents = contact.plan_amount_cents || 0;
+  var firstPayment = planCents > 0 ? '$' + (planCents / 100).toFixed(2) : 'Not set';
+  var suggestedPayout = planCents > 0 ? '$' + (planCents / 100 * 0.1).toFixed(2) : 'N/A';
+  var plan = contact.plan_type || 'CORE Marketing System';
+
+  var rows = [
+    ['Client', clientName.trim()],
+    ['Plan', plan],
+    ['First Payment', firstPayment],
+    ['Referral Partner', partner],
+    ['Suggested Payout (10%)', suggestedPayout]
+  ];
+  if (partnerEmail) rows.push(['Partner Email', partnerEmail]);
+
+  return clientHeader(contact, clientName) +
+    email.p('A referral partner has been logged for this client. Below are the details for commission payout.') +
+    email.divider() +
+    email.sectionHeading('Referral Payout Details') +
+    detailTable(rows) +
+    email.p('<span style="color:#D97706;font-weight:600">Action needed:</span> Send the referral partner their 10% commission of the first payment.') +
     email.cta(deepDiveUrl, 'View Client');
 }
