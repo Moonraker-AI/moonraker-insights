@@ -1074,7 +1074,7 @@ async function executeSend() {
     var tier = document.getElementById('sendTier').value;
     var res = await fetch(API_BASE + '/send-newsletter', {
       method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
+      headers: Object.assign({ 'Content-Type': 'application/json' }, window.adminAuth ? window.adminAuth.authHeaders() : {}),
       body: JSON.stringify({ newsletter_id: currentEditionId, tier: tier })
     });
     if (!res.ok) { var err = await res.json().catch(function() { return {}; }); throw new Error(err.error || 'Send failed'); }
