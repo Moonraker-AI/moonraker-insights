@@ -9,7 +9,7 @@ var sb = require('../_lib/supabase');
 module.exports = async function(req, res) {
   if (req.method !== 'GET') return res.status(405).json({ error: 'Method not allowed' });
 
-  var user = await auth.requireAdmin(req, res);
+  var user = await auth.requireAdminOrInternal(req, res);
   if (!user) return;
 
   var slug = req.query.slug;
