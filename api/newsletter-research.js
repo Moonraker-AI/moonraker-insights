@@ -1,12 +1,12 @@
 // /api/newsletter-research.js
-// Two-phase research: SerpAPI searches for recent news, Claude analyzes and curates.
+// Two-phase research: SerpAPI searches sequentially, then Claude curates.
 // POST { newsletter_id }
 // ENV: SUPABASE_SERVICE_ROLE_KEY, ANTHROPIC_API_KEY, SERPAPI_KEY
 
 var sb = require('./_lib/supabase');
 var auth = require('./_lib/auth');
 
-// SerpAPI Google News search - limited to top 8 results per query
+// SerpAPI Google News search - top 5 results only, minimal fields
 async function searchNews(query, apiKey) {
   var url = 'https://serpapi.com/search.json?engine=google_news' +
     '&q=' + encodeURIComponent(query) +
@@ -18,164 +18,125 @@ async function searchNews(query, apiKey) {
       console.error('SerpAPI HTTP ' + resp.status + ' for "' + query + '"');
       return [];
     }
-    var data = await resp.json();
+    var text = await resp.text();
+    var data = JSON.parse(text);
+    text = null; // free memory
     var results = [];
     var items = data.news_results || [];
-    // Take only top 8 results per query to keep payload manageable
-    var limit = Math.min(items.length, 8);
+    var limit = Math.min(items.length, 5);
     for (var i = 0; i < limit; i++) {
       var item = items[i];
       if (item.title) {
         results.push({
           title: item.title,
-          snippet: (item.snippet || '').substring(0, 200),
+          snippet: (item.snippet || '').substring(0, 150),
           source: (item.source && item.source.name) || '',
           link: item.link || '',
           date: item.date || ''
         });
       }
     }
+    data = null; // free memory
     return results;
   } catch (e) {
-    console.error('SerpAPI search failed for "' + query + '":', e.message);
+    console.error('SerpAPI failed for "' + query + '":', e.message);
     return [];
   }
 }
 
 module.exports = async function handler(req, res) {
-  if (req.method !== 'POST') return res.status(405).json({ error: 'Method not allowed' });
-  var user = await auth.requireAdmin(req, res);
-  if (!user) return;
-
-  var anthropicKey = process.env.ANTHROPIC_API_KEY;
-  var serpApiKey = process.env.SERPAPI_KEY;
-  if (!sb.isConfigured()) return res.status(500).json({ error: 'SUPABASE_SERVICE_ROLE_KEY not configured' });
-  if (!anthropicKey) return res.status(500).json({ error: 'ANTHROPIC_API_KEY not configured' });
-  if (!serpApiKey) return res.status(500).json({ error: 'SERPAPI_KEY not configured' });
-
-  var newsletterId = (req.body || {}).newsletter_id;
-  if (!newsletterId) return res.status(400).json({ error: 'newsletter_id required' });
-
-  // Load the newsletter
-  var newsletter;
+  // Top-level safety catch to prevent silent crashes
   try {
-    newsletter = await sb.one('newsletters?id=eq.' + newsletterId + '&select=*&limit=1');
-    if (!newsletter) return res.status(404).json({ error: 'Newsletter not found' });
-  } catch (e) {
-    return res.status(500).json({ error: 'Failed to load newsletter: ' + e.message });
-  }
+    if (req.method !== 'POST') return res.status(405).json({ error: 'Method not allowed' });
+    var user = await auth.requireAdmin(req, res);
+    if (!user) return;
 
-  // Load previous stories for dedup
-  var previousHeadlines = [];
-  try {
-    var recent = await sb.query('newsletter_stories?select=headline&order=created_at.desc&limit=80');
-    previousHeadlines = (recent || []).map(function(s) { return s.headline; });
-  } catch (e) { /* non-fatal */ }
+    var anthropicKey = process.env.ANTHROPIC_API_KEY;
+    var serpApiKey = process.env.SERPAPI_KEY;
+    if (!sb.isConfigured()) return res.status(500).json({ error: 'SUPABASE_SERVICE_ROLE_KEY not configured' });
+    if (!anthropicKey) return res.status(500).json({ error: 'ANTHROPIC_API_KEY not configured' });
+    if (!serpApiKey) return res.status(500).json({ error: 'SERPAPI_KEY not configured' });
 
-  // Phase 1: SerpAPI searches (parallel)
-  var searchQueries = [
-    'Google Business Profile updates therapists 2026',
-    'HIPAA enforcement healthcare privacy 2026',
-    'AI chatbot therapy mental health practice',
-    'telehealth Medicare Medicaid policy changes 2026',
-    'local SEO Google algorithm update healthcare',
-    'FTC healthcare advertising enforcement compliance',
-    'therapist private practice marketing digital',
-    'mental health practice technology AI tools'
-  ];
+    var newsletterId = (req.body || {}).newsletter_id;
+    if (!newsletterId) return res.status(400).json({ error: 'newsletter_id required' });
 
-  var allResults = [];
-  try {
-    var searchPromises = searchQueries.map(function(q) { return searchNews(q, serpApiKey); });
-    var searchResults = await Promise.all(searchPromises);
-    for (var i = 0; i < searchResults.length; i++) {
-      allResults = allResults.concat(searchResults[i]);
+    // Load the newsletter
+    var newsletter;
+    try {
+      newsletter = await sb.one('newsletters?id=eq.' + newsletterId + '&select=id,edition_number,status&limit=1');
+      if (!newsletter) return res.status(404).json({ error: 'Newsletter not found' });
+    } catch (e) {
+      return res.status(500).json({ error: 'Failed to load newsletter: ' + e.message });
     }
-  } catch (e) {
-    return res.status(500).json({ error: 'Search phase failed: ' + e.message });
-  }
 
-  // Deduplicate by URL
-  var seen = {};
-  var uniqueResults = [];
-  for (var r = 0; r < allResults.length; r++) {
-    var key = allResults[r].link || allResults[r].title;
-    if (!seen[key]) {
-      seen[key] = true;
-      uniqueResults.push(allResults[r]);
+    // Load previous stories for dedup
+    var previousHeadlines = [];
+    try {
+      var recent = await sb.query('newsletter_stories?select=headline&order=created_at.desc&limit=50');
+      previousHeadlines = (recent || []).map(function(s) { return s.headline; });
+    } catch (e) { /* non-fatal */ }
+
+    // Phase 1: SerpAPI searches — SEQUENTIAL to avoid OOM
+    var searchQueries = [
+      'Google Business Profile updates therapists',
+      'HIPAA enforcement healthcare privacy',
+      'AI therapy mental health practice tools',
+      'telehealth Medicare policy changes',
+      'local SEO Google algorithm healthcare',
+      'FTC healthcare advertising enforcement'
+    ];
+
+    console.log('Newsletter research: starting ' + searchQueries.length + ' sequential searches');
+
+    var allResults = [];
+    for (var qi = 0; qi < searchQueries.length; qi++) {
+      try {
+        var results = await searchNews(searchQueries[qi], serpApiKey);
+        console.log('Search ' + (qi + 1) + '/' + searchQueries.length + ': "' + searchQueries[qi] + '" -> ' + results.length + ' results');
+        allResults = allResults.concat(results);
+      } catch (e) {
+        console.error('Search ' + (qi + 1) + ' failed:', e.message);
+      }
     }
-  }
 
-  if (uniqueResults.length === 0) {
-    return res.status(500).json({ error: 'No search results found. SerpAPI may be rate-limited.' });
-  }
+    // Deduplicate by URL
+    var seen = {};
+    var uniqueResults = [];
+    for (var r = 0; r < allResults.length; r++) {
+      var key = allResults[r].link || allResults[r].title;
+      if (!seen[key]) {
+        seen[key] = true;
+        uniqueResults.push(allResults[r]);
+      }
+    }
+    var totalFound = uniqueResults.length;
+    allResults = null; // free memory
 
-  // Cap at 60 results to keep Claude's input manageable
-  if (uniqueResults.length > 60) {
-    uniqueResults = uniqueResults.slice(0, 60);
-  }
+    if (uniqueResults.length === 0) {
+      return res.status(500).json({ error: 'No search results found. SerpAPI may be rate-limited.' });
+    }
 
-  console.log('Newsletter research: ' + uniqueResults.length + ' unique results from SerpAPI, sending to Claude');
+    console.log('Newsletter research: ' + uniqueResults.length + ' unique results, sending to Claude');
 
-  // Phase 2: Claude analyzes and curates
-  var today = new Date().toISOString().split('T')[0];
+    // Phase 2: Claude analyzes and curates
+    var today = new Date().toISOString().split('T')[0];
 
-  var systemPrompt = 'You are a newsletter curator for Moonraker AI, a digital marketing agency serving therapy practice owners (solo and group practices) in the U.S. and Canada.\n\n' +
-    'You will receive raw search results from Google News. Your job is to identify the 8-12 MOST RELEVANT stories for therapy practice owners and write structured story objects.\n\n' +
-    'STORY SELECTION CRITERIA (must meet at least 2):\n' +
-    '- Recent (within past 7-10 days)\n' +
-    '- Has specific dates, deadlines, or enforcement timelines\n' +
-    '- Has clear, actionable next steps therapists can take\n' +
-    '- Affects practice visibility, client acquisition, revenue, or compliance\n' +
-    '- Has penalty, risk, or compliance implications\n' +
-    '- Shows practical AI opportunity for therapists\n\n' +
-    'PRIORITY TOPICS:\n' +
-    '- Google Business Profile updates, suspensions, policy changes\n' +
-    '- Google algorithm updates affecting local search\n' +
-    '- Medicare/Medicaid telehealth coverage changes\n' +
-    '- AI chatbot and LLM developments relevant to therapists\n' +
-    '- HIPAA enforcement actions, OCR settlements\n' +
-    '- State AI and telehealth legislation\n' +
-    '- Review platform policy changes\n' +
-    '- FTC healthcare advertising enforcement\n' +
-    '- AI tools solving real therapy practice problems\n\n' +
-    'AVOID:\n' +
-    '- General AI news without therapist application\n' +
-    '- General medical/prescription drug topics\n' +
-    '- Speculative predictions without actionable items\n' +
-    '- Duplicate coverage of the same event\n\n' +
-    'BALANCE: Roughly 70% urgent compliance/risk news, 30% positive AI opportunities.\n\n' +
-    'Today\'s date: ' + today + '\n\n' +
-    'Respond with ONLY a JSON array. No markdown, no backticks, no preamble. Each object:\n' +
-    '{\n' +
-    '  "headline": "Clear, specific headline (write your own, do not just copy the search title)",\n' +
-    '  "summary": "2-3 sentence summary of what happened and why therapists should care",\n' +
-    '  "source_url": "URL from the search results",\n' +
-    '  "source_name": "Publication name",\n' +
-    '  "published_date": "YYYY-MM-DD or approximate",\n' +
-    '  "relevance_note": "One sentence on why this matters for therapy practices specifically",\n' +
-    '  "image_suggestion": "Description of a relevant stock image for this story"\n' +
-    '}';
+    var systemPrompt = 'You are a newsletter curator for Moonraker AI, serving therapy practice owners in the U.S. and Canada.\n\nFrom the search results, pick the 8-12 MOST RELEVANT stories. Write your own headlines.\n\nCRITERIA (meet at least 2): recent, has deadlines/dates, actionable for therapists, affects visibility/revenue/compliance, shows AI opportunity.\n\nTOPICS: GBP updates, Google algorithm changes, Medicare/telehealth policy, AI tools for therapists, HIPAA enforcement, FTC advertising, review platforms.\n\nAVOID: general AI news without therapist angle, medical/drug topics, speculation, duplicates.\n\nBALANCE: 70% compliance/risk, 30% AI opportunities.\n\nToday: ' + today + '\n\nReturn ONLY a JSON array. No markdown, no backticks. Each object:\n{"headline":"...","summary":"2-3 sentences","source_url":"...","source_name":"...","published_date":"YYYY-MM-DD","relevance_note":"...","image_suggestion":"..."}';
 
-  // Build the search results text for Claude
-  var searchText = 'Here are ' + uniqueResults.length + ' recent search results from Google News. Select the 8-12 most relevant for therapy practice owners:\n\n';
-  for (var s = 0; s < uniqueResults.length; s++) {
-    var r = uniqueResults[s];
-    searchText += '--- Result ' + (s + 1) + ' ---\n';
-    searchText += 'Title: ' + r.title + '\n';
-    if (r.snippet) searchText += 'Snippet: ' + r.snippet + '\n';
-    searchText += 'Source: ' + r.source + '\n';
-    searchText += 'URL: ' + r.link + '\n';
-    if (r.date) searchText += 'Date: ' + r.date + '\n';
-    searchText += '\n';
-  }
+    // Build compact search text
+    var searchText = uniqueResults.length + ' search results:\n\n';
+    for (var s = 0; s < uniqueResults.length; s++) {
+      var item = uniqueResults[s];
+      searchText += (s + 1) + '. ' + item.title + ' (' + item.source + ', ' + item.date + ') ' + item.link + '\n';
+      if (item.snippet) searchText += '   ' + item.snippet + '\n';
+    }
+    uniqueResults = null; // free memory
 
-  if (previousHeadlines.length > 0) {
-    searchText += '\nAVOID these previously covered stories (do NOT repeat):\n' +
-      previousHeadlines.slice(0, 30).map(function(h) { return '- ' + h; }).join('\n') + '\n';
-  }
+    if (previousHeadlines.length > 0) {
+      searchText += '\nPreviously covered (avoid):\n' +
+        previousHeadlines.slice(0, 20).map(function(h) { return '- ' + h; }).join('\n') + '\n';
+    }
 
-  try {
     var aiResp = await fetch('https://api.anthropic.com/v1/messages', {
       method: 'POST',
       headers: {
@@ -185,7 +146,7 @@ module.exports = async function handler(req, res) {
       },
       body: JSON.stringify({
         model: 'claude-sonnet-4-6',
-        max_tokens: 6000,
+        max_tokens: 4000,
         system: systemPrompt,
         messages: [{ role: 'user', content: searchText }],
         temperature: 0.5
@@ -194,26 +155,19 @@ module.exports = async function handler(req, res) {
 
     if (!aiResp.ok) {
       var errBody = await aiResp.text();
-      var errMsg = 'Anthropic API error ' + aiResp.status;
-      try {
-        var errJson = JSON.parse(errBody);
-        errMsg += ': ' + (errJson.error && errJson.error.message || errBody.substring(0, 200));
-      } catch (e) { errMsg += ': ' + errBody.substring(0, 200); }
-      return res.status(500).json({ error: errMsg });
+      return res.status(500).json({ error: 'Anthropic API error ' + aiResp.status + ': ' + errBody.substring(0, 300) });
     }
 
     var aiData = await aiResp.json();
     var rawText = '';
     if (aiData.content) {
       for (var c = 0; c < aiData.content.length; c++) {
-        if (aiData.content[c].type === 'text' && aiData.content[c].text) {
-          rawText += aiData.content[c].text;
-        }
+        if (aiData.content[c].type === 'text') rawText += aiData.content[c].text;
       }
     }
 
     if (!rawText) {
-      return res.status(500).json({ error: 'No text response from AI', debug: { stop_reason: aiData.stop_reason } });
+      return res.status(500).json({ error: 'No text response from AI' });
     }
 
     // Parse JSON
@@ -221,7 +175,7 @@ module.exports = async function handler(req, res) {
     var jsonStart = rawText.indexOf('[');
     var jsonEnd = rawText.lastIndexOf(']');
     if (jsonStart === -1 || jsonEnd === -1) {
-      return res.status(500).json({ error: 'No JSON array in AI response', raw_preview: rawText.substring(0, 500) });
+      return res.status(500).json({ error: 'No JSON array in response', preview: rawText.substring(0, 300) });
     }
 
     var stories = JSON.parse(rawText.substring(jsonStart, jsonEnd + 1));
@@ -229,7 +183,9 @@ module.exports = async function handler(req, res) {
       return res.status(500).json({ error: 'Empty stories array' });
     }
 
-    // Delete existing candidates for this newsletter (re-research)
+    console.log('Newsletter research: Claude returned ' + stories.length + ' stories, saving to DB');
+
+    // Delete existing candidates for this newsletter
     try {
       await sb.mutate('newsletter_stories?newsletter_id=eq.' + newsletterId, 'DELETE');
     } catch (e) { /* may not exist */ }
@@ -266,13 +222,18 @@ module.exports = async function handler(req, res) {
 
     return res.status(200).json({
       success: true,
-      search_results_found: uniqueResults.length,
+      search_results_found: totalFound,
       stories_curated: stories.length,
       stories_saved: saved.length,
       stories: saved
     });
 
   } catch (e) {
-    return res.status(500).json({ error: 'Research failed: ' + e.message });
+    console.error('Newsletter research FATAL:', e.message, e.stack);
+    try {
+      return res.status(500).json({ error: 'Research failed: ' + e.message });
+    } catch (e2) {
+      // Even res.json failed
+    }
   }
 };
