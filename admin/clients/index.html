@@ -1086,11 +1086,25 @@ strong { font-weight: 600; color: var(--color-heading); }
 
       <!-- TAB: Content (Pagemaster) -->
       <div class="tab-panel" id="tab-content">
-        <!-- 1. Keyword Targets (primary home) -->
+        <!-- 1. Design Spec (top, starts collapsed) -->
+        <div class="card" id="contentDesignSpec" style="margin-bottom:1.25rem;">
+          <div class="card-header collapsible-header" onclick="toggleContentSection('designSpec')" style="cursor:pointer;">
+            <h3 style="display:flex;align-items:center;gap:.5rem;">
+              <span id="designSpecIcon" style="transition:transform .2s;display:inline-block;font-size:.7rem;">&#9654;</span>
+              Design Spec
+              <span id="designSpecBadge" class="status-badge" style="font-size:.7rem;"></span>
+            </h3>
+          </div>
+          <div id="designSpecBody" class="collapsed" style="overflow:hidden;transition:max-height .3s ease;max-height:0;">
+            <div id="designSpecContent" style="padding:0 1rem 1rem;"></div>
+          </div>
+        </div>
+
+        <!-- 2. Keyword Targets (starts open) -->
         <div class="card" style="margin-bottom:1.25rem;" id="contentKeywordCard">
           <div class="card-header collapsible-header" onclick="toggleContentSection('keywords')" style="cursor:pointer;">
             <h3 style="display:flex;align-items:center;gap:.5rem;">
-              <span id="contentKeywordsIcon" style="transition:transform .2s;display:inline-block;">&#9660;</span>
+              <span id="contentKeywordsIcon" style="transition:transform .2s;display:inline-block;font-size:.7rem;">&#9660;</span>
               Keyword Targets
               <span id="contentKeywordsBadge" class="status-badge" style="font-size:.7rem;"></span>
             </h3>
@@ -1100,65 +1114,66 @@ strong { font-weight: 600; color: var(--color-heading); }
           </div>
         </div>
 
-        <!-- 2. Service Pages (batch audit + page list unified) -->
-        <div style="margin-bottom:1.25rem;">
-          <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:.75rem;">
-            <h3 style="font-size:.95rem;font-weight:600;color:var(--color-heading);display:flex;align-items:center;gap:.5rem;">
+        <!-- 3. Service Pages (starts open) -->
+        <div class="card" style="margin-bottom:1.25rem;" id="contentServicePagesCard">
+          <div class="card-header collapsible-header" onclick="toggleContentSection('servicePages')" style="cursor:pointer;">
+            <h3 style="display:flex;align-items:center;gap:.5rem;flex:1;">
+              <span id="servicePagesIcon" style="transition:transform .2s;display:inline-block;font-size:.7rem;">&#9660;</span>
               Service Pages
               <span id="batchAuditBadge" class="status-badge" style="font-size:.7rem;"></span>
             </h3>
-            <div style="display:flex;gap:.5rem;">
+            <div style="display:flex;gap:.5rem;" onclick="event.stopPropagation()">
               <button class="btn btn-sm btn-ghost" id="btnTriggerBatch" onclick="triggerBatchAudit()" style="display:none;">&#9881; Run Batch Audit</button>
               <button class="btn btn-sm btn-ghost" onclick="generateAllContent()" id="btnGenerateAll" style="display:none;" title="Generate HTML for all audit-loaded pages">&#9889; Generate All Ready</button>
               <button class="btn btn-sm btn-primary" onclick="addContentPage()">+ Add Page</button>
             </div>
           </div>
-          <div id="batchAuditContent" style="margin-bottom:.75rem;"></div>
-          <div id="clusterSynthesis" style="display:none;margin-bottom:.75rem;"></div>
-          <div id="contentPhaseBar"></div>
-          <div id="contentPageList"></div>
-          <div class="empty-state" id="contentPagesEmpty" style="display:none;"><p>No content pages yet. Seed pages from keywords above, or add a page manually.</p></div>
-        </div>
-
-        <!-- 3. Clinician Profiles (bio materials + endorsements + bio pages) -->
-        <div style="margin-bottom:1.25rem;">
-          <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:.75rem;">
-            <h3 style="font-size:.95rem;font-weight:600;color:var(--color-heading);">Clinician Profiles</h3>
-            <button class="btn btn-sm btn-primary" onclick="addBioClinician()">+ Add Clinician</button>
-          </div>
-          <div id="contentBioMaterials"></div>
-          <div style="margin-top:1rem;">
-            <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:.5rem;">
-              <h4 style="font-size:.85rem;font-weight:600;color:var(--color-heading);">Endorsements</h4>
-            </div>
-            <div id="contentEndorsements"></div>
-            <div class="empty-state" id="endorsementEmpty" style="display:none;"><p>No endorsements submitted yet. Share the endorsement collection link with the client.</p></div>
-            <div id="endorsementLink" style="margin-top:.5rem;"></div>
+          <div id="servicePagesBody" style="overflow:hidden;transition:max-height .3s ease;padding:0 1rem .75rem;">
+            <div id="batchAuditContent" style="margin-bottom:.75rem;"></div>
+            <div id="clusterSynthesis" style="display:none;margin-bottom:.75rem;"></div>
+            <div id="contentPhaseBar"></div>
+            <div id="contentPageList"></div>
+            <div class="empty-state" id="contentPagesEmpty" style="display:none;"><p>No content pages yet. Seed pages from keywords above, or add a page manually.</p></div>
           </div>
         </div>
 
-        <!-- 4. Design Spec (collapsible, reference tool) -->
-        <div class="card" id="contentDesignSpec" style="margin-bottom:1.25rem;">
-          <div class="card-header collapsible-header" onclick="toggleContentSection('designSpec')" style="cursor:pointer;">
-            <h3 style="display:flex;align-items:center;gap:.5rem;">
-              <span id="designSpecIcon" style="transition:transform .2s;display:inline-block;">&#9654;</span>
-              Design Spec
-              <span id="designSpecBadge" class="status-badge" style="font-size:.7rem;"></span>
+        <!-- 4. Clinician Profiles (starts open) -->
+        <div class="card" style="margin-bottom:1.25rem;" id="contentClinicianCard">
+          <div class="card-header collapsible-header" onclick="toggleContentSection('clinicians')" style="cursor:pointer;">
+            <h3 style="display:flex;align-items:center;gap:.5rem;flex:1;">
+              <span id="cliniciansIcon" style="transition:transform .2s;display:inline-block;font-size:.7rem;">&#9660;</span>
+              Clinician Profiles
             </h3>
+            <div onclick="event.stopPropagation()">
+              <button class="btn btn-sm btn-primary" onclick="addBioClinician()">+ Add Clinician</button>
+            </div>
           </div>
-          <div id="designSpecBody" class="collapsed" style="overflow:hidden;transition:max-height .3s ease;">
-            <div id="designSpecContent" style="padding:0 1rem 1rem;"></div>
+          <div id="cliniciansBody" style="overflow:hidden;transition:max-height .3s ease;padding:0 1rem .75rem;">
+            <div id="contentBioMaterials"></div>
+            <div style="margin-top:1rem;">
+              <h4 style="font-size:.85rem;font-weight:600;color:var(--color-heading);margin-bottom:.5rem;">Endorsements</h4>
+              <div id="contentEndorsements"></div>
+              <div class="empty-state" id="endorsementEmpty" style="display:none;"><p>No endorsements submitted yet. Share the endorsement collection link with the client.</p></div>
+              <div id="endorsementLink" style="margin-top:.5rem;"></div>
+            </div>
           </div>
         </div>
 
-        <!-- 5. NEO Images -->
-        <div>
-          <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:.5rem;">
-            <h3 style="font-size:.95rem;font-weight:600;color:var(--color-heading);">NEO Images</h3>
-            <button class="btn btn-sm btn-ghost" onclick="addNeoImage()">+ Add NEO Image</button>
+        <!-- 5. NEO Images (starts collapsed) -->
+        <div class="card" id="contentNeoCard">
+          <div class="card-header collapsible-header" onclick="toggleContentSection('neo')" style="cursor:pointer;">
+            <h3 style="display:flex;align-items:center;gap:.5rem;flex:1;">
+              <span id="neoIcon" style="transition:transform .2s;display:inline-block;font-size:.7rem;">&#9654;</span>
+              NEO Images
+            </h3>
+            <div onclick="event.stopPropagation()">
+              <button class="btn btn-sm btn-ghost" onclick="addNeoImage()">+ Add NEO Image</button>
+            </div>
           </div>
-          <div id="neoImageList"></div>
-          <div class="empty-state" id="neoEmpty" style="display:none;"><p>No NEO images tracked yet.</p></div>
+          <div id="neoBody" class="collapsed" style="overflow:hidden;transition:max-height .3s ease;max-height:0;padding:0 1rem .75rem;">
+            <div id="neoImageList"></div>
+            <div class="empty-state" id="neoEmpty" style="display:none;"><p>No NEO images tracked yet.</p></div>
+          </div>
         </div>
       </div>
 
@@ -4887,15 +4902,21 @@ strong { font-weight: 600; color: var(--color-heading); }
   var expandedContentId = null;
 
   window.toggleContentSection = function(section) {
-    var bodyMap = { designSpec: 'designSpecBody', keywords: 'contentKeywordsBody', synthesis: 'synthBody' };
-    var iconMap = { designSpec: 'designSpecIcon', keywords: 'contentKeywordsIcon', synthesis: 'synthIcon' };
+    var bodyMap = { designSpec: 'designSpecBody', keywords: 'contentKeywordsBody', servicePages: 'servicePagesBody', clinicians: 'cliniciansBody', neo: 'neoBody', synthesis: 'synthBody' };
+    var iconMap = { designSpec: 'designSpecIcon', keywords: 'contentKeywordsIcon', servicePages: 'servicePagesIcon', clinicians: 'cliniciansIcon', neo: 'neoIcon', synthesis: 'synthIcon' };
     var body = document.getElementById(bodyMap[section] || null);
     var icon = document.getElementById(iconMap[section] || null);
     if (!body) return;
-    var collapsed = body.classList.contains('collapsed');
-    body.classList.toggle('collapsed', !collapsed);
-    body.style.maxHeight = collapsed ? '2000px' : '0';
-    if (icon) icon.style.transform = collapsed ? '' : 'rotate(-90deg)';
+    var isCollapsed = body.classList.contains('collapsed') || body.style.maxHeight === '0px';
+    if (isCollapsed) {
+      body.classList.remove('collapsed');
+      body.style.maxHeight = '4000px';
+      if (icon) icon.innerHTML = '&#9660;';
+    } else {
+      body.classList.add('collapsed');
+      body.style.maxHeight = '0';
+      if (icon) icon.innerHTML = '&#9654;';
+    }
   };
 
   // Asset tab switching removed - NEO Images and Endorsements now in separate sections
