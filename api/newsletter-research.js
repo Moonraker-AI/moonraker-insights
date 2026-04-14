@@ -208,7 +208,7 @@ module.exports = async function handler(req, res) {
           sort_order: si,
           ai_generated: true
         });
-        if (row) saved.push(row);
+        if (Array.isArray(row) && row.length) saved.push(row[0]); else if (row && !Array.isArray(row)) saved.push(row);
       } catch (e) {
         console.error('Failed to save story:', story.headline, e.message);
       }
