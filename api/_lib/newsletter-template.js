@@ -151,9 +151,9 @@ function build(newsletter, subscriberId) {
     '<table class="email-container" cellpadding="0" cellspacing="0" border="0" width="600" style="max-width:600px;width:100%;">' +
 
     // HEADER: Dark navy bar, logo left, label right
-    '<tr><td style="background:' + C.navy + ';padding:24px 32px;border-radius:14px 14px 0 0;">' +
+    '<tr><td style="background:' + C.navy + ';padding:20px 32px;border-radius:14px 14px 0 0;">' +
       '<table cellpadding="0" cellspacing="0" border="0" width="100%"><tr>' +
-        '<td style="vertical-align:middle;"><img src="' + LOGO_URL + '" alt="Moonraker" height="28" style="display:block;" /></td>' +
+        '<td style="vertical-align:middle;"><img src="' + LOGO_URL + '" alt="Moonraker" height="34" style="display:block;" /></td>' +
         '<td style="text-align:right;vertical-align:middle;"><span style="color:' + C.white + ';font-family:' + F.body + ';font-size:12px;letter-spacing:0.03em;">Weekly Newsletter</span></td>' +
       '</tr></table>' +
     '</td></tr>' +
@@ -235,4 +235,5 @@ function buildBlog(newsletter) {
 }
 
 module.exports = { build: build, buildBlog: buildBlog, esc: esc, C: C, F: F };
+
 
