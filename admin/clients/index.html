@@ -5003,6 +5003,84 @@ strong { font-weight: 600; color: var(--color-heading); }
     }).catch(function(err) { toast('Error: ' + err.message, 'error'); });
   };
 
+  window.suggestImages = function(cpId, keyword) {
+    var container = document.getElementById('cp-images-' + cpId);
+    if (!container) return;
+    container.innerHTML = '<div style="display:flex;align-items:center;gap:.35rem;"><div class="spinner"></div><span style="font-size:.78rem;color:var(--color-muted);">Searching for "' + esc(keyword) + '"...</span></div>';
+
+    fetch('/api/search-stock-images', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ query: keyword, contact_id: state.contact.id, limit: 12 })
+    }).then(function(r) { return r.json(); }).then(function(res) {
+      var h = '';
+
+      // Client photos section
+      if (res.client_photos && res.client_photos.length > 0) {
+        h += '<div style="margin-bottom:.75rem;"><div style="font-size:.68rem;font-weight:600;text-transform:uppercase;letter-spacing:.04em;color:var(--color-primary);margin-bottom:.35rem;">Client Photos (' + res.client_photos.length + ')</div>';
+        h += '<div style="display:grid;grid-template-columns:repeat(auto-fill,minmax(80px,1fr));gap:.4rem;">';
+        res.client_photos.forEach(function(p) {
+          var thumb = p.thumbnailLink || '';
+          h += '<div style="cursor:pointer;border-radius:6px;overflow:hidden;border:2px solid transparent;transition:border-color .15s;" onmouseover="this.style.borderColor=\'var(--color-primary)\'" onmouseout="this.style.borderColor=\'transparent\'" onclick="event.stopPropagation(); selectImageForPage(\'' + cpId + '\', \'client_drive\', \'' + esc(p.id) + '\', \'' + esc(p.name).replace(/'/g, '') + '\')" title="' + esc(p.name) + '">';
+          if (thumb) h += '<img src="' + esc(thumb) + '" style="width:100%;height:60px;object-fit:cover;" loading="lazy">';
+          else h += '<div style="height:60px;background:var(--color-bg);display:flex;align-items:center;justify-content:center;font-size:.6rem;color:var(--color-muted);">' + esc(p.name).substring(0, 12) + '</div>';
+          h += '</div>';
+        });
+        h += '</div></div>';
+      }
+
+      // Stock images section
+      if (res.stock && res.stock.length > 0) {
+        h += '<div><div style="font-size:.68rem;font-weight:600;text-transform:uppercase;letter-spacing:.04em;color:var(--color-muted);margin-bottom:.35rem;">Stock Images (' + res.stock.length + ')</div>';
+        h += '<div style="display:grid;grid-template-columns:repeat(auto-fill,minmax(80px,1fr));gap:.4rem;">';
+        res.stock.forEach(function(s) {
+          var url = s.hosted_url || '';
+          h += '<div style="cursor:pointer;border-radius:6px;overflow:hidden;border:2px solid transparent;transition:border-color .15s;position:relative;" onmouseover="this.style.borderColor=\'var(--color-primary)\'" onmouseout="this.style.borderColor=\'transparent\'" onclick="event.stopPropagation(); selectImageForPage(\'' + cpId + '\', \'stock\', ' + s.id + ', \'' + esc(s.asset_id) + '\')" title="' + esc((s.mood_tags || '').substring(0, 60)) + '">';
+          if (url) h += '<img src="' + esc(url) + '" style="width:100%;height:60px;object-fit:cover;" loading="lazy">';
+          else h += '<div style="height:60px;background:var(--color-bg);display:flex;align-items:center;justify-content:center;font-size:.6rem;">No image</div>';
+          h += '</div>';
+        });
+        h += '</div></div>';
+      }
+
+      if (!h) h = '<p style="font-size:.78rem;color:var(--color-muted);">No matching images found. Try a broader search term.</p>';
+      container.innerHTML = h;
+    }).catch(function(err) {
+      container.innerHTML = '<p style="font-size:.78rem;color:var(--color-danger);">Search failed: ' + esc(err.message) + '</p>';
+    });
+  };
+
+  window.selectImageForPage = function(cpId, sourceType, sourceId, label) {
+    // Determine next available role
+    var existingRoles = (state.contentPageImages || {})[cpId] || [];
+    var roles = ['hero', 'body-1', 'body-2', 'body-3', 'body-4', 'body-5'];
+    var nextRole = roles.find(function(r) { return !existingRoles.some(function(e) { return e.image_role === r; }); }) || 'body-5';
+
+    var data = {
+      content_page_id: cpId,
+      image_role: nextRole,
+      source_type: sourceType
+    };
+    if (sourceType === 'stock') data.stock_image_id = sourceId;
+    if (sourceType === 'client_drive') data.drive_file_id = String(sourceId);
+
+    fetch('/api/action', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ action: 'create_record', table: 'content_page_images', data: data })
+    }).then(function(r) { return r.json(); }).then(function(res) {
+      if (res.success) {
+        toast('Image added as ' + nextRole, 'success');
+        if (!state.contentPageImages) state.contentPageImages = {};
+        if (!state.contentPageImages[cpId]) state.contentPageImages[cpId] = [];
+        var row = Array.isArray(res.data) ? res.data[0] : res.data;
+        if (row) state.contentPageImages[cpId].push(row);
+      } else {
+        toast('Failed: ' + (res.error || ''), 'error');
+      }
+    }).catch(function(err) { toast('Error: ' + err.message, 'error'); });
+  };
+
   window.deleteContentPage = function(id, name) {
     if (!confirm('Delete content page "' + name + '"?')) return;
     fetch('/api/action', {
@@ -5775,6 +5853,17 @@ strong { font-weight: 600; color: var(--color-heading); }
           h += '</div></div>';
         }
         h += '<div class="cp-actions" style="margin-top:.75rem;">';
+        // Images section (for service pages)
+        if (cp.page_type === 'service' || cp.page_type === 'homepage') {
+          h += '<div style="margin-bottom:.75rem;border-top:1px solid var(--color-border);padding-top:.75rem;">';
+          h += '<div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:.5rem;">';
+          h += '<label style="font-size:.72rem;font-weight:600;text-transform:uppercase;letter-spacing:.04em;color:var(--color-muted);">Page Images</label>';
+          h += '<button class="btn btn-ghost btn-sm" onclick="event.stopPropagation(); suggestImages(\'' + cp.id + '\', \'' + esc(cp.target_keyword || cp.page_name).replace(/'/g, '') + '\')" style="font-size:.72rem;">&#128269; Suggest Images</button>';
+          h += '</div>';
+          h += '<div id="cp-images-' + cp.id + '" style="font-size:.78rem;color:var(--color-muted);">Click "Suggest Images" to find matching photos.</div>';
+          h += '</div>';
+        }
+        h += '<div style="display:flex;gap:.5rem;flex-wrap:wrap;">';
         if (cp.status === 'audit_loaded') {
           h += '<button class="btn btn-primary btn-sm" onclick="event.stopPropagation(); generateContentPage(\'' + cp.id + '\')">Generate HTML</button>';
           h += '<span id="gen-status-' + cp.id + '" style="font-size:.72rem;color:var(--color-muted);margin-left:.5rem;"></span>';
@@ -5785,7 +5874,7 @@ strong { font-weight: 600; color: var(--color-heading); }
         if (cp.generated_html) {
           h += '<button class="btn btn-ghost btn-sm" onclick="event.stopPropagation(); copyGeneratedHtml(\'' + cp.id + '\')">Copy HTML</button>';
         }
-        h += '</div></div></div>';
+        h += '</div></div></div></div>';
       });
     }
     listEl.innerHTML = h;
