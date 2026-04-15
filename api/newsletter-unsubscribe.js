@@ -12,6 +12,15 @@ module.exports = async function handler(req, res) {
   if (req.method === 'POST') {
     if (!sid) return res.status(400).json({ error: 'Missing subscriber ID' });
 
+    // Validate UUID format (test sends use 'test' or 'preview' which aren't real UUIDs)
+    var uuidPattern = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
+    if (!uuidPattern.test(sid)) {
+      // Show success page anyway (likely a test email)
+      var accept = req.headers && req.headers.accept || '';
+      if (accept.indexOf('text/html') >= 0) return res.status(200).send(unsubPage(true));
+      return res.status(200).json({ ok: true, message: 'Unsubscribed (test)' });
+    }
+
     try {
       await sb.mutate('newsletter_subscribers?id=eq.' + sid, 'PATCH', {
         status: 'unsubscribed',
