@@ -257,9 +257,9 @@ textarea.form-input { resize: vertical; min-height: 80px; line-height: 1.6; }
 
 /* Subscriber rows */
 .sub-row { display: grid; grid-template-columns: minmax(160px,2fr) minmax(120px,1.5fr) 70px 70px 90px; gap: .5rem; align-items: center; padding: .65rem 1rem; border-bottom: 1px solid var(--color-border); font-size: .82rem; }
-.sub-row > div { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
-.sub-row .sub-email { font-size: .8rem; }
-.sub-row .sub-name { color: var(--color-muted); font-size: .78rem; }
+.sub-row > div { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; text-align: left; }
+.sub-row .sub-email { font-size: .8rem; text-align: left; }
+.sub-row .sub-name { color: var(--color-muted); font-size: .78rem; text-align: left; }
 .sub-row:last-child { border-bottom: none; }
 .sub-email { font-weight: 500; color: var(--color-heading); text-align: left; }
 
@@ -348,7 +348,7 @@ textarea.form-input { resize: vertical; min-height: 80px; line-height: 1.6; }
   /* Edition row */
   .edition-row { padding: .75rem; gap: .5rem; }
   .edition-num { font-size: 1.2rem; }
-  .edition-subject { font-size: .8rem; }
+  .edition-meta { display: none; }
   .edition-right { gap: .4rem; }
   .edition-date { font-size: .7rem; }
 
@@ -618,7 +618,7 @@ textarea.form-input { resize: vertical; min-height: 80px; line-height: 1.6; }
         <div class="card" style="padding:0;overflow:hidden;">
           <div class="sub-scroll-wrap" style="overflow-x:auto;-webkit-overflow-scrolling:touch;">
           <div style="min-width:560px;">
-          <div style="padding:.65rem 1rem;border-bottom:1px solid var(--color-border);display:grid;grid-template-columns:minmax(160px,2fr) minmax(120px,1.5fr) 70px 70px 90px;gap:.5rem;font-size:.72rem;font-weight:600;text-transform:uppercase;letter-spacing:.04em;color:var(--color-muted);">
+          <div style="padding:.65rem 1rem;border-bottom:1px solid var(--color-border);display:grid;grid-template-columns:minmax(160px,2fr) minmax(120px,1.5fr) 70px 70px 90px;gap:.5rem;font-size:.72rem;font-weight:600;text-transform:uppercase;letter-spacing:.04em;color:var(--color-muted);text-align:left;">
             <div>Email</div>
             <div>Name</div>
             <div>Tier</div>
@@ -2660,6 +2660,7 @@ init();
 </script>
 </body>
 </html>
+
 
 
 
