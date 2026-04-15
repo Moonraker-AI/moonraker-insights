@@ -5319,47 +5319,75 @@ strong { font-weight: 600; color: var(--color-heading); }
   };
 
   window.analyzeDesignSpec = function() {
+    var spec = state.designSpec;
+    var c = state.contact;
+
+    // Prefer captured data, fall back to manual form
+    var rawCss = '';
+    var sampleContent = '';
+    var screenshotUrls = [];
+    var computedCss = null;
+
+    if (spec && spec.computed_css) {
+      computedCss = spec.computed_css;
+      rawCss = JSON.stringify(spec.computed_css, null, 2);
+    }
+    if (spec && (spec.crawled_homepage_text || spec.crawled_service_text || spec.crawled_about_text)) {
+      var parts = [];
+      if (spec.crawled_homepage_text) parts.push('=== HOMEPAGE ===\n' + spec.crawled_homepage_text);
+      if (spec.crawled_service_text) parts.push('=== SERVICE PAGE ===\n' + spec.crawled_service_text);
+      if (spec.crawled_about_text) parts.push('=== ABOUT PAGE ===\n' + spec.crawled_about_text);
+      sampleContent = parts.join('\n\n');
+    }
+    if (spec && spec.screenshot_homepage) screenshotUrls.push(spec.screenshot_homepage);
+    if (spec && spec.screenshot_service) screenshotUrls.push(spec.screenshot_service);
+    if (spec && spec.screenshot_about) screenshotUrls.push(spec.screenshot_about);
+
+    // Manual fallback
     var cssEl = document.getElementById('specCssInput');
     var contentEl = document.getElementById('specContentInput');
     var screenshotEl = document.getElementById('specScreenshotInput');
-    var rawCss = cssEl ? cssEl.value.trim() : '';
-    var sampleContent = contentEl ? contentEl.value.trim() : '';
-    var screenshotText = screenshotEl ? screenshotEl.value.trim() : '';
-    var screenshotUrls = screenshotText ? screenshotText.split('\n').filter(function(u) { return u.trim(); }) : [];
+    if (cssEl && cssEl.value.trim()) rawCss = cssEl.value.trim();
+    if (contentEl && contentEl.value.trim()) sampleContent = contentEl.value.trim();
+    if (screenshotEl && screenshotEl.value.trim()) {
+      screenshotUrls = screenshotEl.value.trim().split('\n').filter(function(u) { return u.trim(); });
+    }
 
-    if (!rawCss && !sampleContent) {
-      toast('Paste CSS or sample content to analyze', 'error');
+    if (!rawCss && !sampleContent && !computedCss) {
+      toast('No data available. Click "Analyze Website" first to capture CSS and content, or use Manual Setup.', 'warning');
       return;
     }
 
-    var btn = document.getElementById('btnAnalyzeSpec');
+    var btn = document.getElementById('btnAnalyzeSpec') || document.getElementById('btnAnalyzeSpecManual');
     if (btn) { btn.disabled = true; btn.textContent = 'Analyzing...'; }
 
     fetch('/api/analyze-design-spec', {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({
-        contact_id: state.contact.id,
-        client_slug: slug,
+        contact_id: c.id,
+        client_slug: c.slug,
         raw_css: rawCss,
+        computed_css: computedCss,
         sample_content: sampleContent,
         screenshot_urls: screenshotUrls,
-        site_url: state.contact.website_url || '',
-        platform: state.contact.website_platform || '',
-        existing_spec_id: state.designSpec ? state.designSpec.id : null
+        site_url: c.website_url || '',
+        platform: c.website_platform || '',
+        existing_spec_id: spec ? spec.id : null,
+        source: computedCss ? 'automated_capture' : 'manual'
       })
     }).then(function(r) { return r.json(); }).then(function(res) {
-      if (btn) { btn.disabled = false; btn.textContent = 'Analyze'; }
+      if (btn) { btn.disabled = false; btn.textContent = 'Re-analyze'; }
       if (res.success && res.record) {
         state.designSpec = res.record;
-        toast('Design spec ' + (res.saved ? 'saved' : 'generated (save failed, check console)'), res.saved ? 'success' : 'warning');
+        toast('Design spec analyzed and saved', 'success');
         renderContent();
       } else {
         toast('Analysis failed: ' + (res.error || 'Unknown error'), 'error');
         if (res.raw) console.error('Raw Claude response:', res.raw);
       }
     }).catch(function(err) {
-      if (btn) { btn.disabled = false; btn.textContent = 'Analyze'; }
+      if (btn) { btn.disabled = false; btn.textContent = 'Re-analyze'; }
       toast('Analysis error: ' + err.message, 'error');
     });
   };
