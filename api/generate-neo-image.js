@@ -146,7 +146,7 @@ module.exports = async function(req, res) {
       neo_image: neoRow,
       hosted_url: hostedUrl,
       prompt: prompt,
-      image_size: webpBuffer.length
+      image_size: imgBuffer.length
     });
 
   } catch (err) {
