@@ -187,8 +187,8 @@ function build(newsletter, subscriberId) {
     '<tr><td style="padding:20px 0 8px;text-align:center;">' +
       '<table cellpadding="0" cellspacing="0" border="0" align="center"><tr>' +
         '<td class="badge-cell" style="padding:0 16px;vertical-align:middle;"><img src="' + GOOGLE_RATING_URL + '" alt="Google Rating 4.9" height="40" style="display:inline-block;height:40px;width:auto;" /></td>' +
-        '<td class="badge-cell" style="padding:0 16px;vertical-align:middle;"><img src="' + GOOGLE_PARTNER_URL + '" alt="Google Partner" height="40" style="display:inline-block;height:40px;width:auto;" /></td>' +
         '<td class="badge-cell" style="padding:0 16px;vertical-align:middle;"><img src="' + GOOGLE_LOCAL_GUIDES_URL + '" alt="Google Local Guides" height="40" style="display:inline-block;height:40px;width:auto;" /></td>' +
+        '<td class="badge-cell" style="padding:0 16px;vertical-align:middle;"><img src="' + GOOGLE_PARTNER_URL + '" alt="Google Partner" height="40" style="display:inline-block;height:40px;width:auto;" /></td>' +
       '</tr></table>' +
     '</td></tr>' +
 
@@ -235,3 +235,4 @@ function buildBlog(newsletter) {
 }
 
 module.exports = { build: build, buildBlog: buildBlog, esc: esc, C: C, F: F };
+
