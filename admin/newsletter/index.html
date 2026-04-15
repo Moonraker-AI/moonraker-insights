@@ -158,9 +158,10 @@ strong { font-weight: 600; color: var(--color-heading); }
 
 /* Stat cards */
 .stat-row { display: grid; grid-template-columns: repeat(4, 1fr); gap: 1rem; margin-bottom: 1.5rem; }
-.stat-card { background: var(--color-surface); border: 1px solid var(--color-border); border-radius: 12px; padding: 1rem 1.25rem; text-align: center; }
-.stat-card .value { font-family: 'Outfit', sans-serif; font-size: 1.75rem; font-weight: 700; color: var(--color-heading); }
-.stat-card .label { font-size: .72rem; font-weight: 600; text-transform: uppercase; letter-spacing: .04em; color: var(--color-muted); margin-top: .25rem; }
+.stat-card { background: var(--color-surface); border: 1px solid var(--color-border); border-radius: 12px; padding: 1.25rem; text-align: center; transition: border-color .2s; }
+.stat-card:hover { border-color: rgba(0,212,126,.25); }
+.stat-card .value { font-family: 'Outfit', sans-serif; font-size: 2rem; font-weight: 700; color: var(--color-heading); line-height: 1; }
+.stat-card .label { font-size: .72rem; font-weight: 600; text-transform: uppercase; letter-spacing: .05em; color: var(--color-muted); margin-top: .35rem; }
 
 /* Form inputs */
 .form-group { margin-bottom: 1rem; }
@@ -311,8 +312,7 @@ textarea.form-input { resize: vertical; min-height: 80px; line-height: 1.6; }
   .stat-row { grid-template-columns: repeat(2, 1fr); }
   .edition-row { gap: .65rem; }
   .edition-stats { display: none; }
-  .sub-row { grid-template-columns: 1fr 55px 55px; }
-  .sub-row .sub-name, .sub-row > div:last-child { display: none; }
+  /* subscriber table uses horizontal scroll wrapper on mobile */
 }
 .section-header { display: flex; align-items: center; justify-content: space-between; margin-bottom: .25rem; }
 
@@ -321,9 +321,9 @@ textarea.form-input { resize: vertical; min-height: 80px; line-height: 1.6; }
   .content { padding: 1rem; overflow-x: hidden; }
   .main { overflow-x: hidden; }
   .stat-row { grid-template-columns: repeat(2, 1fr); gap: .75rem; }
-  .stat-card { padding: 1rem; }
-  .stat-card .value { font-size: 1.5rem; }
-  .stat-card .label { font-size: .68rem; }
+  .stat-card { padding: 1.25rem; }
+  .stat-card .value { font-size: 1.75rem; }
+  .stat-card .label { font-size: .7rem; }
 
   /* Compose toolbar: wrap buttons */
   #tab-compose > div:first-child { flex-wrap: wrap; gap: .5rem; }
@@ -398,13 +398,13 @@ textarea.form-input { resize: vertical; min-height: 80px; line-height: 1.6; }
 
 @media (max-width: 480px) {
   .content { padding: .65rem; }
-  .stat-card .value { font-size: 1.3rem; }
-  .stat-card .label { font-size: .65rem; }
-  .stat-card { padding: .85rem .65rem; }
+  .stat-card .value { font-size: 1.5rem; }
+  .stat-card .label { font-size: .68rem; }
+  .stat-card { padding: 1rem; }
 
   /* Stack story action buttons */
   .story-editor .story-actions { flex-wrap: wrap; justify-content: flex-end; }
-  .story-editor .story-num > span:first-child { display: none; } /* hide drag handle */
+  .story-editor .story-num > span:first-child { padding: .6rem; margin: -.4rem; } /* bigger touch target for drag */
 
   /* Compose title smaller */
   #composeTitle { font-size: .95rem; }
@@ -996,6 +996,9 @@ function renderSubscriberList(list) {
 function initComposeForm() {
   var container = document.getElementById('storiesContainer');
   container.innerHTML = '';
+  // Re-init touch drag for mobile after story editors are created
+  if (container._touchDragInit) container._touchDragInit = false;
+  setTimeout(initTouchDrag, 100);
   for (var i = 0; i < 5; i++) {
     container.innerHTML += storyEditorHtml(i);
   }
@@ -1231,7 +1234,8 @@ var touchMoved = false;
 
 function initTouchDrag() {
   var container = document.getElementById('storiesContainer');
-  if (!container) return;
+  if (!container || container._touchDragInit) return;
+  container._touchDragInit = true;
 
   container.addEventListener('touchstart', function(e) {
     var handle = e.target.closest('.drag-handle');
@@ -2921,6 +2925,7 @@ init();
 </script>
 </body>
 </html>
+
 
 
 
