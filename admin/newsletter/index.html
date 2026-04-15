@@ -349,7 +349,7 @@ textarea.form-input { resize: vertical; min-height: 80px; line-height: 1.6; }
   .edition-row { padding: .75rem; gap: .5rem; }
   .edition-num { font-size: 1.2rem; }
   .edition-meta { display: none; }
-  .edition-right { gap: .4rem; }
+  .edition-right { flex: 1; gap: .5rem; justify-content: flex-end; }
   .edition-date { font-size: .7rem; }
 
   /* Cards must not exceed viewport */
@@ -948,9 +948,11 @@ function renderSubscriberList(list) {
   var container = document.getElementById('subscribersList');
   document.getElementById('subCount').textContent = list.length + ' shown';
   if (!list.length) {
-    container.innerHTML = '<div style="padding:2rem;text-align:center;color:var(--color-muted);font-size:.85rem;">No subscribers found</div>';
+    container.style.padding = '2rem';
+    container.innerHTML = '<div style="text-align:center;color:var(--color-muted);font-size:.85rem;">No subscribers found</div>';
     return;
   }
+  container.style.padding = '0';
   container.innerHTML = list.map(function(s) {
       var tierTag = s.engagement_tier === 'hot' ? '<span class="tag tag-success">Hot</span>'
         : s.engagement_tier === 'warm' ? '<span class="tag tag-warning">Warm</span>'
@@ -964,7 +966,8 @@ function renderSubscriberList(list) {
       return '<div class="sub-row">' +
         '<div class="sub-email">' + escHtml(s.email) + '</div>' +
         '<div class="sub-name">' + escHtml(((s.first_name || '') + ' ' + (s.last_name || '')).trim()) + '</div>' +
-        tierTag + statusTag +
+        '<div>' + tierTag + '</div>' +
+        '<div>' + statusTag + '</div>' +
         '<div style="font-size:.78rem;color:var(--color-muted);">' + escHtml(sourceLabel) + '</div>' +
         '</div>';
     }).join('');
@@ -2660,6 +2663,7 @@ init();
 </script>
 </body>
 </html>
+
 
 
 
