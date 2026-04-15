@@ -50,12 +50,12 @@ function storyBlock(story, index) {
       var lines = items.split('\n').filter(function(l) { return l.trim(); });
       actionHtml = lines.length > 1
         ? '<ul style="margin:0;padding:0 0 0 20px;">' + lines.map(function(item) {
-            return '<li style="font-family:' + F.body + ';font-size:15px;color:' + C.body + ';line-height:1.6;margin:0 0 4px;">' + item + '</li>';
+            return '<li style="font-family:' + F.body + ';font-size:15px;color:' + C.body + ';line-height:1.6;margin:0 0 4px;">\u{1F449} ' + item + '</li>';
           }).join('') + '</ul>'
         : '<p style="font-family:' + F.body + ';font-size:15px;color:' + C.body + ';line-height:1.7;margin:0;">' + items + '</p>';
     } else if (Array.isArray(items)) {
       actionHtml = '<ul style="margin:0;padding:0 0 0 20px;">' + items.map(function(item) {
-        return '<li style="font-family:' + F.body + ';font-size:15px;color:' + C.body + ';line-height:1.6;margin:0 0 4px;">' + item + '</li>';
+        return '<li style="font-family:' + F.body + ';font-size:15px;color:' + C.body + ';line-height:1.6;margin:0 0 4px;">\u{1F449} ' + item + '</li>';
       }).join('') + '</ul>';
     }
   }
@@ -151,7 +151,7 @@ function build(newsletter, subscriberId) {
     '<table class="email-container" cellpadding="0" cellspacing="0" border="0" width="600" style="max-width:600px;width:100%;">' +
 
     // HEADER: Dark navy bar, logo left, label right
-    '<tr><td style="background:' + C.navy + ';padding:20px 32px;border-radius:14px 14px 0 0;">' +
+    '<tr><td style="background:' + C.navy + ';padding:18px 20px;border-radius:14px 14px 0 0;">' +
       '<table cellpadding="0" cellspacing="0" border="0" width="100%"><tr>' +
         '<td style="vertical-align:middle;"><img src="' + LOGO_URL + '" alt="Moonraker" height="34" style="display:block;" /></td>' +
         '<td style="text-align:right;vertical-align:middle;"><span style="color:' + C.white + ';font-family:' + F.body + ';font-size:12px;letter-spacing:0.03em;">Weekly Newsletter</span></td>' +
@@ -235,5 +235,6 @@ function buildBlog(newsletter) {
 }
 
 module.exports = { build: build, buildBlog: buildBlog, esc: esc, C: C, F: F };
+
 
 
