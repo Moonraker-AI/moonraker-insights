@@ -197,6 +197,18 @@ textarea.form-input { resize: vertical; min-height: 80px; line-height: 1.6; }
 .story-editor .refresh-img-btn { background:none;border:none;color:var(--color-muted);cursor:pointer;display:flex;align-items:center;justify-content:center;width:24px;height:24px;border-radius:6px;transition:all .15s;padding:0; }
 .story-editor .refresh-img-btn:hover { color:var(--color-info);background:rgba(59,130,246,.08); }
 .story-editor .refresh-img-btn.loading { animation:spin 1s linear infinite; }
+.verify-panel { padding:1rem 1.25rem;border-radius:12px;border:1px solid var(--color-border);background:var(--color-surface); }
+.verify-story { padding:.65rem .85rem;border-radius:8px;margin-bottom:.5rem;display:flex;align-items:flex-start;gap:.65rem; }
+.verify-story.high { background:rgba(0,212,126,.06);border:1px solid rgba(0,212,126,.15); }
+.verify-story.medium { background:rgba(245,158,11,.06);border:1px solid rgba(245,158,11,.15); }
+.verify-story.low { background:rgba(239,68,68,.06);border:1px solid rgba(239,68,68,.15); }
+.verify-badge { flex-shrink:0;width:20px;height:20px;border-radius:50%;display:flex;align-items:center;justify-content:center;font-size:.7rem;font-weight:700;color:#fff;margin-top:.1rem; }
+.verify-badge.high { background:var(--color-success); }
+.verify-badge.medium { background:var(--color-warning); }
+.verify-badge.low { background:var(--color-danger); }
+.verify-headline { font-size:.82rem;font-weight:600;color:var(--color-heading); }
+.verify-issues { font-size:.78rem;color:var(--color-body);margin-top:.2rem;line-height:1.5; }
+.verify-issues li { margin-bottom:.15rem; }
 .story-fields { display: grid; gap: .75rem; }
 .story-fields.collapsed { display: none; }
 
@@ -396,6 +408,7 @@ textarea.form-input { resize: vertical; min-height: 80px; line-height: 1.6; }
             <button class="btn btn-secondary" onclick="previewNewsletter()">Preview</button>
             <button class="btn btn-secondary" onclick="copyNewsletterHtml()" id="copyHtmlBtn" title="Copy rendered HTML for pasting into GHL">Copy HTML</button>
             <button class="btn btn-secondary" onclick="saveDraft()">Save Draft</button>
+            <button class="btn btn-secondary" onclick="verifyFacts()" id="verifyBtn" title="Fact-check stories against sources"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="vertical-align:-2px;margin-right:.25rem;"><path d="M9 12l2 2 4-4"/><path d="M12 3a9 9 0 1 0 0 18 9 9 0 0 0 0-18z"/></svg>Verify</button>
             <button class="btn btn-primary" onclick="confirmSend()" id="sendBtn" disabled>Send...</button>
           </div>
         </div>
@@ -449,6 +462,9 @@ textarea.form-input { resize: vertical; min-height: 80px; line-height: 1.6; }
         </div>
 
         <!-- Stories 1-5 -->
+        <!-- Verification Results -->
+        <div id="verifyResults" style="display:none;margin-top:1rem;"></div>
+
         <h3 style="font-size:.95rem;margin:1.25rem 0 .75rem;">Stories</h3>
         <div id="storiesContainer"></div>
 
@@ -975,6 +991,77 @@ async function refreshStoryImage(index) {
 }
 window.refreshStoryImage = refreshStoryImage;
 
+// ---- Fact Verification ----
+async function verifyFacts() {
+  if (!currentEditionId) { toast('Save as draft first', 'error'); return; }
+
+  // Save draft first so server has latest content
+  try {
+    var data = gatherContent();
+    await apiAction('update_record', 'newsletters', {
+      subject: data.subject,
+      preview_text: data.preview_text,
+      content: data.content
+    }, { id: currentEditionId });
+  } catch (e) { /* continue anyway */ }
+
+  var btn = document.getElementById('verifyBtn');
+  btn.disabled = true;
+  btn.innerHTML = '<svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" style="vertical-align:-2px;margin-right:.25rem;animation:spin 1s linear infinite;"><path d="M21 12a9 9 0 0 0-9-9 9.75 9.75 0 0 0-6.74 2.74L3 8"/><path d="M3 3v5h5"/></svg>Verifying...';
+
+  var resultsEl = document.getElementById('verifyResults');
+  resultsEl.style.display = 'block';
+  resultsEl.innerHTML = '<div class="verify-panel"><div style="display:flex;align-items:center;gap:.5rem;"><div class="research-spinner"></div><div style="font-size:.85rem;font-weight:600;color:var(--color-heading);">Fact-checking stories against sources...</div></div></div>';
+
+  try {
+    var resp = await fetch('/api/newsletter-verify', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ newsletter_id: currentEditionId })
+    });
+    var result = await resp.json();
+    if (!resp.ok) throw new Error(result.error || 'Verification failed');
+
+    var checks = result.results || [];
+    var icons = { high: '\u2713', medium: '!', low: '\u2717' };
+
+    var html = '<div class="verify-panel">' +
+      '<div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:.75rem;">' +
+        '<h3 style="font-size:.95rem;margin:0;">Fact Check Results</h3>' +
+        '<button class="btn btn-sm btn-secondary" onclick="document.getElementById(\'verifyResults\').style.display=\'none\'">Dismiss</button>' +
+      '</div>';
+
+    checks.forEach(function(c) {
+      var conf = c.confidence || 'medium';
+      html += '<div class="verify-story ' + conf + '">';
+      html += '<div class="verify-badge ' + conf + '">' + (icons[conf] || '?') + '</div>';
+      html += '<div><div class="verify-headline">Story ' + c.story_index + ': ' + conf.charAt(0).toUpperCase() + conf.slice(1) + ' confidence</div>';
+      if (c.notes) html += '<div class="verify-issues">' + escHtml(c.notes) + '</div>';
+      if (c.issues && c.issues.length > 0) {
+        html += '<ul class="verify-issues" style="margin:.25rem 0 0;padding-left:1.2rem;">';
+        c.issues.forEach(function(issue) {
+          html += '<li>' + escHtml(issue) + '</li>';
+        });
+        html += '</ul>';
+      }
+      html += '</div></div>';
+    });
+
+    html += '</div>';
+    resultsEl.innerHTML = html;
+
+    var highCount = checks.filter(function(c) { return c.confidence === 'high'; }).length;
+    toast('Verified: ' + highCount + '/' + checks.length + ' stories high confidence');
+  } catch (e) {
+    resultsEl.innerHTML = '<div class="verify-panel" style="border-color:var(--color-danger);"><div style="color:var(--color-danger);font-size:.85rem;">Verification failed: ' + escHtml(e.message) + '</div></div>';
+    toast('Verification failed: ' + e.message, 'error');
+  } finally {
+    btn.disabled = false;
+    btn.innerHTML = '<svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="vertical-align:-2px;margin-right:.25rem;"><path d="M9 12l2 2 4-4"/><path d="M12 3a9 9 0 1 0 0 18 9 9 0 0 0 0-18z"/></svg>Verify';
+  }
+}
+window.verifyFacts = verifyFacts;
+
 function addQuickWinField(container) {
   if (!container) container = document.getElementById('quickWinsContainer');
   var idx = container.children.length;
@@ -1106,6 +1193,7 @@ function newEdition() {
   document.getElementById('generateBar').style.display = 'none';
   document.getElementById('aiResearchStatus').textContent = '';
   document.getElementById('subjectSuggestions').style.display = 'none';
+  document.getElementById('verifyResults').style.display = 'none';
 
   // Auto-set next edition number
   if (editions.length) {
