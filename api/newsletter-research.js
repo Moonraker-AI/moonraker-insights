@@ -6,11 +6,12 @@
 var sb = require('./_lib/supabase');
 var auth = require('./_lib/auth');
 
-// SerpAPI Google News search - top 5 results only, minimal fields
+// SerpAPI Google search (news tab) - num=5 limits results at API level
 async function searchNews(query, apiKey) {
-  var url = 'https://serpapi.com/search.json?engine=google_news' +
+  var url = 'https://serpapi.com/search.json?engine=google' +
     '&q=' + encodeURIComponent(query) +
-    '&gl=us&hl=en&when=1m' +
+    '&tbm=nws&num=5&tbs=qdr:m' +
+    '&gl=us&hl=en' +
     '&api_key=' + apiKey;
   try {
     var resp = await fetch(url);
@@ -18,25 +19,21 @@ async function searchNews(query, apiKey) {
       console.error('SerpAPI HTTP ' + resp.status + ' for "' + query + '"');
       return [];
     }
-    var text = await resp.text();
-    var data = JSON.parse(text);
-    text = null; // free memory
+    var data = await resp.json();
     var results = [];
     var items = data.news_results || [];
-    var limit = Math.min(items.length, 5);
-    for (var i = 0; i < limit; i++) {
+    for (var i = 0; i < items.length; i++) {
       var item = items[i];
       if (item.title) {
         results.push({
           title: item.title,
           snippet: (item.snippet || '').substring(0, 150),
-          source: (item.source && item.source.name) || '',
+          source: item.source || '',
           link: item.link || '',
           date: item.date || ''
         });
       }
     }
-    data = null; // free memory
     return results;
   } catch (e) {
     console.error('SerpAPI failed for "' + query + '":', e.message);
@@ -255,5 +252,6 @@ module.exports = async function handler(req, res) {
     }
   }
 };
+
 
 
