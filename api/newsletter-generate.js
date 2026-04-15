@@ -135,6 +135,7 @@ module.exports = async function handler(req, res) {
     'Return ONLY the JSON object. No markdown fences.';
 
   try {
+    console.log('Newsletter generate: calling Anthropic API...');
     var aiResp = await fetch('https://api.anthropic.com/v1/messages', {
       method: 'POST',
       headers: {
@@ -144,7 +145,7 @@ module.exports = async function handler(req, res) {
       },
       body: JSON.stringify({
         model: 'claude-sonnet-4-6',
-        max_tokens: 10000,
+        max_tokens: 6000,
         system: systemPrompt,
         messages: [{ role: 'user', content: userPrompt }],
       })
@@ -152,9 +153,11 @@ module.exports = async function handler(req, res) {
 
     if (!aiResp.ok) {
       var errBody = await aiResp.text();
+      console.error('Newsletter generate Anthropic error:', aiResp.status, errBody.substring(0, 300));
       return res.status(500).json({ error: 'Anthropic API error: ' + aiResp.status, detail: errBody.substring(0, 500) });
     }
 
+    console.log('Newsletter generate: Anthropic response OK, parsing...');
     var aiData = await aiResp.json();
 
     // Extract text from response blocks
@@ -181,7 +184,12 @@ module.exports = async function handler(req, res) {
 
     var content = JSON.parse(rawText.substring(jsonStart, jsonEnd + 1));
 
-    // Post-process: strip any em dashes that slipped through
+    console.log('Newsletter generate: Claude returned ' + content.stories.length + ' stories, processing...');
+
+    // Ensure actions are strings (Claude sometimes returns arrays)
+    content.stories.forEach(function(s) {
+      if (Array.isArray(s.actions)) s.actions = s.actions.join('\n');
+    });
     function stripEmDashes(s) {
       if (typeof s !== 'string') return s;
       return s.replace(/\u2014/g, ', ').replace(/\u2013/g, ', ').replace(/ —/g, ',').replace(/— /g, ', ').replace(/—/g, ', ');
@@ -279,5 +287,6 @@ module.exports = async function handler(req, res) {
     try { return res.status(500).json({ error: 'Fatal: ' + fatal.message }); } catch(e2) {}
   }
 };
+
 
 
