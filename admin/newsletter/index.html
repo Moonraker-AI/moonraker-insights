@@ -887,6 +887,7 @@ function storyEditorHtml(index) {
         '<div class="form-group"><label class="form-label">Image Alt Text</label>' +
           '<input type="text" class="form-input" id="s' + index + '-imagealt" placeholder="Describe the image" /></div>' +
       '</div>' +
+      '<div class="story-verify" id="storyVerify-' + index + '" style="display:none;"></div>' +
     '</div></div>';
 }
 
@@ -1158,31 +1159,36 @@ async function verifyFacts() {
     // Store checks for refine/swap functions
     window._lastVerifyChecks = checks;
 
+    // Inject results inline below each story card
     checks.forEach(function(c) {
       var conf = c.confidence || 'medium';
-      var si = (c.story_index || 1) - 1; // 0-indexed
-      html += '<div class="verify-story ' + conf + '">';
-      html += '<div class="verify-badge ' + conf + '">' + (icons[conf] || '?') + '</div>';
-      html += '<div style="flex:1;"><div class="verify-headline">Story ' + c.story_index + ': ' + conf.charAt(0).toUpperCase() + conf.slice(1) + ' confidence</div>';
-      if (c.notes) html += '<div class="verify-issues">' + escHtml(c.notes) + '</div>';
+      var si = (c.story_index || 1) - 1;
+      var storyDiv = document.getElementById('storyVerify-' + si);
+      if (!storyDiv) return;
+
+      var sh = '<div class="verify-story ' + conf + '" style="margin-top:.5rem;">';
+      sh += '<div class="verify-badge ' + conf + '">' + (icons[conf] || '?') + '</div>';
+      sh += '<div style="flex:1;"><div class="verify-headline">' + conf.charAt(0).toUpperCase() + conf.slice(1) + ' confidence</div>';
+      if (c.notes) sh += '<div class="verify-issues">' + escHtml(c.notes) + '</div>';
       if (c.issues && c.issues.length > 0) {
-        html += '<ul class="verify-issues" style="margin:.25rem 0 0;padding-left:1.2rem;">';
-        c.issues.forEach(function(issue) {
-          html += '<li>' + escHtml(issue) + '</li>';
-        });
-        html += '</ul>';
+        sh += '<ul class="verify-issues" style="margin:.25rem 0 0;padding-left:1.2rem;">';
+        c.issues.forEach(function(issue) { sh += '<li>' + escHtml(issue) + '</li>'; });
+        sh += '</ul>';
       }
       if (conf !== 'high') {
-        html += '<div class="verify-actions">';
-        html += '<button onclick="refineStory(' + si + ',' + JSON.stringify(JSON.stringify(c.notes || '')) + ')">Refine for accuracy</button>';
-        html += '<button class="swap-btn" onclick="showSwapList(' + si + ',this)">Swap story</button>';
-        html += '</div>';
-        html += '<div id="swapList-' + si + '" style="display:none;"></div>';
+        sh += '<div class="verify-actions">';
+        sh += '<button onclick="refineStory(' + si + ')">Refine for accuracy</button>';
+        sh += '<button class="swap-btn" onclick="showSwapList(' + si + ',this)">Swap story</button>';
+        sh += '</div>';
+        sh += '<div id="swapList-' + si + '" style="display:none;"></div>';
       }
-      html += '</div></div>';
+      sh += '</div></div>';
+      storyDiv.innerHTML = sh;
+      storyDiv.style.display = 'block';
     });
 
-    html += '</div>';
+    // Summary in the panel
+    html += '<p style="font-size:.82rem;color:var(--color-muted);margin:0;">Results shown below each story.</p></div>';
     resultsEl.innerHTML = html;
 
     var highCount = checks.filter(function(c) { return c.confidence === 'high'; }).length;
@@ -1198,10 +1204,17 @@ async function verifyFacts() {
 window.verifyFacts = verifyFacts;
 
 // ---- Refine Story (adjust for confidence level) ----
-async function refineStory(storyIndex, feedback) {
+async function refineStory(storyIndex) {
   var headline = document.getElementById('s' + storyIndex + '-headline').value;
   var body = document.getElementById('s' + storyIndex + '-body').value;
   if (!headline || !body) { toast('Story has no content to refine', 'error'); return; }
+
+  // Get feedback from stored verify checks
+  var feedback = '';
+  if (window._lastVerifyChecks) {
+    var check = window._lastVerifyChecks.find(function(c) { return (c.story_index || 1) - 1 === storyIndex; });
+    if (check) feedback = (check.notes || '') + ' ' + (check.issues || []).join('. ');
+  }
 
   var btn = event.target;
   var origText = btn.textContent;
@@ -1258,22 +1271,43 @@ function showSwapList(storyIndex, btn) {
 }
 window.showSwapList = showSwapList;
 
-function swapStory(storyIndex, candidateId) {
+async function swapStory(storyIndex, candidateId) {
   var candidate = researchCandidates.find(function(s) { return s.id === candidateId; });
   if (!candidate) return;
 
   // Put the candidate's data into the story form
   document.getElementById('s' + storyIndex + '-headline').value = candidate.headline || '';
-  document.getElementById('s' + storyIndex + '-body').value = candidate.summary || '';
-  document.getElementById('s' + storyIndex + '-actions').value = '';
-  document.getElementById('s' + storyIndex + '-image').value = candidate.image_url || '';
-  document.getElementById('s' + storyIndex + '-imagealt').value = candidate.image_alt || '';
+  document.getElementById('s' + storyIndex + '-body').value = '<p>' + (candidate.summary || '').replace(/\n/g, '</p><p>') + '</p>';
+  document.getElementById('s' + storyIndex + '-actions').value = 'Review the source article and identify three action items for your practice';
 
-  // Hide the swap list
+  // Search for a Pexels image for the new story
+  var imgField = document.getElementById('s' + storyIndex + '-image');
+  var altField = document.getElementById('s' + storyIndex + '-imagealt');
+  imgField.value = candidate.image_url || '';
+  altField.value = candidate.image_alt || candidate.headline || '';
+
+  if (!candidate.image_url) {
+    try {
+      var imgResp = await fetch('/api/newsletter-refresh-image', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ query: candidate.headline })
+      });
+      var imgData = await imgResp.json();
+      if (imgData.image_url) {
+        imgField.value = imgData.image_url;
+        altField.value = imgData.image_alt || '';
+      }
+    } catch (e) { /* non-fatal */ }
+  }
+
+  // Hide the swap list and clear verify status
   var listEl = document.getElementById('swapList-' + storyIndex);
   if (listEl) listEl.style.display = 'none';
+  var verifyEl = document.getElementById('storyVerify-' + storyIndex);
+  if (verifyEl) { verifyEl.style.display = 'none'; verifyEl.innerHTML = ''; }
 
-  toast('Swapped story ' + (storyIndex + 1) + ' with "' + (candidate.headline || '').substring(0, 40) + '..."');
+  toast('Swapped story ' + (storyIndex + 1) + '. Review the body and re-generate action items.');
 }
 window.swapStory = swapStory;
 
@@ -2272,6 +2306,7 @@ init();
 </script>
 </body>
 </html>
+
 
 
 
