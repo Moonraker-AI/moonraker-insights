@@ -906,23 +906,32 @@ function storyDragStart(e, index) {
   dragMoved = false;
   e.dataTransfer.effectAllowed = 'move';
 
-  // Delay minimize so browser captures ghost image from current position
-  // (sync minimize shifts card positions and breaks drag on non-first cards)
+  // Build a compact ghost image so the dragged preview is small
+  var headline = document.getElementById('s' + index + '-headline').value || '(empty)';
+  var ghostText = 'Story ' + (index + 1) + '   ' + (headline.length > 45 ? headline.substring(0, 45) + '...' : headline);
+  var ghost = document.createElement('div');
+  ghost.textContent = ghostText;
+  ghost.style.cssText = 'position:fixed;top:-500px;left:-500px;padding:10px 16px;background:#fff;border:2px solid #00D47E;border-radius:8px;font-family:Inter,sans-serif;font-size:13px;font-weight:600;color:#1E2A5E;white-space:nowrap;box-shadow:0 4px 12px rgba(0,0,0,.12);';
+  document.body.appendChild(ghost);
+  e.dataTransfer.setDragImage(ghost, 20, 20);
+  setTimeout(function() { if (ghost.parentNode) ghost.parentNode.removeChild(ghost); }, 50);
+
+  // Now minimize all cards (delayed slightly so drag is anchored)
   setTimeout(function() {
     if (!draggedEl) return;
     for (var i = 0; i < 5; i++) {
       var el = document.getElementById('story-' + i);
       if (!el) continue;
       el.classList.add('is-minimized');
-      var headline = document.getElementById('s' + i + '-headline').value || '(empty)';
+      var hl = document.getElementById('s' + i + '-headline').value || '(empty)';
       var summary = document.getElementById('dragSummary-' + i);
       if (summary) {
-        summary.textContent = headline.length > 55 ? headline.substring(0, 55) + '...' : headline;
+        summary.textContent = hl.length > 55 ? hl.substring(0, 55) + '...' : hl;
         summary.style.display = 'inline';
       }
     }
     draggedEl.classList.add('drag-source');
-  }, 20);
+  }, 30);
 }
 
 function storyDragOver(e, index) {
@@ -2162,6 +2171,7 @@ init();
 </script>
 </body>
 </html>
+
 
 
 
