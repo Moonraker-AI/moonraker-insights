@@ -1101,7 +1101,7 @@ strong { font-weight: 600; color: var(--color-heading); }
               <div style="display:flex;align-items:center;gap:.5rem;margin-bottom:.5rem;">
                 <span id="cmsPlatformIcon" style="font-size:.9rem;">&#127760;</span>
                 <span id="cmsPlatformLabel" style="font-weight:600;font-size:.85rem;color:var(--color-text-secondary);">No platform set</span>
-                <button class="btn btn-sm btn-ghost" id="btnRunScout" onclick="runWpScout()" title="Scan this WordPress site" style="white-space:nowrap;display:none;margin-left:auto;">&#128269; Scout</button>
+                <button class="btn btn-sm btn-ghost" id="btnRunScout" onclick="runCmsScout()" title="Scout this site" style="white-space:nowrap;display:none;margin-left:auto;">&#128269; Scout</button>
               </div>
               <div style="display:grid;grid-template-columns:1fr 1fr;gap:.4rem .75rem;">
                 <div style="display:flex;align-items:center;gap:.35rem;">
@@ -4980,35 +4980,74 @@ strong { font-weight: 600; color: var(--color-heading); }
     btn.innerHTML = inp.type === 'password' ? '&#128065;' : '&#128064;';
   };
 
-  window.runWpScout = async function() {
+  window.runCmsScout = async function() {
     var c = state.contact;
     if (!c || !c.website_url) { toast('Set website URL first', 'error'); return; }
-    if (!c.cms_app_password) { toast('Set an Application Password first (Users > Profile in WP admin)', 'error'); return; }
 
     var btn = document.getElementById('btnRunScout');
     btn.disabled = true; btn.innerHTML = '&#9203; Scouting...';
     var resultDiv = document.getElementById('cmsScoutResult');
 
     try {
-      var resp = await apiAction('/api/trigger-agent', 'POST', {
-        task_type: 'wp-scout',
-        payload: {
-          wp_admin_url: c.cms_login_url ? c.website_url.replace(/\/$/, '') + '/' + c.cms_login_url.replace(/^\//, '') : c.website_url.replace(/\/$/, '') + '/wp-admin',
-          wp_username: c.email,
-          wp_password: c.cms_app_password,
-          client_slug: c.slug
-        }
+      var resp = await apiAction('/api/trigger-cms-scout', 'POST', {
+        contact_id: c.id
       });
       if (resp.task_id) {
         resultDiv.style.display = 'block';
-        resultDiv.textContent = 'Scout running (task: ' + resp.task_id.substring(0, 12) + '). Check back in ~10 seconds.';
-        toast('Scout started', 'success');
+        resultDiv.innerHTML = '<span style="color:var(--color-primary);">&#9679;</span> ' + (resp.platform || 'CMS') + ' scout running (task: ' + resp.task_id.substring(0, 12) + '). Results appear here automatically.';
+        toast(resp.message || 'Scout started', 'success');
+        // Poll for completion
+        pollScoutResult(c.slug, resp.task_id);
       }
     } catch(e) {
       toast('Scout failed: ' + e.message, 'error');
     } finally {
       btn.disabled = false; btn.innerHTML = '&#128269; Scout';
     }
+  };
+
+  window.loadLatestScout = async function(slug) {
+    var resultDiv = document.getElementById('cmsScoutResult');
+    if (!resultDiv) return;
+    try {
+      var scouts = await sb('cms_scouts?client_slug=eq.' + slug + '&order=created_at.desc&limit=1&select=id,status,summary,platform,scanned_at,report');
+      if (scouts && scouts.length > 0) {
+        var s = scouts[0];
+        if (s.status === 'complete' && s.summary) {
+          resultDiv.style.display = 'block';
+          var date = s.scanned_at ? new Date(s.scanned_at).toLocaleDateString() : '';
+          resultDiv.innerHTML = '<div style="display:flex;justify-content:space-between;align-items:center;"><span>' + s.summary + '</span><span style="font-size:.7rem;color:var(--color-text-tertiary);">' + date + '</span></div>';
+          // Store for other tabs to reference
+          state.latestScout = s;
+        } else if (s.status === 'running') {
+          resultDiv.style.display = 'block';
+          resultDiv.innerHTML = '<span style="color:var(--color-primary);">&#9679;</span> Scout in progress...';
+          pollScoutResult(slug, null);
+        }
+      }
+    } catch(e) { /* silent */ }
+  };
+
+  window.pollScoutResult = function(slug, taskId) {
+    var attempts = 0;
+    var maxAttempts = 24;
+    var interval = setInterval(async function() {
+      attempts++;
+      if (attempts > maxAttempts) { clearInterval(interval); return; }
+      try {
+        var scouts = await sb('cms_scouts?client_slug=eq.' + slug + '&order=created_at.desc&limit=1&select=id,status,summary,scanned_at');
+        if (scouts && scouts.length > 0 && scouts[0].status === 'complete') {
+          clearInterval(interval);
+          var s = scouts[0];
+          var resultDiv = document.getElementById('cmsScoutResult');
+          if (resultDiv) {
+            var date = s.scanned_at ? new Date(s.scanned_at).toLocaleDateString() : '';
+            resultDiv.innerHTML = '<div style="display:flex;justify-content:space-between;align-items:center;"><span>' + s.summary + '</span><span style="font-size:.7rem;color:var(--color-text-tertiary);">' + date + '</span></div>';
+          }
+          toast('Scout complete', 'success');
+        }
+      } catch(e) { /* silent */ }
+    }, 5000);
   };
 
   window.toggleContentSection = function(section) {
@@ -5595,9 +5634,12 @@ strong { font-weight: 600; color: var(--color-heading); }
     // App Password only for WordPress
     var pwGroup = document.getElementById('cmsAppPasswordGroup');
     if (pwGroup) pwGroup.style.display = (plat === 'wordpress') ? 'flex' : 'none';
-    // Scout button only for WordPress
+    // Scout button for WordPress, Squarespace, Wix
     var scoutBtn = document.getElementById('btnRunScout');
-    if (scoutBtn) scoutBtn.style.display = (plat === 'wordpress') ? '' : 'none';
+    var scoutPlatforms = ['wordpress', 'squarespace', 'wix'];
+    if (scoutBtn) scoutBtn.style.display = scoutPlatforms.indexOf(plat) !== -1 ? '' : 'none';
+    // Load latest scout result
+    loadLatestScout(c.slug);
 
     // -- KEYWORD TARGETS (primary home) --
     var kwBadge = document.getElementById('contentKeywordsBadge');
