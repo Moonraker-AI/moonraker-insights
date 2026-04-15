@@ -5915,7 +5915,7 @@ strong { font-weight: 600; color: var(--color-heading); }
       // Poll for updates every 30s while active
       if (!window._batchPollTimer) {
         window._batchPollTimer = setInterval(function() {
-          sb('content_audit_batches?select=*&client_slug=eq.' + state.contact.slug + '&order=created_at.desc&limit=5').then(function(res) {
+          fetch(SB + '/rest/v1/content_audit_batches?select=*&client_slug=eq.' + state.contact.slug + '&order=created_at.desc&limit=5', { headers: { 'apikey': SK, 'Authorization': 'Bearer ' + SK } }).then(function(r) { return r.json(); }).then(function(res) {
             state.contentBatches = res || [];
             renderBatchAuditStatus();
             // If no longer active, stop polling and refresh pages
@@ -5924,7 +5924,7 @@ strong { font-weight: 600; color: var(--color-heading); }
               clearInterval(window._batchPollTimer);
               window._batchPollTimer = null;
               // Refresh content pages
-              sb('content_pages?select=*&contact_id=eq.' + state.contact.id + '&order=created_at.desc').then(function(cp) {
+              fetch(SB + '/rest/v1/content_pages?select=*&contact_id=eq.' + state.contact.id + '&order=created_at.desc', { headers: { 'apikey': SK, 'Authorization': 'Bearer ' + SK } }).then(function(r) { return r.json(); }).then(function(cp) {
                 state.contentPages = cp || [];
                 renderContent();
               });
@@ -6002,7 +6002,7 @@ strong { font-weight: 600; color: var(--color-heading); }
     }).then(function(r) { return r.json(); }).then(function(res) {
       if (res.success) {
         toast('Batch audit triggered for ' + res.pages_count + ' keywords', 'success');
-        sb('content_audit_batches?select=*&client_slug=eq.' + slug + '&order=created_at.desc&limit=5').then(function(batches) {
+        fetch(SB + '/rest/v1/content_audit_batches?select=*&client_slug=eq.' + slug + '&order=created_at.desc&limit=5', { headers: { 'apikey': SK, 'Authorization': 'Bearer ' + SK } }).then(function(r) { return r.json(); }).then(function(batches) {
           state.contentBatches = batches || [];
           renderBatchAuditStatus();
         });
