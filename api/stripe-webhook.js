@@ -16,6 +16,15 @@ var crypto = require('crypto');
 var sb = require('./_lib/supabase');
 var monitor = require('./_lib/monitor');
 
+function readRawBody(req) {
+  return new Promise(function(resolve, reject) {
+    var chunks = [];
+    req.on('data', function(c) { chunks.push(c); });
+    req.on('end', function() { resolve(Buffer.concat(chunks)); });
+    req.on('error', reject);
+  });
+}
+
 module.exports = async function handler(req, res) {
   if (req.method !== 'POST') return res.status(405).json({ error: 'Method not allowed' });
   if (!sb.isConfigured()) return res.status(500).json({ error: 'SUPABASE_SERVICE_ROLE_KEY not configured' });
@@ -24,48 +33,73 @@ module.exports = async function handler(req, res) {
   if (!webhookSecret) return res.status(500).json({ error: 'STRIPE_WEBHOOK_SECRET not configured' });
 
   // ── Read raw body for signature verification ──
-  var rawBody = '';
-  if (typeof req.body === 'string') {
-    rawBody = req.body;
-  } else if (Buffer.isBuffer(req.body)) {
-    rawBody = req.body.toString('utf8');
-  } else if (req.body && typeof req.body === 'object') {
-    rawBody = JSON.stringify(req.body);
+  // Reconstructing via JSON.stringify(req.body) doesn't preserve key order,
+  // whitespace, or numeric formatting — so signature verification fails
+  // against the exact bytes Stripe signed.
+  var rawBody;
+  try {
+    rawBody = await readRawBody(req);
+  } catch (e) {
+    return res.status(400).json({ error: 'Failed to read request body' });
   }
+  var rawBodyStr = rawBody.toString('utf8');
 
   // ── Verify Stripe signature ──
+  // Header format: "t=1492774577,v1=hex...,v1=hex..." (comma-separated;
+  // multiple v1 entries possible during secret rotation)
   {
     var sigHeader = req.headers['stripe-signature'] || '';
-    var parts = {};
+    var timestamp = null;
+    var signatures = [];
+
     sigHeader.split(',').forEach(function(item) {
-      var kv = item.split('=');
-      if (kv[0]) parts[kv[0].trim()] = kv[1];
+      var eq = item.indexOf('=');
+      if (eq === -1) return;
+      var key = item.substring(0, eq).trim();
+      var value = item.substring(eq + 1).trim();
+      if (key === 't') timestamp = value;
+      else if (key === 'v1') signatures.push(value);
     });
 
-    var timestamp = parts['t'];
-    var signature = parts['v1'];
-
-    if (!timestamp || !signature) {
+    if (!timestamp || signatures.length === 0) {
       return res.status(400).json({ error: 'Missing Stripe signature components' });
     }
 
-    var age = Math.abs(Date.now() / 1000 - parseInt(timestamp));
+    var ts = parseInt(timestamp, 10);
+    if (!Number.isFinite(ts)) {
+      return res.status(400).json({ error: 'Invalid webhook timestamp' });
+    }
+
+    var age = Math.abs(Date.now() / 1000 - ts);
     if (age > 300) {
       return res.status(400).json({ error: 'Webhook timestamp too old' });
     }
 
-    var payload = timestamp + '.' + rawBody;
-    var expected = crypto.createHmac('sha256', webhookSecret).update(payload).digest('hex');
+    var payload = timestamp + '.' + rawBodyStr;
+    var expectedHex = crypto.createHmac('sha256', webhookSecret).update(payload).digest('hex');
+    var expectedBuf = Buffer.from(expectedHex, 'hex');
 
-    if (expected !== signature) {
+    var valid = signatures.some(function(sig) {
+      var sigBuf;
+      try {
+        sigBuf = Buffer.from(sig, 'hex');
+      } catch (e) {
+        return false;
+      }
+      // timingSafeEqual throws on length mismatch — guard first.
+      if (sigBuf.length !== expectedBuf.length) return false;
+      return crypto.timingSafeEqual(sigBuf, expectedBuf);
+    });
+
+    if (!valid) {
       return res.status(400).json({ error: 'Invalid signature' });
     }
   }
 
-  // ── Parse event ──
+  // ── Parse event from verified raw body ──
   var event;
   try {
-    event = typeof req.body === 'object' ? req.body : JSON.parse(rawBody);
+    event = JSON.parse(rawBodyStr);
   } catch (e) {
     return res.status(400).json({ error: 'Invalid JSON' });
   }
@@ -171,6 +205,13 @@ module.exports = async function handler(req, res) {
 
   } catch (err) {
     monitor.logError('Stripe webhook', err);
-    return res.status(500).json({ error: 'Internal error', detail: err.message });
+    return res.status(500).json({ error: 'Internal error' });
   }
 };
+
+// Disable Vercel's default body parser so we can read the raw bytes that
+// Stripe actually signed. Reconstructing via JSON.stringify(req.body)
+// doesn't preserve key order, whitespace, or numeric formatting.
+// NOTE: This must be assigned AFTER `module.exports = handler` above,
+// otherwise the handler reassignment wipes it out.
+module.exports.config = { api: { bodyParser: false } };
