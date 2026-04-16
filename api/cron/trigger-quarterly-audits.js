@@ -9,17 +9,13 @@
 //
 // Vercel cron: daily at 7:00 AM ET (11:00 UTC)
 
+var auth = require('../_lib/auth');
 var sb = require('../_lib/supabase');
 
 module.exports = async function handler(req, res) {
-  // Auth: require CRON_SECRET (hard-fail if not configured)
-  var cronSecret = process.env.CRON_SECRET;
-  if (!cronSecret) return res.status(500).json({ error: 'CRON_SECRET not configured' });
-  var authHeader = req.headers['authorization'] || '';
-  var querySecret = (req.query && req.query.secret) || '';
-  if (authHeader !== 'Bearer ' + cronSecret && querySecret !== cronSecret) {
-    return res.status(401).json({ error: 'Unauthorized' });
-  }
+  // Auth: admin JWT, CRON_SECRET, or AGENT_API_KEY (timing-safe)
+  var user = await auth.requireAdminOrInternal(req, res);
+  if (!user) return;
 
   if (!sb.isConfigured()) return res.status(500).json({ error: 'SUPABASE_SERVICE_ROLE_KEY not configured' });
 

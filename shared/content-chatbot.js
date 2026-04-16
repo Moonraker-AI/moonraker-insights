@@ -58,7 +58,7 @@
               changed_by: 'client'
             }
           })
-        });
+        }).catch(function(e) { console.error('Version save failed:', e); });
       }
     }).catch(function() { /* silent */ });
 
@@ -71,7 +71,7 @@
         table: 'content_chat_messages',
         data: { content_page_id: contentPageId, role: 'user', content: messages[messages.length - 2] ? messages[messages.length - 2].content : '' }
       })
-    });
+    }).catch(function(e) { console.error('Chat message save failed:', e); });
     fetch('/api/action', {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
@@ -80,7 +80,7 @@
         table: 'content_chat_messages',
         data: { content_page_id: contentPageId, role: 'assistant', content: messages[messages.length - 1] ? messages[messages.length - 1].content : '' }
       })
-    });
+    }).catch(function(e) { console.error('Chat message save failed:', e); });
   }
 
   function init() {

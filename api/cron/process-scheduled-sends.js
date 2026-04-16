@@ -2,6 +2,7 @@
 // Runs every 5 minutes via Vercel Cron.
 // Finds newsletters with status='scheduled' and scheduled_at <= now, then sends them.
 
+var auth = require('../_lib/auth');
 var sb = require('../_lib/supabase');
 
 module.exports = async function handler(req, res) {
@@ -9,13 +10,9 @@ module.exports = async function handler(req, res) {
     return res.status(405).json({ error: 'Method not allowed' });
   }
 
-  var cronSecret = process.env.CRON_SECRET;
-  if (!cronSecret) return res.status(500).json({ error: 'CRON_SECRET not configured' });
-  var authHeader = req.headers['authorization'] || '';
-  var querySecret = (req.query && req.query.secret) || '';
-  if (authHeader !== 'Bearer ' + cronSecret && querySecret !== cronSecret) {
-    return res.status(401).json({ error: 'Unauthorized' });
-  }
+  // Auth: admin JWT, CRON_SECRET, or AGENT_API_KEY (timing-safe)
+  var user = await auth.requireAdminOrInternal(req, res);
+  if (!user) return;
 
   try {
     var now = new Date().toISOString();

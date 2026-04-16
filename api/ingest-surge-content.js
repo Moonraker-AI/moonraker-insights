@@ -13,6 +13,7 @@
  * 4. Sends team notification via Resend
  */
 
+var auth = require('./_lib/auth');
 var email = require('./_lib/email-template');
 var sb = require('./_lib/supabase');
 
@@ -21,12 +22,9 @@ module.exports = async function(req, res) {
     return res.status(405).json({ error: 'Method not allowed' });
   }
 
-  // Auth: agent must provide the shared key
-  var AGENT_KEY = process.env.AGENT_API_KEY;
-  var authHeader = req.headers.authorization || '';
-  if (!AGENT_KEY || authHeader !== 'Bearer ' + AGENT_KEY) {
-    return res.status(401).json({ error: 'Unauthorized' });
-  }
+  // Auth: admin JWT, CRON_SECRET, or AGENT_API_KEY (timing-safe)
+  var user = await auth.requireAdminOrInternal(req, res);
+  if (!user) return;
 
   var RESEND_KEY = process.env.RESEND_API_KEY;
 

@@ -2,6 +2,7 @@
 // Called every 5 minutes by Vercel Cron, or manually
 // Picks ONE pending item where scheduled_for <= now, compiles it
 
+var auth = require('../_lib/auth');
 var sb = require('../_lib/supabase');
 var monitor = require('../_lib/monitor');
 
@@ -10,14 +11,9 @@ module.exports = async function handler(req, res) {
     return res.status(405).json({ error: 'Method not allowed' });
   }
 
-  // Auth: require CRON_SECRET (hard-fail if not configured)
-  var cronSecret = process.env.CRON_SECRET;
-  if (!cronSecret) return res.status(500).json({ error: 'CRON_SECRET not configured' });
-  var authHeader = req.headers['authorization'] || '';
-  var querySecret = (req.query && req.query.secret) || '';
-  if (authHeader !== 'Bearer ' + cronSecret && querySecret !== cronSecret) {
-    return res.status(401).json({ error: 'Unauthorized' });
-  }
+  // Auth: admin JWT, CRON_SECRET, or AGENT_API_KEY (timing-safe)
+  var user = await auth.requireAdminOrInternal(req, res);
+  if (!user) return;
 
 
   if (!sb.isConfigured()) return res.status(500).json({ error: 'SUPABASE_SERVICE_ROLE_KEY not configured' });

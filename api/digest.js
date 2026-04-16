@@ -47,7 +47,7 @@ module.exports = async function handler(req, res) {
     var prevActRes = await sbGet(sb.url(), headers, 'activity_log?select=*&created_at=gte.' + prevFromStart + '&created_at=lte.' + prevToEnd + '&order=created_at.desc');
 
     // Fetch contacts created in current period
-    var newCtRes = await sbGet(sb.url(), headers, 'contacts?select=slug,practice_name,status,created_at&created_at=gte.' + fromStart + '&created_at=lte.' + toEnd + '&order=practice_name');
+    var newCtRes = await sbGet(sb.url(), headers, 'contacts?select=slug,practice_name,status,lost,created_at&created_at=gte.' + fromStart + '&created_at=lte.' + toEnd + '&order=practice_name');
 
     // Fetch all contacts for name lookups
     var allCtRes = await sbGet(sb.url(), headers, 'contacts?select=id,slug,practice_name,status');
@@ -61,7 +61,7 @@ module.exports = async function handler(req, res) {
     // Classify new contacts - three-tier pipeline
     var leads = newCtRes.filter(function(c) { return c.status === 'lead'; });
     var proposals = newCtRes.filter(function(c) { return c.status === 'prospect'; });
-    var signups = newCtRes.filter(function(c) { return c.status === 'onboarding' || c.status === 'active'; });
+    var signups = newCtRes.filter(function(c) { return (c.status === 'onboarding' || c.status === 'active') && !c.lost; });
 
     // Group activities by client
     var byClient = {};

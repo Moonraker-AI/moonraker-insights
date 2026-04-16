@@ -11,16 +11,13 @@
  * When all pages in a batch are processed, marks batch as 'complete'.
  */
 
+var auth = require('../_lib/auth');
 var sb = require('../_lib/supabase');
 
 module.exports = async function(req, res) {
-  // Cron auth (hard-fail if not configured)
-  var cronSecret = process.env.CRON_SECRET;
-  if (!cronSecret) return res.status(500).json({ error: 'CRON_SECRET not configured' });
-  var authHeader = req.headers.authorization || '';
-  if (authHeader !== 'Bearer ' + cronSecret) {
-    return res.status(401).json({ error: 'Unauthorized' });
-  }
+  // Auth: admin JWT, CRON_SECRET, or AGENT_API_KEY (timing-safe)
+  var user = await auth.requireAdminOrInternal(req, res);
+  if (!user) return;
 
   if (!sb.isConfigured()) return res.status(500).json({ error: 'Not configured' });
 

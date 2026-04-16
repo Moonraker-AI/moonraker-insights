@@ -48,7 +48,7 @@ module.exports = async function handler(req, res) {
       if (!data) return res.status(400).json({ error: 'data required' });
       var r = await fetch(baseUrl, { method: 'POST', headers: headers, body: JSON.stringify(data) });
       var result = await r.json();
-      if (!r.ok) return res.status(r.status).json({ error: 'Database error', detail: result });
+      if (!r.ok) { console.error('onboarding create error:', JSON.stringify(result)); return res.status(r.status).json({ error: 'Database write failed' }); }
       return res.status(201).json({ success: true, action: 'created', data: result });
     }
 
@@ -57,7 +57,7 @@ module.exports = async function handler(req, res) {
       var fp = buildFilter(filters);
       var r2 = await fetch(baseUrl + '?' + fp, { method: 'PATCH', headers: headers, body: JSON.stringify(data) });
       var result2 = await r2.json();
-      if (!r2.ok) return res.status(r2.status).json({ error: 'Database error', detail: result2 });
+      if (!r2.ok) { console.error('onboarding update error:', JSON.stringify(result2)); return res.status(r2.status).json({ error: 'Database update failed' }); }
       return res.status(200).json({ success: true, action: 'updated', data: result2 });
     }
 

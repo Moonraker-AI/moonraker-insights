@@ -46,7 +46,7 @@ module.exports = async function handler(req, res) {
       if (isCredentials) data = crypt.encryptFields(data, crypt.SENSITIVE_FIELDS);
       var r = await fetch(baseUrl, { method: 'POST', headers: headers, body: JSON.stringify(data) });
       var result = await r.json();
-      if (!r.ok) return res.status(r.status).json({ error: 'Supabase error', detail: result });
+      if (!r.ok) { console.error('action create error:', JSON.stringify(result)); return res.status(r.status).json({ error: 'Database write failed' }); }
       if (isCredentials) result = crypt.decryptFields(result, crypt.SENSITIVE_FIELDS);
       return res.status(201).json({ success: true, action: 'created', data: result });
     }
@@ -58,7 +58,7 @@ module.exports = async function handler(req, res) {
       var fp = buildFilter(filters);
       var r2 = await fetch(baseUrl + '?' + fp, { method: 'PATCH', headers: headers, body: JSON.stringify(data) });
       var result2 = await r2.json();
-      if (!r2.ok) return res.status(r2.status).json({ error: 'Supabase error', detail: result2 });
+      if (!r2.ok) { console.error('action update error:', JSON.stringify(result2)); return res.status(r2.status).json({ error: 'Database update failed' }); }
       if (isCredentials) result2 = crypt.decryptFields(result2, crypt.SENSITIVE_FIELDS);
       return res.status(200).json({ success: true, action: action === 'bulk_update' ? 'bulk_updated' : 'updated', count: Array.isArray(result2) ? result2.length : 1, data: result2 });
     }
@@ -75,7 +75,7 @@ module.exports = async function handler(req, res) {
 
   } catch (err) {
     console.error('Action error:', err);
-    return res.status(500).json({ error: 'Internal error', detail: err.message });
+    return res.status(500).json({ error: 'Internal error' });
   }
 };
 

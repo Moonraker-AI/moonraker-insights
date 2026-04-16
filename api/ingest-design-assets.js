@@ -4,17 +4,15 @@
 //
 // POST body: { design_spec_id, screenshots: {homepage, service, about}, computed_css, crawled_text, crawled_urls }
 
+var auth = require('./_lib/auth');
 var sb = require('./_lib/supabase');
 
 module.exports = async function(req, res) {
   if (req.method !== 'POST') return res.status(405).json({ error: 'Method not allowed' });
 
-  // Auth: agent must provide the shared key
-  var AGENT_KEY = process.env.AGENT_API_KEY;
-  var authHeader = req.headers.authorization || '';
-  if (!AGENT_KEY || authHeader !== 'Bearer ' + AGENT_KEY) {
-    return res.status(401).json({ error: 'Unauthorized' });
-  }
+  // Auth: admin JWT, CRON_SECRET, or AGENT_API_KEY (timing-safe)
+  var user = await auth.requireAdminOrInternal(req, res);
+  if (!user) return;
 
   var body = req.body;
   if (!body || !body.design_spec_id) {
