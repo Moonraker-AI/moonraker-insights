@@ -44,7 +44,10 @@ module.exports = async function handler(req, res) {
 
     // 4. Update content_pages status and set preview_url on linked deliverable
     var previewUrl = '/' + clientSlug + '/content/' + pageSlug + '/';
-    await sb.mutate('content_pages?id=eq.' + contentPageId, 'PATCH', { status: 'client_review' }, 'return=minimal');
+    var statusResult = await sb.mutate('content_pages?id=eq.' + contentPageId, 'PATCH', { status: 'client_review' });
+    if (!statusResult || statusResult.length === 0) {
+      console.error('deploy-content-preview: status transition to client_review failed for content_page ' + contentPageId);
+    }
     await sb.mutate('deliverables?content_page_id=eq.' + contentPageId, 'PATCH', { preview_url: previewUrl }, 'return=minimal');
 
     return res.status(200).json({

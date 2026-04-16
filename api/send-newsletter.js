@@ -84,10 +84,13 @@ module.exports = async function handler(req, res) {
       sendLimit = overrideLimit;
     }
 
-    // Mark as sending
-    await sb.mutate('newsletters?id=eq.' + newsletterId, 'PATCH', {
+    // Mark as sending (verify transition succeeded — CHECK constraints return [] on failure)
+    var sendingResult = await sb.mutate('newsletters?id=eq.' + newsletterId, 'PATCH', {
       status: 'sending'
     });
+    if (!sendingResult || sendingResult.length === 0) {
+      return res.status(409).json({ error: 'Newsletter status transition to sending failed — may already be sending or in invalid state' });
+    }
 
     // Fetch subscribers based on tier
     // Order: hot engagement first, then warm, then cold; oldest first within each tier
@@ -105,7 +108,10 @@ module.exports = async function handler(req, res) {
     var subscribers = await sb.query('newsletter_subscribers?' + subFilter + '&select=id,email,first_name&' + orderBy + '&limit=' + fetchLimit);
 
     if (!subscribers.length) {
-      await sb.mutate('newsletters?id=eq.' + newsletterId, 'PATCH', { status: 'draft' });
+      var draftResult = await sb.mutate('newsletters?id=eq.' + newsletterId, 'PATCH', { status: 'draft' });
+      if (!draftResult || draftResult.length === 0) {
+        console.error('send-newsletter: failed to revert newsletter ' + newsletterId + ' to draft');
+      }
       return res.status(400).json({ error: 'No subscribers match the selected tier' });
     }
 
@@ -207,14 +213,17 @@ module.exports = async function handler(req, res) {
       }
     }
 
-    // Update newsletter stats and status
+    // Update newsletter stats and status (verify — silent failure here means wrong dashboard stats)
     var finalStatus = totalSent > 0 ? 'sent' : 'failed';
-    await sb.mutate('newsletters?id=eq.' + newsletterId, 'PATCH', {
+    var finalResult = await sb.mutate('newsletters?id=eq.' + newsletterId, 'PATCH', {
       status: finalStatus,
       sent_at: new Date().toISOString(),
       stats_total_sent: (newsletter.stats_total_sent || 0) + totalSent,
       stats_bounced: (newsletter.stats_bounced || 0) + totalFailed
     });
+    if (!finalResult || finalResult.length === 0) {
+      console.error('send-newsletter: final status update to ' + finalStatus + ' failed for newsletter ' + newsletterId);
+    }
 
     // Auto-advance warm-up step after successful send
     if (warmup && warmup.enabled && totalSent > 0 && !overrideLimit) {

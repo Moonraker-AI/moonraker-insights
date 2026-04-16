@@ -70,8 +70,12 @@ module.exports = async function handler(req, res) {
   try {
     var others = await sb.query('proposals?contact_id=eq.' + contact.id + '&select=id&limit=1');
     if ((!others || others.length === 0) && contact.status === 'prospect') {
-      await sb.mutate('contacts?id=eq.' + contact.id, 'PATCH', { status: 'lead' });
-      results.contact_reset = 'lead';
+      var resetResult = await sb.mutate('contacts?id=eq.' + contact.id, 'PATCH', { status: 'lead' });
+      if (resetResult && resetResult.length > 0) {
+        results.contact_reset = 'lead';
+      } else {
+        results.contact_reset = 'failed — status transition blocked';
+      }
     }
   } catch (e) { /* optional */ }
 
