@@ -82,8 +82,9 @@ module.exports = async function handler(req, res) {
 function buildFilter(filters) {
   var parts = [];
   for (var key in filters) {
+    if (!/^[a-zA-Z_][a-zA-Z0-9_]*$/.test(key)) continue;
     var val = filters[key];
-    if (typeof val === 'string' && /^(eq|neq|gt|gte|lt|lte|like|ilike|in|is)\./i.test(val)) {
+    if (typeof val === 'string' && /^(eq|neq|gt|gte|lt|lte|is|in)\./i.test(val)) {
       parts.push(key + '=' + val);
     } else {
       parts.push(key + '=eq.' + encodeURIComponent(val));

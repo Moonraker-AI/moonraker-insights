@@ -2,9 +2,13 @@
 // Returns 200 with basic system status. Useful for uptime monitoring.
 
 var sb = require('./_lib/supabase');
-var crypt = require('./_lib/crypto');
+var auth = require('./_lib/auth');
 
 module.exports = async function handler(req, res) {
+  // Require admin or internal auth to prevent info disclosure
+  var user = await auth.requireAdminOrInternal(req, res);
+  if (!user) return;
+
   var status = { ok: true, timestamp: new Date().toISOString() };
 
   // Quick Supabase connectivity check
@@ -19,16 +23,6 @@ module.exports = async function handler(req, res) {
   } else {
     status.supabase = { ok: false, error: 'not configured' };
   }
-
-  // Check key env vars (existence only, not values)
-  status.env = {
-    supabase: !!process.env.SUPABASE_SERVICE_ROLE_KEY,
-    anthropic: !!process.env.ANTHROPIC_API_KEY,
-    github: !!process.env.GITHUB_PAT,
-    resend: !!process.env.RESEND_API_KEY,
-    agent: !!process.env.AGENT_SERVICE_URL,
-    encryption: crypt.isConfigured()
-  };
 
   return res.status(200).json(status);
 };

@@ -687,7 +687,10 @@
     h = h.replace(/\*\*(.*?)\*\*/g, '<strong>$1</strong>');
     h = h.replace(/\*(.*?)\*/g, '<em>$1</em>');
     h = h.replace(/`([^`]+)`/g, '<code>$1</code>');
-    h = h.replace(/\[([^\]]+)\]\(([^)]+)\)/g, '<a href="$2" target="_blank">$1</a>');
+    h = h.replace(/\[([^\]]+)\]\(([^)]+)\)/g, function(m, label, url) {
+      if (/^(javascript|data|vbscript):/i.test(url.replace(/&#?\w+;/g, ''))) return label;
+      return '<a href="' + url + '" target="_blank">' + label + '</a>';
+    });
     return h;
   }
 

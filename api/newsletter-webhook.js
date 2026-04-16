@@ -5,10 +5,36 @@
 // Updates newsletter_sends and newsletter_subscribers tables.
 // Configure in Resend dashboard: POST https://clients.moonraker.ai/api/newsletter-webhook
 
+var crypto = require('crypto');
 var sb = require('./_lib/supabase');
 
 module.exports = async function handler(req, res) {
   if (req.method !== 'POST') return res.status(405).json({ error: 'Method not allowed' });
+
+  // Verify Resend webhook signature
+  var webhookSecret = process.env.RESEND_WEBHOOK_SECRET;
+  if (webhookSecret) {
+    var svixId = req.headers['svix-id'];
+    var svixTimestamp = req.headers['svix-timestamp'];
+    var svixSignature = req.headers['svix-signature'];
+    if (!svixId || !svixTimestamp || !svixSignature) {
+      return res.status(401).json({ error: 'Missing webhook signature headers' });
+    }
+    var age = Math.abs(Date.now() / 1000 - parseInt(svixTimestamp));
+    if (age > 300) {
+      return res.status(401).json({ error: 'Webhook timestamp too old' });
+    }
+    var rawBody = typeof req.body === 'string' ? req.body : JSON.stringify(req.body);
+    var toSign = svixId + '.' + svixTimestamp + '.' + rawBody;
+    var secretBytes = Buffer.from(webhookSecret.replace(/^whsec_/, ''), 'base64');
+    var expected = crypto.createHmac('sha256', secretBytes).update(toSign).digest('base64');
+    var signatures = svixSignature.split(' ').map(function(s) { return s.replace(/^v1,/, ''); });
+    if (signatures.indexOf(expected) === -1) {
+      return res.status(401).json({ error: 'Invalid webhook signature' });
+    }
+  } else {
+    console.warn('RESEND_WEBHOOK_SECRET not configured -- webhook signature verification skipped');
+  }
 
   try {
     var body = req.body;

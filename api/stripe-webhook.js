@@ -21,6 +21,7 @@ module.exports = async function handler(req, res) {
   if (!sb.isConfigured()) return res.status(500).json({ error: 'SUPABASE_SERVICE_ROLE_KEY not configured' });
 
   var webhookSecret = process.env.STRIPE_WEBHOOK_SECRET;
+  if (!webhookSecret) return res.status(500).json({ error: 'STRIPE_WEBHOOK_SECRET not configured' });
 
   // ── Read raw body for signature verification ──
   var rawBody = '';
@@ -32,8 +33,8 @@ module.exports = async function handler(req, res) {
     rawBody = JSON.stringify(req.body);
   }
 
-  // ── Verify Stripe signature (if secret is configured) ──
-  if (webhookSecret) {
+  // ── Verify Stripe signature ──
+  {
     var sigHeader = req.headers['stripe-signature'] || '';
     var parts = {};
     sigHeader.split(',').forEach(function(item) {
