@@ -217,8 +217,8 @@ textarea.form-input { resize: vertical; min-height: 80px; line-height: 1.6; }
 .preview-frame { width: 100%; min-height: 600px; border: 1px solid var(--color-border); border-radius: 8px; background: #fff; }
 
 /* Toast */
-.toast { position: fixed; top: 1.25rem; left: 50%; transform: translateX(-50%); padding: .65rem 1.25rem; border-radius: 10px; font-size: .82rem; font-weight: 500; z-index: 1000; box-shadow: 0 4px 16px rgba(0,0,0,.15); opacity: 0; pointer-events: none; transition: opacity .3s; max-width: 420px; width: max-content; height: auto; text-align: center; }
-.toast.show { opacity: 1; pointer-events: auto; }
+.toast { position: fixed; top: 1.25rem; bottom: auto; left: 50%; right: auto; transform: translateX(-50%); padding: .65rem 1.25rem; border-radius: 10px; font-size: .82rem; font-weight: 500; z-index: 1000; box-shadow: 0 4px 16px rgba(0,0,0,.15); opacity: 0; pointer-events: none; transition: opacity .3s; max-width: 420px; width: max-content; text-align: center; }
+.toast.show { opacity: 1; pointer-events: auto; transform: translateX(-50%); }
 .toast.success { background: var(--color-primary-subtle); color: var(--color-primary); border: 1px solid var(--color-primary); }
 .toast.error { background: rgba(239,68,68,.1); color: var(--color-danger); border: 1px solid var(--color-danger); }
 
@@ -2250,17 +2250,14 @@ async function runAIResearch() {
     var data = await resp.json();
     if (!resp.ok) throw new Error(data.error || 'Research failed');
 
-    // Reload ALL stories from DB (preserved selected + newly added)
-    try {
-      researchCandidates = await sb('newsletter_stories', 'newsletter_id=eq.' + currentEditionId + '&order=sort_order&limit=30');
-    } catch (e) {
-      researchCandidates = data.stories || [];
-    }
+    // Merge: keep selected stories from previous batch + add new stories
+    var preserved = researchCandidates.filter(function(s) { return s.selected; });
+    var newStories = data.stories || [];
+    researchCandidates = preserved.concat(newStories);
     var dupNote = data.duplicates_removed > 0 ? ' (' + data.duplicates_removed + ' duplicates filtered)' : '';
-    var newCount = (data.stories || []).length;
-    document.getElementById('aiResearchStatus').textContent = (data.search_results_found || '?') + ' results searched, ' + newCount + ' new stories curated' + dupNote;
+    document.getElementById('aiResearchStatus').textContent = (data.search_results_found || '?') + ' results searched, ' + newStories.length + ' new stories' + (preserved.length ? ', ' + preserved.length + ' kept' : '') + dupNote;
     renderCandidates();
-    toast('Found ' + newCount + ' new stories' + dupNote);
+    toast('Found ' + newStories.length + ' new stories' + dupNote);
     loadEditions();
   } catch (e) {
     grid.innerHTML = '<div style="padding:1rem;color:var(--color-danger);font-size:.85rem;">Research failed: ' + escHtml(e.message) + '</div>';
