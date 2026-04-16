@@ -26,8 +26,13 @@ function headers() {
   };
 }
 
+function validatePath(p) {
+  if (!p || p.indexOf('..') !== -1 || p.startsWith('/')) throw new Error('Invalid path: ' + p);
+}
+
 // Read a file from the repo. Returns { content: string, sha: string }.
 async function readFile(path) {
+  validatePath(path);
   var resp = await fetch(API_BASE + path + '?ref=' + BRANCH, { headers: headers() });
   if (!resp.ok) {
     var err = new Error('GitHub readFile failed (' + resp.status + '): ' + path);
@@ -49,6 +54,7 @@ async function readTemplate(name) {
 
 // Get the SHA of a file, or null if it doesn't exist.
 async function fileSha(path) {
+  validatePath(path);
   var resp = await fetch(API_BASE + path + '?ref=' + BRANCH, { headers: headers() });
   if (!resp.ok) return null;
   var data = await resp.json();
@@ -58,6 +64,7 @@ async function fileSha(path) {
 // Create or update a file. If sha is provided, it's an update; otherwise creates new.
 // If sha is not provided, checks if the file exists first (safe upsert).
 async function pushFile(path, content, message, sha) {
+  validatePath(path);
   // If no sha provided, check if file already exists
   if (!sha) {
     sha = await fileSha(path);
@@ -89,6 +96,7 @@ async function pushFile(path, content, message, sha) {
 
 // Delete a file. Requires sha.
 async function deleteFile(path, sha, message) {
+  validatePath(path);
   if (!sha) {
     sha = await fileSha(path);
     if (!sha) return null; // File doesn't exist, nothing to delete

@@ -326,7 +326,7 @@ section{padding:3.5rem 0}
     document.getElementById('heroTitle').textContent=name+': CORE Diagnosis';
 
     // Summary (in card, like entity-audit)
-    if(scores.summary){document.getElementById('summaryText').innerHTML=scores.summary}
+    if(scores.summary){document.getElementById('summaryText').textContent=scores.summary}
 
     // Variance (matches entity-audit dark box exactly)
     var variance=audit.variance_score!=null?audit.variance_score:(scores.variance||0);

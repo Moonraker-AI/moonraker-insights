@@ -57,7 +57,7 @@ module.exports = async function handler(req, res) {
     }
 
     // Check for existing contact with this slug
-    var existing = await sb.query('contacts?slug=eq.' + slug + '&select=id&limit=1');
+    var existing = await sb.query('contacts?slug=eq.' + encodeURIComponent(slug) + '&select=id&limit=1');
     if (existing && existing.length > 0) {
       return res.status(409).json({
         error: 'duplicate',

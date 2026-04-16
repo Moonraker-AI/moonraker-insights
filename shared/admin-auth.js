@@ -14,7 +14,7 @@
 //   handles the refresh (avoids premature redirect on tab switch).
 //
 // Usage:
-//   <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2/dist/umd/supabase.min.js"></script>
+//   <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2.49.4/dist/umd/supabase.min.js"></script>
 //   <script src="/shared/admin-auth.js"></script>
 
 (function() {

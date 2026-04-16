@@ -22,7 +22,7 @@ module.exports = async function handler(req, res) {
     }
 
     try {
-      await sb.mutate('newsletter_subscribers?id=eq.' + sid, 'PATCH', {
+      await sb.mutate('newsletter_subscribers?id=eq.' + encodeURIComponent(sid), 'PATCH', {
         status: 'unsubscribed',
         unsubscribed_at: new Date().toISOString()
       });

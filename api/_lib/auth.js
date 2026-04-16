@@ -227,13 +227,13 @@ async function requireAdminOrInternal(req, res) {
 
   // Check CRON_SECRET (used by cron jobs and stripe webhook for internal calls)
   var cronSecret = process.env.CRON_SECRET;
-  if (cronSecret && token === cronSecret) {
+  if (cronSecret && cronSecret.length === token.length && nodeCrypto.timingSafeEqual(Buffer.from(token), Buffer.from(cronSecret))) {
     return { id: 'system', email: 'system@internal', role: 'internal', name: 'System' };
   }
 
   // Check AGENT_API_KEY (used by agent service callbacks)
   var agentKey = process.env.AGENT_API_KEY;
-  if (agentKey && token === agentKey) {
+  if (agentKey && agentKey.length === token.length && nodeCrypto.timingSafeEqual(Buffer.from(token), Buffer.from(agentKey))) {
     return { id: 'agent', email: 'agent@internal', role: 'agent', name: 'Agent Service' };
   }
 
