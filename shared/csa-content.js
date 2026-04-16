@@ -8,7 +8,7 @@
 //        practice_name, practice_address_line1, city, state_province, postal_code,
 //        country, plan_type, email
 //
-// Version: 2026-04 (location page added to SOW)
+// Version: 2026-04-16 (SOW aligned with actual deliverables)
 
 window.renderCSA = function(contactParam) {
     var contact = contactParam || window._onboardingContact;
@@ -144,22 +144,26 @@ window.renderCSA = function(contactParam) {
     html += '<h4>Statement of Work</h4>' +
       '<p>The following services are included in your <span class="dynamic-field">' + planLabel + '</span>:</p>' +
       '<ul>' +
+      '<li>Comprehensive entity audit using Moonraker\'s proprietary Surge platform to benchmark your digital presence</li>' +
       '<li>Project setup, tracking, and baseline reporting</li>' +
       '<li>Google Assets configuration (GBP, GA4, GSC, GTM)</li>' +
       '<li>Keyword and entities research</li>' +
       '<li>Website speed, security, and technical optimization</li>' +
-      '<li>Conversion rate optimization (Hero section)</li>' +
-      '<li>Up to 5 new and optimized website pages with custom HTML and schema</li>' +
-      '<li>Bio page creation for each therapist</li>' +
+      '<li>Conversion rate optimization (Hero section and calls to action)</li>' +
+      '<li>5 dedicated service pages with custom HTML, schema markup, and targeted FAQ sections</li>' +
+      '<li>Professional bio page creation for each therapist</li>' +
       '<li>General FAQ page</li>' +
       '<li>1 location page</li>' +
       '<li>Google Business Profile optimization</li>' +
-      '<li>Citation audit and directory listings management (15 citations + 5 data aggregators)</li>' +
-      '<li>Press release syndication (1 included, additional at $300/ea)</li>' +
+      '<li>Citation audit and listings management via BrightLocal (15 citations + data aggregators)</li>' +
+      '<li>Press release syndication across 500+ national and international news outlets (1 included, additional at $300 each)</li>' +
+      '<li>Entity Veracity Hub deployment to establish a verified knowledge base for your practice</li>' +
       '<li>LiveDrive local signal deployment</li>' +
-      '<li>Rising Tide social profile buildout and content distribution</li>' +
-      '<li>2 posts per month on 4 platforms (GBP, Facebook, LinkedIn, Quora)</li>' +
-      '<li>NEO image creation and distribution</li>' +
+      '<li>Rising Tide social profile buildout and optimization across up to 9 platforms (YouTube, LinkedIn, Facebook, Instagram, Quora, Pinterest, TikTok, X, and Google Business Profile)</li>' +
+      '<li>2 posts per month across 4 platforms: Google Business Profile, Facebook, LinkedIn, and Quora</li>' +
+      '<li>Named Entity Optimization (NEO) image creation and distribution across high-authority platforms</li>' +
+      '<li>YouTube channel creation and optimization with a curated playlist for your primary specialty</li>' +
+      '<li>Professional endorsement collection and publication on clinician bio pages</li>' +
       '<li>Monthly campaign reporting with AI-powered insights</li>' +
       '</ul>';
 
