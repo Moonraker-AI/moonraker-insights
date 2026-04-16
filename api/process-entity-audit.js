@@ -89,7 +89,7 @@ module.exports = async function handler(req, res) {
 
     var practiceName = contact.practice_name || (contact.first_name + ' ' + contact.last_name).trim();
     var slug = contact.slug;
-    var isActiveCampaign = contact.status === 'active' || contact.status === 'onboarding';
+    var isActiveCampaign = (contact.status === 'active' || contact.status === 'onboarding') && !contact.lost;
 
     send({ step: 'lookup_done', message: 'Found: ' + practiceName + ' (' + contact.status + ')' });
 
@@ -564,7 +564,7 @@ ${surgeData}`;
     send({ step: 'finalize', message: 'Finalizing...' });
 
     // Auto-deliver for lead entity audits
-    if (contact.status === 'lead' && audit.audit_tier === 'free') {
+    if (contact.status === 'lead' && !contact.lost && audit.audit_tier === 'free') {
       send({ step: 'auto_send', message: 'Sending scorecard email automatically (free lead audit)...' });
       try {
         var internalAuth = process.env.CRON_SECRET || process.env.AGENT_API_KEY || '';
@@ -583,7 +583,7 @@ ${surgeData}`;
       } catch (sendEx) {
         send({ step: 'auto_send_warning', message: 'Auto-send error: ' + sendEx.message + '. Team can send manually.' });
       }
-    } else if (contact.status === 'lead' && audit.audit_tier === 'premium') {
+    } else if (contact.status === 'lead' && !contact.lost && audit.audit_tier === 'premium') {
       // Premium lead audit: notify team to add Loom and review
       send({ step: 'notify_team', message: 'Notifying team to review premium audit...' });
       try {
@@ -610,7 +610,7 @@ ${surgeData}`;
       } catch (notifyEx) {
         send({ step: 'notify_team_warning', message: 'Team notification failed: ' + notifyEx.message });
       }
-    } else if (contact.status === 'active' && audit.audit_period !== 'initial' && audit.audit_period !== 'baseline') {
+    } else if (contact.status === 'active' && !contact.lost && audit.audit_period !== 'initial' && audit.audit_period !== 'baseline') {
       // Quarterly active client audit: notify team with variance summary
       send({ step: 'notify_team', message: 'Sending quarterly audit notification to team...' });
       try {

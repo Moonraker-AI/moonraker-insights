@@ -18,6 +18,9 @@ module.exports = async function handler(req, res) {
     return res.status(405).json({ error: 'Method not allowed' });
   }
 
+  var user = await auth.requireAdmin(req, res);
+  if (!user) return;
+
   var anthropicKey = process.env.ANTHROPIC_API_KEY;
   if (!anthropicKey) {
     return res.status(500).json({ error: 'ANTHROPIC_API_KEY not configured' });

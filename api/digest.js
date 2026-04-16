@@ -8,6 +8,9 @@ module.exports = async function handler(req, res) {
     return res.status(405).json({ error: 'Method not allowed' });
   }
 
+  var user = await auth.requireAdminOrInternal(req, res);
+  if (!user) return;
+
   var resendKey = process.env.RESEND_API_KEY;
 
   if (!resendKey) return res.status(500).json({ error: 'RESEND_API_KEY not configured' });
@@ -38,16 +41,16 @@ module.exports = async function handler(req, res) {
     var prevToEnd = prevTo.toISOString().split('T')[0] + 'T23:59:59Z';
 
     // Fetch current period activity
-    var actRes = await sbGet(supabaseUrl, headers, 'activity_log?select=*&created_at=gte.' + fromStart + '&created_at=lte.' + toEnd + '&order=created_at.desc');
+    var actRes = await sbGet(sb.url(), headers, 'activity_log?select=*&created_at=gte.' + fromStart + '&created_at=lte.' + toEnd + '&order=created_at.desc');
 
     // Fetch previous period activity for comparison
-    var prevActRes = await sbGet(supabaseUrl, headers, 'activity_log?select=*&created_at=gte.' + prevFromStart + '&created_at=lte.' + prevToEnd + '&order=created_at.desc');
+    var prevActRes = await sbGet(sb.url(), headers, 'activity_log?select=*&created_at=gte.' + prevFromStart + '&created_at=lte.' + prevToEnd + '&order=created_at.desc');
 
     // Fetch contacts created in current period
-    var newCtRes = await sbGet(supabaseUrl, headers, 'contacts?select=slug,practice_name,status,created_at&created_at=gte.' + fromStart + '&created_at=lte.' + toEnd + '&order=practice_name');
+    var newCtRes = await sbGet(sb.url(), headers, 'contacts?select=slug,practice_name,status,created_at&created_at=gte.' + fromStart + '&created_at=lte.' + toEnd + '&order=practice_name');
 
     // Fetch all contacts for name lookups
-    var allCtRes = await sbGet(supabaseUrl, headers, 'contacts?select=id,slug,practice_name,status');
+    var allCtRes = await sbGet(sb.url(), headers, 'contacts?select=id,slug,practice_name,status');
     var contactMap = {};
     allCtRes.forEach(function(c) { contactMap[c.slug] = c.practice_name; contactMap[c.id] = c.practice_name; });
 

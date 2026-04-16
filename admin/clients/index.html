@@ -2906,8 +2906,8 @@ strong { font-weight: 600; color: var(--color-heading); }
     if (!signed || !signed.document_html) return;
     var w = window.open('', '_blank', 'width=800,height=900');
     w.document.write('<html><head><title>Signed CSA - ' + esc(state.contact.practice_name || state.contact.slug) + '</title>');
-    w.document.write('<style>body{font-family:Inter,sans-serif;max-width:800px;margin:2rem auto;padding:0 2rem;color:#1a1a2e;line-height:1.7;font-size:.9rem;}h1,h2,h3{font-family:Outfit,sans-serif;}p{margin:.5rem 0;}</style></head><body>');
-    w.document.write(signed.document_html);
+    w.document.write('<style>body{font-family:Inter,sans-serif;max-width:800px;margin:2rem auto;padding:0 2rem;color:#1a1a2e;line-height:1.7;font-size:.9rem;}h1,h2,h3{font-family:Outfit,sans-serif;}p{margin:.5rem 0;}iframe{border:none;width:100%;min-height:60vh;}</style></head><body>');
+    w.document.write('<iframe sandbox="allow-same-origin" srcdoc="' + signed.document_html.replace(/&/g,'&amp;').replace(/"/g,'&quot;') + '"></iframe>');
     w.document.write('<hr style="margin:2rem 0;"><p><strong>Signed by:</strong> ' + esc(signed.signer_name || '') + '</p>');
     w.document.write('<p><strong>Date:</strong> ' + (signed.signed_at ? new Date(signed.signed_at).toLocaleDateString('en-US', { month: 'long', day: 'numeric', year: 'numeric' }) : '') + '</p>');
     w.document.write('</body></html>');
@@ -3372,18 +3372,17 @@ strong { font-weight: 600; color: var(--color-heading); }
   };
 
   window.deleteICKeyword = function(kwId) {
-    if (!confirm('Delete this keyword and its pending service page? Only unlocked keywords can be deleted.')) return;
-    // First delete any pending_audit content page for this keyword
+    var reason = prompt('Retire this keyword? Enter a reason (e.g. "no longer relevant", "replaced by X"):');
+    if (!reason) return;
     fetch('/api/action', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ action: 'delete_record', table: 'content_pages', filters: { tracked_keyword_id: kwId, status: 'pending_audit' } }) }).then(function() {
-      // Then delete the keyword itself
-      return fetch('/api/action', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ action: 'delete_record', table: 'tracked_keywords', filters: { id: kwId } }) });
+      return fetch('/api/action', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ action: 'update_record', table: 'tracked_keywords', filters: { id: kwId }, data: { retired_at: new Date().toISOString(), retired_reason: reason } }) });
     }).then(function(r) { return r.json(); }).then(function(res) {
       if (res.success) {
         state.contentPages = (state.contentPages || []).filter(function(cp) { return cp.tracked_keyword_id !== kwId; });
         renderKeywordForm();
         renderContent();
-      } else { alert('Failed to delete keyword'); }
-    }).catch(function() { alert('Error deleting keyword'); });
+      } else { alert('Failed to retire keyword'); }
+    }).catch(function() { alert('Error retiring keyword'); });
   };
 
   window.updateKeyword = function(kwId, field, value) {
@@ -4303,7 +4302,7 @@ strong { font-weight: 600; color: var(--color-heading); }
       var statusLabel = fu.status.charAt(0).toUpperCase() + fu.status.slice(1);
       var schedStr = fu.scheduled_for ? new Date(fu.scheduled_for).toLocaleDateString('en-US', { weekday: 'short', month: 'short', day: 'numeric' }) : 'Day ' + fu.day_offset;
       if (fu.sent_at) schedStr = 'Sent ' + new Date(fu.sent_at).toLocaleDateString('en-US', { month: 'short', day: 'numeric' });
-      w.document.write('<div class="email-card"><div class="email-header"><div><span class="email-num status-' + fu.status + '">Email ' + fu.sequence_number + ' &middot; ' + statusLabel + '</span><span class="email-meta" style="margin-left:.75rem;">' + schedStr + '</span></div><div class="email-meta"><strong>Subject:</strong> ' + (fu.subject || '(no subject)') + '</div></div>');
+      w.document.write('<div class="email-card"><div class="email-header"><div><span class="email-num status-' + fu.status + '">Email ' + fu.sequence_number + ' &middot; ' + statusLabel + '</span><span class="email-meta" style="margin-left:.75rem;">' + schedStr + '</span></div><div class="email-meta"><strong>Subject:</strong> ' + esc(fu.subject || '(no subject)') + '</div></div>');
       var escaped = (fu.body_html || '').replace(/&/g,'&amp;').replace(/"/g,'&quot;');
       w.document.write('<div style="padding:0;"><iframe srcdoc="' + escaped + '" style="width:100%;min-height:500px;border:none;" onload="this.style.height=this.contentDocument.body.scrollHeight+20+\'px\'"></iframe></div></div>');
     });
@@ -7626,7 +7625,7 @@ strong { font-weight: 600; color: var(--color-heading); }
       var statusLabel = fu.status.charAt(0).toUpperCase() + fu.status.slice(1);
       var schedStr = fu.scheduled_for ? new Date(fu.scheduled_for).toLocaleDateString('en-US', { weekday: 'short', month: 'short', day: 'numeric' }) : 'Day ' + fu.day_offset;
       if (fu.sent_at) schedStr = 'Sent ' + new Date(fu.sent_at).toLocaleDateString('en-US', { month: 'short', day: 'numeric' });
-      w.document.write('<div class="email-card"><div class="email-header"><div><span class="email-num status-' + fu.status + '">Email ' + fu.sequence_number + ' &middot; ' + statusLabel + '</span><span class="email-meta" style="margin-left:.75rem;">' + schedStr + '</span></div><div class="email-meta"><strong>Subject:</strong> ' + (fu.subject || '(no subject)') + '</div></div>');
+      w.document.write('<div class="email-card"><div class="email-header"><div><span class="email-num status-' + fu.status + '">Email ' + fu.sequence_number + ' &middot; ' + statusLabel + '</span><span class="email-meta" style="margin-left:.75rem;">' + schedStr + '</span></div><div class="email-meta"><strong>Subject:</strong> ' + esc(fu.subject || '(no subject)') + '</div></div>');
       var escaped = (fu.body_html || '').replace(/&/g,'&amp;').replace(/"/g,'&quot;');
       w.document.write('<div style="padding:0;"><iframe srcdoc="' + escaped + '" style="width:100%;min-height:500px;border:none;" onload="this.style.height=this.contentDocument.body.scrollHeight+20+\'px\'"></iframe></div></div>');
     });

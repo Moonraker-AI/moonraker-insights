@@ -14,10 +14,11 @@
 var sb = require('../_lib/supabase');
 
 module.exports = async function(req, res) {
-  // Cron auth
+  // Cron auth (hard-fail if not configured)
   var cronSecret = process.env.CRON_SECRET;
+  if (!cronSecret) return res.status(500).json({ error: 'CRON_SECRET not configured' });
   var authHeader = req.headers.authorization || '';
-  if (cronSecret && authHeader !== 'Bearer ' + cronSecret) {
+  if (authHeader !== 'Bearer ' + cronSecret) {
     return res.status(401).json({ error: 'Unauthorized' });
   }
 
