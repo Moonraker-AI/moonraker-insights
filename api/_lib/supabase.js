@@ -15,6 +15,8 @@ if (!process.env.NEXT_PUBLIC_SUPABASE_URL) {
   console.error('[supabase] CRITICAL: NEXT_PUBLIC_SUPABASE_URL is not set. All Supabase calls will throw at url() invocation.');
 }
 
+var fetchT = require('./fetch-with-timeout');
+
 var SUPABASE_URL = null;
 
 function url() {
@@ -44,10 +46,10 @@ function headers(prefer) {
 // GET request to PostgREST. Returns parsed JSON.
 // path is everything after /rest/v1/, e.g. 'contacts?slug=eq.foo&select=*&limit=1'
 async function query(path, opts) {
-  var resp = await fetch(url() + '/rest/v1/' + path, {
+  var resp = await fetchT(url() + '/rest/v1/' + path, {
     method: 'GET',
     headers: headers((opts && opts.prefer) || undefined)
-  });
+  }, (opts && opts.timeoutMs) || 10000);
   var data = await resp.json();
   if (!resp.ok) {
     var err = new Error('Supabase query error: ' + (data.message || JSON.stringify(data)));
@@ -61,12 +63,12 @@ async function query(path, opts) {
 // POST/PATCH/DELETE to PostgREST. Returns parsed JSON.
 // method: 'POST', 'PATCH', or 'DELETE'
 // prefer: e.g. 'return=representation' or 'return=minimal'
-async function mutate(path, method, body, prefer) {
-  var resp = await fetch(url() + '/rest/v1/' + path, {
+async function mutate(path, method, body, prefer, timeoutMs) {
+  var resp = await fetchT(url() + '/rest/v1/' + path, {
     method: method,
     headers: headers(prefer || 'return=representation'),
     body: body ? JSON.stringify(body) : undefined
-  });
+  }, timeoutMs || 10000);
   // For DELETE with no content or return=minimal success
   if (resp.status === 204) return null;
   var data = await resp.json();
@@ -95,3 +97,4 @@ function isConfigured() {
 }
 
 module.exports = { url, key, headers, query, mutate, one, isConfigured };
+
