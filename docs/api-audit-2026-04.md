@@ -140,8 +140,10 @@ Same `buildFilter` helper duplicated in both files. Fix together via shared `_li
 ### H3. `api/_lib/auth.js:143-145` — `rawToDer()` dead code with misleading comment
 Function returns input unchanged; `derSig` assignment is ignored. Comment claims ES256 needs DER, but `dsaEncoding: 'ieee-p1363'` handles it natively. Delete.
 
-### H4. `api/_lib/supabase.js` — no fetch timeout/retry
+### H4. `api/_lib/supabase.js` — no fetch timeout/retry ✅ RESOLVED
 `query()` and `mutate()` have no `AbortController`. PostgREST hang burns full function budget. Wrap in AbortController with 10s default + 1 retry with exponential backoff for 5xx.
+
+**Resolution (2026-04-17, commits `12c805f` + `f2a1b70`, Group B.2):** New helper `api/_lib/fetch-with-timeout.js` (`12c805f`) wraps the global `fetch()` with an `AbortController`-backed timeout. Signature matches the original closure in `compile-report.js` (`url, opts, timeoutMs`) with a 25s default and stable `Timeout after Xms:` error prefix (now includes the URL for debuggability). `supabase.js` migrated in `f2a1b70`: both `query()` and `mutate()` now call the helper with a 10s default for PostgREST calls — if the DB is degraded we fail fast rather than burning the full Vercel function budget. Both functions accept an optional timeout override: `query(path, { timeoutMs })` piggybacks on the existing `opts` object, and `mutate(path, method, body, prefer, timeoutMs)` takes an optional 5th arg so all existing 4-arg callers keep working unchanged. Retry-on-5xx intentionally not added here — it's tracked separately under Group G (operational resilience). **`fetchWithTimeout` is now the canonical HTTP client for all non-streaming routes; future work should use it by default.**
 
 ### H5. AI chat endpoints — no rate limiting ✅ RESOLVED
 `agreement-chat.js`, `content-chat.js`, `proposal-chat.js`, `report-chat.js` have zero auth and stream Claude. CORS header is browser enforcement; `curl` ignores it. Direct bill-amplification attack surface. Add IP-based rate limit + server-side Origin check that rejects empty Origin.
@@ -251,8 +253,10 @@ If `enrichment_data` (admin-written, unsanitized) contains prompt injection conv
 ### H23. `api/chat.js:184, 190` — entire admin DB dumped into system prompt every turn
 `clientData` + `clientIndex` serialized as JSON in system prompt. Every admin chat turn re-sends 10K+ tokens. Client PII (emails, phones, practice names) flows to Anthropic on every turn. Use prompt caching, or reduce to just the client being discussed.
 
-### H24. `api/compile-report.js` — 23 unbounded fetches despite having `fetchT` helper
+### H24. `api/compile-report.js` — 23 unbounded fetches despite having `fetchT` helper ✅ RESOLVED
 File defines `fetchT(url, opts, timeoutMs)` on line 87 and uses it 8 times (GSC, LocalFalcon). 23 other calls still use bare `fetch()`. Supabase queries, Claude call in retry loop, Resend sends — all can hang.
+
+**Resolution (2026-04-17, commit `0163f65`, Group B.2):** Closure-scope `fetchT` deleted; file now imports the shared `_lib/fetch-with-timeout` helper. All 21 `fetch()` sites addressed: 16 Supabase direct-REST calls migrated to `sb.query`/`sb.one`/`sb.mutate` (includes the previously closure-wrapped L571 checklist query, now using `sb.query` since the helper supports timeouts natively after H4); 3 external calls explicitly wrapped at tiered timeouts (Resend 15s at L828, GSC sites list 15s at L933, Claude 60s at L1032); the 7 pre-existing wrapped GSC/GBP/LocalFalcon call sites require no change at the invocation point — they now resolve to the module helper via the top-level `require`. Grep verification: `grep -cE '\\bfetch\\(' compile-report.js` → 0. **Behavior-preservation notes:** on the highlights DELETE+POST pair (L735 primary + L749 fallback), inner try/catches were added around each `sb.mutate` — `sb.mutate` throws on PostgREST 4xx/5xx while the previous raw `fetch` was silent-fail, so the wrap preserves the original "warn and continue" / silent-fail semantics and prevents accidental fallback-branch triggering on a failed DELETE. The non-transactional DELETE+INSERT pattern itself remains open (H27, Group E). On three Supabase sites that previously threw custom strings (`PATCH failed: …`, `INSERT failed: …`, `Status flip failed: …`), the user-facing 500 message shape stays the same (wrapping `e.message`) — only the interior detail text differs, now prefixed `Supabase mutate error:` from the shared helper.
 
 ### H25. `api/compile-report.js:1119` — `practiceName` raw-interpolated into Claude prompt ✅ RESOLVED
 Prompt injection via admin-controlled `practice_name` affects report highlights. Combined with C4, admin-JWT → content-manipulation chain.
@@ -354,8 +358,10 @@ Remove `detail: err.message`.
 ### M9. `api/submit-entity-audit.js:47` — slug race condition
 Check-then-insert TOCTOU. Depends on unique constraint existing on `contacts.slug`. Line 191 substring match on `duplicate|unique` is fragile.
 
-### M10. `api/submit-entity-audit.js:118` — no timeout on agent fetch
+### M10. `api/submit-entity-audit.js:118` — no timeout on agent fetch ✅ RESOLVED
 Full 60s if VPS agent slow.
+
+**Resolution (2026-04-17, commit `274f273`, Group B.2):** Both `fetch` sites in the file wrapped with `fetchT`. The agent POST at L125 (`AGENT_URL + '/tasks/surge-audit'`) uses a 30s timeout — the agent endpoint spawns the browser-use session but should return the `task_id` quickly; fail-fast + requeue is preferable to hanging the full Vercel budget if the VPS is slow. The Resend notification at L168 (inside the agent-failed branch) uses a 10s timeout. Grep verification: `grep -cE '\\bfetch\\(' submit-entity-audit.js` → 0.
 
 ### M11. `api/admin/deploy-to-r2.js:71` — DELETE-then-INSERT not idempotent
 Use PostgREST upsert with `Prefer: resolution=merge-duplicates`.
@@ -376,8 +382,10 @@ Prompt injection via `contact.first_name`/`last_name` if ever populated from unt
 
 **Resolution (2026-04-17, commit `60bccb8`, Group D):** Added `var sanitizer = require('./_lib/html-sanitizer');` alongside existing `sb`/`rateLimit` requires. In `buildSystemPrompt` (L153-194), wrapped `practiceName` and `therapistName` at the source (L154-155) with `sanitizer.sanitizeText(..., 200)` so the three downstream template-literal interpolations (opening line at L157, PAGE CONTEXT at L192, Therapist line at L193) are all safe by construction. Also wrapped `contact.city` and `contact.state_province` at the Location interpolation site (L194) with `sanitizer.sanitizeText(..., 100)` each. Note: `content-chat.js` is client-facing (origin-gated to `https://clients.moonraker.ai`, not admin-JWT-gated like `chat.js`), so this is a wider attack surface than M26 — the sanitization is more than defense-in-depth here.
 
-### M16. `api/process-entity-audit.js` — no AbortController on 20+ fetch calls
+### M16. `api/process-entity-audit.js` — no AbortController on 20+ fetch calls ✅ RESOLVED
 Template reads, destination checks, pushes, Claude API call on line 197. Hung fetch pushes to configured maxDuration.
+
+**Resolution (2026-04-17, commits `0d2c56d` + `2512c46`, Group B.2):** Biggest single file in B.2 — 19 `fetch` sites, split into two commits for safer rollback. **5a (`0d2c56d`):** 6 Supabase direct-REST sites migrated to `sb.*` helpers — `auditResp`/`contactResp` (L70/L80) → `sb.one`; `prevAuditResp` (L271) → `sb.query`; `updateResp` PATCH with `return=minimal` (L331) → `sb.mutate` inside a try/catch that maps the thrown error onto the original `send({step:'error'}) + res.end()` path; checklist DELETE (L357) wrapped in `try { … } catch (_e) {}` to preserve raw `fetch`'s prior silent-on-HTTP-error semantics (`sb.mutate` throws on 4xx/5xx where raw `fetch` did not); checklist POST bulk insert (L409) with success `send()` in the try body and warning `send()` in the catch — mirrors the original `if (!ok) / else` pair. The non-transactional DELETE+INSERT pattern at L357+L409 is intentionally preserved (M18 + M19 tracked under Group E). **5b (`2512c46`):** 13 external calls wrapped at tiered timeouts — Claude (L197) 60s; 3 GitHub template reads and 3 file-exists checks 15s each; 3 GitHub PUTs 30s each (large HTML payloads); internal POST to `/api/send-audit-email` (L571) 30s; 2 Resend notifications (premium-review L592 + quarterly L636) 15s each. Grep verification: `grep -cE '\\bfetch\\(' process-entity-audit.js` → 0.
 
 ### M17. `api/process-entity-audit.js` — 15+ inlined Supabase fetches bypass `_lib/supabase.js`
 Biggest holdout of consistency pattern.
@@ -676,12 +684,12 @@ _(Brought forward from Phase 7 since Chris chose "ship now" over "wait for traff
 ## Running tallies
 
 - **Critical:** 9 total (C1–C9). **Resolved: 9 ✅** (all).
-- **High:** 36 total (H1–H36). **Resolved: 20** (H5, H7, H8, H9, H10, H11, H14, H18, H19, H20, H21, H22, H25, H28, H30, H31, H33, H34, H35, H36). **Open: 16.**
-- **Medium:** 38 total (M1–M38). **Resolved: 7** (M6, M8, M13, M15, M22, M26, M38; several more likely closed via Phase 4 action-schema work — needs verification sweep). **Open: ~31.**
+- **High:** 36 total (H1–H36). **Resolved: 22** (H4, H5, H7, H8, H9, H10, H11, H14, H18, H19, H20, H21, H22, H24, H25, H28, H30, H31, H33, H34, H35, H36). **Open: 14.**
+- **Medium:** 38 total (M1–M38). **Resolved: 9** (M6, M8, M10, M13, M15, M16, M22, M26, M38; several more likely closed via Phase 4 action-schema work — needs verification sweep). **Open: ~29.**
 - **Low:** 28 total (L1–L28). **Resolved: 5** (L8, L14, L16, L26, L27-documented-only). **Open: 23.**
 - **Nit:** 6 total (N1–N6). **Open: 6.**
 
-**Total: 117 findings. Resolved: ≥41. Open: ≤76.**
+**Total: 117 findings. Resolved: ≥45. Open: ≤72.**
 
 ### Resolution log
 | Finding | Commit / Session | Date |
@@ -719,6 +727,10 @@ _(Brought forward from Phase 7 since Chris chose "ship now" over "wait for traff
 | H25 | `e4d9105` (compile-report — sanitizeText practiceName at source L120, covers prompt + 8 email/report sites, Group D) | 2026-04-17 |
 | H31 | `54153ec` (generate-content-page — sanitize 12 buildUserMessage fields, END delimiter framing on rtpba/intel/action_plan blobs, Group D) | 2026-04-17 |
 | M15 | `60bccb8` (content-chat — sanitize practiceName/therapistName at source, city/state_province at interpolation site, Group D) | 2026-04-17 |
+| H4 | helper `12c805f` + `f2a1b70` (new `_lib/fetch-with-timeout` module; `supabase.js` query/mutate wrapped at 10s default with optional `timeoutMs` override, Group B.2) | 2026-04-17 |
+| H24 | `0163f65` (compile-report — closure fetchT deleted, 16 Supabase calls migrated to sb helpers, 3 external calls wrapped, 0 bare fetch remaining, Group B.2) | 2026-04-17 |
+| M10 | `274f273` (submit-entity-audit — agent POST 30s, Resend fallback 10s, Group B.2) | 2026-04-17 |
+| M16 | `0d2c56d` (5a: 6 Supabase → sb helpers with error-shape preservation) + `2512c46` (5b: 13 external calls wrapped at tiered timeouts — Claude 60s, GitHub reads 15s / PUTs 30s, internal+Resend 15-30s, Group B.2) | 2026-04-17 |
 
 Audit was performed across five sessions reading ~11,000 lines of API route code, the eight `_lib/` modules, relevant templates, and git history for secret leakage. Unread in detail: chat system prompt bodies (low-risk content), several `send-*-email.js` / `trigger-*` / `ingest-*` routes (expected to follow already-catalogued patterns), most `api/admin/*` read-only dashboard routes. The audit is considered comprehensive for Critical and High findings; Medium/Low/Nit counts would grow modestly with further reading.
 
