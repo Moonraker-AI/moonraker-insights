@@ -83,10 +83,10 @@ module.exports = async function(req, res) {
 
         var synthStatus = body.synthesis_raw ? 'Cluster synthesis captured (' + body.synthesis_raw.length + ' chars)' : 'No synthesis generated';
         var content = email.sectionHeading(clientName) +
-          (practice ? email.p(email.esc(practice)) : '') +
-          email.p('Batch content audit complete: <strong>' + pagesProcessed + '</strong> of <strong>' + pages.length + '</strong> pages processed.' +
+          (practice ? email.pRaw(email.esc(practice)) : '') +
+          email.pRaw('Batch content audit complete: <strong>' + pagesProcessed + '</strong> of <strong>' + pages.length + '</strong> pages processed.' +
             (pagesErrors > 0 ? ' <span style="color:#EF4444">' + pagesErrors + ' error(s)</span>.' : '')) +
-          email.p(email.esc(synthStatus)) +
+          email.pRaw(email.esc(synthStatus)) +
           email.cta('https://clients.moonraker.ai/admin/clients?slug=' + batch.client_slug, 'View Content Tab');
 
         await fetch('https://api.resend.com/emails', {

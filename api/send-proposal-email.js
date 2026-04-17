@@ -87,14 +87,14 @@ module.exports = async function handler(req, res) {
 function buildDefaultEmail(firstName, practiceName, proposalUrl) {
   return email.wrap({
     headerLabel: 'Growth Proposal',
-    footerNote: 'Questions? Reply to this email or <a href="' + email.CALENDAR_URL + '" style="font-family:Inter,sans-serif;color:#00D47E;text-decoration:none;font-weight:500;">book a call with Scott</a>.',
+    footerNoteRaw: 'Questions? Reply to this email or <a href="' + email.CALENDAR_URL + '" style="font-family:Inter,sans-serif;color:#00D47E;text-decoration:none;font-weight:500;">book a call with Scott</a>.',
     content:
       email.greeting(firstName) +
-      email.p('Thank you for taking the time to speak with us about ' + email.esc(practiceName) + '. We have put together a personalized growth proposal based on our conversation and analysis of your current digital presence.') +
-      email.p('Inside, you will find a detailed assessment of where your practice stands today across the four pillars of our CORE framework, along with a concrete strategy and timeline for growing your visibility in both traditional search and AI-powered platforms.') +
+      email.pRaw('Thank you for taking the time to speak with us about ' + email.esc(practiceName) + '. We have put together a personalized growth proposal based on our conversation and analysis of your current digital presence.') +
+      email.pRaw('Inside, you will find a detailed assessment of where your practice stands today across the four pillars of our CORE framework, along with a concrete strategy and timeline for growing your visibility in both traditional search and AI-powered platforms.') +
       email.cta(proposalUrl, 'View Your Proposal') +
-      email.p('Feel free to take your time reviewing everything. If you have any questions, you can reply to this email and it will go directly to Scott, our Director of Growth, or you can book a follow-up call at a time that works for you.') +
+      email.pRaw('Feel free to take your time reviewing everything. If you have any questions, you can reply to this email and it will go directly to Scott, our Director of Growth, or you can book a follow-up call at a time that works for you.') +
       email.bookingButton() +
-      email.p('We are excited about the opportunity to help ' + email.esc(practiceName) + ' grow. Looking forward to hearing your thoughts.')
+      email.pRaw('We are excited about the opportunity to help ' + email.esc(practiceName) + ' grow. Looking forward to hearing your thoughts.')
   });
 }

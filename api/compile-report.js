@@ -800,12 +800,12 @@ module.exports = async function handler(req, res) {
 
       var warningHtml = '';
       if (errors.length > 0) {
-        warningHtml = email.p('<span style="color:#EF4444">Warnings: ' + email.esc(errors.join('; ')) + '</span>');
+        warningHtml = email.pRaw('<span style="color:#EF4444">Warnings: ' + email.esc(errors.join('; ')) + '</span>');
       }
 
       var content =
         email.sectionHeading(practiceName) +
-        email.p('Month ' + campaignMonth + ' report is ready for review.') +
+        email.pRaw('Month ' + campaignMonth + ' report is ready for review.') +
         (dataRows ? '<table cellpadding="0" cellspacing="0" border="0" width="100%" style="margin-bottom:20px">' + dataRows + '</table>' : '') +
         warningHtml +
         email.cta(reviewUrl, 'Review Report');

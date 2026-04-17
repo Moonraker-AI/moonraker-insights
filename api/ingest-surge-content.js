@@ -245,7 +245,7 @@ function buildNotificationHtml(cp, rtpba, taskId) {
   var content = email.sectionHeading('Surge Content Audit Complete') +
     details +
     email.divider() +
-    email.p('The content page is now ready for HTML generation in the Content tab.') +
+    email.pRaw('The content page is now ready for HTML generation in the Content tab.') +
     email.cta(clientUrl, 'Open in Client HQ');
 
   return email.wrap({

@@ -9,9 +9,15 @@
 //   var email = require('./_lib/email-template');
 //   var html = email.wrap({
 //     headerLabel: 'Growth Proposal',
+//     // New safe p() escapes its input. Use pRaw() when you're building HTML.
 //     content: email.greeting('Sarah') + email.p('Your proposal is ready.') + email.cta('https://...', 'View Proposal'),
 //     year: 2026
 //   });
+//
+// footerNote vs footerNoteRaw:
+//   footerNote:    string is HTML-escaped before rendering (safe default).
+//   footerNoteRaw: string is rendered as-is (for footers that contain links/styles).
+//   If both are passed, footerNoteRaw wins.
 //
 // From address display names (standardized):
 //   Moonraker Proposals <proposals@clients.moonraker.ai>
@@ -45,7 +51,14 @@ function greeting(name) {
   return '<h1 style="font-family:Outfit,sans-serif;font-size:24px;font-weight:700;color:#1E2A5E;margin:0 0 16px;">Hi ' + esc(name) + ',</h1>';
 }
 
+// Renders text inside a <p> with HTML-escaping. Use this by default.
 function p(text) {
+  return '<p style="font-family:Inter,sans-serif;font-size:15px;color:#333F70;line-height:1.7;margin:0 0 16px;">' + esc(text) + '</p>';
+}
+
+// Renders text inside a <p> as raw HTML. Use only when caller is building HTML
+// (e.g. concatenating <strong> tags, pre-escaped fragments, or &bull; entities).
+function pRaw(text) {
   return '<p style="font-family:Inter,sans-serif;font-size:15px;color:#333F70;line-height:1.7;margin:0 0 16px;">' + text + '</p>';
 }
 
@@ -132,7 +145,11 @@ function statCards(items) {
 function wrap(options) {
   var headerLabel = options.headerLabel || '';
   var content = options.content || '';
-  var footerNote = options.footerNote || '';
+  // footerNoteRaw: raw HTML (use for footers with links/styles).
+  // footerNote: plain text, escaped before rendering.
+  // footerNoteRaw wins if both are present.
+  var footerNoteRaw = options.footerNoteRaw || '';
+  var footerNote = footerNoteRaw || (options.footerNote ? esc(options.footerNote) : '');
   var year = options.year || new Date().getFullYear();
 
   return '<!DOCTYPE html><html><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1.0">' +
@@ -177,6 +194,7 @@ module.exports = {
   wrap: wrap,
   greeting: greeting,
   p: p,
+  pRaw: pRaw,
   cta: cta,
   secondaryCta: secondaryCta,
   bookingButton: bookingButton,

@@ -102,7 +102,7 @@ function clientHeader(contact, clientName) {
   var location = [contact.city, contact.state_province].filter(Boolean).join(', ');
   return email.sectionHeading(clientName.trim()) +
     (practice || location
-      ? email.p(email.esc(practice) + (practice && location ? ' \u00B7 ' : '') + email.esc(location))
+      ? email.pRaw(email.esc(practice) + (practice && location ? ' \u00B7 ' : '') + email.esc(location))
       : '');
 }
 
@@ -125,7 +125,7 @@ function buildPaymentContent(contact, clientName, deepDiveUrl) {
   var plan = contact.plan_type || 'CORE Marketing System';
   var location = [contact.city, contact.state_province].filter(Boolean).join(', ');
   return clientHeader(contact, clientName) +
-    email.p('Payment received. Status moved to <strong style="color:#00D47E">Onboarding</strong>. Onboarding steps, intro call checklist, and deliverables have been automatically seeded.') +
+    email.pRaw('Payment received. Status moved to <strong style="color:#00D47E">Onboarding</strong>. Onboarding steps, intro call checklist, and deliverables have been automatically seeded.') +
     detailTable([['Plan', plan], ['Email', contact.email || ''], ['Location', location]]) +
     email.cta(deepDiveUrl, 'View Client');
 }
@@ -164,19 +164,19 @@ function buildIntroCallContent(contact, clientName, deepDiveUrl, steps) {
 
   var warningHtml = '';
   if (pending > 0) {
-    warningHtml = email.p('<span style="color:#D97706">\u26A0\uFE0F ' + pending + ' task' + (pending > 1 ? 's' : '') + ' still need' + (pending === 1 ? 's' : '') + ' attention.</span>');
+    warningHtml = email.pRaw('<span style="color:#D97706">\u26A0\uFE0F ' + pending + ' task' + (pending > 1 ? 's' : '') + ' still need' + (pending === 1 ? 's' : '') + ' attention.</span>');
   }
 
   return clientHeader(contact, clientName) +
-    email.p('The intro call has been completed. Below is the checklist summary.') +
+    email.pRaw('The intro call has been completed. Below is the checklist summary.') +
     checklistHtml + warningHtml +
     email.cta(deepDiveUrl, 'View Client');
 }
 
 function buildOnboardingContent(contact, clientName, deepDiveUrl) {
   return clientHeader(contact, clientName) +
-    email.p('All onboarding steps are complete. Status promoted to <strong style="color:#00D47E">Active</strong>. The client is now ready for ongoing campaign work, reporting, and deliverables.') +
-    email.p('<span style="color:#6B7599;font-size:13px">Monthly report scheduling can now be configured in the Reports tab.</span>') +
+    email.pRaw('All onboarding steps are complete. Status promoted to <strong style="color:#00D47E">Active</strong>. The client is now ready for ongoing campaign work, reporting, and deliverables.') +
+    email.pRaw('<span style="color:#6B7599;font-size:13px">Monthly report scheduling can now be configured in the Reports tab.</span>') +
     email.cta(deepDiveUrl, 'View Client');
 }
 
@@ -196,11 +196,11 @@ function buildReferralContent(contact, clientName, deepDiveUrl, partner, partner
   if (partnerEmail) rows.push(['Partner Email', partnerEmail]);
 
   return clientHeader(contact, clientName) +
-    email.p('A referral partner has been logged for this client. Below are the details for commission payout.') +
+    email.pRaw('A referral partner has been logged for this client. Below are the details for commission payout.') +
     email.divider() +
     email.sectionHeading('Referral Payout Details') +
     detailTable(rows) +
-    email.p('<span style="color:#D97706;font-weight:600">Action needed:</span> Send the referral partner their 10% commission of the first payment.') +
+    email.pRaw('<span style="color:#D97706;font-weight:600">Action needed:</span> Send the referral partner their 10% commission of the first payment.') +
     email.cta(deepDiveUrl, 'View Client');
 }
 

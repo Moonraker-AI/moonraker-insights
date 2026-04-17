@@ -82,9 +82,9 @@ module.exports = async function handler(req, res) {
     // Compose email
     var practiceRef = practiceName ? ' for <strong style="color:#1E2A5E;">' + email.esc(practiceName) + '</strong>' : '';
     var content = email.greeting(firstName || 'there') +
-      email.p('Your CORE Entity Audit' + practiceRef + ' is ready. This report evaluates your practice\'s digital presence across four key areas: Credibility, Optimization, Reputation, and Engagement.') +
+      email.pRaw('Your CORE Entity Audit' + practiceRef + ' is ready. This report evaluates your practice\'s digital presence across four key areas: Credibility, Optimization, Reputation, and Engagement.') +
       overallHtml + scoreCardsHtml +
-      email.p('Your scorecard includes a detailed breakdown of each area with specific findings and recommendations for improvement.') +
+      email.pRaw('Your scorecard includes a detailed breakdown of each area with specific findings and recommendations for improvement.') +
       email.cta(scorecardUrl, 'View Your Scorecard');
 
     var htmlBody = email.wrap({
@@ -175,7 +175,7 @@ module.exports = async function handler(req, res) {
 // ── Follow-up email builders ──
 
 function signoff(text) {
-  return email.p(text) +
+  return email.pRaw(text) +
     '<p style="font-family:Inter,sans-serif;font-size:15px;color:#1E2A5E;line-height:1.7;margin:0;">Scott Pope</p>' +
     '<p style="font-family:Inter,sans-serif;font-size:13px;color:#6B7599;line-height:1.5;margin:0;">Director of Growth, Moonraker AI</p>';
 }
@@ -184,7 +184,7 @@ function wrapFollowup(content) {
   return email.wrap({
     headerLabel: 'CORE Entity Audit',
     content: content,
-    footerNote: FOOTER_NOTE,
+    footerNoteRaw: FOOTER_NOTE,
     year: new Date().getFullYear()
   });
 }
@@ -231,12 +231,12 @@ function buildEmail1(firstName, practiceName, cres, weakest, scorecardUrl, booki
   var weakColor = fuScoreColor(weakest.score);
 
   var content = email.greeting(firstName || 'there') +
-    email.p('I wanted to follow up and make sure you had a chance to look over the entity audit we put together for ' + email.esc(practiceName || 'your practice') + '.') +
-    email.p('Your CRES Score came in at <strong style="color:' + cresColor + ';">' + cres + '/40</strong>. The area with the most room for improvement is <strong>' + email.esc(weakest.label) + '</strong>, which scored <strong style="color:' + weakColor + ';">' + weakest.score + '/10</strong>.') +
-    email.p('This is actually one of the most common patterns we see with therapy practices. The good news is that ' + email.esc(weakest.label).toLowerCase() + ' improvements tend to show measurable results within the first 60 to 90 days.') +
-    email.p('If you have any questions about the scorecard, I am happy to walk through it with you:') +
+    email.pRaw('I wanted to follow up and make sure you had a chance to look over the entity audit we put together for ' + email.esc(practiceName || 'your practice') + '.') +
+    email.pRaw('Your CRES Score came in at <strong style="color:' + cresColor + ';">' + cres + '/40</strong>. The area with the most room for improvement is <strong>' + email.esc(weakest.label) + '</strong>, which scored <strong style="color:' + weakColor + ';">' + weakest.score + '/10</strong>.') +
+    email.pRaw('This is actually one of the most common patterns we see with therapy practices. The good news is that ' + email.esc(weakest.label).toLowerCase() + ' improvements tend to show measurable results within the first 60 to 90 days.') +
+    email.pRaw('If you have any questions about the scorecard, I am happy to walk through it with you:') +
     email.cta(scorecardUrl, 'View Your Scorecard') +
-    email.p('Or if you would prefer to discuss it live:') +
+    email.pRaw('Or if you would prefer to discuss it live:') +
     email.secondaryCta(bookingUrl, 'Book a Free Strategy Call') +
     signoff('Talk soon,');
 
@@ -246,21 +246,21 @@ function buildEmail1(firstName, practiceName, cres, weakest, scorecardUrl, booki
 function buildEmail2(firstName, practiceName, weakest, secondWeakest, quickWins, scorecardUrl, bookingUrl) {
   var findingsHtml = '';
   if (quickWins.length > 0) {
-    findingsHtml = email.p('Here are a couple of specific things we found:');
+    findingsHtml = email.pRaw('Here are a couple of specific things we found:');
     findingsHtml += email.sectionHeading(email.esc(weakest.label) + ' (' + weakest.score + '/10)');
     quickWins.slice(0, 3).forEach(function(qw) {
-      findingsHtml += email.p('&bull; ' + email.esc(typeof qw === 'string' ? qw : (qw.title || qw.description || '')));
+      findingsHtml += email.pRaw('&bull; ' + email.esc(typeof qw === 'string' ? qw : (qw.title || qw.description || '')));
     });
   } else {
-    findingsHtml = email.p('The two areas with the most opportunity are <strong>' + email.esc(weakest.label) + '</strong> (' + weakest.score + '/10) and <strong>' + email.esc(secondWeakest.label) + '</strong> (' + secondWeakest.score + '/10). These are the signals that AI platforms weigh most heavily when deciding which practices to recommend.');
+    findingsHtml = email.pRaw('The two areas with the most opportunity are <strong>' + email.esc(weakest.label) + '</strong> (' + weakest.score + '/10) and <strong>' + email.esc(secondWeakest.label) + '</strong> (' + secondWeakest.score + '/10). These are the signals that AI platforms weigh most heavily when deciding which practices to recommend.');
   }
 
   var content = email.greeting(firstName || 'there') +
-    email.p('I wanted to share a bit more context on what we found in your entity audit.') +
+    email.pRaw('I wanted to share a bit more context on what we found in your entity audit.') +
     findingsHtml +
-    email.p('The reason this matters: when AI platforms like Google AI Overviews, ChatGPT, and Gemini recommend therapists, they pull from the same signals we measured in your audit. A lower ' + email.esc(weakest.label).toLowerCase() + ' score means those platforms have less confidence when deciding whether to recommend your practice.') +
-    email.p('We have seen practices go from not appearing in AI results at all to being recommended consistently within 3 to 4 months of addressing these areas.') +
-    email.p('Would it be helpful to walk through exactly what we would prioritize if we were working together?') +
+    email.pRaw('The reason this matters: when AI platforms like Google AI Overviews, ChatGPT, and Gemini recommend therapists, they pull from the same signals we measured in your audit. A lower ' + email.esc(weakest.label).toLowerCase() + ' score means those platforms have less confidence when deciding whether to recommend your practice.') +
+    email.pRaw('We have seen practices go from not appearing in AI results at all to being recommended consistently within 3 to 4 months of addressing these areas.') +
+    email.pRaw('Would it be helpful to walk through exactly what we would prioritize if we were working together?') +
     email.cta(bookingUrl, 'Book a Free Strategy Call') +
     signoff('Best,');
 
@@ -269,16 +269,16 @@ function buildEmail2(firstName, practiceName, weakest, secondWeakest, quickWins,
 
 function buildEmail3(firstName, practiceName, cres, strongest, weakest, bookingUrl) {
   var content = email.greeting(firstName || 'there') +
-    email.p('I know things get busy, so I will keep this short.') +
-    email.p('Based on your audit, here is what the first 90 days would look like if we worked together:') +
+    email.pRaw('I know things get busy, so I will keep this short.') +
+    email.pRaw('Based on your audit, here is what the first 90 days would look like if we worked together:') +
     email.sectionHeading('Month 1: Foundation') +
-    email.p('We would address the ' + email.esc(weakest.label).toLowerCase() + ' gaps that are currently holding back your visibility. This includes the technical setup that tells Google and AI platforms you are a legitimate, qualified practice.') +
+    email.pRaw('We would address the ' + email.esc(weakest.label).toLowerCase() + ' gaps that are currently holding back your visibility. This includes the technical setup that tells Google and AI platforms you are a legitimate, qualified practice.') +
     email.sectionHeading('Month 2: Authority') +
-    email.p('We would start creating and distributing content that establishes you as an expert in your specialties. Your ' + email.esc(strongest.label).toLowerCase() + ' score of ' + strongest.score + '/10 shows you already have a strong base to build on.') +
+    email.pRaw('We would start creating and distributing content that establishes you as an expert in your specialties. Your ' + email.esc(strongest.label).toLowerCase() + ' score of ' + strongest.score + '/10 shows you already have a strong base to build on.') +
     email.sectionHeading('Month 3: Optimize') +
-    email.p('By this point, most practices start seeing movement in their local search rankings, AI visibility, and new patient inquiries.') +
-    email.p('We back this with a performance guarantee for annual clients: if we do not hit our shared goal in 12 months, we continue working for free until you get there.') +
-    email.p('If you are interested in learning more, I would love to chat:') +
+    email.pRaw('By this point, most practices start seeing movement in their local search rankings, AI visibility, and new patient inquiries.') +
+    email.pRaw('We back this with a performance guarantee for annual clients: if we do not hit our shared goal in 12 months, we continue working for free until you get there.') +
+    email.pRaw('If you are interested in learning more, I would love to chat:') +
     email.cta(bookingUrl, 'Book a Free Strategy Call') +
     signoff('All the best,');
 
