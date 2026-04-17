@@ -143,8 +143,8 @@ section { padding: 4.5rem 0; }
 .renewal-cta::after { content: ''; position: absolute; bottom: -150px; right: -120px; width: 420px; height: 420px; background: radial-gradient(circle, rgba(0,212,126,.10) 0%, transparent 70%); pointer-events: none; }
 .renewal-cta h2 { color: #E8F5EF; font-size: 1.85rem; margin-bottom: .65rem; position: relative; z-index: 1; }
 .renewal-cta p { color: rgba(232,245,239,.75); font-size: 1rem; max-width: 540px; margin: 0 auto 1.5rem; position: relative; z-index: 1; }
-.cta-button { display: inline-flex; align-items: center; gap: .5rem; background: var(--color-primary); color: #0A1630; font-family: 'Outfit', sans-serif; font-weight: 700; font-size: .9375rem; padding: .85rem 1.75rem; border-radius: 10px; text-decoration: none; transition: all .25s; position: relative; z-index: 1; }
-.cta-button:hover { background: var(--color-primary-hover); color: #0A1630; transform: translateY(-1px); box-shadow: 0 6px 18px rgba(0,212,126,.35); }
+.cta-button { display: inline-flex; align-items: center; gap: .5rem; background: var(--color-primary); color: #FFFFFF; font-family: 'Outfit', sans-serif; font-weight: 700; font-size: .9375rem; padding: .85rem 1.75rem; border-radius: 10px; text-decoration: none; transition: all .25s; position: relative; z-index: 1; }
+.cta-button:hover { background: var(--color-primary-hover); color: #FFFFFF; transform: translateY(-1px); box-shadow: 0 6px 18px rgba(0,212,126,.35); }
 
 /* Loading + empty */
 .loading-wrap { padding: 6rem 0; text-align: center; }
@@ -239,7 +239,7 @@ section { padding: 4.5rem 0; }
         <div class="chart-legend">
           <span><span class="swatch" style="background:#00D47E"></span>Bookings (left axis)</span>
           <span><span class="swatch" style="background:#3B82F6"></span>Cancellations (left axis)</span>
-          <span id="clicksLegend" class="hidden"><span class="swatch line" style="color:#1E2A5E"></span>Organic clicks (right axis)</span>
+          <span id="clicksLegend" class="hidden"><span class="swatch line" style="color:#141C3A"></span>Organic clicks (right axis)</span>
         </div>
         <div class="chart-canvas-wrap">
           <canvas id="bookingsChart" role="img" aria-label="Monthly bookings, cancellations, and organic clicks across the engagement window"></canvas>
@@ -265,7 +265,7 @@ section { padding: 4.5rem 0; }
         </div>
         <div class="chart-legend">
           <span><span class="swatch" style="background:#00D47E"></span>Impressions (left axis)</span>
-          <span><span class="swatch line" style="color:#1E2A5E"></span>Average position (right axis, inverted)</span>
+          <span><span class="swatch line" style="color:#141C3A"></span>Average position (right axis, inverted)</span>
         </div>
         <div class="chart-canvas-wrap">
           <canvas id="gscChart" role="img" aria-label="Monthly impressions and average position trend from Google Search Console"></canvas>
@@ -384,6 +384,13 @@ section { padding: 4.5rem 0; }
     return String(s == null ? '' : s).replace(/[&<>"']/g, function(c) {
       return { '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c];
     });
+  }
+  // Strong dark navy in light mode, near-white in dark mode. Avoids the
+  // brittle getComputedStyle CSS-var lookup (which can resolve too late
+  // and leave Chart.js with its faded default color).
+  function lineColor() {
+    return document.documentElement.getAttribute('data-theme') === 'dark'
+      ? '#E8F5EF' : '#141C3A';
   }
   function showError(msg) {
     document.getElementById('loadingState').classList.add('hidden');
@@ -557,11 +564,12 @@ section { padding: 4.5rem 0; }
         type: 'line',
         label: 'Organic clicks',
         data: clicksAligned,
-        borderColor: getComputedStyle(document.documentElement).getPropertyValue('--color-heading').trim() || '#1E2A5E',
-        backgroundColor: 'transparent',
-        borderDash: [6, 4],
-        borderWidth: 2,
-        pointRadius: 3,
+        borderColor: lineColor(),
+        backgroundColor: lineColor(),
+        borderDash: [5, 3],
+        borderWidth: 2.5,
+        pointRadius: 3.5,
+        pointHoverRadius: 5,
         pointStyle: 'rect',
         tension: 0.25,
         yAxisID: 'y1',
@@ -656,11 +664,12 @@ section { padding: 4.5rem 0; }
             type: 'line',
             label: 'Avg position',
             data: pos,
-            borderColor: getComputedStyle(document.documentElement).getPropertyValue('--color-heading').trim() || '#1E2A5E',
-            backgroundColor: 'transparent',
-            borderDash: [6, 4],
-            borderWidth: 2,
-            pointRadius: 3,
+            borderColor: lineColor(),
+            backgroundColor: lineColor(),
+            borderDash: [5, 3],
+            borderWidth: 2.5,
+            pointRadius: 3.5,
+            pointHoverRadius: 5,
             pointStyle: 'rect',
             tension: 0.25,
             yAxisID: 'y1'
