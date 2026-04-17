@@ -80,8 +80,8 @@ async function critical(route, error, opts) {
         subject: 'CRITICAL: ' + route + (slug ? ' (' + slug + ')' : ''),
         html: '<div style="font-family:Inter,sans-serif;padding:20px;">' +
           '<h2 style="color:#EF4444;margin:0 0 12px;">Critical Error</h2>' +
-          '<p><strong>Route:</strong> ' + route + '</p>' +
-          (slug ? '<p><strong>Client:</strong> ' + slug + '</p>' : '') +
+          '<p><strong>Route:</strong> ' + escHtml(route) + '</p>' +
+          (slug ? '<p><strong>Client:</strong> ' + escHtml(slug) + '</p>' : '') +
           '<p><strong>Error:</strong> ' + escHtml(message) + '</p>' +
           '<p><strong>Time:</strong> ' + new Date().toISOString() + '</p>' +
           '<hr style="border:1px solid #E2E8F0;margin:16px 0;">' +
