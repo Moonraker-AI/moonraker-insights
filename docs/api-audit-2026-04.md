@@ -143,7 +143,7 @@ Function returns input unchanged; `derSig` assignment is ignored. Comment claims
 ### H4. `api/_lib/supabase.js` — no fetch timeout/retry
 `query()` and `mutate()` have no `AbortController`. PostgREST hang burns full function budget. Wrap in AbortController with 10s default + 1 retry with exponential backoff for 5xx.
 
-### H5. AI chat endpoints — no rate limiting
+### H5. AI chat endpoints — no rate limiting ✅ RESOLVED
 `agreement-chat.js`, `content-chat.js`, `proposal-chat.js`, `report-chat.js` have zero auth and stream Claude. CORS header is browser enforcement; `curl` ignores it. Direct bill-amplification attack surface. Add IP-based rate limit + server-side Origin check that rejects empty Origin.
 
 ### H6. `api/stripe-webhook.js:129-148` — fire-and-forget HTTP calls
@@ -157,7 +157,7 @@ Throw if env var unset instead of falling back.
 
 **Resolution (2026-04-17, commit `330e6da`):** Fallback string removed. `url()` now throws `'NEXT_PUBLIC_SUPABASE_URL not configured'` on first call if env var is unset. Module-load `console.error` surfaces the gap in Vercel logs before the first route hits `url()`. Mirrors the H9/H10/C5 pattern. `NEXT_PUBLIC_SUPABASE_URL` verified set across production/preview/development prior to removing the fallback.
 
-### H8. `api/_lib/crypto.js:45` — decrypt returns literal error strings as values
+### H8. `api/_lib/crypto.js:45` — decrypt returns literal error strings as values ✅ RESOLVED
 `'[encrypted - key not available]'` and `'[decryption failed]'` flow back to callers as if they were plaintext. Read-then-write cycle would encrypt the error strings. Throw instead.
 
 ### H9. `api/admin/deploy-to-r2.js:10` — hardcoded secret fallback in source ✅ RESOLVED
@@ -173,7 +173,7 @@ Not secrets but infrastructure identifiers. Move to env.
 
 **Resolution (2026-04-17, commit `e772fa9`):** Removed literal `CF_ACCOUNT_ID` fallback; migrated `MOONRAKER_ZONE_ID` from source literal to new `CF_ZONE_ID` env var on Vercel. Added module-load warnings for all three required CF env vars (`CF_ACCOUNT_ID`, `CF_API_TOKEN`, `CF_ZONE_ID`) and request-time 500 if any are missing (except `action: 'status'` which is DB-read-only). Matches the C5 fail-closed pattern.
 
-### H11. `api/newsletter-webhook.js:27, 32, 35-37` — same signature issues as Stripe
+### H11. `api/newsletter-webhook.js:27, 32, 35-37` — same signature issues as Stripe ✅ RESOLVED
 - Line 27: `JSON.stringify(req.body)` raw-body reconstruction won't match svix's signed bytes.
 - Line 32: `signatures.indexOf(expected) === -1` not timing-safe.
 - Line 35-37: Fail-open if `RESEND_WEBHOOK_SECRET` unset.
@@ -190,7 +190,7 @@ Fix alongside C6.
 ### H13. `api/agreement-chat.js:119+` — full CSA (~8K tokens) in every system prompt
 Pays for full CSA every request. Use Anthropic prompt caching with breakpoint after CSA block.
 
-### H14. `api/submit-entity-audit.js:54-57` — global rate limit is DoS surface
+### H14. `api/submit-entity-audit.js:54-57` — global rate limit is DoS surface ✅ RESOLVED
 Attacker sending 20 requests in an hour blocks all legitimate submissions. Per-IP bucketing + captcha.
 
 ### H15. `api/submit-entity-audit.js:17` — empty Origin bypasses check
@@ -308,7 +308,7 @@ Low risk (recipients trusted) but inconsistent. Escape everything.
 ### M7. `api/_lib/supabase.js:45, 66` — error detail may include raw PostgREST response body in thrown messages
 Callers doing `return res.status(500).json({ error: err.message })` leak schema info, column names, constraints. Grep each catch.
 
-### M8. `api/stripe-webhook.js:172-175` — `err.message` in response body
+### M8. `api/stripe-webhook.js:172-175` — `err.message` in response body ✅ RESOLVED
 Remove `detail: err.message`.
 
 ### M9. `api/submit-entity-audit.js:47` — slug race condition
@@ -499,6 +499,11 @@ RLS is the only control. Consider rotating to a shorter-exp anon key.
 **Not a bug — a workflow gap.** Likely intent: capture the TOTP seed when setting up 2FA on client Google Workspaces, alongside the app password. The setup UI captures `app_password` but not `authenticator_secret_key`. Either wire it up when 2FA capture becomes part of the onboarding flow, or remove the column. No action this session.
 Cuts off flags mid-sentence with HTML brackets.
 
+### L28. `api/chat.js:99` — Anthropic upstream error body passes through to admin response
+Line 99: `return res.status(status).json({ error: userMsg, status: status, detail: errText })` where `errText = await anthropicRes.text()` is the raw HTTP body Anthropic returned on 4xx/5xx. **Discovered during M26 verification sweep (2026-04-17).** Admin-only endpoint, so exposure is narrower than H33-H35 — but the shape is identical to H28 and inconsistent with the monitor.logError pattern applied to the other four chat-family and content-pipeline routes in Group A. Anthropic error bodies typically contain model names, rate-limit context, organization-scoped state, and API-key-prefix confirmation strings. Low-severity info leak.
+
+**Fix:** Replace with the H28 pattern — `monitor.logError('chat', new Error('anthropic_upstream'), { detail: { status, body: errText.substring(0, 500) } })` + response of `{ error: userMsg, status }` without `detail`. Fold into Group A retrospective or a future ops-batch session.
+
 ---
 
 ## Nit
@@ -626,10 +631,10 @@ _(Brought forward from Phase 7 since Chris chose "ship now" over "wait for traff
 - **Critical:** 9 total (C1–C9). **Resolved: 9 ✅** (all).
 - **High:** 35 total (H1–H35). **Resolved: 11** (H5, H7, H8, H9, H10, H11, H14, H28, H33, H34, H35). **Open: 24.**
 - **Medium:** 38 total (M1–M38). **Resolved: 3+ full + 1 partial** (M8 confirmed; M38 added + resolved same session; M13 resolved; M26 err-leak half resolved, prompt-injection half deferred to Group D; several more likely closed via Phase 4 action-schema work — needs verification sweep). **Open: ~34.**
-- **Low:** 27 total (L1–L27). **Resolved: 4** (L8, L14, L26, L27-documented-only). **Open: 23.**
+- **Low:** 28 total (L1–L28). **Resolved: 4** (L8, L14, L26, L27-documented-only). **Open: 24.**
 - **Nit:** 6 total (N1–N6). **Open: 6.**
 
-**Total: 115 findings. Resolved: ≥27 (+1 partial). Open: ≤87.**
+**Total: 116 findings. Resolved: ≥27 (+1 partial). Open: ≤88.**
 
 ### Resolution log
 | Finding | Commit / Session | Date |
