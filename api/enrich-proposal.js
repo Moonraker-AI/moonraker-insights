@@ -299,13 +299,8 @@ module.exports = async function handler(req, res) {
 
   // ─── 3. Entity Audit Data ─────────────────────────────────────
   try {
-    var auditResp = await fetch(
-      sb.url() + '/rest/v1/entity_audits?contact_id=eq.' + contactId + '&select=*&order=created_at.desc&limit=1',
-      { headers: sb.headers() }
-    );
-    var audits = await auditResp.json();
-    if (audits && audits.length > 0) {
-      var audit = audits[0];
+    var audit = await sb.one('entity_audits?contact_id=eq.' + contactId + '&select=*&order=created_at.desc&limit=1');
+    if (audit) {
       enrichment.sources.entity_audit = { id: audit.id, tier: audit.audit_tier, date: audit.audit_date, status: audit.status };
       enrichment.data.audit_scores = audit.scores || null;
       enrichment.data.audit_tasks = audit.tasks || null;
@@ -315,11 +310,7 @@ module.exports = async function handler(req, res) {
 
   // ─── 4. Also check campaign audit scores ──────────────────────
   try {
-    var coreResp = await fetch(
-      sb.url() + '/rest/v1/entity_audits?client_slug=eq.' + contact.slug + '&select=*&order=audit_date.desc&limit=1',
-      { headers: sb.headers() }
-    );
-    var coreAudits = await coreResp.json();
+    var coreAudits = await sb.query('entity_audits?client_slug=eq.' + contact.slug + '&select=*&order=audit_date.desc&limit=1');
     if (coreAudits && coreAudits.length > 0) {
       enrichment.data.campaign_audit = {
         c_score: coreAudits[0].score_credibility,
@@ -372,13 +363,9 @@ module.exports = async function handler(req, res) {
 
   // ─── 6. Practice details from Supabase ────────────────────────
   try {
-    var pdResp = await fetch(
-      sb.url() + '/rest/v1/practice_details?contact_id=eq.' + contactId + '&select=*&limit=1',
-      { headers: sb.headers() }
-    );
-    var pdData = await pdResp.json();
-    if (pdData && pdData.length > 0) {
-      enrichment.data.practice_details = pdData[0];
+    var pd = await sb.one('practice_details?contact_id=eq.' + contactId + '&select=*&limit=1');
+    if (pd) {
+      enrichment.data.practice_details = pd;
     }
   } catch (e) { /* practice details optional */ }
 
