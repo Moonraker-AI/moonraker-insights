@@ -36,19 +36,12 @@ module.exports = async function(req, res) {
     return res.status(400).json({ error: 'surge_data required' });
   }
 
-  var sbHeaders = sb.headers();
-
   try {
     // 1. Fetch current content page
-    var cpResp = await fetch(
-      sb.url() + '/rest/v1/content_pages?id=eq.' + body.content_page_id + '&limit=1',
-      { headers: sb.headers() }
-    );
-    var pages = await cpResp.json();
-    if (!pages || !pages[0]) {
+    var cp = await sb.one('content_pages?id=eq.' + body.content_page_id + '&limit=1');
+    if (!cp) {
       return res.status(404).json({ error: 'Content page not found' });
     }
-    var cp = pages[0];
 
     // 2. Parse surge data
     var surgeData = body.surge_data;
@@ -70,19 +63,11 @@ module.exports = async function(req, res) {
       updated_at: new Date().toISOString()
     };
 
-    var updateResp = await fetch(
-      sb.url() + '/rest/v1/content_pages?id=eq.' + body.content_page_id,
-      {
-        method: 'PATCH',
-        headers: Object.assign({}, sbHeaders, { 'Prefer': 'return=representation' }),
-        body: JSON.stringify(updateData)
-      }
-    );
-
-    if (!updateResp.ok) {
-      var updateErr = await updateResp.text();
-      console.error('Supabase update error:', updateResp.status, updateErr);
-      return res.status(500).json({ error: 'Failed to update content page', detail: updateErr.substring(0, 300) });
+    try {
+      await sb.mutate('content_pages?id=eq.' + body.content_page_id, 'PATCH', updateData);
+    } catch (e) {
+      console.error('Supabase update error:', e.message);
+      return res.status(500).json({ error: 'Failed to update content page', detail: (e.message || '').substring(0, 300) });
     }
 
     // 5. Notify team
