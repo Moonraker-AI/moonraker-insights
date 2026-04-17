@@ -774,7 +774,16 @@ body.sub-bulk-visible #tab-subscribers.active { padding-bottom: 96px; }
       <div class="form-group">
         <label class="form-label">Email <span style="color:var(--color-danger);">*</span></label>
         <input type="email" id="manualEmail" class="form-input" placeholder="person@example.com" autocomplete="off" onkeydown="if(event.key==='Enter'){event.preventDefault();addManualSubscriber();}" />
-        <div class="form-hint">Added as <code>source=manual</code>, <code>status=active</code>. Modal stays open so you can add more.</div>
+      </div>
+      <div class="form-group">
+        <label class="form-label">Source</label>
+        <select class="form-input" id="manualSource">
+          <option value="manual" selected>Manual</option>
+          <option value="webinar">Webinar</option>
+          <option value="website">Website</option>
+          <option value="entity-audit">Entity Audit</option>
+        </select>
+        <div class="form-hint">Added with <code>status=active</code>. Modal stays open so you can add more.</div>
       </div>
       <div style="display:flex;justify-content:flex-end;">
         <button type="button" class="btn btn-primary" id="manualAddBtn" onclick="addManualSubscriber()">Add subscriber</button>
@@ -2453,11 +2462,13 @@ async function addManualSubscriber() {
   var emailEl = document.getElementById('manualEmail');
   var firstEl = document.getElementById('manualFirstName');
   var lastEl = document.getElementById('manualLastName');
+  var sourceEl = document.getElementById('manualSource');
   var btn = document.getElementById('manualAddBtn');
 
   var email = (emailEl.value || '').trim().toLowerCase();
   var first = (firstEl.value || '').trim();
   var last = (lastEl.value || '').trim();
+  var source = (sourceEl && sourceEl.value) || 'manual';
 
   if (!MANUAL_EMAIL_RE.test(email)) {
     toast('Enter a valid email address', 'error');
@@ -2471,7 +2482,7 @@ async function addManualSubscriber() {
       email: email,
       first_name: first || null,
       last_name: last || null,
-      source: 'manual'
+      source: source
     }];
     var result = await postImport(payload, false);
     var row = (result.results && result.results[0]) || {};
