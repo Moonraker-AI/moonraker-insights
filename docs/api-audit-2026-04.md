@@ -212,8 +212,10 @@ Same pattern as chat endpoints. `curl` sends no Origin, passes.
 
 **Resolution (2026-04-18, commit `502f6213`, Group F):** Single commit across both affected files (shared pattern). `if (origin && origin !== 'https://clients.moonraker.ai')` flipped to `if (!origin || origin !== 'https://clients.moonraker.ai')` in `api/submit-entity-audit.js:L19` and `api/content-chat.js:L32`. Callers that strip the Origin header (curl, non-browser tooling) no longer bypass the check. Rate limit (3/hr/IP from Phase 4 S4 in submit-entity-audit.js, 20/min/IP in content-chat.js) remains the primary control against curl-style abuse; this closes the defense-in-depth gap called out in the finding. `+4/-2` each file; no behavioral change for any honest browser caller.
 
-### H16. `api/process-entity-audit.js:462, 492, 541` — template deployed without placeholder substitution
+### H16. `api/process-entity-audit.js:443, 473, 522` — template deployed without placeholder substitution ✅ RESOLVED
 `content: tmplData.content.replace(/\n/g, '')` pushes template verbatim. If template uses `{{SLUG}}` or `{{PRACTICE_NAME}}` placeholders expecting server-side substitution, deployed page shows literal placeholders. Verify pattern vs proposal template.
+
+**Resolution (2026-04-18, commit `2eb09dba`, H16+H23 mini-session):** Added a `prepTemplate(base64Content, replacements)` helper near the top of `process-entity-audit.js` (just after the `_lib` requires block). Matches the canonical pattern in `generate-proposal.js:560`: decode base64 → apply `{{KEY}}` replacements if supplied → re-encode to base64. All three deploy sites (L459 entity-audit.html, L489 entity-audit-checkout.html, L538 suite loop for diagnosis/action-plan/progress) now use `content: prepTemplate(<tmpl>.content)` in place of the old `.replace(/\n/g, '')` shape. Pre-check confirmed zero placeholders across all 5 templates today, so no behavioral change ships; the route is now ready for any future `{{SLUG}}`/`{{PRACTICE_NAME}}` substitution without another shape rewrite. `node --check` passed; Vercel deploy READY.
 
 ### H17. `api/process-entity-audit.js:570-575` — internal auth fallback pattern unsafe ✅ RESOLVED
 `var internalAuth = process.env.CRON_SECRET || process.env.AGENT_API_KEY || '';` — falls back to empty string; downstream call to `send-audit-email` gets `Authorization: Bearer ` which fails closed. But the pattern of OR'ing server secrets is wrong shape — hard-require at module load.
@@ -270,8 +272,16 @@ If `enrichment_data` (admin-written, unsanitized) contains prompt injection conv
 
 **Resolution (2026-04-17, commit `aabdac1`):** Added local `esc()` helper (same shape as email/newsletter-template versions; not imported to keep `generate-proposal.js` dependency-minimal — it deploys HTML, not email). `amount_cents` now coerced via `Number()` then validated with `Number.isFinite(amt) && amt >= 0` — invalid values render `—` instead of literal `$NaN` in the deployed proposal. `customPricing.label || customPricing.period` and both `next_steps` fields (`s.title`, `s.desc || s.description`) escaped at render time.
 
-### H23. `api/chat.js:184, 190` — entire admin DB dumped into system prompt every turn
+### H23. `api/chat.js:184, 190` — entire admin DB dumped into system prompt every turn ✅ RESOLVED
 `clientData` + `clientIndex` serialized as JSON in system prompt. Every admin chat turn re-sends 10K+ tokens. Client PII (emails, phones, practice names) flows to Anthropic on every turn. Use prompt caching, or reduce to just the client being discussed.
+
+**Resolution (2026-04-18, H16+H23 mini-session):** Both remediations applied in two atomic commits.
+
+**Part 1 — scope reduction (commit `484dc8e5`):** In `buildSystemPrompt`, the `clientIndex` read is now gated on `clientSlug`: `var clientIndex = clientSlug ? null : (ctx.clientIndex || null);`. Deep-dive pages (where `clientSlug` is set and `clientData` is loaded) no longer ship the ~60-client roster, saving ~5K tokens on every turn. Dashboard and list pages keep the index unchanged. Single-line value change in the existing dynamic-block assembly; no call-site changes.
+
+**Part 2 — prompt caching (commit `052f2245`):** `buildSystemPrompt` now returns a 2-block `system:` array with an Anthropic prompt-caching breakpoint on the first (static) block. Static prefix = `BASE_PROMPT` + mode selector (`DIRECT_ANSWER_MODE` when deep-dive-with-data, `CROSS_CLIENT_OPS` otherwise) + `BASE_PROMPT_STYLE` + `MODE_*` (audits/deliverables/onboarding/reports/clients/dashboard based on page). Dynamic tail = `## Current Context` + `clientData` JSON (if present) + `clientIndex` JSON (if not scope-dropped). Call site at L36/L61 renamed `systemPrompt → systemBlocks`; stream POST body now passes `system: systemBlocks`. Mirrors the H13 shape in `agreement-chat.js:100`. Expected on turn 2+ of a chat session on the same page: `usage.cache_read_input_tokens` ~= static prefix token count (billed at 10%), `cache_creation_input_tokens = 0`; only the dynamic tail is billed at full rate.
+
+**Combined savings on a typical admin deep-dive chat session:** turn 1 pays static+dynamic; turns 2+ pay 10% × static + full × dynamic. With `clientIndex` dropped on deep-dive, per-turn uncached tokens fall from ~15K (static+clientData+clientIndex) to roughly the clientData blob alone. Vercel deploys READY for both commits.
 
 ### H24. `api/compile-report.js` — 23 unbounded fetches despite having `fetchT` helper ✅ RESOLVED
 File defines `fetchT(url, opts, timeoutMs)` on line 87 and uses it 8 times (GSC, LocalFalcon). 23 other calls still use bare `fetch()`. Supabase queries, Claude call in retry loop, Resend sends — all can hang.
@@ -739,12 +749,12 @@ _(Brought forward from Phase 7 since Chris chose "ship now" over "wait for traff
 ## Running tallies
 
 - **Critical:** 9 total (C1–C9). **Resolved: 9 ✅** (all).
-- **High:** 36 total (H1–H36). **Resolved: 33** (H1, H2, H3, H4, H5, H6, H7, H8, H9, H10, H11, H12, H13, H14, H15, H17, H18, H19, H20, H21, H22, H24, H25, H26, H27, H28, H30, H31, H32, H33, H34, H35, H36). **Open: 3** (H16, H23, H29 — H29 deferred on design).
+- **High:** 36 total (H1–H36). **Resolved: 35** (H1, H2, H3, H4, H5, H6, H7, H8, H9, H10, H11, H12, H13, H14, H15, H16, H17, H18, H19, H20, H21, H22, H23, H24, H25, H26, H27, H28, H30, H31, H32, H33, H34, H35, H36). **Open: 1** (H29, deferred on design). **All non-deferred Highs closed.**
 - **Medium:** 39 total (M1–M39; M39 added by Group F). **Resolved: 17** (M2, M6, M8, M9, M10, M11, M12, M13, M14, M15, M16, M18, M20, M22, M26, M30, M38; several more likely closed via Phase 4 action-schema work — needs verification sweep). **Open: ~22.**
 - **Low:** 28 total (L1–L28). **Resolved: 5** (L8, L14, L16, L26, L27-documented-only). **Open: 23.**
 - **Nit:** 6 total (N1–N6). **Open: 6.**
 
-**Total: 118 findings. Resolved: ≥64. Open: ≤54.**
+**Total: 118 findings. Resolved: ≥66. Open: ≤52.**
 
 ### Resolution log
 | Finding | Commit / Session | Date |
@@ -803,6 +813,8 @@ _(Brought forward from Phase 7 since Chris chose "ship now" over "wait for traff
 | H17 | `7f094dc` (process-entity-audit.js — hard-require AGENT_API_KEY with loud throw, sanitizer.sanitizeText on every notification-email interpolation, encodeURIComponent on auditId href, Group G batch 1) | 2026-04-18 |
 | H6 | `b3d5d8b` (stripe-webhook.js — notify-team + setup-audit-schedule POSTs awaited via fetchT 15s, monitor.critical on throw or non-2xx per stage, results.*_failed flags in 200 response, Group G batch 2) | 2026-04-18 |
 | H13 | `fba6183` (agreement-chat.js — buildSystemPrompt returns 2-block array with cache_control ephemeral on static CSA+guidelines block, byte-identical concatenation preserves model behavior, Group G batch 2) | 2026-04-18 |
+| H16 | `2eb09dba` (process-entity-audit.js — prepTemplate helper + 3 deploy sites converted, H16+H23 mini-session) | 2026-04-18 |
+| H23 | `484dc8e5` (part 1: scope reduction — drop clientIndex on deep-dive) + `052f2245` (part 2: prompt caching — 2-block system array with ephemeral cache_control on static prefix, H16+H23 mini-session) | 2026-04-18 |
 
 Audit was performed across five sessions reading ~11,000 lines of API route code, the eight `_lib/` modules, relevant templates, and git history for secret leakage. Unread in detail: chat system prompt bodies (low-risk content), several `send-*-email.js` / `trigger-*` / `ingest-*` routes (expected to follow already-catalogued patterns), most `api/admin/*` read-only dashboard routes. The audit is considered comprehensive for Critical and High findings; Medium/Low/Nit counts would grow modestly with further reading.
 
