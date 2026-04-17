@@ -9,6 +9,7 @@
 
 var sb = require('./_lib/supabase');
 var auth = require('./_lib/auth');
+var google = require('./_lib/google-delegated');
 
 module.exports = async function handler(req, res) {
   if (req.method !== 'POST') {
@@ -98,8 +99,13 @@ module.exports = async function handler(req, res) {
       results.drive.skipped = 'Drive folder already exists: ' + existingDriveFolder;
     } else if (saJson) {
       try {
-        var driveToken = await getDelegatedToken(saJson, 'support@moonraker.ai', 'https://www.googleapis.com/auth/drive');
-        if (driveToken && typeof driveToken === 'string') {
+        var driveToken;
+        try {
+          driveToken = await google.getDelegatedAccessToken('support@moonraker.ai', 'https://www.googleapis.com/auth/drive');
+        } catch (e) {
+          results.drive.error = 'Failed to get Drive token: ' + (e.message || String(e));
+        }
+        if (driveToken) {
           var driveHeaders = {
             'Authorization': 'Bearer ' + driveToken,
             'Content-Type': 'application/json'
@@ -151,8 +157,6 @@ module.exports = async function handler(req, res) {
           } else {
             results.drive.error = 'Failed to create parent folder: ' + JSON.stringify(parentFolder);
           }
-        } else {
-          results.drive.error = 'Failed to get Drive token: ' + (driveToken && driveToken.error ? driveToken.error : 'unknown');
         }
       } catch (driveErr) {
         results.drive.error = driveErr.message || String(driveErr);
@@ -167,52 +171,6 @@ module.exports = async function handler(req, res) {
     return res.status(500).json({ error: err.message, results: results });
   }
 };
-
-
-// ═══════════════════════════════════════════════════════════════════
-// Helper: Get access token via domain-wide delegation
-// ═══════════════════════════════════════════════════════════════════
-async function getDelegatedToken(saJson, impersonateEmail, scope) {
-  try {
-    var sa = typeof saJson === 'string' ? JSON.parse(saJson) : saJson;
-    if (!sa.private_key || !sa.client_email) {
-      throw new Error('SA JSON missing private_key or client_email');
-    }
-    var crypto = require('crypto');
-var auth = require('./_lib/auth');
-
-    var header = Buffer.from(JSON.stringify({ alg: 'RS256', typ: 'JWT' })).toString('base64url');
-    var now = Math.floor(Date.now() / 1000);
-    var claims = Buffer.from(JSON.stringify({
-      iss: sa.client_email,
-      sub: impersonateEmail,
-      scope: scope,
-      aud: 'https://oauth2.googleapis.com/token',
-      iat: now,
-      exp: now + 3600
-    })).toString('base64url');
-
-    var signable = header + '.' + claims;
-    var signer = crypto.createSign('RSA-SHA256');
-    signer.update(signable);
-    var signature = signer.sign(sa.private_key, 'base64url');
-
-    var jwt = signable + '.' + signature;
-
-    var tokenResp = await fetch('https://oauth2.googleapis.com/token', {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
-      body: 'grant_type=urn%3Aietf%3Aparams%3Aoauth%3Agrant-type%3Ajwt-bearer&assertion=' + jwt
-    });
-    var tokenData = await tokenResp.json();
-    if (!tokenData.access_token) {
-      throw new Error(tokenData.error_description || tokenData.error || JSON.stringify(tokenData));
-    }
-    return tokenData.access_token;
-  } catch (e) {
-    return { error: e.message || String(e) };
-  }
-}
 
 
 // ═══════════════════════════════════════════════════════════════════
