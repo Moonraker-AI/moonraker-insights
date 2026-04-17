@@ -28,23 +28,14 @@ module.exports = async function handler(req, res) {
 
   try {
     // Load audit + contact
-    var auditResp = await fetch(
-      sb.url() + '/rest/v1/entity_audits?id=eq.' + auditId + '&select=*,contacts!contact_id(id,slug,first_name,last_name,practice_name,email,city,state_province)&limit=1',
-      { headers: sb.headers() }
-    );
-    var audits = await auditResp.json();
-    if (!audits || audits.length === 0) return res.status(404).json({ error: 'Audit not found' });
+    var audit = await sb.one('entity_audits?id=eq.' + auditId + '&select=*,contacts!contact_id(id,slug,first_name,last_name,practice_name,email,city,state_province)&limit=1');
+    if (!audit) return res.status(404).json({ error: 'Audit not found' });
 
-    var audit = audits[0];
     var contact = audit.contacts;
     if (!contact) return res.status(404).json({ error: 'Contact not found' });
 
     // Check for existing followups
-    var existCheck = await fetch(
-      sb.url() + '/rest/v1/audit_followups?audit_id=eq.' + auditId + '&limit=1',
-      { headers: sb.headers() }
-    );
-    var existing = await existCheck.json();
+    var existing = await sb.query('audit_followups?audit_id=eq.' + auditId + '&limit=1');
     if (existing && existing.length > 0) {
       return res.status(400).json({ error: 'Follow-ups already exist for this audit. Delete them first to regenerate.' });
     }
@@ -118,12 +109,7 @@ module.exports = async function handler(req, res) {
       return row;
     });
 
-    var insertResp = await fetch(sb.url() + '/rest/v1/audit_followups', {
-      method: 'POST',
-      headers: sb.headers('return=representation'),
-      body: JSON.stringify(rows)
-    });
-    var inserted = await insertResp.json();
+    var inserted = await sb.mutate('audit_followups', 'POST', rows);
 
     return res.status(200).json({ ok: true, count: rows.length, followups: inserted });
 
