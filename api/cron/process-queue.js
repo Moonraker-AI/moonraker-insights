@@ -18,16 +18,10 @@ module.exports = async function handler(req, res) {
 
   if (!sb.isConfigured()) return res.status(500).json({ error: 'SUPABASE_SERVICE_ROLE_KEY not configured' });
 
-  var sbHeaders = sb.headers('return=representation');
-
   try {
     // Find the next pending item where scheduled_for <= now
     var now = new Date().toISOString();
-    var queueResp = await fetch(
-      sb.url() + '/rest/v1/report_queue?status=eq.pending&scheduled_for=lte.' + now + '&order=scheduled_for.asc&limit=1',
-      { headers: sb.headers() }
-    );
-    var items = await queueResp.json();
+    var items = await sb.query('report_queue?status=eq.pending&scheduled_for=lte.' + now + '&order=scheduled_for.asc&limit=1');
 
     if (!items || items.length === 0) {
       return res.status(200).json({ success: true, message: 'No pending items ready to process', processed: 0 });
@@ -36,10 +30,8 @@ module.exports = async function handler(req, res) {
     var item = items[0];
 
     // Mark as processing
-    await fetch(sb.url() + '/rest/v1/report_queue?id=eq.' + item.id, {
-      method: 'PATCH',
-      headers: sbHeaders,
-      body: JSON.stringify({ status: 'processing', started_at: now, attempt: (item.attempt || 0) + 1 })
+    await sb.mutate('report_queue?id=eq.' + item.id, 'PATCH', {
+      status: 'processing', started_at: now, attempt: (item.attempt || 0) + 1
     });
 
     // Call compile-report via custom domain (VERCEL_URL is behind deployment protection)
@@ -62,25 +54,19 @@ module.exports = async function handler(req, res) {
     } catch (e) {
       // Non-JSON response (HTML error page, timeout, etc.)
       var errorMsg = 'Compile returned non-JSON (HTTP ' + compileResp.status + '): ' + compileText.substring(0, 200);
-      await fetch(sb.url() + '/rest/v1/report_queue?id=eq.' + item.id, {
-        method: 'PATCH',
-        headers: sbHeaders,
-        body: JSON.stringify({ status: 'failed', completed_at: new Date().toISOString(), error_message: errorMsg })
+      await sb.mutate('report_queue?id=eq.' + item.id, 'PATCH', {
+        status: 'failed', completed_at: new Date().toISOString(), error_message: errorMsg
       });
       return res.status(200).json({ success: false, processed: 1, client_slug: item.client_slug, error: errorMsg });
     }
 
     if (compileResult.success) {
       // Mark complete
-      await fetch(sb.url() + '/rest/v1/report_queue?id=eq.' + item.id, {
-        method: 'PATCH',
-        headers: sbHeaders,
-        body: JSON.stringify({
-          status: 'complete',
-          completed_at: new Date().toISOString(),
-          snapshot_id: compileResult.snapshot_id || null,
-          error_message: null
-        })
+      await sb.mutate('report_queue?id=eq.' + item.id, 'PATCH', {
+        status: 'complete',
+        completed_at: new Date().toISOString(),
+        snapshot_id: compileResult.snapshot_id || null,
+        error_message: null
       });
 
       return res.status(200).json({
@@ -95,14 +81,10 @@ module.exports = async function handler(req, res) {
     } else {
       // Mark failed
       var errorMsg = compileResult.error || compileResult.errors?.join('; ') || 'Unknown compile error';
-      await fetch(sb.url() + '/rest/v1/report_queue?id=eq.' + item.id, {
-        method: 'PATCH',
-        headers: sbHeaders,
-        body: JSON.stringify({
-          status: 'failed',
-          completed_at: new Date().toISOString(),
-          error_message: errorMsg
-        })
+      await sb.mutate('report_queue?id=eq.' + item.id, 'PATCH', {
+        status: 'failed',
+        completed_at: new Date().toISOString(),
+        error_message: errorMsg
       });
 
       return res.status(200).json({
