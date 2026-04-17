@@ -206,7 +206,10 @@ textarea.form-input { resize: vertical; min-height: 80px; line-height: 1.6; }
 .subject-chip:hover { border-color:var(--color-primary);color:var(--color-primary); }
 
 /* Subscriber rows */
-.sub-row { display: grid; grid-template-columns: minmax(160px,2fr) minmax(120px,1.5fr) 70px 70px 90px; gap: .5rem; align-items: center; padding: .65rem 1rem; border-bottom: 1px solid var(--color-border); font-size: .82rem; }
+.sub-row { display: grid; grid-template-columns: 36px minmax(160px,2fr) minmax(120px,1.5fr) 70px 70px 90px; gap: .5rem; align-items: center; padding: .65rem 1rem; border-bottom: 1px solid var(--color-border); font-size: .82rem; transition: background .15s ease; }
+.sub-row.is-selected { background: var(--color-primary-subtle); }
+.sub-row .sub-check { display: flex; align-items: center; justify-content: center; cursor: pointer; }
+.sub-row .sub-check input { width: 18px; height: 18px; cursor: pointer; accent-color: var(--color-primary); }
 .sub-row > div { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; text-align: left; }
 .sub-row .sub-email { font-size: .8rem; text-align: left; }
 .sub-row .sub-name { color: var(--color-muted); font-size: .78rem; text-align: left; }
@@ -399,6 +402,55 @@ body.compose-bar-visible #tab-compose.active { padding-bottom: 96px; }
     font-size: .9rem;
   }
   body.compose-bar-visible #tab-compose.active { padding-bottom: 180px; }
+}
+
+/* ============================================================
+   Subscriber bulk actions bar
+   Appears when 1+ subscribers selected. Same visual language as
+   the compose action bar: pill on desktop, full-width dock on mobile.
+============================================================ */
+.sub-bulk-bar {
+  position: fixed;
+  right: 1.5rem;
+  bottom: 1.5rem;
+  z-index: 81;
+  display: none;
+  gap: .75rem;
+  align-items: center;
+  padding: .6rem .9rem;
+  background: var(--color-surface);
+  border: 1px solid var(--color-border);
+  border-radius: 14px;
+  box-shadow: 0 10px 28px rgba(15, 23, 42, .12), 0 2px 6px rgba(15, 23, 42, .06);
+  -webkit-backdrop-filter: saturate(180%) blur(8px);
+  backdrop-filter: saturate(180%) blur(8px);
+  transition: transform .22s ease, opacity .22s ease;
+}
+.sub-bulk-bar.is-visible { display: flex; }
+.sub-bulk-bar .bulk-count {
+  font-family: Inter, sans-serif;
+  font-weight: 600;
+  font-size: .85rem;
+  color: var(--color-heading);
+  white-space: nowrap;
+}
+
+body.sub-bulk-visible #tab-subscribers.active { padding-bottom: 96px; }
+
+@media (max-width: 768px) {
+  .sub-bulk-bar {
+    right: 0;
+    left: 0;
+    bottom: 0;
+    border-radius: 0;
+    border: none;
+    border-top: 1px solid var(--color-border);
+    padding: .6rem .75rem calc(.6rem + env(safe-area-inset-bottom));
+    justify-content: space-between;
+    box-shadow: 0 -4px 14px rgba(15, 23, 42, .08);
+  }
+  .sub-bulk-bar .btn { min-height: 44px; font-size: .85rem; }
+  body.sub-bulk-visible #tab-subscribers.active { padding-bottom: 120px; }
 }
 
 @media (max-width: 480px) {
@@ -618,12 +670,12 @@ body.compose-bar-visible #tab-compose.active { padding-bottom: 96px; }
         <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:1rem;flex-wrap:wrap;gap:.5rem;">
           <div style="display:flex;gap:.5rem;align-items:center;flex-wrap:wrap;">
             <input type="text" class="form-input" id="subSearch" placeholder="Search by email or name..." style="width:220px;max-width:100%;font-size:.82rem;" oninput="filterSubscribers()" />
-            <select class="form-input" style="width:auto;font-size:.82rem;" id="subSort" onchange="loadSubscribers()">
+            <select class="form-input" style="width:auto;font-size:.82rem;" id="subSort" onchange="clearSubSelection(); loadSubscribers()">
               <option value="alpha">A-Z (Name)</option>
               <option value="recent">Most Recent</option>
               <option value="email">A-Z (Email)</option>
             </select>
-            <select class="form-input" style="width:auto;font-size:.82rem;" id="subFilter" onchange="loadSubscribers()">
+            <select class="form-input" style="width:auto;font-size:.82rem;" id="subFilter" onchange="clearSubSelection(); loadSubscribers()">
               <option value="all">All Subscribers</option>
               <option value="active">Active</option>
               <option value="hot">Hot Tier</option>
@@ -641,8 +693,9 @@ body.compose-bar-visible #tab-compose.active { padding-bottom: 96px; }
         </div>
         <div class="card" style="padding:0;overflow:hidden;">
           <div class="sub-scroll-wrap" style="overflow-x:auto;-webkit-overflow-scrolling:touch;">
-          <div style="min-width:560px;">
-          <div style="padding:.65rem 1rem;border-bottom:1px solid var(--color-border);display:grid;grid-template-columns:minmax(160px,2fr) minmax(120px,1.5fr) 70px 70px 90px;gap:.5rem;font-size:.72rem;font-weight:600;text-transform:uppercase;letter-spacing:.04em;color:var(--color-muted);text-align:left;">
+          <div style="min-width:600px;">
+          <div style="padding:.65rem 1rem;border-bottom:1px solid var(--color-border);display:grid;grid-template-columns:36px minmax(160px,2fr) minmax(120px,1.5fr) 70px 70px 90px;gap:.5rem;font-size:.72rem;font-weight:600;text-transform:uppercase;letter-spacing:.04em;color:var(--color-muted);text-align:left;align-items:center;">
+            <div class="sub-check"><input type="checkbox" id="subSelectAll" onchange="toggleSelectAllSubs(this.checked)" title="Select all visible" style="width:18px;height:18px;cursor:pointer;accent-color:var(--color-primary);" /></div>
             <div>Email</div>
             <div>Name</div>
             <div>Tier</div>
@@ -974,6 +1027,108 @@ async function loadSubscribers() {
   }
 }
 
+
+// ---- Subscriber multi-select state + bulk actions ----
+var selectedSubs = new Set();
+
+function toggleSubSelected(id, checked) {
+  if (checked) selectedSubs.add(id);
+  else selectedSubs.delete(id);
+  // Toggle selected styling on the row
+  var row = document.querySelector('.sub-row[data-sub-id="' + id + '"]');
+  if (row) row.classList.toggle('is-selected', checked);
+  updateBulkActionsBar();
+  updateSelectAllHeaderCheckbox();
+}
+window.toggleSubSelected = toggleSubSelected;
+
+function toggleSelectAllSubs(checked) {
+  var rows = document.querySelectorAll('.sub-row[data-sub-id]');
+  rows.forEach(function(row) {
+    var id = row.dataset.subId;
+    if (!id) return;
+    var box = row.querySelector('input[type="checkbox"]');
+    if (checked) selectedSubs.add(id);
+    else selectedSubs.delete(id);
+    if (box) box.checked = checked;
+    row.classList.toggle('is-selected', checked);
+  });
+  updateBulkActionsBar();
+}
+window.toggleSelectAllSubs = toggleSelectAllSubs;
+
+function clearSubSelection() {
+  selectedSubs.clear();
+  var hdr = document.getElementById('subSelectAll');
+  if (hdr) { hdr.checked = false; hdr.indeterminate = false; }
+  updateBulkActionsBar();
+}
+window.clearSubSelection = clearSubSelection;
+
+// Keep header checkbox in sync: none=unchecked, all=checked, some=indeterminate
+function updateSelectAllHeaderCheckbox() {
+  var hdr = document.getElementById('subSelectAll');
+  if (!hdr) return;
+  var visibleRows = document.querySelectorAll('.sub-row[data-sub-id]');
+  var visibleCount = visibleRows.length;
+  if (visibleCount === 0) { hdr.checked = false; hdr.indeterminate = false; return; }
+  var selectedVisibleCount = 0;
+  visibleRows.forEach(function(row) {
+    if (selectedSubs.has(row.dataset.subId)) selectedVisibleCount++;
+  });
+  if (selectedVisibleCount === 0) { hdr.checked = false; hdr.indeterminate = false; }
+  else if (selectedVisibleCount === visibleCount) { hdr.checked = true; hdr.indeterminate = false; }
+  else { hdr.checked = false; hdr.indeterminate = true; }
+}
+
+function updateBulkActionsBar() {
+  var bar = document.getElementById('subBulkBar');
+  if (!bar) return;
+  var n = selectedSubs.size;
+  if (n === 0) {
+    bar.classList.remove('is-visible');
+    document.body.classList.remove('sub-bulk-visible');
+    return;
+  }
+  bar.classList.add('is-visible');
+  document.body.classList.add('sub-bulk-visible');
+  var label = document.getElementById('subBulkCount');
+  if (label) label.textContent = n + ' selected';
+  var delBtn = document.getElementById('subBulkDelete');
+  if (delBtn) delBtn.textContent = 'Delete ' + n + (n === 1 ? ' subscriber' : ' subscribers');
+}
+window.updateBulkActionsBar = updateBulkActionsBar;
+
+async function deleteSelectedSubs() {
+  var ids = Array.from(selectedSubs);
+  if (ids.length === 0) return;
+  var msg = ids.length === 1
+    ? 'Delete this subscriber? This cannot be undone and will also remove their send history.'
+    : 'Delete ' + ids.length + ' subscribers? This cannot be undone and will also remove their send history.';
+  if (!confirm(msg)) return;
+
+  var btn = document.getElementById('subBulkDelete');
+  var origText = btn ? btn.textContent : '';
+  if (btn) { btn.disabled = true; btn.textContent = 'Deleting...'; }
+
+  try {
+    var resp = await fetch('/api/newsletter-subscribers-delete', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ ids: ids })
+    });
+    var data = await resp.json();
+    if (!resp.ok) throw new Error(data.error || 'Delete failed');
+    toast('Deleted ' + (data.deleted || 0) + ' subscriber' + (data.deleted === 1 ? '' : 's'));
+    clearSubSelection();
+    await loadSubscribers();
+  } catch (e) {
+    toast('Delete failed: ' + e.message, 'error');
+    if (btn) { btn.disabled = false; btn.textContent = origText; }
+  }
+}
+window.deleteSelectedSubs = deleteSelectedSubs;
+
 function renderSubscriberList(list) {
   var container = document.getElementById('subscribersList');
   document.getElementById('subCount').textContent = list.length + ' shown';
@@ -993,7 +1148,9 @@ function renderSubscriberList(list) {
         : '<span class="tag tag-info">' + escHtml(s.status) + '</span>';
       var sourceLabel = s.source ? s.source.replace(/-/g, ' ') : '';
 
-      return '<div class="sub-row">' +
+      var isSelected = selectedSubs.has(s.id);
+      return '<div class="sub-row' + (isSelected ? ' is-selected' : '') + '" data-sub-id="' + s.id + '">' +
+        '<div class="sub-check"><input type="checkbox" ' + (isSelected ? 'checked ' : '') + 'onchange="toggleSubSelected(\'' + s.id + '\', this.checked)" /></div>' +
         '<div class="sub-email">' + escHtml(s.email) + '</div>' +
         '<div class="sub-name">' + escHtml(((s.first_name || '') + ' ' + (s.last_name || '')).trim()) + '</div>' +
         '<div>' + tierTag + '</div>' +
@@ -2664,6 +2821,7 @@ function switchTab(name) {
     if (t.textContent.toLowerCase().includes(name.substring(0, 4))) t.classList.add('active');
   });
   if (name === 'subscribers') loadSubscribers();
+  else if (typeof clearSubSelection === 'function') clearSubSelection();
   updateComposeBar();
 }
 window.switchTab = switchTab;
@@ -2932,6 +3090,13 @@ init();
   <button class="btn btn-secondary" onclick="saveDraft()">Save Draft</button>
   <button class="btn btn-secondary" onclick="verifyFacts()" id="verifyBtn" title="Fact-check stories against sources"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="vertical-align:-2px;margin-right:.25rem;"><path d="M9 12l2 2 4-4"/><path d="M12 3a9 9 0 1 0 0 18 9 9 0 0 0 0-18z"/></svg>Verify</button>
   <button class="btn btn-primary" onclick="confirmSend()" id="sendBtn" disabled>Send...</button>
+</div>
+
+<!-- Subscriber bulk actions bar (visible on Subscribers tab when 1+ selected) -->
+<div class="sub-bulk-bar" id="subBulkBar" aria-label="Bulk actions">
+  <span class="bulk-count" id="subBulkCount">0 selected</span>
+  <button class="btn btn-secondary btn-sm" onclick="clearSubSelection()">Clear</button>
+  <button class="btn btn-danger btn-sm" id="subBulkDelete" onclick="deleteSelectedSubs()">Delete</button>
 </div>
 
 </body>
