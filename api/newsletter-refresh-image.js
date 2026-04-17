@@ -2,10 +2,13 @@
 // Swap the image for a specific story using Pexels. Fetches multiple candidates,
 // excludes the currently-assigned URL, and picks randomly so repeated clicks rotate.
 // POST { story_id?, query? }
-// If query not provided, uses the story's image_suggestion or headline.
+// When story_id is provided, pulls image_suggestion from the DB (ignoring any
+// alt-text or headline the admin might pass), preventing the "bad alt -> worse
+// results -> worse alt" spiral.
 
 var sb = require('./_lib/supabase');
 var auth = require('./_lib/auth');
+var imgq = require('./_lib/image-query');
 
 var PEXELS_KEY = process.env.PEXELS_API_KEY || '';
 
@@ -56,7 +59,7 @@ module.exports = async function handler(req, res) {
   var customQuery = (req.body || {}).query || '';
   if (!storyId && !customQuery) return res.status(400).json({ error: 'query or story_id required' });
 
-  // Load story for context (current image URL is used to exclude from rotation)
+  // Load story for context
   var story = null;
   if (storyId) {
     try {
@@ -64,9 +67,15 @@ module.exports = async function handler(req, res) {
     } catch (e) { /* non-fatal */ }
   }
 
-  var suggestion = customQuery || (story && story.image_suggestion) || (story && story.headline) || '';
-  var searchTerms = suggestion.replace(/[^a-zA-Z0-9 ]/g, '').trim();
-  if (!searchTerms) return res.status(400).json({ error: 'No search terms available' });
+  // Source priority: story.image_suggestion (preferred when available) > customQuery > story.headline
+  // Using image_suggestion is important: it is the description Claude wrote specifically for image search,
+  // whereas customQuery from the admin is often the alt of an already-wrong image.
+  var rawSuggestion = (story && story.image_suggestion) || customQuery || (story && story.headline) || '';
+  if (!rawSuggestion) return res.status(400).json({ error: 'No search terms available' });
+
+  // Clean: strip brand/initialism terms, add topical anchor if thin
+  var searchTerms = imgq.cleanQuery(rawSuggestion, storyId || rawSuggestion);
+  if (!searchTerms) return res.status(400).json({ error: 'Query was empty after cleaning' });
 
   var currentUrl = story && story.image_url ? story.image_url : '';
 
@@ -94,3 +103,4 @@ module.exports = async function handler(req, res) {
     page: img.page
   });
 };
+
