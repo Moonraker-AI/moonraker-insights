@@ -1059,6 +1059,13 @@ window.toggleSelectAllSubs = toggleSelectAllSubs;
 
 function clearSubSelection() {
   selectedSubs.clear();
+  // Uncheck every visible row checkbox and strip the selected styling
+  var rows = document.querySelectorAll('.sub-row[data-sub-id]');
+  rows.forEach(function(row) {
+    row.classList.remove('is-selected');
+    var box = row.querySelector('input[type="checkbox"]');
+    if (box) box.checked = false;
+  });
   var hdr = document.getElementById('subSelectAll');
   if (hdr) { hdr.checked = false; hdr.indeterminate = false; }
   updateBulkActionsBar();
