@@ -195,6 +195,22 @@ module.exports = async function handler(req, res) {
         await incrementStat(send.newsletter_id, 'stats_bounced');
         break;
 
+      case 'email.suppressed':
+        // Resend refused to send because the recipient is on its suppression
+        // list (past hard bounce or prior complaint). Effectively a bounce
+        // from our perspective — the email never left Resend.
+        updates.status = 'bounced';
+        subUpdates.status = 'bounced';
+        try {
+          var subRowsSup = await sb.query('newsletter_subscribers?id=eq.' + encodeURIComponent(send.subscriber_id) + '&select=bounce_count');
+          var currentSup = (subRowsSup[0] && subRowsSup[0].bounce_count) || 0;
+          subUpdates.bounce_count = currentSup + 1;
+        } catch (e) {
+          subUpdates.bounce_count = 1;
+        }
+        await incrementStat(send.newsletter_id, 'stats_bounced');
+        break;
+
       case 'email.complained':
         updates.status = 'complained';
         subUpdates.status = 'complained';
@@ -250,13 +266,14 @@ module.exports.config = { api: { bodyParser: false } };
 
 async function incrementStat(newsletterId, column) {
   try {
-    var newsletters = await sb.query('newsletters?id=eq.' + encodeURIComponent(newsletterId) + '&select=id,' + encodeURIComponent(column));
-    if (!newsletters.length) return;
-    var current = newsletters[0][column] || 0;
-    var patch = {};
-    patch[column] = current + 1;
-    await sb.mutate('newsletters?id=eq.' + encodeURIComponent(newsletterId), 'PATCH', patch);
+    // Atomic single-statement UPDATE via Postgres RPC. Cannot lose counts
+    // under concurrent webhook invocations the way SELECT+PATCH could.
+    // The RPC whitelists column names internally to block injection.
+    await sb.mutate('rpc/increment_newsletter_stat', 'POST', {
+      nl_id: newsletterId,
+      col: column
+    }, 'return=minimal');
   } catch (e) {
-    console.error('incrementStat error:', e);
+    console.error('incrementStat RPC error:', e.message);
   }
 }
