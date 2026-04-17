@@ -7,9 +7,9 @@
 
 ## Where the audit stands
 
-All 9 Criticals closed. **Eleven Highs closed** (H5, H7, H8, H9, H10, H11, H14, H28, H33, H34, H35). M8, M13, M38 closed; M26 err-leak half closed, prompt-injection half deferred to Group D. **L8**, L14, L26, L27 closed. H21 has scaffolding landed (`api/_lib/google-delegated.js`) but 5 duplicate sites still need migration. `authenticator_secret_key` null-on-all-rows investigation resolved: `SENSITIVE_FIELDS` includes it; the null state just means no 2FA setup has been saved yet through the admin UI. Not a bug.
+All 9 Criticals closed. **Fifteen Highs closed** (H5, H7, H8, H9, H10, H11, H14, H18, H19, H20, H22, H28, H33, H34, H35). M6, M8, M13, M22, M38 closed; M26 err-leak half closed, prompt-injection half deferred to Group D. **L8**, L14, L26, L27 closed. H21 has scaffolding landed (`api/_lib/google-delegated.js`) but 5 duplicate sites still need migration. `authenticator_secret_key` null-on-all-rows investigation resolved: `SENSITIVE_FIELDS` includes it; the null state just means no 2FA setup has been saved yet through the admin UI. Not a bug.
 
-~87 findings remain. None of them are attack chains of the same severity as C1-C9. Most are hardening, consistency, and observability work. Ordering them linearly doesn't match their actual value; grouping them does.
+~82 findings remain. None of them are attack chains of the same severity as C1-C9. Most are hardening, consistency, and observability work. Ordering them linearly doesn't match their actual value; grouping them does.
 
 ---
 
@@ -42,18 +42,20 @@ All 9 Criticals closed. **Eleven Highs closed** (H5, H7, H8, H9, H10, H11, H14, 
 
 **Recommendation:** H21 migration session is cheaper than originally scoped — the helper is already live in `api/_lib/google-delegated.js` with working token caching. Migration reduces to: delete 5 local copies, add require, rename call sites. Then AbortController. Then the Supabase helper migration.
 
-### Group C — Template/email escape defaults (1 session, template surface)
+### Group C — Template/email escape defaults ✅ COMPLETE
 
-| ID | Issue | Effort |
+| ID | Issue | Status |
 |---|---|---|
-| H18 | Newsletter story fields rendered unescaped | In one session |
-| H19 | Image URL not scheme-validated | Same session |
-| H20 | `p()` + `footerNote` accept raw HTML | Same session |
-| H22 | Proposal `next_steps` rendered unescaped | Same session |
-| M6 | Monitor alert HTML unescaped | Same session |
-| M22 | Unsub subscriberId not URL-encoded | Trivial |
+| H18 | Newsletter story fields rendered unescaped | ✅ closed `0cd0670` |
+| H19 | Image URL not scheme-validated | ✅ closed `0cd0670` |
+| H20 | `p()` + `footerNote` accept raw HTML | ✅ closed `d024b84` (atomic 9-file rename + migration) |
+| H22 | Proposal `next_steps` rendered unescaped | ✅ closed `aabdac1` |
+| M6 | Monitor alert HTML unescaped | ✅ closed `1147a19` |
+| M22 | Unsub subscriberId not URL-encoded | ✅ closed `0cd0670` |
 
-**Recommendation:** One session. Goal: make the default behavior of every template helper "escape input," add `.raw()` variants for the rare case when the caller actually has HTML. This pattern lands across all template modules at once.
+**Group C done.** 6 findings closed in one session across 4 commits. Escape-by-default pattern now in place for `_lib/email-template.js` (both `p` and `footerNote`), `_lib/newsletter-template.js` (all plain-text interpolations + URL scheme validation), `_lib/monitor.js` critical-alert HTML, and `generate-proposal.js` deployed HTML. Future callers get safety by default; 82+ existing email call sites were migrated to explicit `pRaw` to preserve byte-identical output.
+
+**Opportunistic follow-up** (not blocking): audit the 82+ `email.pRaw()` call sites in the 8 migrated files. Sites that pass plain text (no concatenated HTML fragments, no `email.esc()` wrapping) can be upgraded to `email.p()` for belt-and-suspenders safety. Not urgent — the security surface is closed because admin JWTs are the only write path into those templates.
 
 ### Group D — AI prompt injection hardening (1 session)
 
@@ -133,232 +135,204 @@ Items I recommend marking "won't fix" or "needs design":
 
 ## Recommended next session
 
-**Group A pattern fix — H33 + H34 + H35 + M13 + M26 (err-leak half).**
+**Group B.1 — H21 google-auth migration.**
 
 Reasoning:
-- Closes Group A completely. Symmetrical finish to the small-wins work.
-- All five are the same shape: response bodies (and one NDJSON stream) leak `err.message`, Anthropic/Resend response bodies, or raw AI output on the 5xx path. Same fix pattern everywhere: route detail to `monitor.logError` server-side, return generic messages to caller.
-- H28 (just shipped) is the reference pattern — `monitor.logError(route, err, { detail: {...} })` + sanitized response. Clean mental model for the session.
-- One session, 5 files, ~5 commits.
+- Helper (`api/_lib/google-delegated.js`) is already live with working token caching (commit `7adedb6`). Migration reduces to: delete 5 local copies, add require, rename call sites.
+- Mechanical — near-free session, zero design questions.
+- Closes 2 Highs (H21, H30) plus likely incidental close on L16.
+- Good rhythm break after the heavier Group C atomic-rename session.
 
 After that, the recommended sequence is:
 
-1. **Group A pattern fix — err.message leaks** (1 session) — H33, H34, H35, M13, M26
-2. **Group B.1 — H21 google-auth migration** (1 session) — helper already live, 5 duplicate sites to replace
-3. **Group C — template escape defaults** (1 session) — fixes 6 related findings in one pass
-4. **Group B.2 — AbortController extraction** (1 session)
-5. **Group D — AI prompt injection hardening** (1 session)
-6. **Group E — non-transactional state** (1 session)
+1. **Group B.1 — H21 google-auth migration** (1 session, mechanical) — next
+2. **Group D — AI prompt injection hardening** (1 session) — closes H25, H31, M15, M26-prompt-half
+3. **Group B.2 — AbortController extraction** (1 session) — closes H4, H24 + many Mediums
+4. **Group E — non-transactional state** (1 session) — closes H26, H27, M11, M30
+5. **Group F — public endpoint hardening** (1 session) — closes H12, H15, H32 + validation Mediums
+6. **Group G — operational resilience** (1-2 sessions) — H1, H3, H6, H13, H17, H23, H29 + small Mediums
 7. **Group B.3 — Supabase helper migration** (1-2 sessions)
-8. **Group F — public endpoint hardening** (1 session)
-9. **Group G — operational resilience batched small items** (1-2 sessions)
-10. **Group I — Lows + Nits sweep** (1 session)
-11. **Group H — M1 Stripe metadata** (once dashboard metadata is added)
+8. **Group I — Lows + Nits sweep** (1 session)
+9. **Group H — M1 Stripe metadata** (once dashboard metadata is added)
 
-Approximately 10-12 sessions to clear the remaining open findings, or we stop earlier once diminishing returns kick in.
+Approximately 8-10 sessions to clear the remaining open findings, or we stop earlier once diminishing returns kick in. The call on "when to stop" gets clearer around session 5-6 when what's left is mostly Low/Nit polish.
 
 ---
 
-## Prompt for next session (Group C — template escape defaults)
+## Prompt for next session (Group B.1 — H21 google-auth migration)
 
 ```
-Template escape defaults session. Six findings in one pass, across three
-template modules and ~10 caller files. Pattern: make the default helper
-names (`p`, `footerNote`, body inserters) escape by default, add explicit
-`.raw` variants for the HTML-building cases that exist today, don't break
-any existing caller on the way through.
+H21 migration session. The helper `api/_lib/google-delegated.js` has been
+live since commit 7adedb6 with working token caching — it's used by
+api/campaign-summary.js today. This session replaces 5 local duplicate
+implementations with the shared helper.
 
-Read docs/api-audit-2026-04.md sections H18, H19, H20, H22, M6, M22
-first. Then walk through your plan before touching code.
-
-Reference pattern for the overall approach: two-part rollout in a single
-atomic commit per module.
-  Step A: rename current raw helpers to explicit `.raw` names
-  Step B: add new safe defaults that escape
-  Step C: migrate every existing caller to the `.raw` variant so behavior
-          is byte-for-byte preserved. Future sessions can opportunistically
-          upgrade plain-text callers to the new safe defaults.
+Read docs/api-audit-2026-04.md sections H21 and H30, and the partial-
+progress note under H21 (helper already landed). Then walk through your
+plan before touching code.
 
 ─────────────────────────────────────────────────────────────────────
-Fix 1: H18 + H19 + M22 — api/_lib/newsletter-template.js (single commit)
+Helper signature (pre-verified on main)
 ─────────────────────────────────────────────────────────────────────
 
-Current state (pre-verified on main):
+  var google = require('./_lib/google-delegated');
 
-  Line 14:  esc(s) helper already exists — reuse, don't duplicate.
-  Line 160: `UNSUBSCRIBE_BASE + (subscriberId ? '?sid=' + subscriberId : '')`
-            → M22: wrap subscriberId with encodeURIComponent()
+  // Domain-wide delegation (impersonate a Workspace user):
+  await google.getDelegatedAccessToken(mailbox, scope);
+    // → returns access_token string
+    // → THROWS on failure (no more {error} return)
+    // → caches by `${mailbox}|${scope}` with 60s pre-expiry buffer
 
-H18 sites (unescaped interpolation of potentially-untrusted fields):
-  Line 54   `+ item +`               in storyBlock actionHtml (array map)   → esc
-  Line 55   `+ items +`              in storyBlock actionHtml (string case) → esc
-  Line 58   `+ item +`               in storyBlock actionHtml (array case)  → esc
-  Line 66   `(story.headline || '')`                                        → esc
-  Line 83   `+ item +`               in quickWinsBlock                      → esc
-  Line 103  `spotlight.cta_text`                                            → esc
-  Line 108  `+ headline +`           spotlight headline var                 → esc
+  // Direct SA token (no impersonation):
+  await google.getServiceAccountToken(scope);
+    // → returns access_token string
+    // → THROWS on failure
+    // → caches by `sa|${scope}`
 
-KEEP RAW (these are AI-generated HTML by design, not plain text):
-  Line 68   `(story.body || '')`      — AI generates <p> tags
-  Line 102  `(spotlight.body || '')`  — AI generates HTML
-  Line 120  `+ text +`                in finalThoughtsBlock — AI-generated HTML
-
-If you feel strongly the design is wrong (AI shouldn't generate HTML, should
-generate markdown-like markers we render), flag it for Chris but don't
-change it this session. Scope fence.
-
-H19 sites (image_url scheme validation):
-  Line 41   `<img src="' + esc(story.image_url) + '"` — esc() prevents HTML
-            injection but `javascript:`, `data:`, and `file:` URLs still
-            escape cleanly and remain clickable in some email clients.
-
-  Fix: add a `validateImageUrl(url)` helper near esc() that returns `url`
-  only if it starts with `https://` or `http://`, else returns '' (safe
-  fallback — no image rendered). Apply at line 41 wrapping image_url.
-  Check for any other image src sites (grep `<img `) to be thorough.
+  // Try a list of mailboxes, return first that passes testFn:
+  await google.getFirstWorkingImpersonation(mailboxes, scope, testFn);
+    // Used in campaign-summary.js for GSC property owner variance.
 
 ─────────────────────────────────────────────────────────────────────
-Fix 2: H20 — api/_lib/email-template.js + 9 caller files (atomic commit)
+CRITICAL: return contract differs from the local implementations
 ─────────────────────────────────────────────────────────────────────
 
-Context:
-- Function `p(text)` at L48 returns raw HTML wrapping `text` in <p>. Called
-  ~82 times across 9 files. The majority of calls concat literal HTML
-  (`<strong>`, `&bull;`, `email.esc(var)`) so they need the raw behavior.
-- Field `footerNote` is an *option* to wrap() (not a function), inserted
-  raw at L164. Called in 8 files. One of them (send-proposal-email.js)
-  passes HTML with an `<a>` tag + styles; the others pass plain strings.
+Old local helpers: on failure, return { error: 'msg' }.
+Callers check: if (token.error) { ... } or if (!token || token.error)
 
-Plan (single atomic commit):
+New helper: THROWS.
 
-  email-template.js changes:
-    1. Rename internal `function p` → `function pRaw`.
-    2. Add new `function p(text)` that returns
-       `'<p style="..."">' + esc(text) + '</p>'`
-    3. Export both: `p: p` (new safe), `pRaw: pRaw` (current behavior).
-    4. In `wrap()`: support both `options.footerNote` (new, esc-wrapped)
-       and `options.footerNoteRaw` (current behavior). If both present,
-       `footerNoteRaw` wins. If only `footerNote`, esc-wrap it.
+Every call site needs a try/catch wrapper OR the call site must live
+inside an existing try block with a catch that handles the thrown error.
 
-  Caller changes (9 files):
-    api/compile-report.js
-    api/digest.js
-    api/generate-audit-followups.js
-    api/generate-followups.js
-    api/ingest-batch-audit.js
-    api/ingest-surge-content.js
-    api/notify-team.js
-    api/send-audit-email.js
-    api/send-followup-email.js (check — currently 0 p calls but may have
-                                 module-level usage)
-    api/send-proposal-email.js
-    api/send-report-email.js
-    api/generate-proposal.js (only if it uses email.p; verify — H22 touches it anyway)
-
-    Mechanical change: sed-replace every `email.p(` → `email.pRaw(`.
-    Behavior preserved exactly (renamed-original).
-
-    footerNote: only send-proposal-email.js passes HTML — change to
-    `footerNoteRaw:` there. Other 7 callers pass plain strings (including
-    'This is an internal notification for the Moonraker team.' and '') —
-    safe to leave on the new `footerNote` option since escape of plain
-    text is a no-op on content that has no HTML metacharacters. (If any
-    plain-text caller contains `&`, `<`, `>`, `"` — an apostrophe is fine
-    — they also need `footerNoteRaw`. Grep to check.)
-
-Result: 100% byte-identical email output. New safe `p()` and `footerNote`
-now exist for future callers. H20 closed.
+For each migrated site: preserve behavior precisely. If the old branch
+did `results.drive.error = 'Failed to get Drive token: ' + token.error`,
+the new try/catch catches and sets the same field with e.message. If it
+did `return res.status(500).json({error:'Google auth failed: '+token.error})`,
+the catch does the same with e.message.
 
 ─────────────────────────────────────────────────────────────────────
-Fix 3: H22 — api/generate-proposal.js (single commit)
+Sites to migrate (current line numbers on main)
 ─────────────────────────────────────────────────────────────────────
 
-Two sites at current line numbers:
+Site 1 — api/bootstrap-access.js
+  Local impl: `async function getDelegatedToken(saJson, impersonateEmail, scope)` at line 575
+  Callers:
+    line 121:  var gbpToken = await getDelegatedToken(googleSA, IMPERSONATE_USER, scope)
+    line 242:  var ga4Token = await getDelegatedToken(googleSA, IMPERSONATE_USER, scope)
+    line 324:  var gtmToken = await getDelegatedToken(googleSA, IMPERSONATE_USER, scope)
+  Each caller checks `if (token.error)` on the next line (122, 243, 325).
 
-Line 331: `(customPricing.amount_cents / 100).toLocaleString()`
-  If `amount_cents` is undefined/null/non-numeric, this produces '$NaN'
-  in the deployed proposal. Guard:
-    var amt = Number(customPricing.amount_cents);
-    if (!Number.isFinite(amt) || amt < 0) { /* skip card or log error */ }
-    else investmentCardsHtml += '<div>$' + (amt/100).toLocaleString() + '</div>';
+  Migration:
+    - Add `var google = require('./_lib/google-delegated');` at module scope.
+    - Each call becomes:
+        var token;
+        try { token = await google.getDelegatedAccessToken(IMPERSONATE_USER, scope); }
+        catch (e) { <same error-handling branch as current>; }
+    - Drop the googleSA first arg (helper reads env directly).
+    - Delete the local getDelegatedToken function (line 575 onward).
+    - The `if (!googleSA) throw` guards (lines 119, 240, 322) become
+      redundant (helper checks env) but keeping them is fine for early
+      failure — your call.
 
-Line 332: `(customPricing.label || customPricing.period)` — admin-controlled
-  string, flows into deployed HTML. Escape via local esc helper (reuse the
-  function already defined in the file if present, else define inline:
-  same shape as newsletter/email-template esc()).
+Site 2 — api/compile-report.js
+  TWO local impls (both need migration):
+    line 909:  `async function getGoogleAccessToken(saJson, scope)`  — no impersonation
+    line 1012: `async function getDelegatedToken(saJson, impersonateEmail, scope)` — with impersonation
+  Callers:
+    line 182: `if (!token || token.error)` — reviewed as GSC path
+    line 257: `if (!gbpToken || gbpToken.error)` — GBP Performance path
+    line 942: separate token exchange (NOT the helper — leave alone, it's
+              inside the helper's own impl loop)
+  Migration:
+    - Both get replaced with the new helper:
+        getGoogleAccessToken → getServiceAccountToken
+        getDelegatedToken    → getDelegatedAccessToken
+    - try/catch wrapping as above. Both callers already have `warnings.push`
+      error-handling that maps cleanly to catch-block behavior.
+    - Delete both local functions.
 
-Line 361: `(s.title || 'Step ' + (i+1))` + `(s.desc || s.description || '')`
-  next_steps from AI, flows into deployed HTML. Escape both.
+Site 3 — api/discover-services.js
+  Local impl: `async function getGoogleAccessToken(saJson)` at line 281 (no-impersonation variant, no scope arg — scope hardcoded inside)
+  Callers:
+    line 47: `if (token && token.error) return res.status(500)...`
+  Migration:
+    - Check line 281 for the hardcoded scope — pass it explicitly to
+      google.getServiceAccountToken(scope) at the call site.
+    - Wrap in try/catch, preserve the 500 response shape on error.
+    - Delete local function.
 
-Note: this file generates HTML that gets pushed to GitHub → deployed to
-live domain via Vercel, not email. Don't import email-template.js. Define
-or reuse a local `esc()` helper.
+Site 4 — api/enrich-proposal.js
+  Local impl: `async function getDelegatedToken(saJson, impersonateEmail, scope)` at line 414
+  Callers: 1 call (line ~92 range — grep to confirm)
+  Migration: same try/catch pattern; delete local function.
+
+Site 5 — api/generate-proposal.js
+  Local impl: `async function getDelegatedToken(saJson, impersonateEmail, scope)` at line 725
+  Callers: 1 call (line ~704 — it branches on `driveToken.error` for
+           a results.drive.error field)
+  Migration: same try/catch; catch sets results.drive.error with e.message.
 
 ─────────────────────────────────────────────────────────────────────
-Fix 4: M6 — api/_lib/monitor.js (trivial, bundle with doc update)
+Out of scope for this session
 ─────────────────────────────────────────────────────────────────────
 
-Line 83: `'<p><strong>Route:</strong> ' + route + '</p>'`  → wrap route with escHtml()
-Line 85: `'<p><strong>Client:</strong> ' + slug + '</p>'`  → wrap slug with escHtml()
-
-Note: Line 81's subject also uses `route` and `slug` unescaped, but
-subject is plain text (not HTML) so it's not an HTML injection vector.
-Optional: strip newlines from subject anyway to prevent header injection.
-Not flagged by M6 — your call.
-
-`escHtml()` already exists at L104. Reuse it.
+- api/_lib/google-drive.js: has its own getAccessToken() + module-level
+  _cachedToken/_cachedExpiry. Bespoke signature (no-arg — scope hardcoded).
+  Separate design concern. Leaving it alone closes H21 as written (5
+  route-level duplicates) and doesn't add risk. Fold into a follow-up
+  if desired.
+- api/campaign-summary.js: already uses the helper, no action.
+- H30 (Fathom dedup token caching): partially resolves incidentally —
+  enrich-proposal.js's Fathom + Gmail calls now benefit from helper's
+  token cache. Mark H30 resolved alongside H21.
+- L16 (two Google auth functions in compile-report.js with subtle
+  difference): closes incidentally — both are gone after migration.
+  Mark L16 resolved.
 
 ─────────────────────────────────────────────────────────────────────
 Testing
 ─────────────────────────────────────────────────────────────────────
 
-- Each commit's Vercel deploy must go READY.
-- For Fix 1 (newsletter-template): there's no easy preview harness, but
-  the existing `/admin/newsletter` preview flow exercises storyBlock +
-  spotlight + finalThoughts. Visually inspect a preview for an existing
-  newsletter after the commit. Expect zero diff since the fields being
-  escaped haven't historically contained HTML metacharacters.
-- For Fix 2 (email-template): more critical. Hit `/api/test-email` or
-  equivalent, or just let the next transactional email (say, a proposal
-  send) exercise it. Byte-identical HTML expected.
-- For Fix 3: spot-check /_templates/proposal.html rendering in an existing
-  deployed proposal (via clients.moonraker.ai/<slug>/proposal). If `esc`
-  breaks anything, the symptom is literal `<strong>` or similar appearing
-  in the next_steps section.
-- For Fix 4: trigger a critical error (monitor.critical call) if you
-  have a dev path for it; otherwise, a grep-verify is fine.
+No new functional behavior — this is a refactor to a pre-existing helper.
+Vercel deploy must go READY for each commit.
 
-─────────────────────────────────────────────────────────────────────
-Out of scope
-─────────────────────────────────────────────────────────────────────
+Smoke tests if desired (not blocking):
+- discover-services.js: can exercise via admin UI's "Discover Services"
+  button on any onboarding contact.
+- bootstrap-access.js: requires a real Leadsie hand-off to exercise
+  end-to-end — skip unless you have a test client ready.
+- compile-report.js: can exercise via any client's monthly report
+  generation.
+- enrich-proposal.js: runs during proposal generation; needs a lead
+  being promoted to prospect.
+- generate-proposal.js: same path as enrich — they run together.
 
-- Migrating individual `email.pRaw(` callers back to the new safe `email.p(`
-  (opportunistic future cleanup).
-- Changing the AI generation prompt to emit plain text instead of HTML for
-  story.body / spotlight.body / final_thoughts (design change, not scope).
-- H25, H31, M15, M26-prompt-half (Group D — AI prompt injection).
-- Any rate limiting on email-related routes (Group F).
+Grep check after each commit:
+  grep -rn "function getDelegatedToken\|function getGoogleAccessToken" api/
+  — expected: only api/campaign-summary.js (negative) and the helper
+    itself have these names after all migrations.
 
 ─────────────────────────────────────────────────────────────────────
 Deliverables
 ─────────────────────────────────────────────────────────────────────
 
-Commit shape (suggested — combine/split as you prefer):
+5 commits, one per file (in any order — they don't depend on each other):
+  - Migrate bootstrap-access.js to google-delegated helper
+  - Migrate compile-report.js (both getDelegatedToken and getGoogleAccessToken)
+  - Migrate discover-services.js
+  - Migrate enrich-proposal.js
+  - Migrate generate-proposal.js
 
-  c1: H18 + H19 + M22 — newsletter-template: escape untrusted fields,
-      validate image URL scheme, encode subscriberId
-  c2: H20 — email-template rename + caller migration (atomic; ~10 files)
-  c3: H22 — generate-proposal: amount_cents guard + escape label + escape
-      next_steps items
-  c4: M6 — monitor critical alert: escape route + slug
+Final: doc update to api-audit-2026-04.md:
+  - Mark H21 resolved (was partial — now full, all 5 route-level
+    duplicates migrated)
+  - Mark H30 resolved (incidental)
+  - Mark L16 resolved (incidental)
+  - Update running tallies: High 15 → 17 resolved, Low 4 → 5 resolved
+  - Note google-drive.js helper-integration as candidate follow-up
 
-Final: doc update — mark H18, H19, H20, H22, M6, M22 resolved in
-docs/api-audit-2026-04.md resolution log. Update running tallies:
-  High 11 → 15 resolved (H18, H19, H20, H22)
-  Medium 3+ → 5+ resolved (M6, M22)
-
-Also update docs/post-phase-4-status.md: mark Group C complete, note the
-opportunistic `pRaw` → `p` migration as follow-up work.
+Also update post-phase-4-status.md: mark Group B.1 complete.
 ```
 
 ## Closing thought on the grouping approach
