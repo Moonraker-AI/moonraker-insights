@@ -535,24 +535,27 @@ Before coding Phase 3+:
 - **Decide rate-limit backing store** — Supabase table, Upstash KV, or Vercel KV. Affects C9 and H5 fixes.
 - **Decide `action.js`/`onboarding-action.js` direction** — shared hardened mutation layer, or rewrite `onboarding-action.js` with named actions only (no generic table/filters passthrough).
 
-### Phase 4 — Public attack surface (high impact)
-5. **C3 + C7** — implement page-token design, replace body-contact_id pattern in `onboarding-action.js`.
-6. **C4** — restructure `action.js` filter input, add `activity_log` writes on every mutation. Extract `_lib/postgrest-filter.js` shared with `onboarding-action.js`.
-7. **C9** — endorsement defense-in-depth: rate limit + captcha on collection form, structured delimiters in content-page prompt, server-side HTML sanitization before deploy.
+### Phase 4 — Public attack surface (high impact) ✅ COMPLETE
+5. ✅ **C3 + C7** — Sessions P4S1–P4S3. `api/_lib/page-token.js` (stateless HMAC), `api/onboarding-action.js` now requires verified page_token. Token minted at onboarding page deploy; contact_id sourced from verified token, not request body. Filter injection bug closed via shared helper (P4S5). 22+ existing onboarding pages redeployed with tokens.
+6. ✅ **C4** — Session P4S5. `api/_lib/postgrest-filter.js` rejects operator-prefix passthrough; `api/_lib/action-schema.js` per-table manifest (permissive defaults, tightening follows as observed). `api/action.js` writes field-level rows to `activity_log` on every mutation. `api/onboarding-action.js` shares the filter helper.
 
-### Phase 5 — Hardening passes
+### Phase 5 — Hardening passes (PENDING)
 8. **H9** — rotate `CF_R2_DEPLOY_SECRET`, remove source fallback, fail-closed.
-9. **H21 + N6** — extract `_lib/google-auth.js`, delete 6 duplicate `getDelegatedToken` copies.
+9. **H21 + N6** — extract `_lib/google-auth.js`, delete 7 duplicate `getDelegatedToken` copies.
 10. **H4 + H24 + M10 + M16 + the many AbortController gaps** — extract `fetchWithTimeout`, apply everywhere.
 11. **Pattern 12** — migrate inline Supabase fetches to helper in the five big files. Mechanical, test-with-deploy.
 
-### Phase 6 — Rate limiting
-12. Add `_lib/rate-limit.js`, apply to chat endpoints (H5), `submit-entity-audit` (H14), `newsletter-unsubscribe`, and the endorsement API once C9's collection endpoint exists.
+### Phase 6 — Rate limiting ✅ COMPLETE
+12. ✅ **H5 + H14** — Session P4S4. `api/_lib/rate-limit.js` backed by Supabase table + atomic RPC. Applied: chat endpoints (agreement/content/proposal/report) at 20/min/IP; `submit-entity-audit` at 3/hr/IP (replacing global H14 limit); `newsletter-unsubscribe` at 30/min/IP. Daily cleanup cron registered.
 
-### Phase 7 — Code quality cleanup
+### Phase 6.5 — C9 endorsement chain ✅ COMPLETE
+_(Brought forward from Phase 7 since Chris chose "ship now" over "wait for traffic")_
+✅ **C9** — Session P4S7. New `api/submit-endorsement.js` requires scope='endorsement' page_token (minted per-client at endorsement page deploy), rate-limited 10/hr/IP, all text fields passed through `sanitizeText()`. `api/_lib/html-sanitizer.js` added; generated content HTML sanitized before save as defense in depth. Template updated to POST through the server endpoint instead of direct anon-key write.
+
+### Phase 7 — Code quality cleanup (PENDING)
 13. Template/email escape defaults (H18, H19, H20).
 14. Error-leak standardization (pattern 7).
-15. Stripe metadata-based product detection (M1).
+15. **M1** — Stripe metadata-based product detection (detailed plan in M1 section above).
 16. Remaining Medium/Low cleanup as time permits.
 
 ### Won't-fix-now list
@@ -564,20 +567,25 @@ Before coding Phase 3+:
 
 ## Running tallies
 
-- **Critical:** 9 total (C1–C9). **Resolved: 5** (C1, C2, C5, C6, C8). **Open: 4** (C3, C4, C7, C9).
-- **High:** 35 total (H1–H35). **Resolved: 2** (H8, H11). **Open: 33.**
-- **Medium:** 37 total (M1–M37). **Resolved: 1** (M8). **Open: 36.**
+- **Critical:** 9 total (C1–C9). **Resolved: 9 ✅** (all).
+- **High:** 35 total (H1–H35). **Resolved: 4** (H5, H8, H11, H14). **Open: 31.**
+- **Medium:** 37 total (M1–M37). **Resolved: 1+** (M8 confirmed; several more likely closed via Phase 4 action-schema work — needs verification sweep). **Open: ~36.**
 - **Low:** 25 total (L1–L25). **Open: 25.**
 - **Nit:** 6 total (N1–N6). **Open: 6.**
 
-**Total: 112 findings. Resolved: 8. Open: 104.**
+**Total: 112 findings. Resolved: ≥14. Open: ≤98.**
 
 ### Resolution log
-| Finding | Commit | Date |
+| Finding | Commit / Session | Date |
 |---|---|---|
 | C1 + C8 | `28ffa37` | 2026-04-17 |
 | C5 + H8 | `c717d99` | 2026-04-17 |
 | C6 + H11 | `b9b8f47` | 2026-04-17 |
 | C2 + M8 | `5263aa5` | 2026-04-17 |
+| C3 + C7 | Phase 4 S1–S3 (page-token + filter helper) | 2026-04-17 |
+| C4 | Phase 4 S5 (action-schema + postgrest-filter + activity_log) | 2026-04-17 |
+| C9 | Phase 4 S7 (submit-endorsement + html-sanitizer) | 2026-04-17 |
+| H5 | Phase 4 S4 (rate-limit chat endpoints) | 2026-04-17 |
+| H14 | Phase 4 S4 (per-IP submit-entity-audit limit) | 2026-04-17 |
 
 Audit was performed across five sessions reading ~11,000 lines of API route code, the eight `_lib/` modules, relevant templates, and git history for secret leakage. Unread in detail: chat system prompt bodies (low-risk content), several `send-*-email.js` / `trigger-*` / `ingest-*` routes (expected to follow already-catalogued patterns), most `api/admin/*` read-only dashboard routes. The audit is considered comprehensive for Critical and High findings; Medium/Low/Nit counts would grow modestly with further reading.
