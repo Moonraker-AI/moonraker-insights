@@ -50,17 +50,13 @@ module.exports = async function handler(req, res) {
 
   try {
     if (proposalId) {
-      var pResp = await fetch(sb.url() + '/rest/v1/proposals?id=eq.' + proposalId + '&select=*,contacts(*)&limit=1', { headers: sb.headers() });
-      var proposals = await pResp.json();
-      if (!proposals || proposals.length === 0) return res.status(404).json({ error: 'Proposal not found' });
-      proposal = proposals[0];
+      proposal = await sb.one('proposals?id=eq.' + proposalId + '&select=*,contacts(*)&limit=1');
+      if (!proposal) return res.status(404).json({ error: 'Proposal not found' });
       contact = proposal.contacts;
       contactId = contact.id;
     } else {
-      var cResp = await fetch(sb.url() + '/rest/v1/contacts?id=eq.' + contactId + '&select=*&limit=1', { headers: sb.headers() });
-      var contacts = await cResp.json();
-      if (!contacts || contacts.length === 0) return res.status(404).json({ error: 'Contact not found' });
-      contact = contacts[0];
+      contact = await sb.one('contacts?id=eq.' + contactId + '&select=*&limit=1');
+      if (!contact) return res.status(404).json({ error: 'Contact not found' });
     }
   } catch (e) {
     return res.status(500).json({ error: 'Failed to load data: ' + e.message });
@@ -83,10 +79,11 @@ module.exports = async function handler(req, res) {
 
   // Update proposal status to enriching
   if (proposalId) {
-    await fetch(sb.url() + '/rest/v1/proposals?id=eq.' + proposalId, {
-      method: 'PATCH', headers: sb.headers(),
-      body: JSON.stringify({ status: 'enriching' })
-    });
+    try {
+      await sb.mutate('proposals?id=eq.' + proposalId, 'PATCH', { status: 'enriching' });
+    } catch (e) {
+      console.error('[enrich-proposal] status=enriching flip failed:', e.message);
+    }
   }
 
   // ─── 1. Gmail Search (all 3 accounts) ─────────────────────────
@@ -388,13 +385,10 @@ module.exports = async function handler(req, res) {
   // ─── Save enrichment to proposal ──────────────────────────────
   if (proposalId) {
     try {
-      await fetch(sb.url() + '/rest/v1/proposals?id=eq.' + proposalId, {
-        method: 'PATCH', headers: sb.headers(),
-        body: JSON.stringify({
-          status: 'review',
-          enrichment_sources: enrichment.sources,
-          enrichment_data: enrichment.data
-        })
+      await sb.mutate('proposals?id=eq.' + proposalId, 'PATCH', {
+        status: 'review',
+        enrichment_sources: enrichment.sources,
+        enrichment_data: enrichment.data
       });
     } catch (e) {
       enrichment._save_error = e.message;
