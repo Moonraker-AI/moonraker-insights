@@ -329,6 +329,61 @@ textarea.form-input { resize: vertical; min-height: 80px; line-height: 1.6; }
   .sub-row { font-size: .78rem; padding: .5rem .75rem; }
 }
 
+/* ============================================================
+   Floating compose action bar
+   Desktop: pill in bottom-right
+   Mobile:  full-width dock with safe-area padding
+============================================================ */
+.compose-action-bar {
+  position: fixed;
+  right: 1.5rem;
+  bottom: 1.5rem;
+  z-index: 80;
+  display: none;
+  gap: .4rem;
+  align-items: center;
+  padding: .5rem;
+  background: var(--color-surface);
+  border: 1px solid var(--color-border);
+  border-radius: 14px;
+  box-shadow: 0 10px 28px rgba(15, 23, 42, .12), 0 2px 6px rgba(15, 23, 42, .06);
+  -webkit-backdrop-filter: saturate(180%) blur(8px);
+  backdrop-filter: saturate(180%) blur(8px);
+}
+.compose-action-bar.is-visible { display: flex; }
+.compose-action-bar .btn { white-space: nowrap; }
+
+/* Reserve clearance so last fields don't hide behind the bar */
+body.compose-bar-visible #tab-compose.active { padding-bottom: 96px; }
+
+@media (max-width: 768px) {
+  .compose-action-bar {
+    right: 0;
+    left: 0;
+    bottom: 0;
+    border-radius: 0;
+    border: none;
+    border-top: 1px solid var(--color-border);
+    padding: .6rem .75rem calc(.6rem + env(safe-area-inset-bottom));
+    flex-wrap: wrap;
+    gap: .4rem;
+    box-shadow: 0 -4px 14px rgba(15, 23, 42, .08);
+  }
+  .compose-action-bar .btn {
+    flex: 1 1 calc(50% - .2rem);
+    min-height: 44px;
+    font-size: .82rem;
+    padding: .55rem .4rem;
+  }
+  .compose-action-bar .btn-primary {
+    flex: 1 1 100%;
+    order: -1;
+    min-height: 46px;
+    font-size: .9rem;
+  }
+  body.compose-bar-visible #tab-compose.active { padding-bottom: 180px; }
+}
+
 @media (max-width: 480px) {
   .content { padding: .65rem; }
 
@@ -456,13 +511,6 @@ textarea.form-input { resize: vertical; min-height: 80px; line-height: 1.6; }
       <div class="tab-content" id="tab-compose">
         <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:1rem;">
           <h2 style="font-size:1.1rem;" id="composeTitle">New Edition</h2>
-          <div style="display:flex;gap:.5rem;">
-            <button class="btn btn-secondary" onclick="previewNewsletter()">Preview</button>
-            <button class="btn btn-secondary" onclick="copyNewsletterHtml()" id="copyHtmlBtn" title="Copy rendered HTML for pasting into GHL">Copy HTML</button>
-            <button class="btn btn-secondary" onclick="saveDraft()">Save Draft</button>
-            <button class="btn btn-secondary" onclick="verifyFacts()" id="verifyBtn" title="Fact-check stories against sources"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="vertical-align:-2px;margin-right:.25rem;"><path d="M9 12l2 2 4-4"/><path d="M12 3a9 9 0 1 0 0 18 9 9 0 0 0 0-18z"/></svg>Verify</button>
-            <button class="btn btn-primary" onclick="confirmSend()" id="sendBtn" disabled>Send...</button>
-          </div>
         </div>
 
         <!-- Edition meta -->
@@ -1225,20 +1273,7 @@ async function generateCustomStory() {
       });
       var vData = await vResp.json();
       if (vResp.ok && vData.results && vData.results.length) {
-        var c = vData.results[0];
-        var conf = c.confidence || 'medium';
-        var icons = { high: '\u2713', medium: '!', low: '\u2717' };
-        var sh = '<div class="verify-story ' + conf + '" style="margin-top:.5rem;">';
-        sh += '<div class="verify-badge ' + conf + '">' + (icons[conf] || '?') + '</div>';
-        sh += '<div style="flex:1;"><div class="verify-headline">' + conf.charAt(0).toUpperCase() + conf.slice(1) + ' confidence</div>';
-        if (c.notes) sh += '<div class="verify-issues">' + escHtml(c.notes) + '</div>';
-        if (c.issues && c.issues.length) {
-          sh += '<ul class="verify-issues" style="margin:.25rem 0 0;padding-left:1.2rem;">';
-          c.issues.forEach(function(issue) { sh += '<li>' + escHtml(issue) + '</li>'; });
-          sh += '</ul>';
-        }
-        sh += '</div></div>';
-        if (verifyEl) verifyEl.innerHTML = sh;
+        if (verifyEl) verifyEl.innerHTML = renderVerifyCard(idx, vData.results[0]);
       } else {
         if (verifyEl) verifyEl.style.display = 'none';
       }
@@ -1285,6 +1320,37 @@ async function generateCustomStory() {
 window.generateCustomStory = generateCustomStory;
 
 // ---- Fact Verification ----
+
+// ---- Shared verify card renderer ----
+// Renders the confidence badge + notes + action buttons for a single story.
+// Called from: verifyFacts (all 5 stories), refineStory/regenerateStory re-verify,
+// and swapStory re-verify. Action buttons (Refine / Swap & verify) are included
+// for any confidence below 'high', regardless of how the render was triggered.
+// Also injects the #swapList-<index> div so the button can toggle candidates.
+function renderVerifyCard(storyIndex, c) {
+  var icons = { high: '\u2713', medium: '!', low: '\u2717' };
+  var conf = (c && c.confidence) || 'medium';
+  var sh = '<div class="verify-story ' + conf + '" style="margin-top:.5rem;">';
+  sh += '<div class="verify-badge ' + conf + '">' + (icons[conf] || '?') + '</div>';
+  sh += '<div style="flex:1;"><div class="verify-headline">' + conf.charAt(0).toUpperCase() + conf.slice(1) + ' confidence</div>';
+  if (c && c.notes) sh += '<div class="verify-issues">' + escHtml(c.notes) + '</div>';
+  if (c && c.issues && c.issues.length > 0) {
+    sh += '<ul class="verify-issues" style="margin:.25rem 0 0;padding-left:1.2rem;">';
+    c.issues.forEach(function(issue) { sh += '<li>' + escHtml(issue) + '</li>'; });
+    sh += '</ul>';
+  }
+  if (conf !== 'high') {
+    sh += '<div class="verify-actions">';
+    sh += '<button onclick="refineStory(' + storyIndex + ')">Refine for accuracy</button>';
+    sh += '<button class="swap-btn" onclick="showSwapList(' + storyIndex + ',this)">Swap &amp; verify</button>';
+    sh += '</div>';
+    sh += '<div id="swapList-' + storyIndex + '" style="display:none;"></div>';
+  }
+  sh += '</div></div>';
+  return sh;
+}
+window.renderVerifyCard = renderVerifyCard;
+
 async function verifyFacts() {
   if (!currentEditionId) { toast('Save as draft first', 'error'); return; }
 
@@ -1329,29 +1395,10 @@ async function verifyFacts() {
 
     // Inject results inline below each story card
     checks.forEach(function(c) {
-      var conf = c.confidence || 'medium';
       var si = (c.story_index || 1) - 1;
       var storyDiv = document.getElementById('storyVerify-' + si);
       if (!storyDiv) return;
-
-      var sh = '<div class="verify-story ' + conf + '" style="margin-top:.5rem;">';
-      sh += '<div class="verify-badge ' + conf + '">' + (icons[conf] || '?') + '</div>';
-      sh += '<div style="flex:1;"><div class="verify-headline">' + conf.charAt(0).toUpperCase() + conf.slice(1) + ' confidence</div>';
-      if (c.notes) sh += '<div class="verify-issues">' + escHtml(c.notes) + '</div>';
-      if (c.issues && c.issues.length > 0) {
-        sh += '<ul class="verify-issues" style="margin:.25rem 0 0;padding-left:1.2rem;">';
-        c.issues.forEach(function(issue) { sh += '<li>' + escHtml(issue) + '</li>'; });
-        sh += '</ul>';
-      }
-      if (conf !== 'high') {
-        sh += '<div class="verify-actions">';
-        sh += '<button onclick="refineStory(' + si + ')">Refine for accuracy</button>';
-        sh += '<button class="swap-btn" onclick="showSwapList(' + si + ',this)">Swap &amp; verify</button>';
-        sh += '</div>';
-        sh += '<div id="swapList-' + si + '" style="display:none;"></div>';
-      }
-      sh += '</div></div>';
-      storyDiv.innerHTML = sh;
+      storyDiv.innerHTML = renderVerifyCard(si, c);
       storyDiv.style.display = 'block';
     });
 
@@ -1550,20 +1597,7 @@ async function swapStory(storyIndex, candidateId) {
     });
     var vData = await vResp.json();
     if (vResp.ok && vData.results && vData.results.length) {
-      var c = vData.results[0];
-      var conf = c.confidence || 'medium';
-      var icons = { high: '\u2713', medium: '!', low: '\u2717' };
-      var sh = '<div class="verify-story ' + conf + '" style="margin-top:.5rem;">';
-      sh += '<div class="verify-badge ' + conf + '">' + (icons[conf] || '?') + '</div>';
-      sh += '<div style="flex:1;"><div class="verify-headline">' + conf.charAt(0).toUpperCase() + conf.slice(1) + ' confidence</div>';
-      if (c.notes) sh += '<div class="verify-issues">' + escHtml(c.notes) + '</div>';
-      if (c.issues && c.issues.length) {
-        sh += '<ul class="verify-issues" style="margin:.25rem 0 0;padding-left:1.2rem;">';
-        c.issues.forEach(function(issue) { sh += '<li>' + escHtml(issue) + '</li>'; });
-        sh += '</ul>';
-      }
-      sh += '</div></div>';
-      if (verifyEl) { verifyEl.innerHTML = sh; verifyEl.style.display = 'block'; }
+      if (verifyEl) { verifyEl.innerHTML = renderVerifyCard(storyIndex, vData.results[0]); verifyEl.style.display = 'block'; }
     } else {
       if (verifyEl) verifyEl.style.display = 'none';
     }
@@ -1626,13 +1660,19 @@ function populateCompose(ed) {
   document.getElementById('editionNumber').value = ed.edition_number || '';
   document.getElementById('editionSubject').value = ed.subject || '';
   document.getElementById('editionPreview').value = ed.preview_text || '';
-  document.getElementById('sendBtn').disabled = (ed.status === 'sent' || ed.status === 'sending');
+
+  // Send-button gating flags
+  var sendBtn = document.getElementById('sendBtn');
+  var blocked = (ed.status === 'sent' || ed.status === 'sending' || ed.status === 'scheduled');
+  sendBtn.dataset.blocked = blocked ? '1' : '0';
+  var hasStories = !!(ed.content && ed.content.stories && ed.content.stories.length);
+  sendBtn.dataset.ready = hasStories ? '1' : '0';
   if (ed.status === 'scheduled') {
-    document.getElementById('sendBtn').textContent = 'Scheduled';
-    document.getElementById('sendBtn').disabled = true;
+    sendBtn.textContent = 'Scheduled';
   } else {
-    document.getElementById('sendBtn').innerHTML = 'Send...';
+    sendBtn.innerHTML = 'Send...';
   }
+  refreshSendBtnState();
 
   var content = ed.content || {};
   var stories = content.stories || [];
@@ -1682,7 +1722,7 @@ async function saveDraft() {
       if (Array.isArray(created) && created.length) currentEditionId = created[0].id;
       else if (created && created.id) currentEditionId = created.id;
     }
-    document.getElementById('sendBtn').disabled = false;
+    document.getElementById('sendBtn').dataset.ready = '1'; refreshSendBtnState();
     toast('Draft saved');
     loadEditions();
   } catch (e) {
@@ -1700,7 +1740,7 @@ function newEdition() {
   document.getElementById('editionSubject').value = '';
   document.getElementById('editionPreview').value = '';
   document.getElementById('finalThoughts').value = '';
-  document.getElementById('sendBtn').disabled = true;
+  document.getElementById('sendBtn').dataset.ready = '0'; document.getElementById('sendBtn').dataset.blocked = '0'; refreshSendBtnState();
   // Reset AI panel
   document.getElementById('candidatesGrid').style.display = 'none';
   document.getElementById('candidatesGrid').innerHTML = '';
@@ -2563,7 +2603,7 @@ async function runAIGenerate() {
       document.getElementById('editionPreview').value = content.preview_texts[0];
     }
 
-    document.getElementById('sendBtn').disabled = false;
+    document.getElementById('sendBtn').dataset.ready = '1'; refreshSendBtnState();
     toast('Draft generated! Review and edit below.');
     loadEditions();
   } catch (e) {
@@ -2607,8 +2647,47 @@ function switchTab(name) {
     if (t.textContent.toLowerCase().includes(name.substring(0, 4))) t.classList.add('active');
   });
   if (name === 'subscribers') loadSubscribers();
+  updateComposeBar();
 }
 window.switchTab = switchTab;
+
+// Toggle floating action bar visibility based on active tab.
+// Sets .is-visible on the bar and body.compose-bar-visible so the
+// compose tab reserves bottom padding (content clearance).
+function updateComposeBar() {
+  var bar = document.getElementById('composeActionBar');
+  if (!bar) return;
+  var active = document.querySelector('.tab-content.active');
+  var isCompose = !!(active && active.id === 'tab-compose');
+  bar.classList.toggle('is-visible', isCompose);
+  document.body.classList.toggle('compose-bar-visible', isCompose);
+}
+window.updateComposeBar = updateComposeBar;
+
+// Gate Send button on: draft ready + subject + preview + not blocked.
+// State is stored in sendBtn.dataset so every call site can flip the
+// relevant flag without having to also know the others.
+//   dataset.ready    = '1' after a draft exists (generate / load with stories)
+//   dataset.blocked  = '1' when sent / sending / scheduled
+function refreshSendBtnState() {
+  var btn = document.getElementById('sendBtn');
+  if (!btn) return;
+  var subj = (document.getElementById('editionSubject') || {}).value || '';
+  var prev = (document.getElementById('editionPreview') || {}).value || '';
+  var ready = btn.dataset.ready === '1';
+  var blocked = btn.dataset.blocked === '1';
+  btn.disabled = blocked || !ready || !subj.trim() || !prev.trim();
+}
+window.refreshSendBtnState = refreshSendBtnState;
+
+// Wire subject + preview input listeners once DOM is ready
+document.addEventListener('DOMContentLoaded', function() {
+  var s = document.getElementById('editionSubject');
+  var p = document.getElementById('editionPreview');
+  if (s) s.addEventListener('input', refreshSendBtnState);
+  if (p) p.addEventListener('input', refreshSendBtnState);
+  updateComposeBar();
+});
 
 
 // ---- Toast ----
@@ -2756,6 +2835,16 @@ init();
   })();
 
 </script>
+
+<!-- Floating compose action bar (visible only on Compose tab) -->
+<div class="compose-action-bar" id="composeActionBar" aria-label="Compose actions">
+  <button class="btn btn-secondary" onclick="previewNewsletter()">Preview</button>
+  <button class="btn btn-secondary" onclick="copyNewsletterHtml()" id="copyHtmlBtn" title="Copy rendered HTML for pasting into GHL">Copy HTML</button>
+  <button class="btn btn-secondary" onclick="saveDraft()">Save Draft</button>
+  <button class="btn btn-secondary" onclick="verifyFacts()" id="verifyBtn" title="Fact-check stories against sources"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="vertical-align:-2px;margin-right:.25rem;"><path d="M9 12l2 2 4-4"/><path d="M12 3a9 9 0 1 0 0 18 9 9 0 0 0 0-18z"/></svg>Verify</button>
+  <button class="btn btn-primary" onclick="confirmSend()" id="sendBtn" disabled>Send...</button>
+</div>
+
 </body>
 </html>
 
