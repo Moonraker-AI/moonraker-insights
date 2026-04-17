@@ -706,6 +706,16 @@ module.exports = async function handler(req, res) {
     }
     var monthBuckets = buildMonthBuckets(startISO, endISO);
 
+    // Display-facing engagement length. When the contract has an explicit
+    // end date, use date math (rounded to whole months) so a Mar 12 - Mar 12
+    // contract reads as "12 months", not "13" due to partial-month buckets.
+    var displayMonths = monthBuckets.length;
+    if (client.campaign_start && client.campaign_end) {
+      var _s = new Date(client.campaign_start + 'T00:00:00Z');
+      var _e = new Date(client.campaign_end + 'T00:00:00Z');
+      displayMonths = Math.max(1, Math.round((_e - _s) / (30.44 * 24 * 60 * 60 * 1000)));
+    }
+
     // 4. Pull all sources in parallel
     var [bookings, gsc, localfalcon, deliverables, attribution] = await Promise.all([
       pullBookings(client, monthBuckets),
@@ -764,7 +774,7 @@ module.exports = async function handler(req, res) {
         start: startISO,
         end: endISO,
         days: Math.floor((new Date(endISO) - new Date(startISO)) / 86400000),
-        months: monthBuckets.length
+        months: displayMonths
       },
       bookings: bookings,
       gsc: gsc,
