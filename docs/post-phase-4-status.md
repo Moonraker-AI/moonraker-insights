@@ -69,16 +69,16 @@ All 9 Criticals closed. **Twenty-two Highs closed** (H4, H5, H7, H8, H9, H10, H1
 
 **Group D done.** 5 findings closed in one session across 5 commits + 1 doc commit. See retrospective below.
 
-### Group E — Non-transactional state & idempotency (1 session)
+### Group E — Non-transactional state & idempotency ✅ COMPLETE
 
-| ID | Issue | Effort |
+| ID | Issue | Status |
 |---|---|---|
-| H26 | onboarding seed DELETE+INSERT non-transactional | One session |
-| H27 | compile-report highlights DELETE+INSERT non-transactional | Included |
-| M11 | deploy-to-r2 DELETE+INSERT not idempotent | Included |
-| M30 | generate-proposal fire-and-forget PATCHes swallow errors | Included |
+| H27 | compile-report highlights DELETE+INSERT non-transactional | ✅ closed `886fe05` |
+| H26 | generate-proposal onboarding seed DELETE+INSERT | ✅ closed `4fc3f69` |
+| M11 | deploy-to-r2 DELETE+INSERT not idempotent | ✅ closed `9fe2810` |
+| M30 | generate-proposal fire-and-forget PATCHes swallow errors | ✅ closed `4d0fa27` |
 
-**Recommendation:** One session. All four are the same class of bug — crash between DELETE and INSERT leaves zero rows. Standard fix is upsert or wrap in RPC. Pattern is clear; applying it takes an hour.
+**Group E done.** 4 findings closed in one session across 4 commits + 1 doc commit. See retrospective below.
 
 ### Group F — Public endpoint hardening beyond rate limits (1 session)
 
@@ -136,212 +136,21 @@ Items I recommend marking "won't fix" or "needs design":
 
 ## Recommended next session
 
-**Group E — Non-transactional state & idempotency.**
+**Group F — Public endpoint hardening beyond rate limits.**
 
 Reasoning:
-- Group B.2 closed 2026-04-17 (see retrospective below). Six commits landed across 4 files; all 4 reached zero bare `fetch(` calls; every Vercel deploy READY on first build. `fetchWithTimeout` is now the canonical HTTP client for non-streaming routes.
-- Group E is a clean follow-on. H27 (highlights DELETE+INSERT in `compile-report.js`) is a known pattern that Group B.2 explicitly preserved rather than touched — we left the inner try/catches in place specifically so Group E can swap the pair for an upsert without fighting the sb.mutate error shape. H26 (onboarding seed in `generate-proposal.js`) and M11 (deploy-to-r2) are the same bug class. M30 rounds out the session with the fire-and-forget PATCH sweep.
-- Four findings, all the same template (DELETE+INSERT → PostgREST upsert or RPC), applied in files we now have recent context on.
+- Group E closed 2026-04-17 (see retrospective below). Four commits landed across 3 files; every Vercel deploy READY. PostgREST upsert with `Prefer: resolution=merge-duplicates` is now the canonical replacement for DELETE+INSERT pairs backed by a unique index; fire-and-forget PATCHes have been purged from `generate-proposal.js` serverside.
+- Group F is a natural next step. It's input-validation and boundary-check work on public-ish endpoints — a different skill set from the timeout/upsert/prompt-injection sessions that came before, but the same one-theme-per-session shape. Six findings cluster cleanly: H15 (submit-entity-audit empty-Origin bypass), H32 (digest.js recipients without allowlist), M9 (submit-entity-audit slug race), M12 (manage-site domain normalization), M14 (content-chat silent-nulls), M20 (newsletter-unsubscribe UUID-probing oracle).
 
-After that, the recommended sequence is:
+Recommended sequence after Group F:
 
-1. **Group E — non-transactional state** (1 session) — closes H26, H27, M11, M30
-2. **Group F — public endpoint hardening** (1 session) — closes H12, H15, H32 + validation Mediums
-3. **Group G — operational resilience** (1-2 sessions) — H1, H3, H6, H13, H17, H23, H29 + small Mediums
-4. **Group B.3 — Supabase helper migration** (1-2 sessions) — remaining files outside the B.2 four
-5. **Group I — Lows + Nits sweep** (1 session)
-6. **Group H — M1 Stripe metadata** (once dashboard metadata is added)
+1. **Group F — public endpoint hardening** (1 session) — closes H15, H32 + M9, M12, M14, M20
+2. **Group G — operational resilience** (1-2 sessions) — H1, H3, H6, H13, H17, H23, H29 + small Mediums
+3. **Group B.3 — Supabase helper migration** (1-2 sessions) — remaining files outside the B.2 four; also covers L1 (the raw-fetch pattern noted during Group E's M30 review in `generate-proposal.js:62,80`)
+4. **Group I — Lows + Nits sweep** (1 session)
+5. **Group H — M1 Stripe metadata** (once dashboard metadata is added)
 
-Approximately 5-7 sessions to clear the remaining open findings, or we stop earlier once diminishing returns kick in. The call on "when to stop" gets clearer around session 3 when what's left is mostly Low/Nit polish.
-
----
-
-## Prompt for next session (Group E — Non-transactional state & idempotency)
-
-```
-Non-transactional state + idempotency session. Four findings, one
-pattern: DELETE-then-INSERT sequences that leave zero rows if the
-process crashes in between. Standard fix is PostgREST upsert
-(Prefer: resolution=merge-duplicates) or a server-side RPC. Plus one
-bonus finding (M30) about fire-and-forget PATCHes in generate-proposal
-that swallow errors silently — same file as H26, easy sweep.
-
-Read docs/api-audit-2026-04.md sections H26, H27, M11, M30 first.
-Then walk through your plan before touching code.
-
-─────────────────────────────────────────────────────────────────────
-The shape of the bug
-─────────────────────────────────────────────────────────────────────
-
-Each of H26/H27/M11 looks like this:
-
-  // 1. Delete the old set
-  await sb.mutate('foo?client_slug=eq.' + slug, 'DELETE');
-  // 2. Insert the new set
-  await sb.mutate('foo', 'POST', rows);
-
-If the function crashes, times out, or the Vercel invocation is killed
-between lines 1 and 2, the table is left with zero rows for that
-scope. Downstream triggers (auto_promote_to_active for H26) never fire,
-the client loses their state, and re-running needs manual intervention.
-
-Fix template is upsert:
-
-  await sb.mutate('foo', 'POST', rows, 'resolution=merge-duplicates,return=minimal');
-
-This requires a unique index on the conflict-resolution columns
-(typically (client_slug, sort_order) or (contact_id, key)). Check
-existing indexes with Supabase MCP before assuming; if missing, add
-via apply_migration and ship the migration in the same session.
-
-For rows that need to be REMOVED (not replaced), the upsert doesn't
-help — you need the DELETE+INSERT wrapped in an RPC with
-transactional semantics. Easier path: compute diff client-side and
-issue targeted DELETEs for removed rows + upserts for new/changed rows
-(no all-or-nothing wipe).
-
-─────────────────────────────────────────────────────────────────────
-Pre-verified state (current main, post-Group-B.2)
-─────────────────────────────────────────────────────────────────────
-
-| Finding | File:lines | Current shape |
-|---------|-----------|---------------|
-| H26 | api/generate-proposal.js:573-590 | DELETE all onboarding_steps for contact, POST new set |
-| H27 | api/compile-report.js (primary ~L700, fallback ~L713) | DELETE report_highlights for (slug, month), POST new set |
-| M11 | api/admin/deploy-to-r2.js:71 | DELETE+POST on client_sites |
-| M30 | api/generate-proposal.js:79-81, 273-275, 543-547, 549-557, 563-569 | 5 PATCHes with no await, no catch |
-
-All three DELETE+INSERT pairs currently use sb.mutate (post-B.2 for
-the compile-report pair; H26 + M11 already used sb.mutate before this
-session). Any new DELETE throws on 4xx/5xx — the non-transactional
-gap has always been the concurrency crash, not an HTTP-error
-silent-fail.
-
-─────────────────────────────────────────────────────────────────────
-Fix 1: H27 — compile-report highlights (warm-up, low blast radius)
-─────────────────────────────────────────────────────────────────────
-
-Start here because (a) the file is fresh in recent context from B.2,
-(b) highlights are regenerable from the snapshot data (low blast
-radius if migration is wrong), and (c) report_highlights already has
-natural conflict keys on (client_slug, report_month, sort_order) most
-likely.
-
-First: check the existing unique index on report_highlights via
-Supabase MCP:
-
-  SELECT indexname, indexdef FROM pg_indexes
-  WHERE tablename = 'report_highlights';
-
-If a UNIQUE(client_slug, report_month, sort_order) exists, swap
-DELETE+POST for an upsert with Prefer header resolution=merge-duplicates.
-If not, add the unique index via apply_migration first — and make sure
-the migration is safe on existing data (check for duplicates with
-SELECT client_slug, report_month, sort_order, COUNT(*) ... HAVING > 1).
-
-Apply the same pattern to both the primary path (~L700) and the
-fallback path (~L713). B.2 already wrapped each in try/catch with
-warning-on-error; the warnings become cleaner when there's no
-two-step window to warn about.
-
-─────────────────────────────────────────────────────────────────────
-Fix 2: H26 — generate-proposal onboarding seed
-─────────────────────────────────────────────────────────────────────
-
-Higher stakes: if onboarding_steps is empty when auto_promote_to_active
-trigger would normally run on pending→complete transition, the client
-silently never flips to active. User memory explicitly flags this
-trigger's brittleness.
-
-Steps:
-- Check unique index on (contact_id, step_key) — the likely conflict
-  target.
-- Swap DELETE+POST for upsert.
-- DO NOT move to an RPC/transaction for this one unless the upsert
-  proves insufficient. The proposal flow should be re-runnable
-  (idempotent regeneration) and upsert handles that.
-- Edge case: if a newly-regenerated seed has FEWER steps than before
-  (steps removed from the template), upsert alone won't delete the
-  stale rows. Options: (a) compare step_keys and issue targeted
-  DELETEs for removed ones, (b) accept that stale rows stay until the
-  checklist is re-seeded with a full complement. Recommend (a) — it's
-  5 lines of code, and stale steps block auto-promote.
-
-─────────────────────────────────────────────────────────────────────
-Fix 3: M11 — deploy-to-r2 DELETE+INSERT
-─────────────────────────────────────────────────────────────────────
-
-Smallest of the three. The table is client_sites (check via Supabase
-MCP). Upsert with Prefer: resolution=merge-duplicates. Same index
-check first.
-
-─────────────────────────────────────────────────────────────────────
-Fix 4: M30 — generate-proposal fire-and-forget PATCHes (bonus)
-─────────────────────────────────────────────────────────────────────
-
-Five PATCH sites in the same file as H26. Pattern is:
-
-  sb.mutate('contacts?id=eq.' + id, 'PATCH', { ... });  // no await
-
-Without await, sb.mutate's thrown errors vanish into the void and
-the PATCH may not complete before the function exits (Vercel
-terminates background promises).
-
-Fix template: add await + try/catch that pushes to a warnings[]
-array (or logs via monitor.logError if fatal). Either pattern is
-fine; match the surrounding code's error-handling style per block.
-
-Be careful about ordering: some of these PATCHes may be intentionally
-last-step, where awaiting them adds to end-of-function latency. Read
-each site's context before changing it. None should be truly
-fire-and-forget in a serverless function, though.
-
-─────────────────────────────────────────────────────────────────────
-Testing
-─────────────────────────────────────────────────────────────────────
-
-- After each commit, Vercel deploy must go READY.
-- For the upsert migrations, a local round-trip test is valuable:
-  seed a proposal, re-seed it, check that onboarding_steps has the
-  expected row count with no dupes.
-- Happy-path behavior should be unchanged. The fix only affects the
-  crash-between-DELETE-and-POST window, which is hard to trigger in
-  testing but is the whole point.
-- For M30: every converted PATCH should show up as an awaited call.
-  grep -c "sb.mutate.*PATCH" generate-proposal.js before/after.
-
-─────────────────────────────────────────────────────────────────────
-Out of scope
-─────────────────────────────────────────────────────────────────────
-
-- M19 (webhook race with auto-send audit email) — needs product
-  decision, not code. Tracked in "What's not in the groupings".
-- M37 (auto-schedule doesn't check post-submit status flip) — same.
-- Rewriting the auto_promote_to_active trigger. If the trigger's
-  pending→complete requirement proves brittle after H26 is fixed,
-  that's a separate investigation.
-- Adding RPCs for these — only pivot to that if upsert doesn't fit.
-  Plain PostgREST upsert is the simpler, preferred tool.
-
-─────────────────────────────────────────────────────────────────────
-Deliverables
-─────────────────────────────────────────────────────────────────────
-
-Commit shape (suggested — split as you prefer):
-  c1: H27 — compile-report highlights upsert (+ migration if needed)
-  c2: H26 — generate-proposal onboarding seed upsert + stale-row
-      cleanup
-  c3: M11 — deploy-to-r2 client_sites upsert
-  c4: M30 — generate-proposal fire-and-forget PATCH sweep
-
-Final: doc update to api-audit-2026-04.md:
-  - Mark H26, H27, M11, M30 resolved
-  - Update tallies: Highs 22 → 24 resolved (H26, H27 add), Mediums
-    9 → 11 resolved (M11, M30 add)
-
-Also update post-phase-4-status.md: mark Group E complete, point to
-Group F as next recommendation.
-```
+Approximately 4-6 sessions to clear the remaining open findings, or we stop earlier once diminishing returns kick in. The call on "when to stop" gets clearer around session 2 when what's left is mostly Low/Nit polish.
 
 ## Group B.1 — H21 google-auth migration ✅ COMPLETE (2026-04-17)
 
@@ -430,6 +239,36 @@ Out of scope for Group D (flagged as candidate future sweeps):
 - `agreement-chat.js`, `proposal-chat.js`, `report-chat.js` — not flagged in the original audit. Would extend the pattern if we ever want to be exhaustive; current audit surface is closed.
 - Moving to Anthropic prompt caching for the big system prompts — that's H13, its own session.
 - Restructuring Claude's JSON-output contracts (`compile-report` highlights, `generate-content-page` NDJSON stream) — current prompts left as-is.
+
+## Group E — Non-transactional state & idempotency ✅ COMPLETE (2026-04-17)
+
+Four findings closed across four code commits + one doc commit. Pattern: DELETE+INSERT pairs backed by a unique index replaced with PostgREST upsert (`Prefer: resolution=merge-duplicates`); fire-and-forget `.catch(function(){})` PATCHes converted to awaited `sb.mutate` in try/catch, with failures surfaced in the handler's `results` object and routed through `monitor.logError` at the high-stakes sites.
+
+Commits landed on main:
+
+- `886fe05` — **H27.** `api/compile-report.js` highlights: both `generateHighlights()` (~L700) and `buildFallbackHighlights()` (~L713) paths replaced with upsert via `Prefer: resolution=merge-duplicates,return=minimal`. Backed by new migration `report_highlights_unique_slug_month_sort` adding `UNIQUE(client_slug, report_month, sort_order)`. Pre-verified zero duplicates across 87 existing rows before creating the index. The B.2 try/catch warning wrappers are preserved around the single upsert call; two-step window eliminated.
+- `4fc3f69` — **H26.** `api/generate-proposal.js` onboarding seed: DELETE+POST replaced with upsert on the existing `UNIQUE(contact_id, step_key)` using `return=minimal`. Contact `status='prospect'` flip also migrated from bare `fetch` to `sb.mutate`. Added targeted stale-row cleanup (`step_key=not.in.(...)` scoped by `contact_id`) so future template shrinkage doesn't orphan steps — production pre-check showed zero stale rows, so it's a future-proof no-op today. Each sub-step independently try/caught; failures surface in `results.conversion.{status_error, stale_cleanup_error, onboarding_error}`. Zero-row window that blocked `auto_promote_to_active` is closed.
+- `9fe2810` — **M11.** `api/admin/deploy-to-r2.js` `site_deployments`: DELETE+POST replaced with upsert on `UNIQUE(site_id, page_path)` using `return=representation` (not `=minimal`) to preserve the single-row shape downstream code depends on in the `deployment` variable. No schema change needed. Clarifies a scope-description inconsistency — the original audit text said `client_sites`, the actual table is `site_deployments`.
+- `4d0fa27` — **M30.** `api/generate-proposal.js` 4 fire-and-forget PATCHes: `await fetch(...).catch(function(){})` converted to `await sb.mutate(...)` in try/catch at L90 (`status='generating'`), L284 (error-branch `status='review'` + notes), L594 (`contacts.checkout_options`), L605 (final finalize: `status='ready'`, urls, content). Three sites (L90, L284, L605) additionally log via `monitor.logError('generate-proposal', err, { client_slug: slug, detail: { stage, proposal_id } })` with stages `set_status_generating`, `record_generation_failure`, `finalize_proposal`. Non-critical L594 is log-only through `results.checkout_options_error`. L605 is the audit-flagged "stuck in generating forever" site; it now surfaces as both an admin-visible `results.finalize_error` and an `error_log` entry.
+- `62392a9` — Doc update: `api-audit-2026-04.md` marks H26/H27/M11/M30 ✅ RESOLVED with Resolution blocks; Highs 22 → 24, Mediums 9 → 11; total ≥49 resolved / ≤68 open across 117 findings; 4 rows appended to the Resolution log.
+
+Net result:
+- H26, H27, M11, M30 fully resolved.
+- PostgREST upsert with `Prefer: resolution=merge-duplicates` is the canonical replacement for DELETE+INSERT pairs going forward, whenever the target table has (or can gain) a unique index on the conflict keys. Use `return=minimal` by default; switch to `return=representation` when downstream code depends on the post-write row shape.
+- Fire-and-forget `.catch(function(){})` is now purged from `api/generate-proposal.js` serverside. The one remaining instance at L515 is intentional: it's inside the backtick `trackingScript` template literal injected into deployed HTML as a `<script>`, so it's browser-side code running in a visitor's tab, not a Vercel function.
+- Tallies: **Highs 24 / 36 resolved (12 open). Mediums 11 / 38 resolved. Total ≥49 resolved / ≤68 open across 117 findings.**
+
+Behavior-preservation notes:
+- H26 upsert uses `return=minimal`. The `auto_promote_to_active` trigger fires on row-level `pending→complete` transitions, so an upsert that keeps rows at `status='pending'` (the template's seed value) is a no-op on the column the trigger watches — no risk of the fix itself spuriously firing the promotion. The fix's goal is to close the zero-row window that was blocking the trigger from ever firing, not to change its semantics.
+- M11 chose `return=representation` rather than `=minimal`. Per the commit message, the handler reads fields from the upsert response into a `deployment` variable used downstream; `=minimal` would have returned an empty body and broken that read. Worth remembering as a general rule when applying the upsert template — match the `return=` preference to what the handler does with the response.
+- M30's L605 finalize continues the existing handler pattern of always returning 200 with a `results` envelope, even on partial failure. Not an API-contract change; the admin UI already inspects `results` for error sub-fields. Introducing a 500 at L605 would have broken the "proposal HTML is already deployed, state-record update failed but the deploy succeeded" distinction — admin retry would then re-run the Drive folder creation step (not idempotent) and create duplicate folders. Keeping the 200 + `results.finalize_error` path preserves the retry safety.
+- For M30 specifically, the three `monitor.logError` sites use `client_slug: slug` (the `slug` variable is set at L71 from `contact.slug`, after the proposal+contact load at L62-69 but before the first in-scope PATCH at L88). All three are reached only after `slug` is defined; confirmed by code inspection. The `detail.stage` tags are distinct so `error_log` queries can filter per-step.
+
+Out of scope for Group E (flagged as candidate future work):
+- L1 — the `fetch(sb.url() + '/rest/v1/...')` raw-read pattern still present at `generate-proposal.js:62,80` and across other files outside B.2's four. Tracked in the Low section, natural fit for Group B.3 (Supabase helper migration sweep).
+- M18 + M19 — non-transactional DELETE+INSERT patterns in `process-entity-audit.js`. Flagged during B.2 as preserved deliberately; were not in Group E's four. If another round of this work is scheduled, these are the next-obvious targets — both have similar shape to H26/H27 and the upsert template applies directly.
+- Rewriting the `auto_promote_to_active` trigger to be more robust against empty-row windows (remove the pending→complete requirement, or add a row-count guard). With H26 closed, the trigger's brittleness no longer has a realistic way to bite; not worth its own session.
+- Moving any of these to server-side RPCs with real transactional semantics. Plain upsert turned out to be sufficient for all four findings; the RPC fallback path mentioned in the session prompt didn't need to be exercised.
 
 ## Closing thought on the grouping approach
 
