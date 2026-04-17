@@ -47,7 +47,7 @@
 *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
 html { scroll-behavior: smooth; font-size: 16px; }
 body { font-family: 'Inter', -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif; font-weight: 400; color: var(--color-body); background: var(--color-bg); line-height: 1.7; -webkit-font-smoothing: antialiased;  }
-::view-transition-old(root),::view-transition-new(root){animation-duration:.25s}
+::view-transition-old(root), ::view-transition-new(root) { animation-duration: .25s; }
 h1, h2, h3, h4 { font-family: 'Outfit', sans-serif; font-weight: 700; color: var(--color-heading); line-height: 1.15; }
 h1 { font-size: 2.75rem; letter-spacing: -0.02em; }
 h2 { font-size: 2rem; margin-bottom: .75rem; letter-spacing: -0.01em; }
@@ -349,6 +349,8 @@ section { padding: 4.5rem 0; }
   var pathParts = window.location.pathname.replace(/^\/|\/$/g, '').split('/');
   var CLIENT_SLUG = pathParts[0] || '';
 
+  function esc(s) { var d = document.createElement('div'); d.textContent = s; return d.innerHTML; }
+
   if (!CLIENT_SLUG) {
     showError('No client specified in the URL.');
     return;
@@ -594,7 +596,7 @@ section { padding: 4.5rem 0; }
     var fullName = contact.first_name + ' ' + contact.last_name;
     if (contact.credentials) fullName += ', ' + contact.credentials;
     document.getElementById('confidentialLine').innerHTML =
-      'This dashboard is confidential and prepared exclusively for ' + fullName + '.<br>&copy; 2026 Moonraker AI &middot; moonraker.ai';
+      'This dashboard is confidential and prepared exclusively for ' + esc(fullName) + '.<br>&copy; 2026 Moonraker AI &middot; moonraker.ai';
 
     // Build section nav
     var navSections = [
@@ -654,7 +656,7 @@ section { padding: 4.5rem 0; }
     var fullName = contact.first_name + ' ' + contact.last_name;
     if (contact.credentials) fullName += ', ' + contact.credentials;
     document.getElementById('confidentialLine').innerHTML =
-      'This dashboard is confidential and prepared exclusively for ' + fullName + '.<br>&copy; 2026 Moonraker AI &middot; moonraker.ai';
+      'This dashboard is confidential and prepared exclusively for ' + esc(fullName) + '.<br>&copy; 2026 Moonraker AI &middot; moonraker.ai';
 
     buildSectionNav([
       { id: 'overview', label: 'Overview' },
@@ -672,7 +674,7 @@ section { padding: 4.5rem 0; }
     document.getElementById('headerName').textContent = contact.practice_name;
 
     var statusLabel = contact.status === 'lead' ? 'Lead' : 'Prospect';
-    document.getElementById('heroBadge').innerHTML = '<span class="badge status-' + contact.status + '">' + statusLabel + '</span>';
+    document.getElementById('heroBadge').innerHTML = '<span class="badge status-' + esc(contact.status) + '">' + esc(statusLabel) + '</span>';
     document.getElementById('heroTitle').textContent = 'Hi, ' + contact.first_name;
     document.getElementById('heroSubtitle').textContent = 'Thanks for your interest in Moonraker. Here is what we have prepared for ' + contact.practice_name + '.';
     document.getElementById('campaignTimeline').innerHTML = '';
@@ -692,7 +694,7 @@ section { padding: 4.5rem 0; }
     var proposalHTML =
       '<div class="cta-banner" style="margin:0;">' +
       '<h3>Your custom proposal is ready</h3>' +
-      '<p>See exactly how Moonraker can grow ' + contact.practice_name + '\'s visibility in AI and Google search.</p>' +
+      '<p>See exactly how Moonraker can grow ' + esc(contact.practice_name) + '\'s visibility in AI and Google search.</p>' +
       '<a href="/' + CLIENT_SLUG + '/proposal" class="cta-btn">View Your Proposal</a>' +
       '</div>';
     document.getElementById('onboarding').querySelector('.container').insertAdjacentHTML('beforeend', proposalHTML);
@@ -700,7 +702,7 @@ section { padding: 4.5rem 0; }
     var fullName = contact.first_name + ' ' + contact.last_name;
     if (contact.credentials) fullName += ', ' + contact.credentials;
     document.getElementById('confidentialLine').innerHTML =
-      'This page is confidential and prepared exclusively for ' + fullName + '.<br>&copy; 2026 Moonraker AI &middot; moonraker.ai';
+      'This page is confidential and prepared exclusively for ' + esc(fullName) + '.<br>&copy; 2026 Moonraker AI &middot; moonraker.ai';
 
     buildSectionNav([
       { id: 'overview', label: 'Overview' },
@@ -783,11 +785,11 @@ section { padding: 4.5rem 0; }
         if (h.getAttribute('data-theme') === 'light') {
           h.setAttribute('data-theme', 'dark');
           themeBtn.innerHTML = '&#9728;&#65039;';
-          try{localStorage.setItem('moonraker-theme','dark')}catch(e){}
+          try { localStorage.setItem('moonraker-theme', 'dark'); } catch(e) {}
         } else {
           h.setAttribute('data-theme', 'light');
           themeBtn.innerHTML = '&#x1F319;';
-          try{localStorage.setItem('moonraker-theme','light')}catch(e){}
+          try { localStorage.setItem('moonraker-theme', 'light'); } catch(e) {}
         }
       }
       if (document.startViewTransition) { document.startViewTransition(apply); } else { apply(); }
