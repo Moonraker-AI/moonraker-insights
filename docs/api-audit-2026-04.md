@@ -562,19 +562,31 @@ Per-file commits: `5af2619` generate-content-page (12 sites); `bbf19a7` seed-con
 ### L2. `api/stripe-webhook.js:37-63` — bare block wrapping signature check
 Probably refactor artifact.
 
+**Current state (2026-04-18, Group I reconciliation):** After the C2 + M8 rewrite (`5263aa5`), the bare block at L51-L98 cleanly scopes five locals used only for signature verification: `sigHeader`, `timestamp`, `signatures`, `expectedHex`, `expectedBuf`. Keeping them out of the outer function scope is defensible style, not a refactor artifact. No action.
+
 ### L3. `var`-style declarations throughout
 Consistent but foot-gun prone.
+
+**Current state (2026-04-18, Group I reconciliation):** On the "won't-fix-now" list since the remediation plan was written; the codebase is consistent, and a `var` → `let` sweep is cosmetic churn with merge-conflict cost against any concurrent session. Unchanged.
 
 ### L4. `api/_lib/github.js:32` — no retry on concurrent-write 409
 If caller provides stale SHA, PUT 409s with no auto-retry.
 
+**Current state (2026-04-18, Group I reconciliation):** Current `pushFile` re-fetches SHA only when caller passes no sha; if caller passes a stale SHA the PUT 409s and the exception surfaces. The session-doc rule "Always fetch a fresh SHA immediately before each PUT" pushes this responsibility to the caller by design — auto-retry in the library would mask concurrent-write races that callers should actually see. Leaving as-is; a future refactor could add opt-in retry via an option flag.
+
 ### L5. `api/_lib/auth.js:104, 122` — duplicated verify blocks
 Retry-with-refreshed-keys block is cut-and-paste. Extract helper.
+
+**Current state (2026-04-18, Group I reconciliation):** The `nodeCrypto.verify(...)` call is duplicated at L103-108 and L116-121; extracting an inner `tryVerify(pubKey)` helper is ~5 lines. Not landed in this reconciliation sweep because the JWT verification path is the admin-auth critical path — a byte-identical refactor should be its own scoped commit with explicit verification against the H1/M2 batch rather than bundled with a cleanup session.
 
 ### L6. `api/submit-entity-audit.js` — agent error swallowed, no requeue
 Memory says `process-audit-queue.js` handles this. Verify.
 
+**Current state (2026-04-18, Group I reconciliation):** Verification shows the gap is real, not resolved. `submit-entity-audit.js:112` inserts rows with `status='pending'` and flips to `'agent_running'` only on successful agent trigger (L149); on agent failure, status stays at `'pending'` forever, and `cron/process-audit-queue.js:138` only picks up `status='queued'`. Team notification email at L170-184 is the sole fallback — and the admin URL fragment in that email is itself broken (see L9). A one-line fix (flip to `'queued'` on agent failure so the cron auto-retries) would close the gap, but it's a state-machine change on a public-facing endpoint and warrants product sign-off. Parked for a future ops-batch session with Chris/Scott.
+
 ### L7. `api/report-chat.js:62, 68` — retry logic duplicated between catch and 529 handler
+
+**Current state (2026-04-18, Group I reconciliation):** The backoff formula `Math.pow(2, attempt) * 1000 + Math.random() * 500` appears in both the catch branch (L75) and the 529 handler (L81). Extracting an inner `backoff(attempt)` is ~3 lines, but `report-chat.js` is on the streaming-endpoint scope fence (custom retry + buffering). Leaving untouched until a dedicated streaming-endpoints session.
 
 ### L8. `api/newsletter-webhook.js:41` — unhandled Resend types dropped silently ✅ RESOLVED
 `email.sent`, `email.scheduled`, `email.delivery_delayed` hit default branch, discarded. Log to `newsletter_events`.
@@ -584,15 +596,25 @@ Memory says `process-audit-queue.js` handles this. Verify.
 ### L9. `api/submit-entity-audit.js:172` — admin link uses `#audit-` fragment
 Verify admin clients page scrolls to/opens that anchor.
 
-### L10. `api/admin/deploy-to-r2.js:46` — 16-hex-char content hash (64 bits)
+**Current state (2026-04-18, Group I reconciliation):** `admin/clients/index.html` has no hashchange handler and no element with `id="audit-<uuid>"` — the only `audit-`-prefixed IDs are `audit-status-<cpId>` (content-page IDs, different scope). Fragment silently lands on the page top. Harmless: team members still reach the admin page and scroll/search manually. A proper fix requires picking a URL shape the admin SPA can act on (e.g. `?focus=<slug>` with state-routing) — multi-file change beyond reconciliation scope. Cosmetic; leaving for a future admin-UX session. Same fragment appears in `process-entity-audit.js:613, 656` — document there.
+
+### L10. `api/admin/deploy-to-r2.js:46` — 16-hex-char content hash (64 bits) ✅ RESOLVED
 Fine for change detection. Not fine if reused as etag across many sites.
+
+**Resolution (2026-04-18, Group I reconciliation, doc-only):** Repo-wide grep for `content_hash` shows three sites: two writes in `admin/deploy-to-r2.js` (L87, L95) and one read in `admin/manage-site.js:260` for the deployments list display. Never consumed as an etag or cross-site collision surface. The audit's own qualifier ("fine for change detection") describes actual usage; the counterfactual ("if reused as etag") does not hold on current code. Marking resolved with no code change.
 
 ### L11. `api/process-entity-audit.js:226` — markdown fence strip brittle with nested fences
 
-### L12. `api/process-entity-audit.js:621-626` — function declared inside conditional branch
+**Current state (2026-04-18, Group I reconciliation):** Same class of bug as M25 (`compile-report.js:1138`). Current `rawText.replace(/```json\s*/g, '').replace(/```\s*/g, '').trim()` corrupts JSON if Claude emits a nested code fence inside a string value. Low probability in practice; the `JSON.parse` catch at L240 produces a useful error when it does hit. Proper fix is find-first-brace + bracket-tracking, which would naturally close both L11 and M25 in one helper. Parked until M25 or a shared-parser session.
+
+### L12. `api/process-entity-audit.js:621-626` — function declared inside conditional branch ✅ RESOLVED
 Non-strict mode hoisting inconsistency across engines.
 
+**Resolution (2026-04-18, commit `62e6ec3`, Group I):** Converted `function fmtDelta(val) { ... }` at L630 to `var fmtDelta = function(val) { ... };`. Same runtime behavior under sloppy-mode hoisting; semantics now deterministic. One-line change.
+
 ### L13. `_lib/email-template.js:22-24` — hardcoded asset URLs
+
+**Current state (2026-04-18, Group I reconciliation):** On the "won't-fix-now" list — single-domain app, assets live at `clients.moonraker.ai`, no tenancy model that would require parameterization. Unchanged.
 
 ### L14. `DEPLOY_SECRET` in git history — covered by H9 ✅ RESOLVED
 Resolved alongside H9 (commit `36ac5bb`). The rotation made the git-history string useless against the Worker. Note: the Worker's own legacy hardcoded secret (discovered during rotation) was also rotated out; see H9 resolution note.
@@ -600,20 +622,32 @@ Resolved alongside H9 (commit `36ac5bb`). The rotation made the git-history stri
 ### L15. `_templates/onboarding.html:955` — anon key JWT exp 2089 (effectively never)
 RLS is the only control. Consider rotating to a shorter-exp anon key.
 
+**Current state (2026-04-18, Group I reconciliation):** On the "won't-fix-now" list. Since C3/C7 landed the page_token gate for every public write, the anon-key exposure is now read-only (RLS-controlled) on client-facing templates. Rotating to a shorter-exp anon key would require a deploy-all-templates migration with zero security delta. Unchanged.
+
 ### L16. `api/compile-report.js:909, 1012` — two token functions with subtle difference ✅ RESOLVED
 `getGoogleAccessToken` vs `getDelegatedToken` in same file. Delete unused one.
 
 **Resolution (2026-04-17, commit `1d9c835`, Group B.1):** Grep confirmed `getGoogleAccessToken` had zero callers anywhere in `client-hq` — pure dead code. Deleted alongside the H21 migration in the same commit. `getDelegatedToken` also removed (replaced by `google.getDelegatedAccessToken` at both call sites).
 
-### L17. `api/generate-proposal.js:330` — `customPricing.amount_cents / 100` no null check
+### L17. `api/generate-proposal.js:330` — `customPricing.amount_cents / 100` no null check ✅ RESOLVED
 
-### L18. `api/chat.js:44-80` — `models` array has one element; outer loop never iterates
+**Resolution (2026-04-18, Group I reconciliation, via `aabdac1` in Group C):** Verified on current main — L355-358 now reads `var amt = Number(customPricing.amount_cents); var priceHtml = (Number.isFinite(amt) && amt >= 0) ? '$' + (amt / 100).toLocaleString() : '&mdash;';`. The Group C H22 commit closed this incidentally. Doc-only reconciliation.
+
+### L18. `api/chat.js:44-80` — `models` array has one element; outer loop never iterates ✅ RESOLVED
+
+**Resolution (2026-04-18, Group I reconciliation, doc-only):** Verification shows the one-element array at L39-41 is intentional single-model config; the outer loop iterates exactly once (correctly), the `if (false)` guard at L110 confirms the structure is future-proofing for an eventual fallback model. Not a bug. The audit note's "never iterates" wording is misleading: it runs once per invocation. Marking resolved with no code change.
 
 ### L19. `api/enrich-proposal.js:76` — hardcoded personal-email domain blocklist
 
-### L20. `api/compile-report.js` — 14 inlined Supabase fetches
+**Current state (2026-04-18, Group I reconciliation):** Regex at L73 `/gmail|yahoo|hotmail|outlook|protonmail|icloud/i` misses aol, live, msn, gmx, zoho, fastmail, hey.com, duck.com, me.com, and several regional providers (mail.ru, yandex, qq, 163). Only consequence of a miss is a personal-email host ending up as `searchDomain` and widening Gmail/Fathom enrichment noise for rare cases. Data-quality nit, not a bug. Fix would be ≤3 lines of regex additions but low-value without telemetry on actual miss rate.
+
+### L20. `api/compile-report.js` — 14 inlined Supabase fetches ✅ RESOLVED
+
+**Resolution (2026-04-18, Group I reconciliation, via `0163f65` in Group B.2):** Verified on current main — repo-wide grep `fetch(sb.url()\|fetch.*rest/v1\|SUPABASE_URL.*rest/v1` against `api/compile-report.js` returns zero matches. Group B.2's H24 commit already closed this alongside the AbortController work. Doc-only reconciliation.
 
 ### L21. `api/enrich-proposal.js:337` — `User-Agent: 'Moonraker-Bot/1.0'` may be blocked
+
+**Current state (2026-04-18, Group I reconciliation):** UA at L331 unchanged. The `-Bot/1.0` suffix is the pattern many WAFs (Cloudflare, Imperva) flag. No telemetry captured on actual block rate in enrichment fetches. A one-line swap to something like `'Mozilla/5.0 (compatible; Moonraker/1.0; +https://moonraker.ai/bot)'` is safe but data-free. Fold into a future telemetry-gated operational session.
 
 ### L22. `api/digest.js:128-131` — `sbGet` helper redefines `sb.query` ✅ RESOLVED
 
@@ -621,10 +655,21 @@ RLS is the only control. Consider rotating to a shorter-exp anon key.
 
 ### L23. `api/newsletter-generate.js:191-205` — `stripEmDashes` six-step replace chain
 
+**Current state (2026-04-18, Group I reconciliation):** Function at L207-210 currently reads `s.replace(/\u2014/g, ', ').replace(/\u2013/g, ', ').replace(/ —/g, ',').replace(/— /g, ', ').replace(/—/g, ', ')`. The `\u2014` and `—` branches are the same Unicode character (em-dash) — technically redundant but harmless; chain runs in sequence and the earlier match wins. Could be collapsed to `s.replace(/\s*[\u2014\u2013]\s*/g, ', ')` but the current version works and matches the "no emdashes in user-facing content" policy. Cosmetic; leaving untouched to avoid risk of subtle Claude-output handling differences.
+
 ### L24. `api/send-audit-email.js:12` — wrong calendar URL?
 `email.CALENDAR_URL` = `scott-pope-calendar` but memory canonical is `moonraker-free-strategy-call`. Verify.
 
+**Current state (2026-04-18, Group I reconciliation):** Two calendar URLs coexist in production:
+- `scott-pope-calendar` via `email.CALENDAR_URL` — used in footer notes across `send-audit-email.js:13`, `send-proposal-email.js:90`, `generate-audit-followups.js:12`, `generate-followups.js:125` ("book a call with Scott").
+- `moonraker-free-strategy-call` — hard-coded as primary CTA in `send-audit-email.js:197` and `generate-audit-followups.js:49`.
+
+Both URLs resolve in production; likely intentional split between "specific Scott booking" (footer) and "generic strategy call" (CTA). Product-gated — Chris/Scott know which is the intended canonical. Not safe to unify without confirming the routing intent. Flag for review.
+
 ### L25. `api/generate-content-page.js:180-182` — VERIFY regex stops at `<`
+Cuts off flags mid-sentence with HTML brackets.
+
+**Current state (2026-04-18, Group I reconciliation):** Regex at L184 is `/VERIFY[:\s]*([^\n<]+)/gi`. If Claude writes a VERIFY flag that includes an HTML element (e.g. `VERIFY: check <a href="...">this link</a>`), capture truncates at the `<`. Verify flags are operator-facing notes attached to generated-content review; cosmetic truncation doesn't lose the work itself. Fix would be switching to a line-delimited capture (`[^\n]+`) but risks ingesting trailing HTML. Low value; leaving.
 
 ### L26. `admin/clients/index.html:1991` — `renderContent()` race condition ✅ RESOLVED
 **Discovered during H9 rotation UI smoke test (2026-04-17).** When the Content tab renders, `renderContent()` calls `renderHostingCard(c)` which kicks off an async fetch of `client_sites`. The initial synchronous render of the Service Pages section uses `state.clientSite` which is still `null` at that moment, so the conditional gate on `state.clientSite` for rendering the `☁ Deploy to Site` button fails and the button never appears. The fetch's `.then()` only re-rendered the hosting card, not the Service Pages section, so the button stayed hidden until the user switched tabs and came back.
@@ -635,31 +680,42 @@ RLS is the only control. Consider rotating to a shorter-exp anon key.
 **Observed during H9 session (2026-04-17).** `api/_lib/crypto.js:120` correctly lists `authenticator_secret_key` in `SENSITIVE_FIELDS`, and `api/action.js:78, 110` correctly applies `encryptFields` on `workspace_credentials` writes. The encrypt/decrypt plumbing is complete. **But nothing in the frontend writes to this column.** Grep of `admin/*.html` + `shared/*.js` returns zero hits outside the crypto module itself. The column exists in the schema, and rows exist in `workspace_credentials`, but the field is never populated.
 
 **Not a bug — a workflow gap.** Likely intent: capture the TOTP seed when setting up 2FA on client Google Workspaces, alongside the app password. The setup UI captures `app_password` but not `authenticator_secret_key`. Either wire it up when 2FA capture becomes part of the onboarding flow, or remove the column. No action this session.
-Cuts off flags mid-sentence with HTML brackets.
 
-### L28. `api/chat.js:99` — Anthropic upstream error body passes through to admin response
+### L28. `api/chat.js:99` — Anthropic upstream error body passes through to admin response ✅ RESOLVED
 Line 99: `return res.status(status).json({ error: userMsg, status: status, detail: errText })` where `errText = await anthropicRes.text()` is the raw HTTP body Anthropic returned on 4xx/5xx. **Discovered during M26 verification sweep (2026-04-17).** Admin-only endpoint, so exposure is narrower than H33-H35 — but the shape is identical to H28 and inconsistent with the monitor.logError pattern applied to the other four chat-family and content-pipeline routes in Group A. Anthropic error bodies typically contain model names, rate-limit context, organization-scoped state, and API-key-prefix confirmation strings. Low-severity info leak.
 
-**Fix:** Replace with the H28 pattern — `monitor.logError('chat', new Error('anthropic_upstream'), { detail: { status, body: errText.substring(0, 500) } })` + response of `{ error: userMsg, status }` without `detail`. Fold into Group A retrospective or a future ops-batch session.
+**Resolution (2026-04-18, commit `be6ad05`, Group I):** Applied the H28 pattern at `chat.js:90-108`. Response body is now `{ error: userMsg, status }` only; `errText` substring + status routed via `monitor.logError('chat', new Error('anthropic_upstream'), { detail: { status, body: ... } })`. Removed the redundant `console.error('Anthropic API error:', ...)` in favor of the monitor call.
 
 ---
 
 ## Nit
 
-### N1. `api/_lib/supabase.js` — `one()` returns null on error shape
+### N1. `api/_lib/supabase.js` — `one()` returns null on error shape ✅ RESOLVED
 Array.isArray on `{ message: 'X' }` error returns false; `one()` returns null as if row didn't exist.
 
-### N2. `api/stripe-webhook.js:43` — `parts[kv[0].trim()] = kv[1]` with undefined values
+**Resolution (2026-04-18, Group I reconciliation, doc-only):** The concern is obsolete after the supabase.js evolution during H4/H7. `query()` at L48-61 now throws on any non-ok response (raising `Supabase query error: …` with `err.status`/`err.detail`), so an error-shape payload never reaches `one()` — it would throw inside `query()` first. `one()` at L89-92 correctly handles 2xx-with-array (returns row/null) and 2xx-with-non-array (returns null, theoretical edge case for RPC calls that's not currently exercised). Marking resolved with no code change.
 
-### N3. `api/_lib/monitor.js:43` — log interpolation of user-sourced `slug` could inject newlines
+### N2. `api/stripe-webhook.js:43` — `parts[kv[0].trim()] = kv[1]` with undefined values ✅ RESOLVED
 
-### N4. `api/onboarding-action.js:2-4` — comment describes the bug as a feature
+**Resolution (2026-04-18, Group I reconciliation, via `5263aa5` in Phase 2):** The C2 + M8 rewrite replaced the split-on-'=' parse with proper `indexOf('=') + substring` handling. Current code at L56-63 uses `var eq = item.indexOf('='); if (eq === -1) return; var key = item.substring(0, eq).trim(); var value = item.substring(eq + 1).trim();` — no `parts[kv[0].trim()] = kv[1]` pattern exists. Doc-only reconciliation.
+
+### N3. `api/_lib/monitor.js:43` — log interpolation of user-sourced `slug` could inject newlines ✅ RESOLVED
+
+**Resolution (2026-04-18, commit `e694dce`, Group I):** Added `var safeMessage = message.replace(/[\r\n]+/g, ' \\n ');` before the console.error call. The interpolation at L43 is on `route` (always a static string passed by callers) and `message` (from `error.message` or caller-supplied string) — the injection surface was `message`, where PostgREST or other library errors can echo user-sourced content. Single-line fix. The sanitization only applies to the console.error path; the `error_log` table still stores the raw message as structured JSONB data where newlines are safe.
+
+### N4. `api/onboarding-action.js:2-4` — comment describes the bug as a feature ✅ RESOLVED
 "No admin JWT required — uses service role key for writes" reads as intentional. Rewrite after fix.
+
+**Resolution (2026-04-18, commit `d53a1fa`, Group I):** Header comment rewritten to "Authenticates via page_token (not admin JWT); service role key is the write identity but the page_token gate and verified contact_id below constrain what any given request can touch. See security model below." This reads correctly against the post-Phase-4-S2 implementation (which already had an accurate multi-line security-model block below it, just with the misleading line 3 still in front of it).
 
 ### N5. Chat endpoints CORS origin is literal `clients.moonraker.ai`
 Preview domains fail CORS when testing.
 
-### N6. Seven copies of `getDelegatedToken` — covered in H21.
+**Current state (2026-04-18, Group I reconciliation):** Hardcoded at 7 endpoints: `chat.js:8`, `agreement-chat.js:14`, `content-chat.js:19`, `proposal-chat.js:20`, `report-chat.js:15`, `analyze-design-spec.js:11`, `submit-endorsement.js:55`. Four of the seven are streaming-endpoint scope-fenced. Proper fix is a shared CORS helper that accepts `process.env.VERCEL_ENV === 'preview'` plus an allowlist of preview-URL patterns — multi-file change that should be its own session. Workaround in practice: test against the production domain directly. Workflow concern, not a security bug.
+
+### N6. Seven copies of `getDelegatedToken` — covered in H21. ✅ RESOLVED
+
+**Resolution (2026-04-18, Group I reconciliation, via Group B.1 H21 commits):** H21 closed 2026-04-17 via helper `7adedb6` + migrations `17d0ae8`, `4e77e55`, `568a868`, `d592381`, `1d9c835`; H36 subsequently caught an 8th copy in `convert-to-prospect.js` and closed it in `221bfbc`. All `getDelegatedToken` duplicates are gone; every caller routes through `_lib/google-delegated.js` with shared token caching per (mailbox, scope). Doc-only reconciliation — N6 was a tracking pointer to H21.
 
 ---
 
@@ -768,10 +824,10 @@ _(Brought forward from Phase 7 since Chris chose "ship now" over "wait for traff
 - **Critical:** 9 total (C1–C9). **Resolved: 9 ✅** (all).
 - **High:** 36 total (H1–H36). **Resolved: 35** (H1, H2, H3, H4, H5, H6, H7, H8, H9, H10, H11, H12, H13, H14, H15, H16, H17, H18, H19, H20, H21, H22, H23, H24, H25, H26, H27, H28, H30, H31, H32, H33, H34, H35, H36). **Open: 1** (H29, deferred on design). **All non-deferred Highs closed.**
 - **Medium:** 39 total (M1–M39; M39 added by Group F). **Resolved: 17** (M2, M6, M8, M9, M10, M11, M12, M13, M14, M15, M16, M18, M20, M22, M26, M30, M38; several more likely closed via Phase 4 action-schema work — needs verification sweep). **Open: ~22.**
-- **Low:** 28 total (L1–L28). **Resolved: 7** (L1, L8, L14, L16, L22, L26, L27-documented-only). **Open: 21.**
-- **Nit:** 6 total (N1–N6). **Open: 6.**
+- **Low:** 28 total (L1–L28). **Resolved: 13** (L1, L8, L10, L12, L14, L16, L17, L18, L20, L22, L26, L27-documented-only, L28). **Open: 15** (L2, L3, L4, L5, L6, L7, L9, L11, L13, L15, L19, L21, L23, L24, L25).
+- **Nit:** 6 total (N1–N6). **Resolved: 5** (N1, N2, N3, N4, N6). **Open: 1** (N5).
 
-**Total: 118 findings. Resolved: ≥68. Open: ≤50.**
+**Total: 118 findings. Resolved: ≥79. Open: ≤39.**
 
 ### Resolution log
 | Finding | Commit / Session | Date |
@@ -833,6 +889,17 @@ _(Brought forward from Phase 7 since Chris chose "ship now" over "wait for traff
 | H16 | `2eb09dba` (process-entity-audit.js — prepTemplate helper + 3 deploy sites converted, H16+H23 mini-session) | 2026-04-18 |
 | H23 | `484dc8e5` (part 1: scope reduction — drop clientIndex on deep-dive) + `052f2245` (part 2: prompt caching — 2-block system array with ephemeral cache_control on static prefix, H16+H23 mini-session) | 2026-04-18 |
 | L1 + L22 | Group B.3 — 22 commits (`5af2619` generate-content-page, `bbf19a7` seed-content-pages, `1a2b78c` activate-reporting, `c530220` bootstrap-access, `1004858` convert-to-prospect, `25d7f99` discover-services (+ latent `headers`-undefined bugfix), `f54ee19`+`1f78fa2` enrich-proposal, `4fca6e2` cron/enqueue-reports, `994dc7f` cron/process-queue, `0a0fc1a` generate-followups, `d4955c5` generate-proposal, `d634663` content-chat, `48d44ec` trigger-batch-audit, `a48df07` delete-client, `5495019` process-batch-synthesis, `aa53037` generate-audit-followups, `be72b93` cron/process-followups, `2464454` digest (closes L22), `c9a7759` proposal-chat, `1759a55` ingest-surge-content, `8e523ce` cron/process-batch-pages) — 21 files, ~88 call sites, all READY on first build | 2026-04-18 |
+| L12 | `62e6ec3` (process-entity-audit `fmtDelta` → var function expression, Group I) | 2026-04-18 |
+| L28 | `be6ad05` (chat.js Anthropic upstream error → monitor.logError + response body without detail, Group I) | 2026-04-18 |
+| N3 | `e694dce` (monitor.js CR/LF sanitization in console.error, Group I) | 2026-04-18 |
+| N4 | `d53a1fa` (onboarding-action header comment rewritten to reflect page_token gate, Group I) | 2026-04-18 |
+| L10 | doc-only reconciliation — conditional concern ("if reused as etag") does not apply on current usage (Group I) | 2026-04-18 |
+| L17 | doc-only reconciliation — closed via `aabdac1` (H22 in Group C) which added `Number.isFinite` guard at L355-358 | 2026-04-18 |
+| L18 | doc-only reconciliation — one-element `models` array at `chat.js:39-41` is intentional scaffolding; loop runs once correctly (Group I) | 2026-04-18 |
+| L20 | doc-only reconciliation — closed via `0163f65` (H24 in Group B.2); zero inline fetches remain in compile-report.js (Group I) | 2026-04-18 |
+| N1 | doc-only reconciliation — concern obsolete after H4/H7 made `query()` throw on non-ok; error shape never reaches `one()` (Group I) | 2026-04-18 |
+| N2 | doc-only reconciliation — closed via `5263aa5` (C2 + M8 rewrite); current parse at stripe-webhook.js:56-63 uses indexOf+substring (Group I) | 2026-04-18 |
+| N6 | doc-only reconciliation — closed via Group B.1 H21 commits (`7adedb6` helper + 5 migration commits) and H36 (`221bfbc`); all 8 duplicates gone (Group I) | 2026-04-18 |
 
 Audit was performed across five sessions reading ~11,000 lines of API route code, the eight `_lib/` modules, relevant templates, and git history for secret leakage. Unread in detail: chat system prompt bodies (low-risk content), several `send-*-email.js` / `trigger-*` / `ingest-*` routes (expected to follow already-catalogued patterns), most `api/admin/*` read-only dashboard routes. The audit is considered comprehensive for Critical and High findings; Medium/Low/Nit counts would grow modestly with further reading.
 
