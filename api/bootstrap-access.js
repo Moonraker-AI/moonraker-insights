@@ -20,6 +20,7 @@
 var sb = require('./_lib/supabase');
 var auth = require('./_lib/auth');
 var monitor = require('./_lib/monitor');
+var google = require('./_lib/google-delegated');
 
 module.exports = async function handler(req, res) {
   if (req.method !== 'POST') return res.status(405).json({ error: 'Method not allowed' });
@@ -118,9 +119,11 @@ module.exports = async function handler(req, res) {
     try {
       if (!googleSA) throw new Error('GOOGLE_SERVICE_ACCOUNT_JSON not configured');
 
-      var gbpToken = await getDelegatedToken(googleSA, IMPERSONATE_USER, 'https://www.googleapis.com/auth/business.manage');
-      if (gbpToken.error) {
-        gbpDebugA = 'token error: ' + gbpToken.error;
+      var gbpToken;
+      try {
+        gbpToken = await google.getDelegatedAccessToken(IMPERSONATE_USER, 'https://www.googleapis.com/auth/business.manage');
+      } catch (tokenErr) {
+        gbpDebugA = 'token error: ' + (tokenErr.message || String(tokenErr));
         throw new Error('Google authentication failed');
       }
 
@@ -239,9 +242,11 @@ module.exports = async function handler(req, res) {
     try {
       if (!googleSA) throw new Error('GOOGLE_SERVICE_ACCOUNT_JSON not configured');
 
-      var ga4Token = await getDelegatedToken(googleSA, IMPERSONATE_USER, 'https://www.googleapis.com/auth/analytics.manage.users');
-      if (ga4Token.error) {
-        ga4DebugToken = ga4Token.error;
+      var ga4Token;
+      try {
+        ga4Token = await google.getDelegatedAccessToken(IMPERSONATE_USER, 'https://www.googleapis.com/auth/analytics.manage.users');
+      } catch (tokenErr) {
+        ga4DebugToken = tokenErr.message || String(tokenErr);
         throw new Error('Google authentication failed');
       }
 
@@ -321,9 +326,11 @@ module.exports = async function handler(req, res) {
     try {
       if (!googleSA) throw new Error('GOOGLE_SERVICE_ACCOUNT_JSON not configured');
 
-      var gtmToken = await getDelegatedToken(googleSA, IMPERSONATE_USER, 'https://www.googleapis.com/auth/tagmanager.manage.users');
-      if (gtmToken.error) {
-        gtmDebugToken = gtmToken.error;
+      var gtmToken;
+      try {
+        gtmToken = await google.getDelegatedAccessToken(IMPERSONATE_USER, 'https://www.googleapis.com/auth/tagmanager.manage.users');
+      } catch (tokenErr) {
+        gtmDebugToken = tokenErr.message || String(tokenErr);
         throw new Error('Google authentication failed');
       }
 
@@ -568,42 +575,4 @@ function pickDefined(obj) {
   return out;
 }
 
-
-// ═══════════════════════════════════════════════════════════════════
-// Helper: Get access token via domain-wide delegation
-// ═══════════════════════════════════════════════════════════════════
-async function getDelegatedToken(saJson, impersonateEmail, scope) {
-  try {
-    var sa = typeof saJson === 'string' ? JSON.parse(saJson) : saJson;
-    if (!sa.private_key || !sa.client_email) throw new Error('SA JSON missing private_key or client_email');
-    var crypto = require('crypto');
-
-    var header = Buffer.from(JSON.stringify({ alg: 'RS256', typ: 'JWT' })).toString('base64url');
-    var now = Math.floor(Date.now() / 1000);
-    var claims = Buffer.from(JSON.stringify({
-      iss: sa.client_email,
-      sub: impersonateEmail,
-      scope: scope,
-      aud: 'https://oauth2.googleapis.com/token',
-      iat: now,
-      exp: now + 3600
-    })).toString('base64url');
-
-    var signable = header + '.' + claims;
-    var signer = crypto.createSign('RSA-SHA256');
-    signer.update(signable);
-    var signature = signer.sign(sa.private_key, 'base64url');
-    var jwt = signable + '.' + signature;
-
-    var tokenResp = await fetch('https://oauth2.googleapis.com/token', {
-      method: 'POST', headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
-      body: 'grant_type=urn%3Aietf%3Aparams%3Aoauth%3Agrant-type%3Ajwt-bearer&assertion=' + jwt
-    });
-    var tokenData = await tokenResp.json();
-    if (!tokenData.access_token) throw new Error(tokenData.error_description || tokenData.error || JSON.stringify(tokenData));
-    return tokenData.access_token;
-  } catch (e) {
-    return { error: e.message || String(e) };
-  }
-}
 
