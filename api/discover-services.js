@@ -32,12 +32,8 @@ module.exports = async function handler(req, res) {
 
   try {
     // Fetch contact
-    var contactResp = await fetch(sb.url() + '/rest/v1/contacts?slug=eq.' + clientSlug + '&limit=1', {
-      headers: sb.headers()
-    });
-    var contacts = await contactResp.json();
-    if (!contacts || contacts.length === 0) return res.status(404).json({ error: 'Contact not found: ' + clientSlug });
-    var contact = contacts[0];
+    var contact = await sb.one('contacts?slug=eq.' + clientSlug + '&limit=1');
+    if (!contact) return res.status(404).json({ error: 'Contact not found: ' + clientSlug });
 
     // ─── GSC DISCOVERY ───
     if (service === 'gsc') {
@@ -92,11 +88,7 @@ module.exports = async function handler(req, res) {
 
       if (matched) {
         // Save to contact record
-        await fetch(sb.url() + '/rest/v1/contacts?slug=eq.' + clientSlug, {
-          method: 'PATCH',
-          headers: sb.headers(),
-          body: JSON.stringify({ gsc_property: matched })
-        });
+        await sb.mutate('contacts?slug=eq.' + clientSlug, 'PATCH', { gsc_property: matched });
 
         // Upsert report_configs
         await upsertReportConfig(clientSlug, { gsc_property: matched });
@@ -263,23 +255,16 @@ module.exports = async function handler(req, res) {
 
 async function upsertReportConfig(clientSlug, data) {
   // Check if config exists
-  var checkResp = await fetch(sb.url() + '/rest/v1/report_configs?client_slug=eq.' + clientSlug + '&limit=1', {
-    headers: sb.headers()
-  });
-  var existing = await checkResp.json();
+  var existing = await sb.query('report_configs?client_slug=eq.' + clientSlug + '&limit=1');
 
   data.active = true;
   if (existing && existing.length > 0) {
     // Update
-    await fetch(sb.url() + '/rest/v1/report_configs?client_slug=eq.' + clientSlug, {
-      method: 'PATCH', headers: headers, body: JSON.stringify(data)
-    });
+    await sb.mutate('report_configs?client_slug=eq.' + clientSlug, 'PATCH', data);
   } else {
     // Create
     data.client_slug = clientSlug;
-    await fetch(sb.url() + '/rest/v1/report_configs', {
-      method: 'POST', headers: headers, body: JSON.stringify(data)
-    });
+    await sb.mutate('report_configs', 'POST', data);
   }
 }
 
