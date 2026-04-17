@@ -371,7 +371,7 @@ ${surgeData}`;
     var checklistRows = allTasks.map(function(t, idx) {
       var priority = severityToPriority(t.severity);
       return {
-        id: auditId.substring(0, 8) + '-' + String(idx + 1).padStart(3, '0'),
+        id: auditId + '-' + String(idx + 1).padStart(3, '0'),
         client_slug: slug,
         audit_id: auditId,
         audit_period: audit.audit_period || 'initial',
