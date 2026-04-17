@@ -15,6 +15,7 @@
 var crypto = require('crypto');
 var sb = require('./_lib/supabase');
 var monitor = require('./_lib/monitor');
+var fetchT = require('./_lib/fetch-with-timeout');
 
 function readRawBody(req) {
   return new Promise(function(resolve, reject) {
@@ -158,27 +159,71 @@ module.exports = async function handler(req, res) {
         results.action = 'status_flipped_to_onboarding';
         results.previous_status = 'prospect';
 
-        // Fire team notification (non-blocking)
+        // Fire team notification (awaited; monitor.critical on failure).
+        // We still return 200 to Stripe even if this fails — Stripe must not
+        // retry the webhook (status flip + payments insert are already done).
+        // The critical alert email is the surfacing channel for operators.
         try {
-          fetch('https://clients.moonraker.ai/api/notify-team', {
+          var notifyResp = await fetchT('https://clients.moonraker.ai/api/notify-team', {
             method: 'POST',
             headers: { 'Content-Type': 'application/json', 'Authorization': 'Bearer ' + (process.env.CRON_SECRET || '') },
             body: JSON.stringify({ event: 'payment_received', slug: slug })
-          }).catch(function(e) { console.log('Notification fire-and-forget error:', e.message); });
+          }, 15000);
+          if (!notifyResp.ok) {
+            var notifyErrBody = '';
+            try { notifyErrBody = await notifyResp.text(); } catch (_) {}
+            await monitor.critical('stripe-webhook', new Error('notify-team returned ' + notifyResp.status), {
+              client_slug: slug,
+              detail: {
+                stage: 'notify_team',
+                status: notifyResp.status,
+                body_preview: notifyErrBody.substring(0, 500),
+                session_id: session.id
+              }
+            });
+            results.notify_team_failed = true;
+          }
         } catch (notifyErr) {
-          console.log('Failed to trigger payment notification:', notifyErr.message);
+          try {
+            await monitor.critical('stripe-webhook', notifyErr, {
+              client_slug: slug,
+              detail: { stage: 'notify_team', session_id: session.id }
+            });
+          } catch (_) { /* don't let alert failure mask the 200 */ }
+          results.notify_team_failed = true;
         }
 
-        // Set up quarterly audit schedule (non-blocking)
-        // Adopts recent lead audit as baseline if within 30 days, otherwise triggers fresh
+        // Set up quarterly audit schedule (awaited; monitor.critical on failure).
+        // Adopts recent lead audit as baseline if within 30 days, otherwise triggers fresh.
         try {
-          fetch('https://clients.moonraker.ai/api/setup-audit-schedule', {
+          var schedResp = await fetchT('https://clients.moonraker.ai/api/setup-audit-schedule', {
             method: 'POST',
             headers: { 'Content-Type': 'application/json', 'Authorization': 'Bearer ' + (process.env.CRON_SECRET || '') },
             body: JSON.stringify({ contact_id: contact.id })
-          }).catch(function(e) { console.log('Audit schedule fire-and-forget error:', e.message); });
+          }, 15000);
+          if (!schedResp.ok) {
+            var schedErrBody = '';
+            try { schedErrBody = await schedResp.text(); } catch (_) {}
+            await monitor.critical('stripe-webhook', new Error('setup-audit-schedule returned ' + schedResp.status), {
+              client_slug: slug,
+              detail: {
+                stage: 'setup_audit_schedule',
+                status: schedResp.status,
+                body_preview: schedErrBody.substring(0, 500),
+                session_id: session.id,
+                contact_id: contact.id
+              }
+            });
+            results.setup_audit_schedule_failed = true;
+          }
         } catch (schedErr) {
-          console.log('Failed to trigger audit schedule setup:', schedErr.message);
+          try {
+            await monitor.critical('stripe-webhook', schedErr, {
+              client_slug: slug,
+              detail: { stage: 'setup_audit_schedule', session_id: session.id, contact_id: contact.id }
+            });
+          } catch (_) { /* don't let alert failure mask the 200 */ }
+          results.setup_audit_schedule_failed = true;
         }
       } else {
         results.action = 'no_status_change';
