@@ -1028,7 +1028,7 @@ Then doc updates:
     session at Group I (Lows + Nits reconciliation sweep).
 ```
 
-## Prompt for next session (Group I — Lows + Nits reconciliation sweep)
+## Executed prompt — Group I (historical, for reference)
 
 ```
 Group I — Lows + Nits reconciliation sweep. With Pattern 12 closed by
@@ -1146,6 +1146,206 @@ lines, or introducing a new helper, or touching multiple files for
 one finding), STOP — that's bucket (c) territory. Note it and move
 on. The point of Group I is to close out the tail, not start a new
 extraction project.
+```
+
+## Prompt for next session (Group J — Medium-tier reconciliation sweep)
+
+```
+Group J — Medium-tier reconciliation sweep. With Group I closed, the
+Lows + Nits tail has been walked end-to-end (13/28 Lows, 5/6 Nits
+resolved; remaining entries all carry Current-state notes). What's
+left on the audit is 22 open Mediums (M1, M3, M4, M5, M7, M17, M19,
+M21, M23, M24, M25, M27, M28, M29, M31, M32, M33, M34, M35, M36,
+M37, M39), H29 (deferred on infra design), and a handful of product-
+decision items. This session mirrors Group I's shape: classify first,
+fix second.
+
+Several Mediums are plausibly stale after Groups B.2/B.3 and the
+Phase 4 hardening work — the reconciliation itself is the primary
+deliverable. Code changes are a bonus where the fix is genuinely
+small.
+
+Read docs/api-audit-2026-04.md Medium section; then read
+docs/post-phase-4-status.md for Group I's retrospective (the model
+for this session) and the full group history.
+
+─────────────────────────────────────────────────────────────────────
+Pre-verification required at session start
+─────────────────────────────────────────────────────────────────────
+
+Confirm Group I landed on main before starting:
+  - docs/api-audit-2026-04.md tallies should read: Lows 13/28
+    resolved, Nits 5/6 resolved, total ≥79/118.
+  - All L/N entries should be either ✅ RESOLVED with a Resolution
+    block OR have a "Current state (2026-04-18)" note. No entry
+    should be open-without-note.
+  - The 4 Group I code commits `62e6ec3` (L12), `be6ad05` (L28),
+    `e694dce` (N3), `d53a1fa` (N4) should all show READY in Vercel.
+
+If any of this doesn't match expected state, pause and investigate.
+
+─────────────────────────────────────────────────────────────────────
+Scope — reconciliation pass
+─────────────────────────────────────────────────────────────────────
+
+Walk each open Medium in order (M1 → M39, skipping resolved IDs).
+For each one:
+
+1. READ the finding in docs/api-audit-2026-04.md.
+2. READ the code at the cited line number on current main.
+3. CLASSIFY into one of three buckets:
+
+   (a) Already fixed by a previous group. Mark ✅ RESOLVED with a
+       Resolution block referencing the earlier commit that closed it
+       and a one-line justification.
+
+   (b) Small fix, ≤10 lines of code. Migrate, test via node --check
+       and Vercel deploy status, mark ✅ RESOLVED.
+
+   (c) Non-trivial, design-gated, or product-decision-gated. Leave
+       open, add a "Current state (2026-04-19)" note under the
+       finding so the next reader doesn't re-read the same code to
+       re-diagnose.
+
+Expect a LARGER bucket (c) than Group I had. Mediums tend to be more
+substantive — some will require DB migrations, some need product
+sign-off, some want a new helper module. Don't force (b) if the fix
+isn't actually small; don't try to batch multiple findings into a
+single refactor.
+
+─────────────────────────────────────────────────────────────────────
+Known reconciliation candidates
+─────────────────────────────────────────────────────────────────────
+
+Likely bucket (a) — verify on current main:
+
+  - M5 (newsletter-webhook optional signature verification) — H11
+    `b9b8f47` mandated signature verification and added raw-body
+    reader. Verify and mark ✅.
+  - M17 (process-entity-audit.js 15+ inlined Supabase fetches) —
+    Group B.2 M16 resolution (`0d2c56d` + `2512c46`) explicitly
+    migrated 6 Supabase fetches alongside the AbortController work,
+    and Group B.3 swept the repo-wide residue. Run the same grep
+    used in Group B.3 final verification:
+      grep -rn "fetch(sb.url()\|fetch.*rest/v1" api/process-entity-audit.js
+    Should return zero. Mark ✅.
+  - M31 (seed-content-pages.js duplicate `require('./_lib/supabase')`
+    at L21/L23) — Group B.3 commit `bbf19a7` explicitly notes
+    "also collapsed a pre-existing duplicate `var sb = require()`".
+    Verify and mark ✅.
+
+Likely bucket (b) — small fixes if verified:
+
+  - M4 (github.js path validation too permissive) — Pattern 13 calls
+    for an allow-prefix list. Decide: add allowlist array + startsWith
+    check in validatePath, or leave (c) if scope creeps.
+  - M27 (bootstrap-access clientSlug unencoded in PostgREST URLs)
+    — check if Group B.3's `c530220` migration also wrapped slug
+    concat in encodeURIComponent. If partially done, finish the job
+    at remaining sites.
+  - M28 (bootstrap-access compound deliverables PATCH filter concat)
+    — related to M27; likely same fix surface. Consider folding into
+    the same commit.
+  - M33 (digest.js date strings unvalidated) — add a small ISO-date
+    regex check at L44/47/50 before concatenating into filter.
+  - M34 (newsletter-generate Pexels key fallback silent) — mirror
+    the H9/H10 pattern: module-load warning + request-time 500 if env
+    missing. One-line addition if the module already has similar
+    plumbing for other keys.
+
+Likely bucket (c) — design-gated, product-gated, or scope-fenced:
+
+  - M1 (Stripe amount-based detection) — Group H territory, blocked
+    on dashboard-side metadata addition. Leave open, reference Group H.
+  - M3 (action.js 40+ tables allowlist with no action granularity)
+    — Phase 4 S5 added action-schema.js with per-table manifest. Read
+    the current shape; if it's already the tightening the audit note
+    was asking for, mark ✅. Otherwise leave (c) noting the deferred
+    tightening plan.
+  - M19, M37, M39 — product-decision items. Current state note +
+    point at the product question.
+  - M21 (google-drive folderId query injection) — scope-fenced
+    `_lib/google-drive.js`. Do NOT touch; note only.
+  - M23 (hardcoded CLIENTS_FOLDER_ID) — env var + backfill + rollout.
+    Multi-step; leave (c).
+  - M24 (compile-report GSC auto-correct writes without admin
+    approval) — product behavioral question.
+  - M25 (compile-report markdown fence strip) — same class as L11.
+    Parked pending shared-parser helper. Cross-reference L11.
+  - M29 (chat.js maxDuration) — check current vercel.json setting;
+    if still 120s and context is heavier post-Group-D, note and
+    leave (c) pending a real-world timeout report.
+  - M32 (enrich-proposal personal-email regex) — same as L19,
+    data-quality nit. Reference L19's Current state note.
+  - M35 (generate-content-page PATCH + POST no transaction) —
+    multi-step DB change; leave (c) with note about whether an
+    upsert-via-unique-constraint is possible (follow Group E's
+    pattern).
+  - M36 (seed-content-pages arrow functions) — cosmetic, leave (c)
+    or absorb into a future strict-mode session.
+
+Remaining Mediums not listed: walk each, classify, reconcile, or note.
+
+─────────────────────────────────────────────────────────────────────
+Deliverables
+─────────────────────────────────────────────────────────────────────
+
+Commit shape depends on what the reconciliation produces. Based on
+Group I's pattern, expect roughly:
+  - 3-5 code commits for bucket (b) fixes, one file per commit.
+  - 1 large doc commit at the end with all Resolution blocks and
+    Current-state notes in docs/api-audit-2026-04.md.
+  - 1 doc commit updating docs/post-phase-4-status.md with the
+    Group J retrospective + refreshed summary.
+
+Doc updates at the end:
+  - api-audit-2026-04.md: every Medium entry should either be
+    ✅ RESOLVED with a Resolution block OR have a "Current state
+    (2026-04-19)" note. Update running tallies accordingly.
+  - post-phase-4-status.md: add Group J retrospective mirroring
+    Group I's shape (bucket (a) list, bucket (b) commit list, bucket
+    (c) grouped by reason-open). Refresh "Where the audit stands"
+    summary. Refresh "What's not in the groupings" to reflect any
+    Mediums now with explicit Current-state notes. Refresh
+    "Recommended next session" (likely: L6 sign-off mini-task, then
+    H29 design session).
+
+If the session reveals anything new (a latent bug, a pattern worth
+extracting), file it with a fresh ID per the usual rule (continue
+numbering; next Medium is M40, next Low is L29, next Nit is N7) and
+decide bucket (b) or (c) for this session vs a future one.
+
+─────────────────────────────────────────────────────────────────────
+Pre-task candidates (optional, at session start)
+─────────────────────────────────────────────────────────────────────
+
+If the session starts with capacity for a quick additional item,
+L6 is flagged as ready for a one-line fix pending Chris/Scott
+product sign-off. If sign-off has happened between Group I and this
+session, close L6 first:
+  - submit-entity-audit.js: on agent-trigger failure, PATCH the
+    pending row to status='queued' so cron/process-audit-queue.js
+    picks it up for retry.
+  - Leave the team-notification email intact.
+  - Verify L9's admin URL fragment concern is unchanged (not a
+    blocker for this fix).
+
+If no sign-off yet, skip L6 and proceed directly to M1.
+
+─────────────────────────────────────────────────────────────────────
+Session theme check
+─────────────────────────────────────────────────────────────────────
+
+If you find yourself wanting to refactor something substantial (> 30
+lines, or introducing a new helper module, or touching multiple
+files for one finding), STOP — that's bucket (c) territory. Note it
+and move on.
+
+Mediums are where multi-file refactors want to live (new helpers,
+DB migrations, product decisions). Those are separate sessions. The
+point of Group J is to close out the reconciliation tail and surface
+which Mediums genuinely need dedicated work versus which are stale
+after Groups A-G.
 ```
 
 ## Closing thought on the grouping approach
