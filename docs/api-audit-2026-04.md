@@ -219,7 +219,7 @@ Helper signature invites misuse. Every caller must remember to escape. Rename to
 
 **Resolution (2026-04-17, commit `d024b84`):** Atomic 9-file rename commit. In `_lib/email-template.js`: renamed original `p()` → `pRaw()`; new `p()` escape-by-default now exists; both exported. `wrap()` now supports `options.footerNote` (new, escapes input) alongside `options.footerNoteRaw` (current raw behavior), with `footerNoteRaw` winning if both are set. All 82+ `email.p(` call sites across 8 caller files (compile-report, generate-audit-followups, generate-followups, ingest-batch-audit, ingest-surge-content, notify-team, send-audit-email, send-proposal-email) migrated to `email.pRaw(` mechanically — byte-identical email output preserved. One caller (`send-proposal-email.js`) passed an `<a>` tag through `footerNote`; migrated to `footerNoteRaw`. Remaining `footerNote:` callers pass plain text only (grep-verified). Future sessions can opportunistically upgrade plain-text `pRaw` call sites to the new safe `p()` — flagged as follow-up, not blocking.
 
-### H21. Seven copies of `getDelegatedToken`/`getGoogleAccessToken`
+### H21. Seven copies of `getDelegatedToken`/`getGoogleAccessToken` ✅ RESOLVED
 - `api/bootstrap-access.js:480`
 - `api/compile-report.js:909` (no impersonation variant: `getGoogleAccessToken`)
 - `api/compile-report.js:1012`
@@ -230,7 +230,16 @@ Helper signature invites misuse. Every caller must remember to escape. Rename to
 
 Extract once to `_lib/google-auth.js` with token caching keyed on `(scope, impersonate)`. Replace all sites.
 
-**Partial progress (2026-04-17, commit `7adedb6`):** Helper module `api/_lib/google-delegated.js` created with `getDelegatedAccessToken(mailbox, scope)`, `getServiceAccountToken(scope)`, `getFirstWorkingImpersonation(mailboxes, scope, testFn)`, and `_tokenCache` keyed on `${mailbox||'sa'}|${scope}`. First and only caller so far is the new `api/campaign-summary.js` feature (not part of audit scope). **The 5 existing duplicate sites listed above still hold their own copies** — migration is the remaining H21 work. Not yet resolved; the design step is now skipped when this ships.
+**Partial progress (2026-04-17, commit `7adedb6`):** Helper module `api/_lib/google-delegated.js` created with `getDelegatedAccessToken(mailbox, scope)`, `getServiceAccountToken(scope)`, `getFirstWorkingImpersonation(mailboxes, scope, testFn)`, and `_tokenCache` keyed on `${mailbox||'sa'}|${scope}`. First and only caller so far is the new `api/campaign-summary.js` feature (not part of audit scope). **The 5 existing duplicate sites listed above still hold their own copies** — migration is the remaining H21 work.
+
+**Resolution (2026-04-17, Group B.1):** All 5 duplicate sites migrated to the helper.
+- `bootstrap-access.js` → commit `17d0ae8` (GBP/GA4/GTM delegated tokens).
+- `discover-services.js` → commit `4e77e55` (now calls `google.getServiceAccountToken`, non-delegated variant).
+- `enrich-proposal.js` → commit `568a868`. Gmail for-loop at L98: nested try/catch around `google.getDelegatedAccessToken(acct, gmailScope)`; on inner throw `continue` jumps to next mailbox without tripping the outer catch that would push a `{account, error}` row — preserves the original silent-skip semantics of the old `typeof token === 'string'` guard. Guard itself replaced with a plain `{ }` block so happy-path indentation didn't shift.
+- `generate-proposal.js` → commit `d592381`. Single Drive-folder call at L653 wrapped in nested try/catch; `results.drive.error = 'Failed to get Drive token: ' + (tokenErr.message || String(tokenErr))` on failure, happy path gated on `if (driveToken)`.
+- `compile-report.js` → commit `1d9c835`. Both `safe()`-wrapped closures (GSC L181, GBP L256) migrated to the same try/catch pattern; original warning prefixes preserved (`'GSC: token failed - '` and `'GBP Performance: delegated token failed - '`). Also deleted dead `getGoogleAccessToken` (no callers — see L16).
+
+Final grep across `api/` on main: zero matches for `function getDelegatedToken\|function getGoogleAccessToken`. `_lib/google-drive.js` is tracked separately (N6) and is out of Group B.1 scope.
 
 ### H22. `api/generate-proposal.js:361` — AI-generated `next_steps` rendered into deployed HTML unescaped ✅ RESOLVED
 If `enrichment_data` (admin-written, unsanitized) contains prompt injection convincing Claude to emit `<script>`, ends up in prospect-facing deployed proposal. Also line 330: `customPricing.amount_cents / 100` admin-controlled, no type validation, flows into checkout card HTML.
@@ -262,8 +271,10 @@ Lines 92-148. Impersonates `chris@`, `scott@`, `support@` to run Gmail searches.
 
 Also affects C4 blast radius: `enrichment_data` is readable via `action.js`, unencrypted. Encrypt at rest via `_lib/crypto.js`.
 
-### H30. `api/enrich-proposal.js:161` — Fathom dedup uses string match
+### H30. `api/enrich-proposal.js:161` — Fathom dedup uses string match ✅ RESOLVED
 Works but is the sixth copy of `getDelegatedToken` (line 414) with no caching. Multiple Fathom + Gmail calls each mint fresh JWTs. Wasteful but not broken.
+
+**Resolution (2026-04-17, commit `568a868`, Group B.1):** Subsumed by the H21 migration. Gmail for-loop now calls `google.getDelegatedAccessToken(acct, gmailScope)`, which caches tokens in `_tokenCache` keyed on `${mailbox}|${scope}` with a 60s expiry guard (see `_lib/google-delegated.js`). Three-mailbox sweep inside the same request now mints one JWT per mailbox/scope pair instead of three fresh JWTs per call. Local `getDelegatedToken` deleted.
 
 ### H31. `api/generate-content-page.js:419` — 25K chars of RTPBA passed to Claude verbatim
 RTPBA originates from Surge agent output parsed from client's website. Narrower surface than C9 — requires attacker to control client site content. Line 81-88 also extracts RTPBA from `entity_audits.surge_data.raw_text` via substring starting at literal "Ready-to-Publish" — 5000 chars from any injection point.
@@ -478,8 +489,10 @@ Resolved alongside H9 (commit `36ac5bb`). The rotation made the git-history stri
 ### L15. `_templates/onboarding.html:955` — anon key JWT exp 2089 (effectively never)
 RLS is the only control. Consider rotating to a shorter-exp anon key.
 
-### L16. `api/compile-report.js:909, 1012` — two token functions with subtle difference
+### L16. `api/compile-report.js:909, 1012` — two token functions with subtle difference ✅ RESOLVED
 `getGoogleAccessToken` vs `getDelegatedToken` in same file. Delete unused one.
+
+**Resolution (2026-04-17, commit `1d9c835`, Group B.1):** Grep confirmed `getGoogleAccessToken` had zero callers anywhere in `client-hq` — pure dead code. Deleted alongside the H21 migration in the same commit. `getDelegatedToken` also removed (replaced by `google.getDelegatedAccessToken` at both call sites).
 
 ### L17. `api/generate-proposal.js:330` — `customPricing.amount_cents / 100` no null check
 
@@ -613,8 +626,7 @@ Before coding Phase 3+:
 8e. ✅ **H7** — commit `330e6da` (2026-04-17). Removed `api/_lib/supabase.js` hardcoded URL fallback; module-load warning + throw on first `url()` call if env missing.
 8f. ✅ **H28** — commit `0c9bc85` (2026-04-17). `bootstrap-access.js` response body now uses filtered `publicResults` object; every catch site routes raw debug to `monitor.logError`; provider-specific thrown strings replaced with generic messages.
 8g. ✅ **L8** — commits `994f51a` + `bd0e195` (2026-04-17). Newsletter webhook now logs every unhandled type via `logEvent('unhandled_type', …)`; added explicit no-op handlers for `email.sent` and `email.delivery_delayed`.
-8h. 🔶 **H21 (partial)** — commit `7adedb6` (2026-04-17). Helper `api/_lib/google-delegated.js` created with token caching; used by new `campaign-summary.js`. 5 existing duplicate sites still pending migration.
-9. **H21 migration** — replace 5 duplicate `getDelegatedToken` sites (bootstrap-access, compile-report ×2, generate-proposal, enrich-proposal, discover-services) and `_lib/google-drive.js` implementation with the now-live `_lib/google-delegated.js` helper.
+8h. ✅ **H21 + H30 + L16** — commits `7adedb6` (helper) + `17d0ae8`, `4e77e55`, `568a868`, `d592381`, `1d9c835` (migrations) — 2026-04-17. All 5 duplicate call sites migrated to `_lib/google-delegated.js`; Fathom/Gmail calls now share a cached token per mailbox+scope (H30); dead `getGoogleAccessToken` in `compile-report.js` deleted (L16).
 10. **H4 + H24 + M10 + M16 + the many AbortController gaps** — extract `fetchWithTimeout`, apply everywhere.
 11. **Pattern 12** — migrate inline Supabase fetches to helper in the five big files. Mechanical, test-with-deploy.
 
@@ -641,12 +653,12 @@ _(Brought forward from Phase 7 since Chris chose "ship now" over "wait for traff
 ## Running tallies
 
 - **Critical:** 9 total (C1–C9). **Resolved: 9 ✅** (all).
-- **High:** 35 total (H1–H35). **Resolved: 15** (H5, H7, H8, H9, H10, H11, H14, H18, H19, H20, H22, H28, H33, H34, H35). **Open: 20.**
+- **High:** 35 total (H1–H35). **Resolved: 17** (H5, H7, H8, H9, H10, H11, H14, H18, H19, H20, H21, H22, H28, H30, H33, H34, H35). **Open: 18.**
 - **Medium:** 38 total (M1–M38). **Resolved: 5+ full + 1 partial** (M6, M8, M13, M22, M38; M26 err-leak half resolved, prompt-injection half deferred to Group D; several more likely closed via Phase 4 action-schema work — needs verification sweep). **Open: ~32.**
-- **Low:** 28 total (L1–L28). **Resolved: 4** (L8, L14, L26, L27-documented-only). **Open: 24.**
+- **Low:** 28 total (L1–L28). **Resolved: 5** (L8, L14, L16, L26, L27-documented-only). **Open: 23.**
 - **Nit:** 6 total (N1–N6). **Open: 6.**
 
-**Total: 116 findings. Resolved: ≥33 (+1 partial). Open: ≤82.**
+**Total: 116 findings. Resolved: ≥36. Open: ≤79.**
 
 ### Resolution log
 | Finding | Commit / Session | Date |
@@ -668,7 +680,9 @@ _(Brought forward from Phase 7 since Chris chose "ship now" over "wait for traff
 | L8 | `994f51a` + `bd0e195` (webhook_log + explicit noop handlers) | 2026-04-17 |
 | H7 | `330e6da` (supabase.js fallback removed, fail-closed) | 2026-04-17 |
 | H28 | `0c9bc85` (bootstrap-access response sanitized, monitor.logError) | 2026-04-17 |
-| H21 (partial) | `7adedb6` — helper `_lib/google-delegated.js` created; 5 duplicates still pending | 2026-04-17 |
+| H21 | helper `7adedb6` + migrations `17d0ae8`, `4e77e55`, `568a868`, `d592381`, `1d9c835` (all 5 duplicate sites migrated; dead `getGoogleAccessToken` deleted) | 2026-04-17 |
+| H30 | `568a868` (enrich-proposal migrated; Gmail/Fathom tokens now cached via `_lib/google-delegated.js`) | 2026-04-17 |
+| L16 | `1d9c835` (dead `getGoogleAccessToken` in compile-report removed alongside H21 migration) | 2026-04-17 |
 | H33 | `a8155dc` (newsletter-generate — 7 sites routed through monitor, generic 5xx bodies) | 2026-04-17 |
 | H34 | `225d5a0` + `19b9199` (send-audit-email — Resend + outer catch through monitor; follow-up restored client_slug) | 2026-04-17 |
 | H35 | `b17c790` (generate-content-page NDJSON — 3 stream-error sites through monitor) | 2026-04-17 |
