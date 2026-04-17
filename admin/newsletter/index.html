@@ -726,31 +726,64 @@ body.sub-bulk-visible #tab-subscribers.active { padding-bottom: 96px; }
 <div class="modal-overlay" id="importModal">
   <div class="modal">
     <h3 style="font-size:1rem;">Import Subscribers</h3>
-    <div class="form-group">
-      <label class="form-label">CSV File</label>
-      <input type="file" accept=".csv" id="importFile" class="form-input" />
-      <div class="form-hint">CSV must have an "Email" column. Optional: First Name, Last Name, Tags.</div>
+
+    <!-- Mode toggle -->
+    <div style="display:flex;gap:.5rem;margin-bottom:1rem;">
+      <button type="button" class="btn btn-sm" id="importModeCsvBtn" style="flex:1;background:var(--color-primary);color:#fff;" onclick="setImportMode('csv')">CSV Upload</button>
+      <button type="button" class="btn btn-sm btn-secondary" id="importModeManualBtn" style="flex:1;" onclick="setImportMode('manual')">Manual Entry</button>
     </div>
-    <div class="form-group">
-      <label class="form-label">Default Source</label>
-      <select class="form-input" id="importSource">
-        <option value="ghl-import">GHL Import</option>
-        <option value="manual">Manual</option>
-        <option value="webinar">Webinar</option>
-        <option value="website">Website</option>
-      </select>
+
+    <!-- CSV panel -->
+    <div id="importCsvPanel">
+      <div class="form-group">
+        <label class="form-label">CSV File</label>
+        <input type="file" accept=".csv" id="importFile" class="form-input" />
+        <div class="form-hint">CSV must have an "Email" column. Optional: First Name, Last Name, Tags.</div>
+      </div>
+      <div class="form-group">
+        <label class="form-label">Default Source</label>
+        <select class="form-input" id="importSource">
+          <option value="ghl-import">GHL Import</option>
+          <option value="manual">Manual</option>
+          <option value="webinar">Webinar</option>
+          <option value="website">Website</option>
+        </select>
+      </div>
+      <div class="form-group">
+        <label class="form-label">Default Status</label>
+        <select class="form-input" id="importStatus">
+          <option value="active">Active</option>
+          <option value="pending">Pending (requires confirmation)</option>
+        </select>
+      </div>
+      <div id="importPreview" style="display:none;margin-top:1rem;padding:1rem;background:var(--color-bg);border-radius:8px;font-size:.82rem;"></div>
     </div>
-    <div class="form-group">
-      <label class="form-label">Default Status</label>
-      <select class="form-input" id="importStatus">
-        <option value="active">Active</option>
-        <option value="pending">Pending (requires confirmation)</option>
-      </select>
+
+    <!-- Manual entry panel -->
+    <div id="importManualPanel" style="display:none;">
+      <div style="display:grid;grid-template-columns:1fr 1fr;gap:.75rem;">
+        <div class="form-group">
+          <label class="form-label">First Name</label>
+          <input type="text" id="manualFirstName" class="form-input" placeholder="Optional" autocomplete="off" />
+        </div>
+        <div class="form-group">
+          <label class="form-label">Last Name</label>
+          <input type="text" id="manualLastName" class="form-input" placeholder="Optional" autocomplete="off" />
+        </div>
+      </div>
+      <div class="form-group">
+        <label class="form-label">Email <span style="color:var(--color-danger);">*</span></label>
+        <input type="email" id="manualEmail" class="form-input" placeholder="person@example.com" autocomplete="off" onkeydown="if(event.key==='Enter'){event.preventDefault();addManualSubscriber();}" />
+        <div class="form-hint">Added as <code>source=manual</code>, <code>status=active</code>. Modal stays open so you can add more.</div>
+      </div>
+      <div style="display:flex;justify-content:flex-end;">
+        <button type="button" class="btn btn-primary" id="manualAddBtn" onclick="addManualSubscriber()">Add subscriber</button>
+      </div>
     </div>
-    <div id="importPreview" style="display:none;margin-top:1rem;padding:1rem;background:var(--color-bg);border-radius:8px;font-size:.82rem;"></div>
+
     <div class="modal-actions">
-      <button class="btn btn-secondary" onclick="closeImportModal()">Cancel</button>
-      <button class="btn btn-primary" id="importBtn" onclick="runImport()" disabled>Import</button>
+      <button class="btn btn-secondary" onclick="closeImportModal()">Close</button>
+      <button class="btn btn-primary" id="importBtn" onclick="runImport()" disabled>Import CSV</button>
     </div>
   </div>
 </div>
@@ -2331,8 +2364,57 @@ async function exportSubscribers() {
 }
 window.exportSubscribers = exportSubscribers;
 
-window.openImportModal = function() { document.getElementById('importModal').classList.add('open'); };
+window.openImportModal = function() {
+  // Reset CSV state
+  var fileInput = document.getElementById('importFile');
+  if (fileInput) fileInput.value = '';
+  var preview = document.getElementById('importPreview');
+  if (preview) { preview.style.display = 'none'; preview.innerHTML = ''; }
+  var importBtn = document.getElementById('importBtn');
+  if (importBtn) importBtn.disabled = true;
+  // Reset manual state
+  ['manualFirstName','manualLastName','manualEmail'].forEach(function(id) {
+    var el = document.getElementById(id);
+    if (el) el.value = '';
+  });
+  setImportMode('csv');
+  document.getElementById('importModal').classList.add('open');
+};
 window.closeImportModal = function() { document.getElementById('importModal').classList.remove('open'); };
+
+window.setImportMode = function(mode) {
+  var csvBtn = document.getElementById('importModeCsvBtn');
+  var manualBtn = document.getElementById('importModeManualBtn');
+  var csvPanel = document.getElementById('importCsvPanel');
+  var manualPanel = document.getElementById('importManualPanel');
+  var importBtn = document.getElementById('importBtn');
+
+  if (mode === 'manual') {
+    csvBtn.className = 'btn btn-sm btn-secondary';
+    csvBtn.style.background = '';
+    csvBtn.style.color = '';
+    manualBtn.className = 'btn btn-sm';
+    manualBtn.style.background = 'var(--color-primary)';
+    manualBtn.style.color = '#fff';
+    csvPanel.style.display = 'none';
+    manualPanel.style.display = 'block';
+    if (importBtn) importBtn.style.display = 'none';
+    setTimeout(function() {
+      var first = document.getElementById('manualFirstName');
+      if (first) first.focus();
+    }, 50);
+  } else {
+    csvBtn.className = 'btn btn-sm';
+    csvBtn.style.background = 'var(--color-primary)';
+    csvBtn.style.color = '#fff';
+    manualBtn.className = 'btn btn-sm btn-secondary';
+    manualBtn.style.background = '';
+    manualBtn.style.color = '';
+    csvPanel.style.display = 'block';
+    manualPanel.style.display = 'none';
+    if (importBtn) importBtn.style.display = '';
+  }
+};
 
 document.addEventListener('DOMContentLoaded', function() {
   var fileInput = document.getElementById('importFile');
@@ -2351,9 +2433,102 @@ document.addEventListener('DOMContentLoaded', function() {
   });
 });
 
+// POST to the newsletter-subscribers-import endpoint. Returns { results, counts }.
+async function postImport(subscribers, resubscribe) {
+  var res = await fetch(API_BASE + '/newsletter-subscribers-import', {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({ subscribers: subscribers, resubscribe: !!resubscribe })
+  });
+  if (!res.ok) {
+    var err = await res.json().catch(function() { return {}; });
+    throw new Error(err.error || ('HTTP ' + res.status));
+  }
+  return res.json();
+}
+
+var MANUAL_EMAIL_RE = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+
+async function addManualSubscriber() {
+  var emailEl = document.getElementById('manualEmail');
+  var firstEl = document.getElementById('manualFirstName');
+  var lastEl = document.getElementById('manualLastName');
+  var btn = document.getElementById('manualAddBtn');
+
+  var email = (emailEl.value || '').trim().toLowerCase();
+  var first = (firstEl.value || '').trim();
+  var last = (lastEl.value || '').trim();
+
+  if (!MANUAL_EMAIL_RE.test(email)) {
+    toast('Enter a valid email address', 'error');
+    emailEl.focus();
+    return;
+  }
+
+  btn.disabled = true;
+  try {
+    var payload = [{
+      email: email,
+      first_name: first || null,
+      last_name: last || null,
+      source: 'manual'
+    }];
+    var result = await postImport(payload, false);
+    var row = (result.results && result.results[0]) || {};
+
+    if (row.result === 'created') {
+      toast('Added ' + email);
+      clearManualFields(true);
+      loadSubscriberStats();
+      loadSubscribers();
+    } else if (row.result === 'already_active') {
+      toast(email + ' is already subscribed', 'error');
+    } else if (row.result === 'invalid_email') {
+      toast('Invalid email', 'error');
+    } else if (row.result === 'needs_resubscribe_confirm') {
+      var priorLabel = row.prior_status === 'bounced' ? 'bounced'
+        : row.prior_status === 'complained' ? 'marked this as spam'
+        : 'unsubscribed';
+      var ok = confirm(email + ' previously ' + priorLabel + '. Resubscribe?');
+      if (ok) {
+        var result2 = await postImport(payload, true);
+        var row2 = (result2.results && result2.results[0]) || {};
+        if (row2.result === 'resubscribed') {
+          toast('Resubscribed ' + email);
+          clearManualFields(true);
+          loadSubscriberStats();
+          loadSubscribers();
+        } else {
+          toast('Resubscribe failed: ' + (row2.result || 'unknown'), 'error');
+        }
+      }
+    } else {
+      toast('Unexpected result: ' + (row.result || 'unknown'), 'error');
+    }
+  } catch (e) {
+    toast('Add failed: ' + e.message, 'error');
+  } finally {
+    btn.disabled = false;
+  }
+}
+window.addManualSubscriber = addManualSubscriber;
+
+function clearManualFields(focusFirst) {
+  ['manualFirstName','manualLastName','manualEmail'].forEach(function(id) {
+    var el = document.getElementById(id);
+    if (el) el.value = '';
+  });
+  if (focusFirst) {
+    var f = document.getElementById('manualFirstName');
+    if (f) f.focus();
+  }
+}
+
 async function runImport() {
   var file = document.getElementById('importFile').files[0];
   if (!file) return;
+  var importBtn = document.getElementById('importBtn');
+  importBtn.disabled = true;
   toast('Importing subscribers...');
 
   var reader = new FileReader();
@@ -2362,49 +2537,55 @@ async function runImport() {
       var rows = parseCSV(e.target.result);
       var source = document.getElementById('importSource').value;
       var status = document.getElementById('importStatus').value;
-      var imported = 0;
-      var skipped = 0;
 
-      // Process in batches of 50
-      for (var i = 0; i < rows.length; i += 50) {
-        var batch = rows.slice(i, i + 50);
-        var records = batch.map(function(r) {
+      var totals = {
+        created: 0,
+        already_active: 0,
+        resubscribed: 0,
+        needs_resubscribe_confirm: 0,
+        invalid_email: 0
+      };
+
+      // Batch size kept at 100: keeps PostgREST in.() URLs comfortably short
+      // and well under the server's 500-per-request limit.
+      var BATCH = 100;
+      for (var i = 0; i < rows.length; i += BATCH) {
+        var batch = rows.slice(i, i + BATCH);
+        var subs = batch.map(function(r) {
           var email = (r['Email'] || r['email'] || '').trim().toLowerCase();
-          if (!email || !email.includes('@')) return null;
+          var tags = r['Tags'] || r['tags'] || '';
           return {
             email: email,
             first_name: r['First Name'] || r['first_name'] || null,
             last_name: r['Last Name'] || r['last_name'] || null,
-            status: status,
             source: source,
-            engagement_tier: 'warm',
+            status: status,
             ghl_contact_id: r['Contact Id'] || r['contact_id'] || null,
-            metadata: r['Tags'] ? { ghl_tags: r['Tags'] } : {}
+            metadata: tags ? { ghl_tags: tags } : {}
           };
-        }).filter(Boolean);
-
-        if (records.length) {
-          try {
-            await apiAction('create_record', 'newsletter_subscribers', records);
-            imported += records.length;
-          } catch (err) {
-            // Likely duplicates, try one by one
-            for (var j = 0; j < records.length; j++) {
-              try {
-                await apiAction('create_record', 'newsletter_subscribers', records[j]);
-                imported++;
-              } catch (e2) { skipped++; }
-            }
-          }
+        });
+        if (subs.length) {
+          var result = await postImport(subs, false);
+          Object.keys(totals).forEach(function(k) {
+            totals[k] += (result.counts[k] || 0);
+          });
         }
       }
 
-      toast('Imported ' + imported + ' subscribers' + (skipped ? ', ' + skipped + ' skipped (duplicates)' : ''));
+      var bits = [];
+      if (totals.created) bits.push(totals.created + ' imported');
+      if (totals.resubscribed) bits.push(totals.resubscribed + ' resubscribed');
+      if (totals.already_active) bits.push(totals.already_active + ' already subscribed');
+      if (totals.needs_resubscribe_confirm) bits.push(totals.needs_resubscribe_confirm + ' previously opted out (review in table)');
+      if (totals.invalid_email) bits.push(totals.invalid_email + ' invalid');
+      toast(bits.length ? bits.join(', ') : 'Nothing imported');
       closeImportModal();
       loadSubscriberStats();
       loadSubscribers();
     } catch (err) {
       toast('Import failed: ' + err.message, 'error');
+    } finally {
+      importBtn.disabled = false;
     }
   };
   reader.readAsText(file);
