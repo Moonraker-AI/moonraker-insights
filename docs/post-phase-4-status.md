@@ -163,7 +163,7 @@ Items marked "won't fix" or "needs design":
 **The audit is at a natural stopping point.** All Criticals closed, all non-deferred Highs closed, the Lows + Nits tail walked end-to-end. What remains falls into four categories, none of which require urgency:
 
 1. **Group J — Medium-tier reconciliation sweep** (≤1 session). ~22 open Mediums with the same "plausibly stale after Groups A–G" profile as the Lows had before Group I. Worth a single classify-first pass mirroring Group I's shape: bucket (a) doc-only closures for findings already resolved incidentally, bucket (b) small code fixes for those that survived, bucket (c) notes on anything that needs product sign-off. Likely bucket (a) candidates based on Group I reading: M1 (awaits dashboard metadata — see Group H), M3 (action.js tightening probably overlaps post-P4S5 state), M4 (github.js path validation — worth verifying against post-Group-B state), M7 (supabase error detail — same-class as N3 CR/LF sanitization), several process-entity-audit Mediums (M17/M21/M25/M29/etc.) that may have been swept by Group B.2's work on that file. M19/M37/M39 stay (c) pending product decisions.
-2. **L6 state-machine sign-off** (≤15 min with Chris/Scott). One-line code change + one-line verification once the "do failed agent triggers auto-retry via cron?" product answer is settled. Flagged during Group I.
+2. **L6 close-out** — Chris signed off 2026-04-18: submit-side failure path flips to `'queued'`, cron auto-retries indefinitely (existing `agent_error` cron transition preserved), team notification downgraded to internal FYI. Now a mandatory pre-task inside Group J's prompt, not a separate session.
 3. **H29 design session** (whenever ready). Waits on the 4 design decisions captured in the Group G batch 2 retrospective (JSONB encryption + read-path + migration + rotation). No code session will move it forward until those land.
 4. **Group H M1 Stripe metadata** (10 min code + 30-day observation window). Blocked on dashboard-side `metadata: { product: ... }` addition.
 
@@ -1156,10 +1156,8 @@ Lows + Nits tail has been walked end-to-end (13/28 Lows, 5/6 Nits
 resolved; remaining entries all carry Current-state notes). What's
 left on the audit is 22 open Mediums (M1, M3, M4, M5, M7, M17, M19,
 M21, M23, M24, M25, M27, M28, M29, M31, M32, M33, M34, M35, M36,
-M37, M39), H29 (deferred on infra design), a handful of product-
-decision items, and one signed-off pre-task: L6 (submit-entity-audit
-agent-failure requeue). Start with the L6 pre-task, then do the
-Medium reconciliation mirroring Group I's shape: classify first,
+M37, M39), H29 (deferred on infra design), and a handful of product-
+decision items. This session mirrors Group I's shape: classify first,
 fix second.
 
 Several Mediums are plausibly stale after Groups B.2/B.3 and the
@@ -1167,7 +1165,12 @@ Phase 4 hardening work — the reconciliation itself is the primary
 deliverable. Code changes are a bonus where the fix is genuinely
 small.
 
-Read docs/api-audit-2026-04.md Medium section; then read
+There is one mandatory pre-task before the Medium sweep begins: L6
+was signed off by Chris on 2026-04-18 and is ready to ship as the
+session's first commit. Details in the pre-task section below.
+
+Read docs/api-audit-2026-04.md Medium section AND the L6 finding
+(with its Current state + product decision block); then read
 docs/post-phase-4-status.md for Group I's retrospective (the model
 for this session) and the full group history.
 
@@ -1181,13 +1184,64 @@ Confirm Group I landed on main before starting:
   - All L/N entries should be either ✅ RESOLVED with a Resolution
     block OR have a "Current state (2026-04-18)" note. No entry
     should be open-without-note.
+  - L6's Current state note should include the 2026-04-18 product
+    decision block from Chris. If it's missing, pause — the L6
+    sign-off isn't captured in the doc and the pre-task shouldn't
+    proceed on verbal recollection.
   - The 4 Group I code commits `62e6ec3` (L12), `be6ad05` (L28),
     `e694dce` (N3), `d53a1fa` (N4) should all show READY in Vercel.
 
 If any of this doesn't match expected state, pause and investigate.
 
 ─────────────────────────────────────────────────────────────────────
-Scope — reconciliation pass
+MANDATORY pre-task: L6 close-out
+─────────────────────────────────────────────────────────────────────
+
+Chris decided 2026-04-18: submit-side failures flip to 'queued' so
+the cron auto-retries indefinitely. Team notification email stays
+as an internal FYI — no manual intervention expected. Cron's
+existing `agent_error` transition (when the agent is alive but
+returns non-2xx on dispatch) is desirable and must not be touched.
+
+Scope — submit-side ONLY:
+
+  File: api/submit-entity-audit.js
+  Inside the `if (!agentTriggered && agentError) { ... }` block
+  (currently ~L164-188), after the team-notification email fetch
+  and before the outer 200 return, add a status PATCH:
+
+    try {
+      await sb.mutate('entity_audits?id=eq.' + audit.id, 'PATCH', {
+        status: 'queued'
+      }, 'return=minimal');
+    } catch (patchErr) {
+      console.error('[submit-entity-audit] queue flip on agent-failure failed:', patchErr.message);
+    }
+
+  Also update the notification email to reflect the new semantics
+  (it's an FYI, not an action-required signal):
+
+    subject: 'Entity Audit Agent Failed - ...'
+      → 'Entity Audit Agent Retry Queued - ...'
+
+    body p1: 'A new entity audit was submitted but the agent could not be triggered.'
+      → 'A new entity audit was submitted; the agent was not reachable on first try. The cron will auto-retry every 30 min.'
+
+  Everything else stays. Do NOT touch cron/process-audit-queue.js.
+  Do NOT remove the notification email. Do NOT change the 200
+  response shape — prospect still sees agent_triggered: false.
+
+Node --check before pushing. One commit, one file. Commit subject:
+'L6: flip failed audits to queued on agent-trigger failure; cron
+auto-retries indefinitely, notification email now FYI only'.
+
+Then in the same doc commit that finalizes Group J, update L6 in
+api-audit-2026-04.md: header → ✅ RESOLVED, add Resolution block
+citing the commit SHA, date 2026-04-19. Increment Lows tally:
+13/28 → 14/28 resolved, 15 open → 14 open.
+
+─────────────────────────────────────────────────────────────────────
+Scope — reconciliation pass (after L6 lands)
 ─────────────────────────────────────────────────────────────────────
 
 Walk each open Medium in order (M1 → M39, skipping resolved IDs).
@@ -1292,74 +1346,36 @@ Remaining Mediums not listed: walk each, classify, reconcile, or note.
 Deliverables
 ─────────────────────────────────────────────────────────────────────
 
-Commit shape depends on what the reconciliation produces. Based on
-Group I's pattern, expect roughly:
-  - 3-5 code commits for bucket (b) fixes, one file per commit.
-  - 1 large doc commit at the end with all Resolution blocks and
-    Current-state notes in docs/api-audit-2026-04.md.
-  - 1 doc commit updating docs/post-phase-4-status.md with the
-    Group J retrospective + refreshed summary.
+Commit shape, in order:
+  1. L6 code commit (submit-entity-audit.js, described above).
+  2. 3-5 code commits for bucket (b) Medium fixes, one file per
+     commit.
+  3. 1 large doc commit at the end with all Resolution blocks (L6
+     + any (a)/(b) Medium closures) and Current-state notes (for
+     open Mediums) in docs/api-audit-2026-04.md. Update running
+     tallies.
+  4. 1 doc commit updating docs/post-phase-4-status.md with the
+     Group J retrospective + refreshed summary. Close the "L6
+     close-out" bullet in Recommended next session.
 
 Doc updates at the end:
   - api-audit-2026-04.md: every Medium entry should either be
     ✅ RESOLVED with a Resolution block OR have a "Current state
-    (2026-04-19)" note. Update running tallies accordingly.
+    (2026-04-19)" note. L6 now ✅ RESOLVED with the pre-task
+    commit referenced.
   - post-phase-4-status.md: add Group J retrospective mirroring
     Group I's shape (bucket (a) list, bucket (b) commit list, bucket
     (c) grouped by reason-open). Refresh "Where the audit stands"
     summary. Refresh "What's not in the groupings" to reflect any
     Mediums now with explicit Current-state notes. Refresh
-    "Recommended next session" (likely: L6 sign-off mini-task, then
-    H29 design session).
+    "Recommended next session" (likely: H29 design session and/or
+    Group H M1 Stripe metadata, depending on whether dashboard
+    metadata has been added).
 
 If the session reveals anything new (a latent bug, a pattern worth
 extracting), file it with a fresh ID per the usual rule (continue
 numbering; next Medium is M40, next Low is L29, next Nit is N7) and
 decide bucket (b) or (c) for this session vs a future one.
-
-─────────────────────────────────────────────────────────────────────
-Pre-task — L6 (sign-off landed 2026-04-18, execute first)
-─────────────────────────────────────────────────────────────────────
-
-Chris signed off on the L6 state-machine change on 2026-04-18:
-failed agent triggers at submit time should flip to 'queued' so the
-existing cron auto-retries them indefinitely; team notification email
-stays but is information-only, not a call-to-action for manual
-intervention.
-
-Scope of the fix (kept intentionally narrow):
-  - api/submit-entity-audit.js: on the agent-trigger failure branch
-    (where `agentError` is set, around L165), add a PATCH flipping
-    the just-inserted entity_audits row to status='queued' before
-    returning the success response to the prospect. Use sb.mutate
-    with 'return=minimal' to match the adjacent success-path PATCH
-    style. Wrap in its own try/catch so a failed status flip doesn't
-    mask the prospect-facing 200.
-  - Leave the team-notification email intact.
-  - Leave the initial INSERT at status='pending' as-is — simpler
-    than renaming the initial state, and the transient 'pending'
-    window between INSERT and the success/failure PATCH is already
-    the current behavior on the happy path.
-
-Explicitly out of scope (do NOT change):
-  - cron/process-audit-queue.js agent_error terminal state. The
-    existing behavior where the cron parks a row at 'agent_error'
-    after the agent explicitly rejects it (agent was reached, agent
-    returned non-2xx) is intentional — that's a signal something's
-    actually wrong with the row (bad brand_query, content policy,
-    etc.), distinct from agent-unreachable transient failures.
-    Preserve as-is.
-  - L9 admin URL fragment. Still cosmetic, still harmless. The L6
-    fix means the team-notification email is now information-only;
-    prospects get their audit processed automatically without
-    requiring the fragment link to work.
-
-After the L6 commit lands and verifies READY in Vercel:
-  - Mark L6 ✅ RESOLVED in api-audit-2026-04.md with a Resolution
-    block referencing the commit SHA and a one-paragraph summary
-    including the explicit scope decision above.
-  - Update the Lows running tally (13 → 14 resolved, 15 → 14 open).
-  - Then proceed to the Medium reconciliation sweep starting at M1.
 
 ─────────────────────────────────────────────────────────────────────
 Session theme check
