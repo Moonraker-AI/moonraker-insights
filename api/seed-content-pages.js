@@ -19,8 +19,6 @@
  */
 
 var sb = require('./_lib/supabase');
-
-var sb = require('./_lib/supabase');
 var auth = require('./_lib/auth');
 
 module.exports = async function(req, res) {
@@ -39,18 +37,15 @@ module.exports = async function(req, res) {
   // 'all' (default), 'service' (keywords only), 'bio' (bio pages only)
   var seedType = (req.body && req.body.seed_type) || 'all';
 
-  var headers = sb.headers();
-  var writeHeaders = sb.headers('return=representation');
-
   try {
     // 1. Fetch all needed data in parallel
     var results = await Promise.all([
-      fetch(sb.url() + '/rest/v1/contacts?id=eq.' + contactId + '&limit=1', { headers: headers }).then(r => r.json()),
-      fetch(sb.url() + '/rest/v1/tracked_keywords?contact_id=eq.' + contactId + '&active=eq.true&order=priority,keyword', { headers: headers }).then(r => r.json()),
-      fetch(sb.url() + '/rest/v1/bio_materials?contact_id=eq.' + contactId + '&order=sort_order,is_primary.desc', { headers: headers }).then(r => r.json()),
-      fetch(sb.url() + '/rest/v1/content_pages?contact_id=eq.' + contactId, { headers: headers }).then(r => r.json()),
-      fetch(sb.url() + '/rest/v1/deliverables?contact_id=eq.' + contactId, { headers: headers }).then(r => r.json()),
-      fetch(sb.url() + '/rest/v1/entity_audits?contact_id=eq.' + contactId + '&order=created_at.desc&limit=1', { headers: headers }).then(r => r.json())
+      sb.query('contacts?id=eq.' + contactId + '&limit=1'),
+      sb.query('tracked_keywords?contact_id=eq.' + contactId + '&active=eq.true&order=priority,keyword'),
+      sb.query('bio_materials?contact_id=eq.' + contactId + '&order=sort_order,is_primary.desc'),
+      sb.query('content_pages?contact_id=eq.' + contactId),
+      sb.query('deliverables?contact_id=eq.' + contactId),
+      sb.query('entity_audits?contact_id=eq.' + contactId + '&order=created_at.desc&limit=1')
     ]);
 
     var contact = results[0] && results[0][0];
@@ -86,10 +81,7 @@ module.exports = async function(req, res) {
 
     // Helper: create a content_page and return it
     async function createPage(data) {
-      var resp = await fetch(sb.url() + '/rest/v1/content_pages', {
-        method: 'POST', headers: writeHeaders, body: JSON.stringify(data)
-      });
-      var result = await resp.json();
+      var result = await sb.mutate('content_pages', 'POST', data, 'return=representation');
       var page = Array.isArray(result) ? result[0] : result;
       if (page && page.id) {
         created.content_pages++;
@@ -100,10 +92,7 @@ module.exports = async function(req, res) {
 
     // Helper: create a deliverable linked to a content_page
     async function createDel(data) {
-      var resp = await fetch(sb.url() + '/rest/v1/deliverables', {
-        method: 'POST', headers: writeHeaders, body: JSON.stringify(data)
-      });
-      var result = await resp.json();
+      var result = await sb.mutate('deliverables', 'POST', data, 'return=representation');
       var del = Array.isArray(result) ? result[0] : result;
       if (del && del.id) created.deliverables++;
       return del;
@@ -111,11 +100,7 @@ module.exports = async function(req, res) {
 
     // Helper: link an existing deliverable to a content_page
     async function linkDel(delId, cpId) {
-      await fetch(sb.url() + '/rest/v1/deliverables?id=eq.' + delId, {
-        method: 'PATCH',
-        headers: Object.assign({}, writeHeaders, { 'Prefer': 'return=minimal' }),
-        body: JSON.stringify({ content_page_id: cpId })
-      });
+      await sb.mutate('deliverables?id=eq.' + delId, 'PATCH', { content_page_id: cpId }, 'return=minimal');
       created.linked++;
     }
 
