@@ -267,7 +267,13 @@ On parse failure, full generated text returned. Inconsistent with other routes' 
 ## Medium
 
 ### M1. `api/stripe-webhook.js:101` — amount-based audit detection fragile
-`isEntityAudit = amountTotal === 200000 || amountTotal === 207000`. Any price change, tax adjustment, discount, or currency difference breaks. Check `session.metadata.product` or `line_items` instead.
+`isEntityAudit = amountTotal === 200000 || amountTotal === 207000`. Any price change, tax adjustment, discount, or currency difference breaks. The CC-with-3.5%-fee rounding is especially exposed to drift.
+
+**Remediation plan (deferred to a follow-up PR, noted 2026-04-17 after C2 session):**
+1. Add `metadata: { product: 'entity_audit' }` to both Entity Audit payment links in Stripe Dashboard (ACH `buy.stripe.com/3cIdR87co3Z711Wfip5wI0V` and CC `buy.stripe.com/7sY4gyaoAgLT9ys7PX5wI0W`).
+2. For CORE Marketing System payment links (8 of them), add `metadata: { product: 'core_marketing_system' }`.
+3. Change detection logic in stripe-webhook.js to prefer `session.metadata.product` with a fallback to the current amount check for backward compat with any events already in flight.
+4. After observing metadata-based detection work for ~30 days, remove the amount fallback.
 
 ### M2. `api/_lib/auth.js:199-204, 253-259` — `last_login_at` updated every request
 Every authenticated API call PATCHes `admin_profiles`. 29+ admin routes × 3-5 calls/page = PATCH/second during normal use. Update only on actual login, or throttle to >60s since last update.
@@ -515,13 +521,13 @@ Preview domains fail CORS when testing.
 
 Ordered by value/risk ratio. Each item references finding IDs.
 
-### Phase 1 — Broken features (urgent, low risk)
-1. **C1 + C8** — one-line fix, unblocks bootstrap-access.
-2. **C5** — fail-closed on missing `CREDENTIALS_ENCRYPTION_KEY`. Audit existing `workspace_credentials` rows for non-`v1:`-prefixed values; re-encrypt.
-3. **C6 + H11** — rewrite newsletter-webhook calling convention and raw-body/signature handling in one PR.
+### Phase 1 — Broken features (urgent, low risk) ✅ COMPLETE
+1. ✅ **C1 + C8** — commit `28ffa37` (2026-04-17). One-line fix, unblocks bootstrap-access.
+2. ✅ **C5 + H8** — commit `c717d99` (2026-04-17). Fail-closed on missing `CREDENTIALS_ENCRYPTION_KEY`; decrypt throws instead of returning error strings. DB audit confirmed zero plaintext rows to remediate.
+3. ✅ **C6 + H11** — commit `b9b8f47` (2026-04-17). Rewrote newsletter-webhook calling convention, added raw-body reader, timing-safe signature compare, fail-closed on missing secret.
 
-### Phase 2 — Payment security (urgent, contained)
-4. **C2** — stripe-webhook raw body + timing-safe compare. Test against Stripe CLI `stripe trigger checkout.session.completed`.
+### Phase 2 — Payment security (urgent, contained) ✅ COMPLETE
+4. ✅ **C2 + M8** — commit `5263aa5` (2026-04-17). Stripe webhook now uses raw-body reader (`readRawBody` helper), supports multi-signature headers (Stripe key rotation), timing-safe compare with length guard, `Number.isFinite` timestamp validation, removed `err.message` from 500 response. Added partial unique index `payments_stripe_session_unique` for idempotent retries. **Historical backfill:** 5 previously-lost payment rows recovered by resending Stripe events through the now-working webhook. First confirmed end-to-end webhook successes in production history.
 
 ### Phase 3 — Architectural decisions (design-first)
 Before coding Phase 3+:
@@ -558,12 +564,20 @@ Before coding Phase 3+:
 
 ## Running tallies
 
-- **Critical:** 9 (C1–C9)
-- **High:** 35 (H1–H35)
-- **Medium:** 37 (M1–M37)
-- **Low:** 25 (L1–L25)
-- **Nit:** 6 (N1–N6)
+- **Critical:** 9 total (C1–C9). **Resolved: 5** (C1, C2, C5, C6, C8). **Open: 4** (C3, C4, C7, C9).
+- **High:** 35 total (H1–H35). **Resolved: 2** (H8, H11). **Open: 33.**
+- **Medium:** 37 total (M1–M37). **Resolved: 1** (M8). **Open: 36.**
+- **Low:** 25 total (L1–L25). **Open: 25.**
+- **Nit:** 6 total (N1–N6). **Open: 6.**
 
-**Total:** 112 findings.
+**Total: 112 findings. Resolved: 8. Open: 104.**
+
+### Resolution log
+| Finding | Commit | Date |
+|---|---|---|
+| C1 + C8 | `28ffa37` | 2026-04-17 |
+| C5 + H8 | `c717d99` | 2026-04-17 |
+| C6 + H11 | `b9b8f47` | 2026-04-17 |
+| C2 + M8 | `5263aa5` | 2026-04-17 |
 
 Audit was performed across five sessions reading ~11,000 lines of API route code, the eight `_lib/` modules, relevant templates, and git history for secret leakage. Unread in detail: chat system prompt bodies (low-risk content), several `send-*-email.js` / `trigger-*` / `ingest-*` routes (expected to follow already-catalogued patterns), most `api/admin/*` read-only dashboard routes. The audit is considered comprehensive for Critical and High findings; Medium/Low/Nit counts would grow modestly with further reading.
