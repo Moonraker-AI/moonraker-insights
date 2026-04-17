@@ -47,7 +47,11 @@
       },
       buildContext: function() {
         if (!pageContent) pageContent = extractPageContent();
-        return { page_content: pageContent, slug: getSlug() };
+        return {
+          page_content: pageContent,
+          slug: getSlug(),
+          page_token: window.__PAGE_TOKEN__ || null
+        };
       }
     });
   }
