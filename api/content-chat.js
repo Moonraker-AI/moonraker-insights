@@ -147,39 +147,21 @@ async function fetchPageContext(contentPageId) {
   if (!sb.isConfigured()) {
     throw new Error('Supabase not configured');
   }
-  var headers = sb.headers();
   // Defense-in-depth: contentPageId is already UUID-validated upstream,
   // but encode anyway — keeps the PostgREST URL well-formed if the
   // validation ever loosens.
   var encodedId = encodeURIComponent(contentPageId);
 
   // Get content page
-  var cpResp = await fetch(
-    sb.url() + '/rest/v1/content_pages?id=eq.' + encodedId + '&limit=1',
-    { headers: headers }
-  );
-  if (!cpResp.ok) {
-    throw new Error('content_pages fetch failed: ' + cpResp.status);
-  }
-  var pages = await cpResp.json();
-  if (!pages || pages.length === 0) return null;
-  var page = pages[0];
+  var page = await sb.one('content_pages?id=eq.' + encodedId + '&limit=1');
+  if (!page) return null;
 
   // Get contact, design spec, and practice details in parallel
   var encodedContactId = encodeURIComponent(page.contact_id);
   var results = await Promise.all([
-    fetch(sb.url() + '/rest/v1/contacts?id=eq.' + encodedContactId + '&limit=1', { headers: headers }).then(function(r) {
-      if (!r.ok) throw new Error('contacts fetch failed: ' + r.status);
-      return r.json();
-    }),
-    fetch(sb.url() + '/rest/v1/design_specs?contact_id=eq.' + encodedContactId + '&limit=1', { headers: headers }).then(function(r) {
-      if (!r.ok) throw new Error('design_specs fetch failed: ' + r.status);
-      return r.json();
-    }),
-    fetch(sb.url() + '/rest/v1/practice_details?contact_id=eq.' + encodedContactId + '&limit=1', { headers: headers }).then(function(r) {
-      if (!r.ok) throw new Error('practice_details fetch failed: ' + r.status);
-      return r.json();
-    })
+    sb.query('contacts?id=eq.' + encodedContactId + '&limit=1'),
+    sb.query('design_specs?contact_id=eq.' + encodedContactId + '&limit=1'),
+    sb.query('practice_details?contact_id=eq.' + encodedContactId + '&limit=1')
   ]);
 
   var contact = (results[0] && results[0][0]) || null;
