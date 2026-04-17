@@ -208,8 +208,8 @@ textarea.form-input { resize: vertical; min-height: 80px; line-height: 1.6; }
 /* Subscriber rows */
 .sub-row { display: grid; grid-template-columns: 36px minmax(160px,2fr) minmax(120px,1.5fr) 70px 70px 90px; gap: .5rem; align-items: center; padding: .65rem 1rem; border-bottom: 1px solid var(--color-border); font-size: .82rem; transition: background .15s ease; }
 .sub-row.is-selected { background: var(--color-primary-subtle); }
-.sub-row .sub-check { display: flex; align-items: center; justify-content: center; cursor: pointer; }
-.sub-row .sub-check input { width: 18px; height: 18px; cursor: pointer; accent-color: var(--color-primary); }
+.sub-check { display: flex; align-items: center; justify-content: center; cursor: pointer; }
+.sub-check input { width: 18px; height: 18px; cursor: pointer; accent-color: var(--color-primary); margin: 0; }
 .sub-row > div { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; text-align: left; }
 .sub-row .sub-email { font-size: .8rem; text-align: left; }
 .sub-row .sub-name { color: var(--color-muted); font-size: .78rem; text-align: left; }
@@ -695,7 +695,7 @@ body.sub-bulk-visible #tab-subscribers.active { padding-bottom: 96px; }
           <div class="sub-scroll-wrap" style="overflow-x:auto;-webkit-overflow-scrolling:touch;">
           <div style="min-width:600px;">
           <div style="padding:.65rem 1rem;border-bottom:1px solid var(--color-border);display:grid;grid-template-columns:36px minmax(160px,2fr) minmax(120px,1.5fr) 70px 70px 90px;gap:.5rem;font-size:.72rem;font-weight:600;text-transform:uppercase;letter-spacing:.04em;color:var(--color-muted);text-align:left;align-items:center;">
-            <div class="sub-check"><input type="checkbox" id="subSelectAll" onchange="toggleSelectAllSubs(this.checked)" title="Select all visible" style="width:18px;height:18px;cursor:pointer;accent-color:var(--color-primary);" /></div>
+            <div class="sub-check"><input type="checkbox" id="subSelectAll" onchange="toggleSelectAllSubs(this.checked)" title="Select all visible" /></div>
             <div>Email</div>
             <div>Name</div>
             <div>Tier</div>
