@@ -80,7 +80,7 @@ All 9 Criticals closed. **Twenty-four Highs closed** (H4, H5, H7, H8, H9, H10, H
 
 **Group E done.** 4 findings closed in one session across 4 commits + 1 doc commit. See retrospective below.
 
-### Group F — Public endpoint hardening beyond rate limits (1 session)
+### Group F — Public endpoint hardening beyond rate limits ✅ COMPLETE (2026-04-18)
 
 | ID | Issue | Effort |
 |---|---|---|
@@ -137,21 +137,23 @@ Items I recommend marking "won't fix" or "needs design":
 
 ## Recommended next session
 
-**Group F — Public endpoint hardening beyond rate limits.**
+**Group G batch 1 — operational resilience, cherry-pick the 15-30 min items.**
 
 Reasoning:
-- Group E closed 2026-04-17 (see retrospective below). Four commits landed across 3 files; every Vercel deploy READY. PostgREST upsert with `Prefer: resolution=merge-duplicates` is now the canonical replacement for DELETE+INSERT pairs backed by a unique index; fire-and-forget PATCHes have been purged from `generate-proposal.js` serverside.
-- Group F is a natural next step. It's input-validation and boundary-check work on public-ish endpoints — a different skill set from the timeout/upsert/prompt-injection sessions that came before, but the same one-theme-per-session shape. Seven findings cluster cleanly: H12 (content-chat public/unauthenticated Opus streaming with filter injection + no UUID validation + no ownership check — the biggest remaining public attack surface), H15 (submit-entity-audit empty-Origin bypass), H32 (digest.js recipients without allowlist), M9 (submit-entity-audit slug race), M12 (manage-site domain normalization), M14 (content-chat silent-nulls), M20 (newsletter-unsubscribe UUID-probing oracle).
+- Group F closed 2026-04-18 (see retrospective below). Six commits + one doc commit landed; every Vercel deploy READY. Public endpoints are now input-validation-hardened: UUID gates and Origin-required on content-chat; FQDN gate on manage-site; recipient allowlist on digest; PATCH-zero-rows oracle closed on unsubscribe; slug TOCTOU replaced with 23505 catch. M39 filed mid-session (email has no UNIQUE constraint, needs a product call).
+- Group G is the next natural theme. Per the original grouping, it bundles a mix of 15-30 minute cleanups (`_profileCache` TTL, `rawToDer` dead code, `last_login_at` throttle, checklist_items ID collision, H2 verify-and-close) with a few meatier items (H6 Stripe fire-and-forget retry, H13 agreement-chat prompt caching, H17 internal auth fallback, H29 encrypt enrichment_data). The recommendation in the original Group G table was "Two short sessions, cherry-pick the 15-30 min items into groups of 4-5" — that still fits. Session 1 would bundle H1, H2, H3, M2, M18 (all small), with H17 included if it fits the time budget.
+- M19 stays parked (needs product call on Stripe-late-lands behavior). M1 still waits on metadata being added to Stripe payment links. H13 is worth pulling forward if Opus cost on agreement-chat has become noticeable; otherwise batch 2.
 
 Recommended sequence after Group F:
 
-1. **Group F — public endpoint hardening** (1 session) — closes H12, H15, H32 + M9, M12, M14, M20
-2. **Group G — operational resilience** (1-2 sessions) — H1, H3, H6, H13, H17, H23, H29 + small Mediums
-3. **Group B.3 — Supabase helper migration** (1-2 sessions) — remaining files outside the B.2 four; also covers L1 (the raw-fetch pattern noted during Group E's M30 review in `generate-proposal.js:62,80`)
+1. **Group G batch 1 — quick wins** (1 short session) — H1, H2, H3, M2, M18 (and H17 if time allows)
+2. **Group G batch 2 — heavier** (1 session) — H6, H13, H29 (H29 requires encryption key infra check)
+3. **Group B.3 — Supabase helper migration** (1-2 sessions) — remaining files outside B.2's four; closes L1 and the raw-fetch pattern in `generate-proposal.js:62,80`, `submit-entity-audit.js` email pre-check (which becomes relevant again if M39 resolves to a schema change)
 4. **Group I — Lows + Nits sweep** (1 session)
 5. **Group H — M1 Stripe metadata** (once dashboard metadata is added)
+6. **M39 + M19** — product-decision items, not code-only; fold in when Chris or Scott makes the call
 
-Approximately 4-6 sessions to clear the remaining open findings, or we stop earlier once diminishing returns kick in. The call on "when to stop" gets clearer around session 2 when what's left is mostly Low/Nit polish.
+Approximately 4-5 sessions to clear the remaining open findings, or stop earlier once diminishing returns kick in.
 
 ## Prompt for next session (Group F — Public endpoint hardening)
 
@@ -549,6 +551,38 @@ Out of scope for Group E (flagged as candidate future work):
 - M18 + M19 — non-transactional DELETE+INSERT patterns in `process-entity-audit.js`. Flagged during B.2 as preserved deliberately; were not in Group E's four. If another round of this work is scheduled, these are the next-obvious targets — both have similar shape to H26/H27 and the upsert template applies directly.
 - Rewriting the `auto_promote_to_active` trigger to be more robust against empty-row windows (remove the pending→complete requirement, or add a row-count guard). With H26 closed, the trigger's brittleness no longer has a realistic way to bite; not worth its own session.
 - Moving any of these to server-side RPCs with real transactional semantics. Plain upsert turned out to be sufficient for all four findings; the RPC fallback path mentioned in the session prompt didn't need to be exercised.
+
+## Group F — Public endpoint hardening ✅ COMPLETE (2026-04-18)
+
+Seven findings closed across six code commits + one doc commit. Pattern: input validation and boundary checks at the handler entry, layered defense-in-depth (validate format → encode → check ownership → fail loud on infra errors), and oracle-closing on not-found paths so response shape doesn't reveal existence.
+
+Commits landed on main:
+
+- `502f6213` — **H15.** `api/content-chat.js` + `api/submit-entity-audit.js` Origin flip. `if (origin && origin !== 'https://clients.moonraker.ai')` → `if (!origin || origin !== 'https://clients.moonraker.ai')`. Shared pattern, single tree-API commit touching both files (`+4/-2` each). Callers that strip Origin (curl, non-browser tools) no longer bypass. Rate limits (3/hr/IP on submit-entity-audit via Phase 4 S4, 20/min/IP on content-chat via Phase 4 S4) remain the primary control; this closes the defense-in-depth gap.
+- `34fca146` — **H12 + M14.** `api/content-chat.js` UUID validation + ownership gate + fail-loud `fetchPageContext`. Added canonical UUID regex on `content_page_id` with 400 on non-UUID, `encodeURIComponent()` at the four PostgREST concat sites (content_pages, contacts, design_specs, practice_details) as defense-in-depth, and a status-based ownership gate (reads `contact.lost` and `contact.status === 'lost'`, returns `null` from `fetchPageContext` so the handler 404s with the same shape as page-not-found — no existence oracle). `fetchPageContext` now throws on Supabase misconfiguration or non-ok HTTP; handler wraps in try/catch and returns 503 on throw (stops burning Opus credits on a futile call during a Supabase outage). Page-token option-(a) deferred per session prompt: `content_preview` scope exists in `_lib/page-token.js` SCOPES, but deployed content-preview templates don't demonstrably inject `__PAGE_TOKEN__`, so switching to required-token verification would break production chatbots. Status-based gate is the interim.
+- `12b05edd` — **M9.** `api/submit-entity-audit.js` slug TOCTOU. Constraint names verified via `pg_constraint` before editing. Slug pre-check removed (UNIQUE(slug) is the authoritative backstop); outer catch tightened to read `err.detail.code === '23505'` (structured PostgREST error attached by `sb.mutate`, see `_lib/supabase.js:76-79`), with `contacts_slug_key` name-match and the original `duplicate|unique` substring as layered fallbacks. Slug pre-check's empathetic user message moved into the catch (that's now the actual collision path). Email pre-check kept — no UNIQUE constraint on email exists (two duplicate-email rows in production confirm). Filed as M39.
+- `898dd621` — **H32.** `api/digest.js` recipient allowlist. `@moonraker.ai` required on every entry in `recipients[]` (case-insensitive), with 400 + invalid-entry list on violation. Added immediately after the existing required-fields validation. `from`/`to` (period-label fields for the header, not email addresses) intentionally left unrestricted.
+- `2ce32b89` — **M12.** `api/admin/manage-site.js` FQDN validation. Strict `/^(?=.{1,253}$)(?:(?:[a-z0-9](?:[a-z0-9-]{0,61}[a-z0-9])?)\.)+[a-z]{2,63}$/` regex added after the existing toLowerCase+replace normalization in `handleProvision`. Rejects `:8080`, `/path`, `user:pass@`, `?query`, leading/trailing hyphens, empty labels, 64+ char labels, numeric TLDs. Verified against 16 boundary cases before push. `handleUpdate`/`handleDeprovision`/`handleStatus` take `site_id`, not raw domain, so the check lives in one place.
+- `d36e6577` — **M20.** `api/newsletter-unsubscribe.js` oracle close. `sb.one('newsletter_subscribers?id=eq.<sid>&select=id&limit=1')` before the PATCH; if the row doesn't exist, skip the PATCH and return the same success response (HTML `unsubPage(true)` or JSON `{ok:true,'Unsubscribed'}`). No more `[sb.mutate] PATCH returned 0 rows` log warning for valid-UUID-but-nonexistent sids. Trade-off: one extra Supabase round-trip per real unsubscribe; acceptable at opt-in volume.
+- `e23c29f5` — Doc update: `api-audit-2026-04.md` marks H12/H15/H32/M9/M12/M14/M20 ✅ RESOLVED with Resolution blocks; Highs 24 → 27, Mediums 11 → 15; total ≥49 → ≥56 resolved across 118 findings (M39 added); 7 rows appended to the Resolution log.
+
+Net result:
+- H12, H15, H32, M9, M12, M14, M20 fully resolved.
+- Public endpoint hardening pattern consolidated: UUID regex on any public-facing `?id=eq.<x>` handoff; `encodeURIComponent` at the concat site regardless of upstream validation (defense-in-depth); ownership gate via status/lost columns when page-token infra isn't already wired; 404 (not 403) for not-found and lost, same shape either way; 503 on Supabase misconfiguration or infra error rather than continuing with nulls; existence check via `sb.one` before PATCH-by-id when the zero-rows warning would be an oracle.
+- Tallies: **Highs 27 / 36 resolved (9 open). Mediums 15 / 39 resolved (24 open, M39 new). Total ≥56 resolved / ≤62 open across 118 findings.**
+
+Behavior-preservation notes:
+- H12's UUID validation is gated on `contentPageId` being truthy (`if (contentPageId && !uuidPattern.test(...))`). The existing `if (contentPageId)` branch around `fetchPageContext` still handles the no-id case (prompt proceeds with null page/contact/spec, same as before). This preserves any legitimate caller path that doesn't pass a content_page_id — not one we've seen, but the old code permitted it.
+- H12's ownership 404 uses the same response body shape as the not-found case (`{ error: 'Content page not found' }`) so an attacker probing for valid UUIDs can't distinguish "never existed" from "contact lost". Same pattern as M20's existence-check.
+- M9's outer catch fallback message was updated from `'a record for this practice'` to `'your information on file'`. The former was the generic fallback-of-fallback; the latter is the exact message the slug pre-check used. Since the catch is now the sole slug-collision path (pre-check gone), the pre-check's message is the correct one to preserve per the session prompt's "preserve the user-facing messages exactly" instruction.
+- M14 converted `fetchPageContext`'s silent `{ page: null, contact: null, spec: null }` return on Supabase errors into a thrown exception. Handler maps the throw to 503. In practice, a correctly-configured production Vercel (Supabase env vars present, DB reachable) never hits the throw path — it only fires if env config regresses or Supabase has an outage. The old silent-fallback was a latent footgun: a Supabase outage turned every chat request into an Opus call with empty context, accreting cost while the client saw "generic unhelpful responses" instead of an error.
+- M12's FQDN regex is US/Western-domain biased (TLD 2-63 alpha; rejects IDN punycode `.xn--p1ai`). Not in our customer set. Called out in the commit message as revisit-if-we-onboard-international-domains.
+
+Out of scope for Group F (flagged as new finding or candidate future work):
+- **M39 (new, filed 2026-04-18):** `contacts.email` has no UNIQUE constraint. The surviving email pre-check in `submit-entity-audit.js` is TOCTOU-racy in the same way the removed slug pre-check was. Two duplicate-email rows already exist in production, confirming the race has fired (or a prior bug allowed it). Parked for product decision — one therapist with sibling practices legitimately sharing an email is a scenario that needs a call before we enforce `UNIQUE(email)`. If the decision is "enforce," it's a cleanup migration + schema change + catch-block tightening that mirrors M9's shape.
+- `api/submit-entity-audit.js` outer catch at L216 still returns `err.message` in the 500 response body when the error isn't a unique-violation. Not worsened by Group F's edit; out of the M9 scope (which was strictly the TOCTOU). Small cleanup candidate for the Lows + Nits sweep.
+- Page-token option (a) for content-chat.js — wiring the `content_preview` scope at deploy time and requiring a valid page token on each chat call. Needs a deploy-pipeline audit (where templates get `__PAGE_TOKEN__` injected) before it can be turned on safely. Candidate future session if the status-based gate proves insufficient; no evidence it will.
+- H12 sub-issue: Opus 4.6 model choice + 4000 max_tokens. Was always a cost note, not a security fix. Rate limit is the cost control.
 
 ## Closing thought on the grouping approach
 
