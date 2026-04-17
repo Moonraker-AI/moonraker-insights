@@ -30,16 +30,12 @@ module.exports = async function handler(req, res) {
   var clientSlug = (req.body && req.body.client_slug) || (req.query && req.query.client_slug);
   if (!clientSlug) return res.status(400).json({ error: 'client_slug required' });
 
-  var headers = sb.headers('return=representation');
-
   try {
     // ─── 1. Load report config ────────────────────────────────────
-    var configResp = await fetch(sb.url() + '/rest/v1/report_configs?client_slug=eq.' + clientSlug + '&limit=1', { headers: headers });
-    var configs = await configResp.json();
-    if (!configs || configs.length === 0) {
+    var config = await sb.one('report_configs?client_slug=eq.' + clientSlug + '&limit=1');
+    if (!config) {
       return res.status(404).json({ error: 'No report_config found for ' + clientSlug });
     }
-    var config = configs[0];
 
     if (!config.localfalcon_place_id) {
       return res.status(400).json({ error: 'localfalcon_place_id not set on report_config. Complete LocalFalcon setup first.' });
@@ -55,14 +51,11 @@ module.exports = async function handler(req, res) {
     }
 
     // ─── 2. Load contact (for practice name) ─────────────────────
-    var contactResp = await fetch(sb.url() + '/rest/v1/contacts?slug=eq.' + clientSlug + '&select=id,practice_name,first_name,last_name', { headers: headers });
-    var contacts = await contactResp.json();
-    var contact = (contacts && contacts.length > 0) ? contacts[0] : null;
+    var contact = await sb.one('contacts?slug=eq.' + clientSlug + '&select=id,practice_name,first_name,last_name');
     var practiceName = contact ? (contact.practice_name || (contact.first_name + ' ' + contact.last_name).trim()) : clientSlug;
 
     // ─── 3. Load tracked keywords ────────────────────────────────
-    var kwResp = await fetch(sb.url() + '/rest/v1/tracked_keywords?client_slug=eq.' + clientSlug + '&active=eq.true&order=priority.asc', { headers: headers });
-    var keywords = await kwResp.json();
+    var keywords = await sb.query('tracked_keywords?client_slug=eq.' + clientSlug + '&active=eq.true&order=priority.asc');
     if (!Array.isArray(keywords) || keywords.length === 0) {
       return res.status(400).json({ error: 'No active tracked_keywords for ' + clientSlug + '. Add keywords before activating reporting.' });
     }
@@ -144,18 +137,13 @@ module.exports = async function handler(req, res) {
     }
 
     // ─── 6. Store campaign keys + activate config ────────────────
-    var updateResp = await fetch(sb.url() + '/rest/v1/report_configs?id=eq.' + config.id, {
-      method: 'PATCH',
-      headers: headers,
-      body: JSON.stringify({
+    try {
+      await sb.mutate('report_configs?id=eq.' + config.id, 'PATCH', {
         lf_campaign_keys: campaignKeys,
         updated_at: new Date().toISOString()
-      })
-    });
-
-    if (!updateResp.ok) {
-      var updateErr = await updateResp.text();
-      return res.status(500).json({ error: 'Campaigns created but failed to store keys: ' + updateErr, campaign_keys: campaignKeys });
+      });
+    } catch (e) {
+      return res.status(500).json({ error: 'Campaigns created but failed to store keys: ' + e.message, campaign_keys: campaignKeys });
     }
 
     // ─── 7. Mark deliverables as complete ────────────────────────
@@ -165,15 +153,11 @@ module.exports = async function handler(req, res) {
     if (contactId) {
       for (var di = 0; di < deliverableTypes.length; di++) {
         try {
-          await fetch(sb.url() + '/rest/v1/deliverables?contact_id=eq.' + contactId + '&deliverable_type=eq.' + deliverableTypes[di] + '&status=neq.delivered', {
-            method: 'PATCH',
-            headers: headers,
-            body: JSON.stringify({
-              status: 'delivered',
-              delivered_at: new Date().toISOString(),
-              notes: 'Auto-completed by activate-reporting',
-              updated_at: new Date().toISOString()
-            })
+          await sb.mutate('deliverables?contact_id=eq.' + contactId + '&deliverable_type=eq.' + deliverableTypes[di] + '&status=neq.delivered', 'PATCH', {
+            status: 'delivered',
+            delivered_at: new Date().toISOString(),
+            notes: 'Auto-completed by activate-reporting',
+            updated_at: new Date().toISOString()
           });
         } catch (e) { /* non-fatal */ }
       }
@@ -181,22 +165,18 @@ module.exports = async function handler(req, res) {
 
     // ─── 8. Log activity ─────────────────────────────────────────
     try {
-      await fetch(sb.url() + '/rest/v1/activity_log', {
-        method: 'POST',
-        headers: headers,
-        body: JSON.stringify({
-          contact_id: contactId,
-          action: 'reporting_activated',
-          detail: JSON.stringify({
-            campaigns_created: Object.keys(campaignKeys).length,
-            platforms: Object.keys(campaignKeys),
-            keywords: keywords.length,
-            credits_per_run: totalCredits,
-            start_date: startDate,
-            errors: campaignErrors
-          }),
-          created_by: 'system'
-        })
+      await sb.mutate('activity_log', 'POST', {
+        contact_id: contactId,
+        action: 'reporting_activated',
+        detail: JSON.stringify({
+          campaigns_created: Object.keys(campaignKeys).length,
+          platforms: Object.keys(campaignKeys),
+          keywords: keywords.length,
+          credits_per_run: totalCredits,
+          start_date: startDate,
+          errors: campaignErrors
+        }),
+        created_by: 'system'
       });
     } catch (e) { /* non-fatal */ }
 
