@@ -1,6 +1,7 @@
 // /api/chat.js - Streaming Anthropic API proxy for Client HQ
 
 var auth = require('./_lib/auth');
+var monitor = require('./_lib/monitor');
 module.exports = async function handler(req, res) {
   if (req.method === 'OPTIONS') {
     res.setHeader('Access-Control-Allow-Origin', 'https://clients.moonraker.ai');
@@ -123,7 +124,8 @@ module.exports = async function handler(req, res) {
 
   } catch (err) {
     console.error('Chat handler error:', err);
-    return res.status(500).json({ error: 'Internal server error', detail: err.message });
+    await monitor.logError('chat', err, { detail: { stage: 'outer_catch' } });
+    return res.status(500).json({ error: 'Internal server error' });
   }
 };
 
@@ -667,6 +669,7 @@ We don't: Design/branding, booking calendar configuration, email provider migrat
 - Entity Veracity Hub (VHub): Rising Tide social strategy, cryptographic entity grounding
 - Client HQ: This platform - payment, onboarding, task management
 - Engage: HIPAA-compliant AI chatbot for therapy practices`;
+
 
 
 
