@@ -239,7 +239,9 @@ Extract once to `_lib/google-auth.js` with token caching keyed on `(scope, imper
 - `generate-proposal.js` → commit `d592381`. Single Drive-folder call at L653 wrapped in nested try/catch; `results.drive.error = 'Failed to get Drive token: ' + (tokenErr.message || String(tokenErr))` on failure, happy path gated on `if (driveToken)`.
 - `compile-report.js` → commit `1d9c835`. Both `safe()`-wrapped closures (GSC L181, GBP L256) migrated to the same try/catch pattern; original warning prefixes preserved (`'GSC: token failed - '` and `'GBP Performance: delegated token failed - '`). Also deleted dead `getGoogleAccessToken` (no callers — see L16).
 
-Final grep across `api/` on main: zero matches for `function getDelegatedToken\|function getGoogleAccessToken`. `_lib/google-drive.js` is tracked separately (N6) and is out of Group B.1 scope.
+Final grep across `api/` on main: **one remaining copy discovered in `convert-to-prospect.js` after Group B.1 closed** — see **H36** below. This is an 8th duplicate that wasn't in the original audit's H21 list. The 5 sites Group B.1 was scoped to (bootstrap-access, compile-report ×2, discover-services, enrich-proposal, generate-proposal) are all migrated correctly. H21 as scoped is resolved; H36 tracks the newly-discovered 8th site.
+
+`_lib/google-drive.js` is still tracked separately (N6) and is out of Group B.1 scope.
 
 ### H22. `api/generate-proposal.js:361` — AI-generated `next_steps` rendered into deployed HTML unescaped ✅ RESOLVED
 If `enrichment_data` (admin-written, unsanitized) contains prompt injection convincing Claude to emit `<script>`, ends up in prospect-facing deployed proposal. Also line 330: `customPricing.amount_cents / 100` admin-controlled, no type validation, flows into checkout card HTML.
@@ -296,6 +298,17 @@ On parse failure, full generated text returned. Inconsistent with other routes' 
 `errText.substring(0, 500)` (Anthropic response body) and `responseText.substring(0, 500)` (Claude generated content) sent as `detail`/`raw_preview` in stream. Admin-only but noise.
 
 **Resolution (2026-04-17, commit `b17c790`):** Added `var monitor = require('./_lib/monitor');`. Three `send({step:'error', ...})` NDJSON sites refactored: L146 Claude non-2xx, L168 HTML-too-short, L248 outer catch. Each now calls `monitor.logError('generate-content-page', err, { client_slug: clientSlug, detail: { stage, content_page_id, ... } })` with raw detail (Anthropic response body, Claude HTML preview, raw response length) routed to `error_log` server-side. Stream payloads preserve the `{step:'error', message:'...'}` shape the admin UI expects, but `message` values are now generic (`'AI service error'`, `'Generated content was too short. Please retry.'`, `'Generation failed'`) with `detail` and `raw_preview` fields removed. Outer catch's `monitor.logError` call is wrapped in `try/catch` to preserve the stream-closed safety net for `send()`.
+
+### H36. `api/convert-to-prospect.js:175` — 8th copy of `getDelegatedToken` not caught by H21
+**Discovered 2026-04-17 during Group B.1 verification.** Audit's H21 section enumerated 6 duplicates plus `_lib/google-drive.js` (tracked as N6) — 7 total. During post-session verification sweep a full-repo grep found an 8th copy in `api/convert-to-prospect.js` at line 175, called at line 101 for Drive folder creation during the manual-fallback lead-to-prospect conversion path. This file was added after the original audit pass. Same signature as the old locals (`saJson, impersonateEmail, scope`), same `{error}` return contract — which means the caller at L102 uses `if (driveToken && typeof driveToken === 'string')` to detect success.
+
+Also noted: a stray `var auth = require('./_lib/auth');` at line 182 inside the function body (auth is already required at module scope L11; the inner require is dead weight that will disappear with the migration).
+
+**Impact:** Same as H21 — code duplication, no token caching for this route's Drive calls, divergent error shape from the rest of the codebase. This route is "edge case only" per the file's own comment, but it still runs in production for manual conversions.
+
+**Fix:** Same migration pattern as Group B.1 sites. Swap to `google.getDelegatedAccessToken('support@moonraker.ai', scope)` with try/catch; the success check `typeof driveToken === 'string'` becomes implicit (helper returns the string directly, throws on failure). Delete the local function.
+
+**Scope note:** This finding was not in the original H21 list so it gets its own ID rather than being folded into the H21 partial. Count toward the High totals as H36.
 
 ---
 
@@ -653,7 +666,7 @@ _(Brought forward from Phase 7 since Chris chose "ship now" over "wait for traff
 ## Running tallies
 
 - **Critical:** 9 total (C1–C9). **Resolved: 9 ✅** (all).
-- **High:** 35 total (H1–H35). **Resolved: 17** (H5, H7, H8, H9, H10, H11, H14, H18, H19, H20, H21, H22, H28, H30, H33, H34, H35). **Open: 18.**
+- **High:** 36 total (H1–H36). **Resolved: 17** (H5, H7, H8, H9, H10, H11, H14, H18, H19, H20, H21, H22, H28, H30, H33, H34, H35). **Open: 19** (including newly-discovered H36).
 - **Medium:** 38 total (M1–M38). **Resolved: 5+ full + 1 partial** (M6, M8, M13, M22, M38; M26 err-leak half resolved, prompt-injection half deferred to Group D; several more likely closed via Phase 4 action-schema work — needs verification sweep). **Open: ~32.**
 - **Low:** 28 total (L1–L28). **Resolved: 5** (L8, L14, L16, L26, L27-documented-only). **Open: 23.**
 - **Nit:** 6 total (N1–N6). **Open: 6.**
