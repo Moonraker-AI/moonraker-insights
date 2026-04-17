@@ -1156,8 +1156,10 @@ Lows + Nits tail has been walked end-to-end (13/28 Lows, 5/6 Nits
 resolved; remaining entries all carry Current-state notes). What's
 left on the audit is 22 open Mediums (M1, M3, M4, M5, M7, M17, M19,
 M21, M23, M24, M25, M27, M28, M29, M31, M32, M33, M34, M35, M36,
-M37, M39), H29 (deferred on infra design), and a handful of product-
-decision items. This session mirrors Group I's shape: classify first,
+M37, M39), H29 (deferred on infra design), a handful of product-
+decision items, and one signed-off pre-task: L6 (submit-entity-audit
+agent-failure requeue). Start with the L6 pre-task, then do the
+Medium reconciliation mirroring Group I's shape: classify first,
 fix second.
 
 Several Mediums are plausibly stale after Groups B.2/B.3 and the
@@ -1316,21 +1318,48 @@ numbering; next Medium is M40, next Low is L29, next Nit is N7) and
 decide bucket (b) or (c) for this session vs a future one.
 
 ─────────────────────────────────────────────────────────────────────
-Pre-task candidates (optional, at session start)
+Pre-task — L6 (sign-off landed 2026-04-18, execute first)
 ─────────────────────────────────────────────────────────────────────
 
-If the session starts with capacity for a quick additional item,
-L6 is flagged as ready for a one-line fix pending Chris/Scott
-product sign-off. If sign-off has happened between Group I and this
-session, close L6 first:
-  - submit-entity-audit.js: on agent-trigger failure, PATCH the
-    pending row to status='queued' so cron/process-audit-queue.js
-    picks it up for retry.
-  - Leave the team-notification email intact.
-  - Verify L9's admin URL fragment concern is unchanged (not a
-    blocker for this fix).
+Chris signed off on the L6 state-machine change on 2026-04-18:
+failed agent triggers at submit time should flip to 'queued' so the
+existing cron auto-retries them indefinitely; team notification email
+stays but is information-only, not a call-to-action for manual
+intervention.
 
-If no sign-off yet, skip L6 and proceed directly to M1.
+Scope of the fix (kept intentionally narrow):
+  - api/submit-entity-audit.js: on the agent-trigger failure branch
+    (where `agentError` is set, around L165), add a PATCH flipping
+    the just-inserted entity_audits row to status='queued' before
+    returning the success response to the prospect. Use sb.mutate
+    with 'return=minimal' to match the adjacent success-path PATCH
+    style. Wrap in its own try/catch so a failed status flip doesn't
+    mask the prospect-facing 200.
+  - Leave the team-notification email intact.
+  - Leave the initial INSERT at status='pending' as-is — simpler
+    than renaming the initial state, and the transient 'pending'
+    window between INSERT and the success/failure PATCH is already
+    the current behavior on the happy path.
+
+Explicitly out of scope (do NOT change):
+  - cron/process-audit-queue.js agent_error terminal state. The
+    existing behavior where the cron parks a row at 'agent_error'
+    after the agent explicitly rejects it (agent was reached, agent
+    returned non-2xx) is intentional — that's a signal something's
+    actually wrong with the row (bad brand_query, content policy,
+    etc.), distinct from agent-unreachable transient failures.
+    Preserve as-is.
+  - L9 admin URL fragment. Still cosmetic, still harmless. The L6
+    fix means the team-notification email is now information-only;
+    prospects get their audit processed automatically without
+    requiring the fragment link to work.
+
+After the L6 commit lands and verifies READY in Vercel:
+  - Mark L6 ✅ RESOLVED in api-audit-2026-04.md with a Resolution
+    block referencing the commit SHA and a one-paragraph summary
+    including the explicit scope decision above.
+  - Update the Lows running tally (13 → 14 resolved, 15 → 14 open).
+  - Then proceed to the Medium reconciliation sweep starting at M1.
 
 ─────────────────────────────────────────────────────────────────────
 Session theme check
