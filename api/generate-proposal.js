@@ -84,10 +84,18 @@ module.exports = async function handler(req, res) {
     }
   } catch (e) { /* default to group */ }
 
-  // Update status
-  await fetch(sb.url() + '/rest/v1/proposals?id=eq.' + proposalId, {
-    method: 'PATCH', headers: sb.headers(), body: JSON.stringify({ status: 'generating' })
-  }).catch(function(){});
+  // Update status. M30: previously fire-and-forget (`.catch(function(){})`)
+  // which swallowed every failure. Now awaited with error tracking so admin
+  // sees partial state in `results` and server-side logs capture the detail.
+  try {
+    await sb.mutate('proposals?id=eq.' + proposalId, 'PATCH', { status: 'generating' });
+  } catch (e) {
+    results.status_update_error = e.message || String(e);
+    monitor.logError('generate-proposal', e, {
+      client_slug: slug,
+      detail: { stage: 'set_status_generating', proposal_id: proposalId }
+    });
+  }
 
   // ─── 2. Read proposal template from GitHub ────────────────────
   var templateHtml;
@@ -279,9 +287,21 @@ Respond with ONLY valid JSON (no markdown, no backticks). The JSON must have the
     results.generate = 'success';
   } catch (e) {
     results.generate = 'failed: ' + (e.message || String(e));
-    await fetch(sb.url() + '/rest/v1/proposals?id=eq.' + proposalId, {
-      method: 'PATCH', headers: sb.headers(), body: JSON.stringify({ status: 'review', notes: 'Generation failed: ' + (e.message || String(e)) })
-    }).catch(function(){});
+    // M30: previously `.catch(function(){})`. We still return 500 below so
+    // admin sees the generation failure, but we log the record-failure path
+    // separately if the status-flip itself fails (DB would still hold the
+    // prior status — admin can retry).
+    try {
+      await sb.mutate('proposals?id=eq.' + proposalId, 'PATCH', {
+        status: 'review',
+        notes: 'Generation failed: ' + (e.message || String(e))
+      });
+    } catch (patchErr) {
+      monitor.logError('generate-proposal', patchErr, {
+        client_slug: slug,
+        detail: { stage: 'record_generation_failure', proposal_id: proposalId }
+      });
+    }
     return res.status(500).json({ error: 'AI generation failed', details: e.message, results: results });
   }
 
@@ -585,24 +605,39 @@ Respond with ONLY valid JSON (no markdown, no backticks). The JSON must have the
   var proposalUrl = 'https://clients.moonraker.ai/' + slug + '/proposal';
   var checkoutUrl = 'https://clients.moonraker.ai/' + slug + '/checkout';
 
-  // Also update checkout_options on the contact
+  // Also update checkout_options on the contact.
+  // M30: was `.catch(function(){})`. Non-critical, but surface failures in results.
   var checkoutPlans = billings.length ? billings : null;
   if (checkoutPlans) {
-    await fetch(sb.url() + '/rest/v1/contacts?id=eq.' + contact.id, {
-      method: 'PATCH', headers: sb.headers(),
-      body: JSON.stringify({ checkout_options: { plans: checkoutPlans } })
-    }).catch(function(){});
+    try {
+      await sb.mutate('contacts?id=eq.' + contact.id, 'PATCH', {
+        checkout_options: { plans: checkoutPlans }
+      });
+    } catch (e) {
+      results.checkout_options_error = e.message || String(e);
+    }
   }
 
-  await fetch(sb.url() + '/rest/v1/proposals?id=eq.' + proposalId, {
-    method: 'PATCH', headers: sb.headers(),
-    body: JSON.stringify({
+  // Final proposal record update — flips status to 'ready' and saves the
+  // generated URLs + content. M30: previously fire-and-forget. If this PATCH
+  // failed silently the proposal would sit in 'generating' forever even
+  // though the HTML was already deployed. Awaited with error tracking +
+  // server-side log so admin has both UI-visible state (results.finalize_error)
+  // and observability in error_log.
+  try {
+    await sb.mutate('proposals?id=eq.' + proposalId, 'PATCH', {
       status: 'ready',
       proposal_url: proposalUrl,
       checkout_url: checkoutUrl,
       proposal_content: generatedContent
-    })
-  }).catch(function(){});
+    });
+  } catch (e) {
+    results.finalize_error = e.message || String(e);
+    monitor.logError('generate-proposal', e, {
+      client_slug: slug,
+      detail: { stage: 'finalize_proposal', proposal_id: proposalId }
+    });
+  }
 
   // ─── 7. Convert lead to prospect + seed onboarding ────────────
   results.conversion = {};
