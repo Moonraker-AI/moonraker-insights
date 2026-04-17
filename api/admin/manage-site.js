@@ -12,17 +12,33 @@
 var sb = require('../_lib/supabase');
 var { requireAdmin } = require('../_lib/auth');
 
-var CF_ACCOUNT_ID = process.env.CF_ACCOUNT_ID || 'b0d0e7ccfcabdec0507b4cac779f048a';
+var CF_ACCOUNT_ID = process.env.CF_ACCOUNT_ID;
 var CF_TOKEN = process.env.CF_API_TOKEN;
 var CF_BASE = 'https://api.cloudflare.com/client/v4';
-var MOONRAKER_ZONE_ID = '6fc1c4c24d0e13b5cbf044ba73440b85';
+var MOONRAKER_ZONE_ID = process.env.CF_ZONE_ID;
 var WORKER_NAME = 'client-sites-worker';
+
+// Loud warnings at module load so config gaps surface in Vercel logs
+// before any user hits the endpoint. C5 pattern, mirrors api/_lib/crypto.js
+// and api/admin/deploy-to-r2.js.
+if (!CF_ACCOUNT_ID) console.error('[manage-site] CRITICAL: CF_ACCOUNT_ID is not set. CF operations will return 500.');
+if (!CF_TOKEN)      console.error('[manage-site] CRITICAL: CF_API_TOKEN is not set. CF operations will return 500.');
+if (!MOONRAKER_ZONE_ID) console.error('[manage-site] CRITICAL: CF_ZONE_ID is not set. Moonraker zone provisioning will return 500.');
 
 module.exports = async function handler(req, res) {
   if (req.method !== 'POST') return res.status(405).json({ error: 'Method not allowed' });
 
   var admin = await requireAdmin(req, res);
   if (!admin) return;
+
+  // Fail closed on any missing CF config. 'status' action is read-only against our DB
+  // and doesn't touch CF, so let it through even when CF env is incomplete.
+  try {
+    var preview = req.body || {};
+    if (preview.action !== 'status' && (!CF_ACCOUNT_ID || !CF_TOKEN || !MOONRAKER_ZONE_ID)) {
+      return res.status(500).json({ error: 'Cloudflare configuration missing (CF_ACCOUNT_ID, CF_API_TOKEN, CF_ZONE_ID required)' });
+    }
+  } catch (e) {}
 
   try {
     var { action } = req.body;
