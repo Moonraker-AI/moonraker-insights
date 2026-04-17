@@ -7,7 +7,7 @@
 
 ## Where the audit stands
 
-All 9 Criticals closed. **Thirty-one Highs closed** (H1, H2, H3, H4, H5, H7, H8, H9, H10, H11, H12, H14, H15, H17, H18, H19, H20, H21, H22, H24, H25, H26, H27, H28, H30, H31, H32, H33, H34, H35, H36). **M2, M6, M8, M9, M10, M11, M12, M13, M14, M15, M16, M18, M20, M22, M26 (fully resolved), M30, M38 closed.** **L8**, L14, L16, L26, L27 closed. Group C closed the template-escape surface; Group B.1 collapsed the `getDelegatedToken` duplication; Group D hardened every Claude-prompting route with `sanitizer.sanitizeText` at untrusted-input sources plus delimiter framing around large blobs, closing the prompt-injection half of M26. Group B.2 extracted `fetchWithTimeout` into `_lib/` and eliminated every bare `fetch()` call across the four files with the biggest AbortController gap. Group E converted every non-transactional DELETE+INSERT pair into a PostgREST `resolution=merge-duplicates` upsert (with stale-row cleanup on onboarding_steps) and converted `generate-proposal.js` fire-and-forget PATCHes into awaited try/catch + monitor.logError. Group F hardened every public-facing input validation surface: UUID regex + encodeURIComponent at concat sites on `content-chat.js`, require-Origin on `submit-entity-audit.js` + `content-chat.js`, FQDN validation on `admin/manage-site.js`, recipient allowlist on `digest.js`, existence check before PATCH on `newsletter-unsubscribe.js`, and TOCTOU pre-check removal on `submit-entity-audit.js`. Group G batch 1 closed the operational-resilience cherry-picks: 60s TTL + last_login_at throttle in `_lib/auth.js`, `rawToDer` dead-code removal, hard-required `AGENT_API_KEY` plus `sanitizer.sanitizeText` on team notification emails in `process-entity-audit.js`, full-UUID composite `checklist_items` id across both writer sites, and H2 doc-marked after verifying the P4S5 `postgrest-filter` extraction had already closed it. H36 (8th `getDelegatedToken` copy in `convert-to-prospect.js`, discovered during B.1 verification) closed as Group D pre-task. `authenticator_secret_key` null-on-all-rows investigation resolved: `SENSITIVE_FIELDS` includes it; the null state just means no 2FA setup has been saved yet through the admin UI. Not a bug.
+All 9 Criticals closed. **Thirty-three Highs closed** (H1, H2, H3, H4, H5, H6, H7, H8, H9, H10, H11, H12, H13, H14, H15, H17, H18, H19, H20, H21, H22, H24, H25, H26, H27, H28, H30, H31, H32, H33, H34, H35, H36). H29 deferred on design (JSONB encryption + read-path + migration + rotation). H16 and H23 still open, queued for next mini-session. **M2, M6, M8, M9, M10, M11, M12, M13, M14, M15, M16, M18, M20, M22, M26 (fully resolved), M30, M38 closed.** **L8**, L14, L16, L26, L27 closed. Group C closed the template-escape surface; Group B.1 collapsed the `getDelegatedToken` duplication; Group D hardened every Claude-prompting route with `sanitizer.sanitizeText` at untrusted-input sources plus delimiter framing around large blobs, closing the prompt-injection half of M26. Group B.2 extracted `fetchWithTimeout` into `_lib/` and eliminated every bare `fetch()` call across the four files with the biggest AbortController gap. Group E converted every non-transactional DELETE+INSERT pair into a PostgREST `resolution=merge-duplicates` upsert (with stale-row cleanup on onboarding_steps) and converted `generate-proposal.js` fire-and-forget PATCHes into awaited try/catch + monitor.logError. Group F hardened every public-facing input validation surface: UUID regex + encodeURIComponent at concat sites on `content-chat.js`, require-Origin on `submit-entity-audit.js` + `content-chat.js`, FQDN validation on `admin/manage-site.js`, recipient allowlist on `digest.js`, existence check before PATCH on `newsletter-unsubscribe.js`, and TOCTOU pre-check removal on `submit-entity-audit.js`. Group G batch 1 closed the operational-resilience cherry-picks: 60s TTL + last_login_at throttle in `_lib/auth.js`, `rawToDer` dead-code removal, hard-required `AGENT_API_KEY` plus `sanitizer.sanitizeText` on team notification emails in `process-entity-audit.js`, full-UUID composite `checklist_items` id across both writer sites, and H2 doc-marked after verifying the P4S5 `postgrest-filter` extraction had already closed it. Group G batch 2 closed H6 (stripe-webhook fire-and-forget replaced with awaited `fetchT` + `monitor.critical`, results tracking, nested try/catch so alert failure doesn't mask Stripe's 200) and H13 (agreement-chat CSA prompt caching via 2-block `system:` array with `cache_control: { type: 'ephemeral' }`). H29 infra-check surfaced 4 unresolved design questions and was deferred. H36 (8th `getDelegatedToken` copy in `convert-to-prospect.js`, discovered during B.1 verification) closed as Group D pre-task. `authenticator_secret_key` null-on-all-rows investigation resolved: `SENSITIVE_FIELDS` includes it; the null state just means no 2FA setup has been saved yet through the admin UI. Not a bug.
 
 ~66 findings remain. None of them are attack chains of the same severity as C1-C9. Most are hardening, consistency, and observability work. Ordering them linearly doesn't match their actual value; grouping them does.
 
@@ -139,22 +139,23 @@ Items I recommend marking "won't fix" or "needs design":
 
 ## Recommended next session
 
-**Group G batch 2 — operational resilience, heavier items.**
+**H16 + H23 mini-session to close the last two actionable Highs.**
 
 Reasoning:
-- Group G batch 1 closed 2026-04-18 (see retrospective below). Five code commits + one doc commit landed; every Vercel deploy READY. Six findings closed (H1, H2, H3, H17, M2, M18). H2 closed without code via the P4S5 helper extraction that already happened on 2026-04-17. M18 closed across two writer sites (`process-entity-audit.js:374` primary + `setup-audit-schedule.js:124` sister site) — same copy-pasted pattern, same collision surface, bundled into one commit group.
-- Batch 2 is the meatier half of Group G: H6 (Stripe webhook fire-and-forget retry), H13 (agreement-chat 8K CSA prompt caching), H29 (enrich-proposal encryption at rest for `enrichment_data`). H29 requires a short encryption-key infra check (does `crypto.encryptFields` already cover this table, or does the key rotation story need extending?) before code change.
-- M19 stays parked (needs product call on Stripe-late-lands behavior). M1 still waits on metadata being added to Stripe payment links. M37 stays parked (auto-schedule intent question).
+- Group G batch 2 closed H6 and H13; H29 deferred on design (see retrospective below). Only 3 Highs remain open: H16, H23, and the deferred H29. H16 and H23 are both small, independent code fixes with no infra dependencies and no product decisions needed.
+- Closing both takes the Highs band to 35/36 resolved (97%). H29 is the only remaining item and it waits on the design decisions captured in the retrospective.
+- After the mini-session, natural paths forward are Group B.3 (Supabase helper migration, code quality, no Highs) or Group I (Lows + Nits sweep). Both are optional polish; stopping here is also defensible.
 
-Recommended sequence after Group G batch 1:
+Recommended sequence:
 
-1. **Group G batch 2 — heavier** (1 session) — H6, H13, H29 (H29 requires encryption key infra check first)
-2. **Group B.3 — Supabase helper migration** (1-2 sessions) — remaining files outside B.2's four; closes L1 and the raw-fetch pattern in `generate-proposal.js:62,80`, `submit-entity-audit.js` email pre-check (which becomes relevant again if M39 resolves to a schema change)
-3. **Group I — Lows + Nits sweep** (1 session)
-4. **Group H — M1 Stripe metadata** (once dashboard metadata is added)
-5. **M39 + M19 + M37** — product-decision items, not code-only; fold in when Chris or Scott makes the call
+1. **H16 + H23 mini-session** (30-45 min) closes H16, H23
+2. **H29 design session** (whenever ready to make the 4 decisions) closes H29
+3. **Group B.3 Supabase helper migration** (1-2 sessions, optional)
+4. **Group I Lows + Nits sweep** (1 session, optional)
+5. **Group H M1 Stripe metadata** (once dashboard metadata is added)
+6. **M19, M37, M39** product-decision items, fold in when ready
 
-Approximately 3-4 sessions to clear the remaining open findings, or stop earlier once diminishing returns kick in.
+Approximately 2-4 sessions to fully clear the audit, or stop after the mini-session plus H29 design decision with "every High resolved" as the finish line.
 
 ## Executed prompt — Group G batch 1 (historical, for reference)
 
@@ -636,7 +637,28 @@ Out of scope for Group G batch 1 (flagged as candidate follow-up):
 - `api/process-entity-audit.js` has additional HTML interpolation sites outside the two notification emails — the scorecard template read/substitute/push path around L419-538 and the entity-audit suite deploy around L480-540. The session prompt explicitly scoped H17 to the two team notification emails and asked for any additional sites to be filed separately. On inspection during the H17 edit, the scorecard template path substitutes admin-controlled values (practice name, slug, scores) into a GitHub-stored HTML template using `.replace(/\n/g, '')` — that's a different shape from the notification emails (template is trusted, values are admin-JWT-gated) and sits closer in shape to H16's template-placeholder concern than to H17's public-submitter concern. Left for a future session; no action this batch.
 - `setup-audit-schedule.js` wasn't explicitly scoped into M18 but got pulled in as same-bug. Reasonable alternative would be to file it as a separate Medium (e.g. M40) and leave the fix for a future session. Chose the bundle approach because the pattern was byte-identical copy-paste and fixing only one of two writers is an incomplete remediation. If a reviewer prefers the separate-ID convention, the Resolution log row and the commit message both make the scope expansion visible.
 
-## Prompt for next session (Group G batch 2 — operational resilience, heavier items)
+## Group G batch 2 — Operational resilience, heavier items ✅ COMPLETE (H6, H13) / 🔶 DEFERRED (H29) (2026-04-18)
+
+Two findings closed, one deferred on design. Both code commits went straight to READY on first Vercel build.
+
+Commits landed on main:
+
+- `b3d5d8b` — **H6.** `api/stripe-webhook.js` notify-team + setup-audit-schedule fires. Converted `fetch(...).catch(...)` fire-and-forget to `await fetchT(url, opts, 15000)` with response-code inspection and `monitor.critical` on non-ok plus outer try/catch on the fetch throw itself, both feeding `results.notify_team_failed` / `results.setup_audit_schedule_failed`. Critical detail: the `monitor.critical` call is itself wrapped in an inner try/catch so an alert-send failure can't mask Stripe's 200 response. Stripe must always see 200 on webhook handling because it will not retry a 4xx/5xx and the upstream status flip + payment insert have already committed. The alert email becomes the operator-surfacing channel for downstream POST failures; results flags give the webhook caller the shape to log partial success if needed.
+- `fba6183` — **H13.** `api/agreement-chat.js` CSA prompt caching. Converted `system: systemPrompt` (single string) to `system: systemBlocks` (2-block array). Block 1 is dynamic (interpolates `pageContent`); block 2 is fully static (the ~8K-token CSA + response guidelines) with `cache_control: { type: 'ephemeral' }`. Concatenation is byte-identical to the original single-string prompt, so model behavior is preserved. Turn 2+ of the same conversation hits cache on the full static prefix; billable tokens drop to ~10% of the cached portion.
+
+H29 deferral:
+
+- `api/enrich-proposal.js` `enrichment_data` encrypt-at-rest surfaced 4 unresolved design questions during the prompt's budgeted infra-check:
+  1. **JSONB shape.** `crypto.encryptFields` only handles string fields (L86 `typeof === 'string'` gate). `enrichment_data` is JSONB with nested `emails[]`, `calls[]`, `audit_scores`, `audit_tasks`, `website_info`, `practice_details`. Three options: extend `encryptFields` to JSON.stringify + encrypt + JSON.parse on decrypt; split into encrypted scalar columns; or wrap at the enrich-proposal call site.
+  2. **Read-path surface.** `enrichment_data` is read by `enrich-proposal.js` (self), `generate-proposal.js` (downstream Claude context), and via `action.js` admin reads. Any encrypt-at-rest shape needs corresponding decrypt wiring at every reader. `action.js`'s `SENSITIVE_FIELDS` convention is per-table scoped to `workspace_credentials`; extending it for `proposals.enrichment_data` is a shape change, not a one-field add.
+  3. **Legacy-row migration.** Existing plaintext rows can't be decrypted through the new path without a backfill. Non-trivial because the data is JSONB, not a string.
+  4. **`enrichment_sources` sibling + rotation.** Same PATCH writes both. Consistency argues for encrypting both; key rotation across an accumulating per-proposal field has no precedent in the workspace_credentials rotation story (admin UI re-save on rotation doesn't apply).
+
+Recommendation: dedicated design session picks between options (1)/(2)/(3), then a scoped code session lands the chosen wiring plus a backfill migration. Interim controls: admin-JWT gate on readers, Group B.1's `_tokenCache` in `_lib/google-delegated.js` (reduces repeated Gmail impersonation mints), rate limit on enrich-proposal.
+
+Tallies: **Highs 33 / 36 resolved. 3 open: H16, H23, H29.** Mediums unchanged at 17 / 39.
+
+## Executed prompt — Group G batch 2 (historical, for reference)
 
 ```
 Operational resilience session — batch 2. Three heavier items from
@@ -793,6 +815,239 @@ Then doc update:
   - post-phase-4-status.md: mark Group G batch 2 complete,
     recommend Group B.3 or Group I next based on whichever reads
     like better value at the time.
+```
+
+## Prompt for next session (H16 + H23 mini-session to close the last two actionable Highs)
+
+```
+Mini-session: close the last two non-deferred Highs before calling the
+Highs band done. H16 (template placeholder substitution shape bug) and
+H23 (chat.js full admin DB dumped into system prompt every turn).
+Small scope, ~30-45 minutes each.
+
+Read docs/api-audit-2026-04.md sections H16, H23 first, then walk
+through your plan before touching code.
+
+─────────────────────────────────────────────────────────────────────
+Pre-verification required at session start
+─────────────────────────────────────────────────────────────────────
+
+Confirm batch 2 landed on main before starting:
+  - api/stripe-webhook.js has `await fetchT(...)` + `monitor.critical`
+    on both notify-team and setup-audit-schedule fire sites (H6 landed `b3d5d8b`)
+  - api/agreement-chat.js has `system: systemBlocks` (array, not string)
+    and `cache_control: { type: 'ephemeral' }` on the static block
+    (H13 landed `fba6183`)
+
+If either doesn't match expected state, pause and investigate before
+touching this session's scope.
+
+─────────────────────────────────────────────────────────────────────
+Fix 1: H16 — api/process-entity-audit.js template deployment shape
+─────────────────────────────────────────────────────────────────────
+
+Three sites in process-entity-audit.js (verified on current main):
+  - L443 (entity-audit.html → `slug/entity-audit/index.html`)
+  - L473 (entity-audit-checkout.html → `slug/entity-audit-checkout/index.html`)
+  - L522 (suite loop: diagnosis.html, action-plan.html, progress.html → `slug/audits/<x>/index.html`)
+
+All three use the wrong shape:
+  content: tmplData.content.replace(/\n/g, '')
+
+This keeps the content base64-encoded (GitHub Contents API returns
+templates base64) and only strips newlines. Placeholders like
+`{{SLUG}}`, `{{PRACTICE_NAME}}` would ship literally to the deployed
+page.
+
+Current state: I pre-checked all 5 templates — entity-audit.html,
+entity-audit-checkout.html, diagnosis.html, action-plan.html,
+progress.html — and none have placeholders today. The audit is real
+but not yet biting. Fix is to adopt the correct shape so this doesn't
+become a latent footgun.
+
+Canonical pattern (from generate-proposal.js:560-580):
+  // Decode from base64 → apply replacements → re-encode to base64
+  var raw = Buffer.from(tmplData.content, 'base64').toString('utf-8');
+  if (p.replacements) {
+    Object.keys(p.replacements).forEach(function(key) {
+      raw = raw.split(key).join(String(p.replacements[key]));
+    });
+  }
+  content: Buffer.from(raw).toString('base64'),
+
+Fix shape for each site:
+
+  // Before:
+  content: tmplData.content.replace(/\n/g, ''),
+
+  // After:
+  content: Buffer.from(
+    Buffer.from(tmplData.content, 'base64').toString('utf-8'),
+    'utf-8'
+  ).toString('base64'),
+
+No replacements dict is needed today (zero placeholders across all
+5 templates). But structuring the call to support one is the point —
+plus it aligns with generate-proposal.js so future template changes
+drop in cleanly.
+
+Cleaner approach: extract a small helper at top of file. Proposed:
+
+  // Prepare GitHub Contents API file content: decode base64 input,
+  // apply any {{KEY}} replacements, re-encode to base64. Matches the
+  // pattern in generate-proposal.js:560.
+  function prepTemplate(base64Content, replacements) {
+    var raw = Buffer.from(base64Content, 'base64').toString('utf-8');
+    if (replacements) {
+      Object.keys(replacements).forEach(function(key) {
+        raw = raw.split(key).join(String(replacements[key]));
+      });
+    }
+    return Buffer.from(raw, 'utf-8').toString('base64');
+  }
+
+Then each deploy site becomes:
+  content: prepTemplate(tmplData.content),
+
+Verify post-push: fetch the deployed `entity-audit/index.html` for
+any existing test client (Anna Sky / sky-therapies works) and confirm
+the content renders — HTML should look identical to pre-fix, just
+with newlines intact. (The old `.replace(/\n/g, '')` on already-
+base64 content was destroying the base64 formatting's internal
+newlines, which GitHub's decoder tolerates but is not a well-formed
+shape.)
+
+─────────────────────────────────────────────────────────────────────
+Fix 2: H23 — api/chat.js reduce prompt cost via caching + scoping
+─────────────────────────────────────────────────────────────────────
+
+Sites:
+  L36: systemPrompt = buildSystemPrompt(context);
+  L61: system: systemPrompt
+  L183-188: clientData interpolation into system prompt
+  L191-194: clientIndex interpolation into system prompt
+
+clientIndex is ~60 clients × ~80 bytes each = ~5K tokens.
+clientData is a full client deep-dive JSON, can be 5-20K tokens.
+Both re-sent on every turn.
+
+Two valid approaches (audit says "prompt caching, or reduce to just
+the client being discussed"):
+
+APPROACH A: Prompt caching (mirror H13 shape)
+
+Convert buildSystemPrompt to return an array of content blocks.
+Split into static and dynamic:
+  - Static: BASE_PROMPT + MODE selector + docs reference (lines 162+)
+  - Dynamic: ctx_str (current page/tab/client) + clientData + clientIndex
+
+Place a cache_control breakpoint on the last static block. Dynamic
+blocks follow, so turn 2+ hits the static cache:
+
+  return [
+    { type: 'text', text: BASE_PROMPT },
+    { type: 'text', text: modeBlock },
+    { type: 'text', text: docsBlock, cache_control: { type: 'ephemeral' } },
+    { type: 'text', text: ctxStr + (clientData ? '\n\n## Live Data ...' : '') + (clientIndex ? '\n\n## Client Index ...' : '') }
+  ];
+
+Call site at L61 becomes `system: systemBlocks`.
+
+Expected: first turn pays full cost. Subsequent turns on the same
+conversation see `usage.cache_read_input_tokens` ~= the static prefix
+token count, and `usage.cache_creation_input_tokens` = 0. Dynamic
+block (ctx + clientData + clientIndex) is the only uncached portion
+per turn.
+
+APPROACH B: Scope reduction
+
+When `clientSlug` is set, drop clientIndex entirely (deep-dive pages
+don't need the cross-client summary). When no clientSlug (dashboard
+mode), keep clientIndex but drop clientData.
+
+Sketch:
+  // At buildSystemPrompt:
+  var clientSlug = ctx.clientSlug || null;
+  var clientData = ctx.clientData || null;
+  var clientIndex = ctx.clientIndex || null;
+
+  // Scope reduction: don't ship both. On deep-dive, clientData is
+  // the relevant context; clientIndex would be noise. On dashboard,
+  // inverse.
+  if (clientSlug) {
+    clientIndex = null;  // deep-dive doesn't need full roster
+  } else if (!clientData) {
+    // dashboard with no pre-loaded clientData — clientIndex stays
+  } else {
+    // dashboard with clientData loaded — keep both, rare case
+  }
+
+Approach B cuts ~5K tokens per turn on deep-dive pages and ~15K on
+dashboard pages when a single-client clientData is loaded. Simpler
+than Approach A; no shape change to the system prompt.
+
+RECOMMENDATION: Do both. Approach B first (scope reduction — easy
+code change, immediate savings on every turn). Then Approach A
+(prompt caching — compounds the savings on multi-turn conversations).
+
+Combined expected savings on a typical admin chat session:
+  - Turn 1: 8K static + 2K dynamic = 10K input tokens  (vs 18K currently)
+  - Turn 2: 8K cached (10% cost) + 2K dynamic = 2.8K billable  (vs 18K)
+  - Turn 3: same as turn 2
+
+If time runs short, ship Approach B only and file Approach A as a
+separate finding for a future session.
+
+─────────────────────────────────────────────────────────────────────
+Testing
+─────────────────────────────────────────────────────────────────────
+
+- Each commit's Vercel deploy must go READY.
+- H16 smoke test: trigger a test entity audit for an existing client
+  (sky-therapies). Confirm all five templates deploy successfully to
+  their slug-scoped paths. Visit the deployed pages — rendering
+  should be identical to pre-fix.
+- H23 smoke tests:
+  * Open admin chat on a deep-dive page (any active client). Ask a
+    question. Response should still reference correct client data.
+  * Open admin chat on the dashboard. Ask "what are my priorities
+    across all clients?" Response should still mention multiple
+    clients correctly (clientIndex present when clientData absent).
+  * If Approach A also applied: after Turn 1, check the streamed
+    response's usage block for cache_creation_input_tokens > 0,
+    then on Turn 2 confirm cache_read_input_tokens > 0. (May need
+    to add temporary logging to observe — remove before final push.)
+
+─────────────────────────────────────────────────────────────────────
+Out of scope
+─────────────────────────────────────────────────────────────────────
+
+- H29 (enrich-proposal encryption) — deferred on design per G2
+  retrospective. Needs 4 design decisions resolved before code.
+- agreement-chat.js further optimization — H13 landed; any additional
+  caching/scoping is a follow-up if needed.
+- proposal-chat.js, report-chat.js, content-chat.js — not audited for
+  the same pattern. If you spot clientData-in-system-prompt dumping
+  while in this session, file as new findings; don't fix inline.
+
+─────────────────────────────────────────────────────────────────────
+Deliverables
+─────────────────────────────────────────────────────────────────────
+
+Commit shape (suggested):
+  c1: H16 — process-entity-audit.js prepTemplate helper + 3 sites converted
+  c2: H23 part 1 — chat.js scope reduction (drop clientIndex when clientSlug set)
+  c3: H23 part 2 — chat.js prompt caching breakpoint (if time allows)
+
+Then doc updates:
+  - api-audit-2026-04.md: mark H16 and H23 ✅ RESOLVED with Resolution blocks.
+    Tallies: Highs 33 → 35 resolved. Only H29 remains open (deferred
+    on design).
+  - post-phase-4-status.md: update opening paragraph (33 → 35 Highs
+    closed, note "all non-deferred Highs closed"), add H16+H23
+    retrospective section, point next session recommendation at
+    Group B.3 (Supabase helper migration) or Group I (Lows + Nits
+    sweep) depending on what reads like better value.
 ```
 
 ## Closing thought on the grouping approach
