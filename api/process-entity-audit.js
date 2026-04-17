@@ -11,6 +11,7 @@ var sb = require('./_lib/supabase');
 var auth = require('./_lib/auth');
 var monitor = require('./_lib/monitor');
 var gh = require('./_lib/github');
+var fetchT = require('./_lib/fetch-with-timeout');
 
 module.exports = async function handler(req, res) {
   if (req.method !== 'POST') return res.status(405).json({ error: 'Method not allowed' });
@@ -186,7 +187,7 @@ ${surgeData}`;
     var claudeErr;
     var claudeResp;
     try {
-      claudeResp = await fetch('https://api.anthropic.com/v1/messages', {
+      claudeResp = await fetchT('https://api.anthropic.com/v1/messages', {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
@@ -198,7 +199,7 @@ ${surgeData}`;
           max_tokens: 16000,
           messages: [{ role: 'user', content: claudePrompt }]
         })
-      });
+      }, 60000);
     } finally {
       clearInterval(heartbeat);
     }
@@ -415,9 +416,9 @@ ${surgeData}`;
     };
 
     // Read the scorecard template
-    var tmplResp = await fetch('https://api.github.com/repos/' + REPO + '/contents/_templates/entity-audit.html?ref=' + BRANCH, {
+    var tmplResp = await fetchT('https://api.github.com/repos/' + REPO + '/contents/_templates/entity-audit.html?ref=' + BRANCH, {
       headers: ghHeaders
-    });
+    }, 15000);
     var githubDeployed = false;
     var checkoutDeployed = false;
     var suiteDeployed = false;
@@ -428,9 +429,9 @@ ${surgeData}`;
       // Check if destination exists
       var destPath = slug + '/entity-audit/index.html';
       var sha = null;
-      var checkResp = await fetch('https://api.github.com/repos/' + REPO + '/contents/' + destPath + '?ref=' + BRANCH, {
+      var checkResp = await fetchT('https://api.github.com/repos/' + REPO + '/contents/' + destPath + '?ref=' + BRANCH, {
         headers: ghHeaders
-      });
+      }, 15000);
       if (checkResp.ok) {
         sha = (await checkResp.json()).sha;
       }
@@ -443,26 +444,26 @@ ${surgeData}`;
       };
       if (sha) pushBody.sha = sha;
 
-      var pushResp = await fetch('https://api.github.com/repos/' + REPO + '/contents/' + destPath, {
+      var pushResp = await fetchT('https://api.github.com/repos/' + REPO + '/contents/' + destPath, {
         method: 'PUT',
         headers: ghHeaders,
         body: JSON.stringify(pushBody)
-      });
+      }, 30000);
       githubDeployed = pushResp.ok;
 
       // Deploy checkout page
       send({ step: 'deploy_checkout', message: 'Deploying checkout page...' });
 
-      var checkoutTmplResp = await fetch('https://api.github.com/repos/' + REPO + '/contents/_templates/entity-audit-checkout.html?ref=' + BRANCH, {
+      var checkoutTmplResp = await fetchT('https://api.github.com/repos/' + REPO + '/contents/_templates/entity-audit-checkout.html?ref=' + BRANCH, {
         headers: ghHeaders
-      });
+      }, 15000);
       if (checkoutTmplResp.ok) {
         var checkoutTmplData = await checkoutTmplResp.json();
         var checkoutPath = slug + '/entity-audit-checkout/index.html';
         var checkoutSha = null;
-        var checkoutCheck = await fetch('https://api.github.com/repos/' + REPO + '/contents/' + checkoutPath + '?ref=' + BRANCH, {
+        var checkoutCheck = await fetchT('https://api.github.com/repos/' + REPO + '/contents/' + checkoutPath + '?ref=' + BRANCH, {
           headers: ghHeaders
-        });
+        }, 15000);
         if (checkoutCheck.ok) {
           checkoutSha = (await checkoutCheck.json()).sha;
         }
@@ -472,11 +473,11 @@ ${surgeData}`;
           branch: BRANCH
         };
         if (checkoutSha) checkoutPush.sha = checkoutSha;
-        var checkoutPushResp = await fetch('https://api.github.com/repos/' + REPO + '/contents/' + checkoutPath, {
+        var checkoutPushResp = await fetchT('https://api.github.com/repos/' + REPO + '/contents/' + checkoutPath, {
           method: 'PUT',
           headers: ghHeaders,
           body: JSON.stringify(checkoutPush)
-        });
+        }, 30000);
         checkoutDeployed = checkoutPushResp.ok;
       }
 
@@ -498,9 +499,9 @@ ${surgeData}`;
           // Small delay between GitHub pushes
           if (i > 0) await new Promise(function(r) { setTimeout(r, 600); });
 
-          var stTmplResp = await fetch('https://api.github.com/repos/' + REPO + '/contents/_templates/' + st.template + '?ref=' + BRANCH, {
+          var stTmplResp = await fetchT('https://api.github.com/repos/' + REPO + '/contents/_templates/' + st.template + '?ref=' + BRANCH, {
             headers: ghHeaders
-          });
+          }, 15000);
           if (!stTmplResp.ok) {
             suiteResults.push({ template: st.template, deployed: false, reason: 'template not found' });
             continue;
@@ -508,9 +509,9 @@ ${surgeData}`;
           var stTmplData = await stTmplResp.json();
 
           var stSha = null;
-          var stCheck = await fetch('https://api.github.com/repos/' + REPO + '/contents/' + st.dest + '?ref=' + BRANCH, {
+          var stCheck = await fetchT('https://api.github.com/repos/' + REPO + '/contents/' + st.dest + '?ref=' + BRANCH, {
             headers: ghHeaders
-          });
+          }, 15000);
           if (stCheck.ok) {
             stSha = (await stCheck.json()).sha;
           }
@@ -522,11 +523,11 @@ ${surgeData}`;
           };
           if (stSha) stPush.sha = stSha;
 
-          var stPushResp = await fetch('https://api.github.com/repos/' + REPO + '/contents/' + st.dest, {
+          var stPushResp = await fetchT('https://api.github.com/repos/' + REPO + '/contents/' + st.dest, {
             method: 'PUT',
             headers: ghHeaders,
             body: JSON.stringify(stPush)
-          });
+          }, 30000);
           suiteResults.push({ template: st.template, deployed: stPushResp.ok });
         }
 
@@ -547,11 +548,11 @@ ${surgeData}`;
       send({ step: 'auto_send', message: 'Sending scorecard email automatically (free lead audit)...' });
       try {
         var internalAuth = process.env.CRON_SECRET || process.env.AGENT_API_KEY || '';
-        var sendResp = await fetch('https://clients.moonraker.ai/api/send-audit-email', {
+        var sendResp = await fetchT('https://clients.moonraker.ai/api/send-audit-email', {
           method: 'POST',
           headers: { 'Content-Type': 'application/json', 'Authorization': 'Bearer ' + internalAuth },
           body: JSON.stringify({ audit_id: auditId })
-        });
+        }, 30000);
         if (sendResp.ok) {
           send({ step: 'auto_send_done', message: 'Scorecard email sent to ' + (contact.email || 'client') });
         } else {
@@ -568,7 +569,7 @@ ${surgeData}`;
       try {
         var resendKey = process.env.RESEND_API_KEY;
         if (resendKey) {
-          await fetch('https://api.resend.com/emails', {
+          await fetchT('https://api.resend.com/emails', {
             method: 'POST',
             headers: { 'Authorization': 'Bearer ' + resendKey, 'Content-Type': 'application/json' },
             body: JSON.stringify({
@@ -583,7 +584,7 @@ ${surgeData}`;
                 '<ol><li>Record a personalized Loom walkthrough</li><li>Add the Loom URL to the audit in admin</li><li>Send the delivery email from admin</li></ol>' +
                 '<p><a href="https://clients.moonraker.ai/admin/clients#audit-' + auditId + '">Open in Admin</a></p>'
             })
-          });
+          }, 15000);
           send({ step: 'notify_team_done', message: 'Team notified. Premium audit awaiting Loom review.' });
         }
       } catch (notifyEx) {
@@ -612,7 +613,7 @@ ${surgeData}`;
               '<tr><td style="padding:4px 16px 4px 0;">Engagement</td><td>' + (d.engagement.previous || 0) + ' &rarr; ' + d.engagement.current + ' ' + fmtDelta(d.engagement.delta) + '</td></tr>' +
               '</table>';
           }
-          await fetch('https://api.resend.com/emails', {
+          await fetchT('https://api.resend.com/emails', {
             method: 'POST',
             headers: { 'Authorization': 'Bearer ' + resendKey, 'Content-Type': 'application/json' },
             body: JSON.stringify({
@@ -627,7 +628,7 @@ ${surgeData}`;
                 '<p><a href="https://clients.moonraker.ai/admin/clients#audit-' + auditId + '" style="color:#00D47E;">View in Admin</a></p>' +
                 '</div>'
             })
-          });
+          }, 15000);
           send({ step: 'notify_team_done', message: 'Team notified about quarterly audit completion.' });
         }
       } catch (qNotifyEx) {
