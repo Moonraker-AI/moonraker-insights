@@ -59,10 +59,8 @@ module.exports = async function handler(req, res) {
   // ─── 1. Load proposal + contact ───────────────────────────────
   var proposal, contact;
   try {
-    var pResp = await fetch(sb.url() + '/rest/v1/proposals?id=eq.' + proposalId + '&select=*,contacts(*)&limit=1', { headers: sb.headers() });
-    var proposals = await pResp.json();
-    if (!proposals || proposals.length === 0) return res.status(404).json({ error: 'Proposal not found' });
-    proposal = proposals[0];
+    proposal = await sb.one('proposals?id=eq.' + proposalId + '&select=*,contacts(*)&limit=1');
+    if (!proposal) return res.status(404).json({ error: 'Proposal not found' });
     contact = proposal.contacts;
   } catch (e) {
     return res.status(500).json({ error: 'Failed to load proposal: ' + e.message });
@@ -77,10 +75,9 @@ module.exports = async function handler(req, res) {
   // Load practice_type for results section filtering
   var practiceType = 'group'; // default
   try {
-    var pdResp = await fetch(sb.url() + '/rest/v1/practice_details?contact_id=eq.' + contact.id + '&select=practice_type&limit=1', { headers: sb.headers() });
-    var pdRows = await pdResp.json();
-    if (pdRows && pdRows.length > 0 && pdRows[0].practice_type) {
-      practiceType = pdRows[0].practice_type; // 'solo' or 'group'
+    var pd = await sb.one('practice_details?contact_id=eq.' + contact.id + '&select=practice_type&limit=1');
+    if (pd && pd.practice_type) {
+      practiceType = pd.practice_type; // 'solo' or 'group'
     }
   } catch (e) { /* default to group */ }
 
@@ -751,12 +748,9 @@ Respond with ONLY valid JSON (no markdown, no backticks). The JSON must have the
 
           // Write Creative folder ID to contacts for onboarding page
           if (creativeFolderId) {
-            await fetch(sb.url() + '/rest/v1/contacts?id=eq.' + contact.id, {
-              method: 'PATCH', headers: sb.headers(),
-              body: JSON.stringify({
-                drive_folder_id: creativeFolderId,
-                drive_folder_url: 'https://drive.google.com/drive/folders/' + creativeFolderId
-              })
+            await sb.mutate('contacts?id=eq.' + contact.id, 'PATCH', {
+              drive_folder_id: creativeFolderId,
+              drive_folder_url: 'https://drive.google.com/drive/folders/' + creativeFolderId
             });
             results.drive.creative_folder = 'https://drive.google.com/drive/folders/' + creativeFolderId;
           }
