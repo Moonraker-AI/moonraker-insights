@@ -320,8 +320,7 @@ section { padding: 4.5rem 0; }
           <span class="subtle" id="bookingsChartSubtle"></span>
         </div>
         <div class="chart-legend">
-          <span><span class="swatch" style="background:#00D47E"></span>Bookings (left axis)</span>
-          <span><span class="swatch" style="background:#3B82F6"></span>Cancellations (left axis)</span>
+          <span><span class="swatch" style="background:#00D47E"></span>Net consultations (left axis)</span>
           <span id="clicksLegend" class="hidden"><span class="swatch line line-swatch" style="color:#141C3A"></span>Organic clicks (right axis)</span>
         </div>
         <div class="chart-canvas-wrap">
@@ -737,7 +736,7 @@ section { padding: 4.5rem 0; }
       cards.push({
         label: 'Net consultations',
         value: fmtNum(data.bookings.net),
-        context: 'Through your scheduling pipeline · ' + fmtNum(data.bookings.total_canceled) + ' canceled'
+        context: 'Booked through your scheduling pipeline'
       });
     }
     if (data.cost_per_consultation && data.cost_per_consultation.available) {
@@ -814,34 +813,21 @@ section { padding: 4.5rem 0; }
       fmtNum(b.net) + ' consultations booked through the engagement';
 
     document.getElementById('bookingsChartSubtle').textContent =
-      b.total_canceled > 0
-        ? fmtNum(b.total_booked) + ' booked \u00B7 ' + fmtNum(b.total_canceled) + ' canceled \u00B7 ' + fmtNum(b.net) + ' net'
-        : fmtNum(b.total_booked) + ' booked';
+      fmtNum(b.net) + ' net';
 
     var labels = b.by_month.map(function(m) { return ymLabel(m.ym); });
-    var bookedData = b.by_month.map(function(m) { return m.booked; });
-    var canceledData = b.by_month.map(function(m) { return m.canceled; });
+    var netData = b.by_month.map(function(m) { return Math.max(0, m.booked - m.canceled); });
 
     var datasets = [
       {
         type: 'bar',
-        label: 'Bookings',
-        data: bookedData,
+        label: 'Net consultations',
+        data: netData,
         backgroundColor: '#00D47E',
         borderColor: '#00b86c',
         borderWidth: 0,
         yAxisID: 'y',
         order: 3
-      },
-      {
-        type: 'bar',
-        label: 'Cancellations',
-        data: canceledData,
-        backgroundColor: 'rgba(59,130,246,.65)',
-        borderColor: '#3B82F6',
-        borderWidth: 0,
-        yAxisID: 'y',
-        order: 2
       }
     ];
 
@@ -893,9 +879,9 @@ section { padding: 4.5rem 0; }
           }
         },
         scales: {
-          x: { stacked: true, ticks: { autoSkip: false, maxRotation: 0, font: { size: 11 } }, grid: { display: false } },
+          x: { ticks: { autoSkip: false, maxRotation: 0, font: { size: 11 } }, grid: { display: false } },
           y: {
-            position: 'left', stacked: true, beginAtZero: true,
+            position: 'left', beginAtZero: true,
             title: { display: true, text: 'Consultations', font: { size: 11 } },
             ticks: { font: { size: 11 } },
             grid: { color: 'rgba(128,128,128,0.1)' }
@@ -1278,6 +1264,7 @@ section { padding: 4.5rem 0; }
     bio_page: 'Bio page',
     surge_entity: 'Entity hub page',
     surge_sitewide: 'Site-wide content',
+    blog_post: 'Blog post',
     social_profiles: 'Social profile build',
     social_posts: 'Social posts',
     press_release: 'Press release',
