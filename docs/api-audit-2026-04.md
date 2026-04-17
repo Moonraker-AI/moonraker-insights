@@ -204,14 +204,20 @@ Same pattern as chat endpoints. `curl` sends no Origin, passes.
 
 Line 599 onwards embeds `contact.first_name`, `contact.last_name` in notification email HTML without escaping. Free-audit contacts come from `submit-entity-audit.js` (public). Malicious submitter → injected HTML in team notification emails.
 
-### H18. `_lib/newsletter-template.js:53, 55, 58, 66, 68, 218-231` — untrusted content rendered unescaped
+### H18. `_lib/newsletter-template.js:53, 55, 58, 66, 68, 218-231` — untrusted content rendered unescaped ✅ RESOLVED
 Story `body`, `headline`, action items, quick wins, `finalThoughts` all inserted raw. If AI generation glitch produces malformed HTML, breaks every subscriber's layout. Compromised admin JWT could inject HTML into emails to all subscribers.
 
-### H19. `_lib/newsletter-template.js:41, 220` — `image_url` only `esc()`-ed, no scheme validation
+**Resolution (2026-04-17, commit `0cd0670`):** `esc()` applied at the seven plain-text interpolation sites flagged — `story.headline`, action list items (both string-split and array paths), `spotlight.headline`, `spotlight.cta_text`, quick-wins items. Also extended to the `buildBlog()` path (action items and any future untrusted fields). **Scope fence held:** `story.body`, `spotlight.body`, and `finalThoughts` remain raw because AI generation explicitly produces HTML `<p>` tags and inline formatting for those fields; indiscriminate escaping would break every subscriber's email. Design note for future work: if we ever want AI to emit markdown instead of HTML, that's a prompt-engineering change, not a template change.
+
+### H19. `_lib/newsletter-template.js:41, 220` — `image_url` only `esc()`-ed, no scheme validation ✅ RESOLVED
 `javascript:` or `data:` schemes escape HTML but remain clickable in some email clients. Validate `https://` prefix at write time + render time.
 
-### H20. `_lib/email-template.js:48-50, 164` — `p()` and `footerNote` insert raw HTML
+**Resolution (2026-04-17, commit `0cd0670`):** Added `validateImageUrl(url)` helper in `_lib/newsletter-template.js` that returns the URL only if it starts with `https://` or `http://` (case-insensitive regex `/^https?:\/\//i`), else returns `''` (safe fallback — no image rendered). Applied at both `storyBlock()` and `buildBlog()` image rendering sites. Exported from module for any future callers that need to validate external URLs before rendering.
+
+### H20. `_lib/email-template.js:48-50, 164` — `p()` and `footerNote` insert raw HTML ✅ RESOLVED
 Helper signature invites misuse. Every caller must remember to escape. Rename to `pRaw`, add safe `p()` that escapes by default.
+
+**Resolution (2026-04-17, commit `d024b84`):** Atomic 9-file rename commit. In `_lib/email-template.js`: renamed original `p()` → `pRaw()`; new `p()` escape-by-default now exists; both exported. `wrap()` now supports `options.footerNote` (new, escapes input) alongside `options.footerNoteRaw` (current raw behavior), with `footerNoteRaw` winning if both are set. All 82+ `email.p(` call sites across 8 caller files (compile-report, generate-audit-followups, generate-followups, ingest-batch-audit, ingest-surge-content, notify-team, send-audit-email, send-proposal-email) migrated to `email.pRaw(` mechanically — byte-identical email output preserved. One caller (`send-proposal-email.js`) passed an `<a>` tag through `footerNote`; migrated to `footerNoteRaw`. Remaining `footerNote:` callers pass plain text only (grep-verified). Future sessions can opportunistically upgrade plain-text `pRaw` call sites to the new safe `p()` — flagged as follow-up, not blocking.
 
 ### H21. Seven copies of `getDelegatedToken`/`getGoogleAccessToken`
 - `api/bootstrap-access.js:480`
@@ -226,8 +232,10 @@ Extract once to `_lib/google-auth.js` with token caching keyed on `(scope, imper
 
 **Partial progress (2026-04-17, commit `7adedb6`):** Helper module `api/_lib/google-delegated.js` created with `getDelegatedAccessToken(mailbox, scope)`, `getServiceAccountToken(scope)`, `getFirstWorkingImpersonation(mailboxes, scope, testFn)`, and `_tokenCache` keyed on `${mailbox||'sa'}|${scope}`. First and only caller so far is the new `api/campaign-summary.js` feature (not part of audit scope). **The 5 existing duplicate sites listed above still hold their own copies** — migration is the remaining H21 work. Not yet resolved; the design step is now skipped when this ships.
 
-### H22. `api/generate-proposal.js:361` — AI-generated `next_steps` rendered into deployed HTML unescaped
+### H22. `api/generate-proposal.js:361` — AI-generated `next_steps` rendered into deployed HTML unescaped ✅ RESOLVED
 If `enrichment_data` (admin-written, unsanitized) contains prompt injection convincing Claude to emit `<script>`, ends up in prospect-facing deployed proposal. Also line 330: `customPricing.amount_cents / 100` admin-controlled, no type validation, flows into checkout card HTML.
+
+**Resolution (2026-04-17, commit `aabdac1`):** Added local `esc()` helper (same shape as email/newsletter-template versions; not imported to keep `generate-proposal.js` dependency-minimal — it deploys HTML, not email). `amount_cents` now coerced via `Number()` then validated with `Number.isFinite(amt) && amt >= 0` — invalid values render `—` instead of literal `$NaN` in the deployed proposal. `customPricing.label || customPricing.period` and both `next_steps` fields (`s.title`, `s.desc || s.description`) escaped at render time.
 
 ### H23. `api/chat.js:184, 190` — entire admin DB dumped into system prompt every turn
 `clientData` + `clientIndex` serialized as JSON in system prompt. Every admin chat turn re-sends 10K+ tokens. Client PII (emails, phones, practice names) flows to Anthropic on every turn. Use prompt caching, or reduce to just the client being discussed.
@@ -302,8 +310,10 @@ Doesn't reject backslashes, null bytes, URL-encoded traversal, no allowed-prefix
 
 ### M5. `api/newsletter-webhook.js` — optional signature verification (see H11).
 
-### M6. `api/_lib/monitor.js:85` — critical alert HTML uses string concat with `route`, `slug` unescaped
+### M6. `api/_lib/monitor.js:85` — critical alert HTML uses string concat with `route`, `slug` unescaped ✅ RESOLVED
 Low risk (recipients trusted) but inconsistent. Escape everything.
+
+**Resolution (2026-04-17, commit `1147a19`):** `route` and `slug` now wrapped in the existing `escHtml()` helper in `critical()`'s alert-email HTML body. Matches the pattern already in use for `message`. Subject line still raw (plain text, not HTML — not a vector) but a future nit-fix could strip `\r\n` to harden against header injection; not flagged by M6.
 
 ### M7. `api/_lib/supabase.js:45, 66` — error detail may include raw PostgREST response body in thrown messages
 Callers doing `return res.status(500).json({ error: err.message })` leak schema info, column names, constraints. Grep each catch.
@@ -352,8 +362,10 @@ UUID-format-but-nonexistent SID triggers PATCH warning in logs.
 ### M21. `_lib/google-drive.js:109, 157` — Drive query injection if `folderId` attacker-controlled
 Unescaped in `q = "'" + folderId + "' in parents"`. Current caller uses admin-written `contact.drive_folder_id`, so requires admin JWT compromise.
 
-### M22. `_lib/newsletter-template.js:141` — `subscriberId` in unsub URL not encoded
+### M22. `_lib/newsletter-template.js:141` — `subscriberId` in unsub URL not encoded ✅ RESOLVED
 Trivial in practice (UUID) but brittle for future test strings.
+
+**Resolution (2026-04-17, commit `0cd0670`):** `encodeURIComponent(subscriberId)` applied at the `UNSUBSCRIBE_BASE + '?sid='` concat site. Landed alongside H18/H19 in the same newsletter-template.js commit.
 
 ### M23. `api/generate-proposal.js:598` — hardcoded Drive `CLIENTS_FOLDER_ID`
 Infrastructure identifier in source.
@@ -629,12 +641,12 @@ _(Brought forward from Phase 7 since Chris chose "ship now" over "wait for traff
 ## Running tallies
 
 - **Critical:** 9 total (C1–C9). **Resolved: 9 ✅** (all).
-- **High:** 35 total (H1–H35). **Resolved: 11** (H5, H7, H8, H9, H10, H11, H14, H28, H33, H34, H35). **Open: 24.**
-- **Medium:** 38 total (M1–M38). **Resolved: 3+ full + 1 partial** (M8 confirmed; M38 added + resolved same session; M13 resolved; M26 err-leak half resolved, prompt-injection half deferred to Group D; several more likely closed via Phase 4 action-schema work — needs verification sweep). **Open: ~34.**
+- **High:** 35 total (H1–H35). **Resolved: 15** (H5, H7, H8, H9, H10, H11, H14, H18, H19, H20, H22, H28, H33, H34, H35). **Open: 20.**
+- **Medium:** 38 total (M1–M38). **Resolved: 5+ full + 1 partial** (M6, M8, M13, M22, M38; M26 err-leak half resolved, prompt-injection half deferred to Group D; several more likely closed via Phase 4 action-schema work — needs verification sweep). **Open: ~32.**
 - **Low:** 28 total (L1–L28). **Resolved: 4** (L8, L14, L26, L27-documented-only). **Open: 24.**
 - **Nit:** 6 total (N1–N6). **Open: 6.**
 
-**Total: 116 findings. Resolved: ≥27 (+1 partial). Open: ≤88.**
+**Total: 116 findings. Resolved: ≥33 (+1 partial). Open: ≤82.**
 
 ### Resolution log
 | Finding | Commit / Session | Date |
@@ -662,6 +674,10 @@ _(Brought forward from Phase 7 since Chris chose "ship now" over "wait for traff
 | H35 | `b17c790` (generate-content-page NDJSON — 3 stream-error sites through monitor) | 2026-04-17 |
 | M13 | `3a9019d` (newsletter-webhook — drop e.message from terminal db_error response; logEvent already captures detail) | 2026-04-17 |
 | M26 (partial) | `9dc8c7b` — err-leak half resolved; prompt-injection half (page/tab/clientSlug interpolation) deferred to Group D | 2026-04-17 |
+| H18 + H19 + M22 | `0cd0670` (newsletter-template — esc at plain-text sites, validateImageUrl scheme check, encodeURIComponent on subscriberId) | 2026-04-17 |
+| H20 | `d024b84` (email-template — atomic rename + 82+ caller migration across 8 files; safe p()/footerNote default, pRaw/footerNoteRaw for raw HTML) | 2026-04-17 |
+| H22 | `aabdac1` (generate-proposal — local esc, amount_cents Number.isFinite guard, escape label/period + next_steps fields) | 2026-04-17 |
+| M6 | `1147a19` (monitor.critical — escape route and slug in alert HTML body) | 2026-04-17 |
 
 Audit was performed across five sessions reading ~11,000 lines of API route code, the eight `_lib/` modules, relevant templates, and git history for secret leakage. Unread in detail: chat system prompt bodies (low-risk content), several `send-*-email.js` / `trigger-*` / `ingest-*` routes (expected to follow already-catalogued patterns), most `api/admin/*` read-only dashboard routes. The audit is considered comprehensive for Critical and High findings; Medium/Low/Nit counts would grow modestly with further reading.
 
