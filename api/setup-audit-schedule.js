@@ -121,7 +121,7 @@ module.exports = async function handler(req, res) {
           var rows = tasks.map(function(t, idx) {
             var pri = sevToPri(t.severity);
             return {
-              id: adopted.id.substring(0, 8) + '-' + String(idx + 1).padStart(3, '0'),
+              id: adopted.id + '-' + String(idx + 1).padStart(3, '0'),
               client_slug: contact.slug,
               audit_id: adopted.id,
               audit_period: fullAudit.audit_period || 'baseline',
