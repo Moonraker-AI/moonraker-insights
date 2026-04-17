@@ -64,6 +64,7 @@ module.exports = async function handler(req, res) {
 
   var body = req.body || {};
   var dryRun = !!body.dry_run;
+  var force = !!body.force;
   var limit = Math.min(Number(body.limit || 200), 200);
 
   var t0 = Date.now();
@@ -96,14 +97,14 @@ module.exports = async function handler(req, res) {
 
       try {
         var existingSha = await gh.fileSha(destPath);
-        if (existingSha) {
+        if (existingSha && !force) {
           alreadyDeployed++;
           results.push({ slug: c.slug, status: 'already_deployed' });
           continue;
         }
 
         if (dryRun) {
-          results.push({ slug: c.slug, status: 'would_deploy' });
+          results.push({ slug: c.slug, status: existingSha ? 'would_update' : 'would_deploy' });
           deployed++;
           continue;
         }
@@ -111,11 +112,11 @@ module.exports = async function handler(req, res) {
         await gh.pushFile(
           destPath,
           template,
-          'Backfill campaign-summary for ' + c.slug,
-          null
+          (existingSha ? 'Update' : 'Backfill') + ' campaign-summary for ' + c.slug,
+          existingSha
         );
         deployed++;
-        results.push({ slug: c.slug, status: 'deployed' });
+        results.push({ slug: c.slug, status: existingSha ? 'updated' : 'deployed' });
 
         // Pace to avoid GitHub secondary rate limits
         await sleep(700);
