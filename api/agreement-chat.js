@@ -48,7 +48,7 @@ module.exports = async function handler(req, res) {
     return res.status(400).json({ error: 'messages array required' });
   }
 
-  var systemPrompt = buildSystemPrompt(context);
+  var systemBlocks = buildSystemPrompt(context);
 
   // Call Anthropic with stream: true
   var aiResp;
@@ -63,7 +63,7 @@ module.exports = async function handler(req, res) {
       body: JSON.stringify({
         model: 'claude-sonnet-4-6',
         max_tokens: 2000,
-        system: systemPrompt,
+        system: systemBlocks,
         messages: messages,
         stream: true
       })
@@ -100,7 +100,16 @@ module.exports = async function handler(req, res) {
 function buildSystemPrompt(context) {
   var pageContent = context.page_content || '';
 
-  return `You are the Moonraker Agreement Assistant, a warm and knowledgeable AI that helps prospective clients understand the Client Service Agreement and feel confident about moving forward.
+  // Returns an array of 2 system prompt content blocks with an Anthropic
+  // prompt-caching breakpoint on the second (static CSA + response
+  // guidelines) block. The concatenation of block 1 + block 2 is
+  // byte-identical to the original single-string prompt, so model
+  // behavior is preserved. Block 1 varies per conversation
+  // (page_content is interpolated); block 2 is fully static. On turn 2+
+  // of the same conversation, the full prefix should hit cache,
+  // dropping cost on the cached prefix to ~10% of uncached tokens.
+  return [
+    { type: 'text', text: `You are the Moonraker Agreement Assistant, a warm and knowledgeable AI that helps prospective clients understand the Client Service Agreement and feel confident about moving forward.
 
 YOUR PURPOSE:
 You exist to reduce friction and help this prospect feel fully informed about the agreement so they can sign with confidence. You answer questions clearly so they do NOT need to book another call, send an email, or pause their decision. Every answer should leave them feeling more informed and more ready to proceed.
@@ -129,7 +138,8 @@ WHAT YOU KNOW:
 3. Whatever pricing and plan details appear on this prospect's page
 
 PAGE CONTENT (from this prospect's agreement page):
-${pageContent.substring(0, 8000)}
+${pageContent.substring(0, 8000)}` },
+    { type: 'text', text: `
 
 ===== CLIENT SERVICE AGREEMENT (FULL TEXT) =====
 
@@ -287,7 +297,8 @@ Months 3-12: Activation of Rising Tide, NEO, LiveDrive, and ongoing content dist
 - When the prospect seems interested or ready: encourage them to sign and get started
 - Keep responses to 2-4 paragraphs unless the question requires more detail
 - When explaining what Moonraker does NOT do, always end positively with what we DO provide
-- End responses on an encouraging, forward-moving note when natural`;
+- End responses on an encouraging, forward-moving note when natural`, cache_control: { type: 'ephemeral' } }
+  ];
 }
 
 
