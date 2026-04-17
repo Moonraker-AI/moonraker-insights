@@ -7,9 +7,9 @@
 
 ## Where the audit stands
 
-All 9 Criticals closed. **Thirty-five Highs closed** (H1, H2, H3, H4, H5, H6, H7, H8, H9, H10, H11, H12, H13, H14, H15, H16, H17, H18, H19, H20, H21, H22, H23, H24, H25, H26, H27, H28, H30, H31, H32, H33, H34, H35, H36). **All non-deferred Highs closed.** H29 deferred on design (JSONB encryption + read-path + migration + rotation). **M2, M6, M8, M9, M10, M11, M12, M13, M14, M15, M16, M18, M20, M22, M26 (fully resolved), M30, M38 closed.** **L8**, L14, L16, L26, L27 closed. Group C closed the template-escape surface; Group B.1 collapsed the `getDelegatedToken` duplication; Group D hardened every Claude-prompting route with `sanitizer.sanitizeText` at untrusted-input sources plus delimiter framing around large blobs, closing the prompt-injection half of M26. Group B.2 extracted `fetchWithTimeout` into `_lib/` and eliminated every bare `fetch()` call across the four files with the biggest AbortController gap. Group E converted every non-transactional DELETE+INSERT pair into a PostgREST `resolution=merge-duplicates` upsert (with stale-row cleanup on onboarding_steps) and converted `generate-proposal.js` fire-and-forget PATCHes into awaited try/catch + monitor.logError. Group F hardened every public-facing input validation surface: UUID regex + encodeURIComponent at concat sites on `content-chat.js`, require-Origin on `submit-entity-audit.js` + `content-chat.js`, FQDN validation on `admin/manage-site.js`, recipient allowlist on `digest.js`, existence check before PATCH on `newsletter-unsubscribe.js`, and TOCTOU pre-check removal on `submit-entity-audit.js`. Group G batch 1 closed the operational-resilience cherry-picks: 60s TTL + last_login_at throttle in `_lib/auth.js`, `rawToDer` dead-code removal, hard-required `AGENT_API_KEY` plus `sanitizer.sanitizeText` on team notification emails in `process-entity-audit.js`, full-UUID composite `checklist_items` id across both writer sites, and H2 doc-marked after verifying the P4S5 `postgrest-filter` extraction had already closed it. Group G batch 2 closed H6 (stripe-webhook fire-and-forget replaced with awaited `fetchT` + `monitor.critical`, results tracking, nested try/catch so alert failure doesn't mask Stripe's 200) and H13 (agreement-chat CSA prompt caching via 2-block `system:` array with `cache_control: { type: 'ephemeral' }`). The H16 + H23 mini-session closed the last two actionable Highs: H16 with a `prepTemplate` helper on `process-entity-audit.js` aligning all three deploy sites with the `generate-proposal.js` decode/substitute/re-encode pattern, and H23 with chat.js scope reduction (drop clientIndex on deep-dive) plus a 2-block system-prompt array with `cache_control: { type: 'ephemeral' }` on the static prefix. H29 infra-check surfaced 4 unresolved design questions and was deferred. H36 (8th `getDelegatedToken` copy in `convert-to-prospect.js`, discovered during B.1 verification) closed as Group D pre-task. `authenticator_secret_key` null-on-all-rows investigation resolved: `SENSITIVE_FIELDS` includes it; the null state just means no 2FA setup has been saved yet through the admin UI. Not a bug.
+All 9 Criticals closed. **Thirty-five Highs closed** (H1, H2, H3, H4, H5, H6, H7, H8, H9, H10, H11, H12, H13, H14, H15, H16, H17, H18, H19, H20, H21, H22, H23, H24, H25, H26, H27, H28, H30, H31, H32, H33, H34, H35, H36). **All non-deferred Highs closed.** H29 deferred on design (JSONB encryption + read-path + migration + rotation). **M2, M6, M8, M9, M10, M11, M12, M13, M14, M15, M16, M18, M20, M22, M26 (fully resolved), M30, M38 closed.** **L1**, **L8**, L14, L16, **L22**, L26, L27 closed. Group C closed the template-escape surface; Group B.1 collapsed the `getDelegatedToken` duplication; Group D hardened every Claude-prompting route with `sanitizer.sanitizeText` at untrusted-input sources plus delimiter framing around large blobs, closing the prompt-injection half of M26. Group B.2 extracted `fetchWithTimeout` into `_lib/` and eliminated every bare `fetch()` call across the four files with the biggest AbortController gap. **Group B.3 swept the entire rest of the repo: 22 commits, 21 files, ~88 inline `fetch(sb.url() + '/rest/v1/…')` call sites migrated to `sb.query`/`sb.mutate`/`sb.one`, closing L1, L22, and the long-running Pattern 12 systemic finding; also fixed a latent `ReferenceError` bug in `discover-services.js :: upsertReportConfig` as a side-effect.** Group E converted every non-transactional DELETE+INSERT pair into a PostgREST `resolution=merge-duplicates` upsert (with stale-row cleanup on onboarding_steps) and converted `generate-proposal.js` fire-and-forget PATCHes into awaited try/catch + monitor.logError. Group F hardened every public-facing input validation surface: UUID regex + encodeURIComponent at concat sites on `content-chat.js`, require-Origin on `submit-entity-audit.js` + `content-chat.js`, FQDN validation on `admin/manage-site.js`, recipient allowlist on `digest.js`, existence check before PATCH on `newsletter-unsubscribe.js`, and TOCTOU pre-check removal on `submit-entity-audit.js`. Group G batch 1 closed the operational-resilience cherry-picks: 60s TTL + last_login_at throttle in `_lib/auth.js`, `rawToDer` dead-code removal, hard-required `AGENT_API_KEY` plus `sanitizer.sanitizeText` on team notification emails in `process-entity-audit.js`, full-UUID composite `checklist_items` id across both writer sites, and H2 doc-marked after verifying the P4S5 `postgrest-filter` extraction had already closed it. Group G batch 2 closed H6 (stripe-webhook fire-and-forget replaced with awaited `fetchT` + `monitor.critical`, results tracking, nested try/catch so alert failure doesn't mask Stripe's 200) and H13 (agreement-chat CSA prompt caching via 2-block `system:` array with `cache_control: { type: 'ephemeral' }`). The H16 + H23 mini-session closed the last two actionable Highs: H16 with a `prepTemplate` helper on `process-entity-audit.js` aligning all three deploy sites with the `generate-proposal.js` decode/substitute/re-encode pattern, and H23 with chat.js scope reduction (drop clientIndex on deep-dive) plus a 2-block system-prompt array with `cache_control: { type: 'ephemeral' }` on the static prefix. H29 infra-check surfaced 4 unresolved design questions and was deferred. H36 (8th `getDelegatedToken` copy in `convert-to-prospect.js`, discovered during B.1 verification) closed as Group D pre-task. `authenticator_secret_key` null-on-all-rows investigation resolved: `SENSITIVE_FIELDS` includes it; the null state just means no 2FA setup has been saved yet through the admin UI. Not a bug.
 
-~64 findings remain. None of them are attack chains of the same severity as C1-C9, and no actionable Highs are left. What's left is hardening, consistency, and observability polish.
+~50 findings remain. None of them are attack chains of the same severity as C1-C9, no actionable Highs are left, and the entire Group B shared-library extraction is now closed. What's left is 21 open Lows (several plausibly stale after Groups A-G), 6 Nits, ~22 Mediums (many also plausibly stale), and H29 waiting on design.
 
 ---
 
@@ -31,16 +31,16 @@ All 9 Criticals closed. **Thirty-five Highs closed** (H1, H2, H3, H4, H5, H6, H7
 
 **Group A done.** 8 findings closed (6 Highs + 1 Medium + 1 Medium-partial). Pattern established: `monitor.logError(route, err, { client_slug, detail: { stage, ... } })` server-side + generic user-facing response. Replicated cleanly across 6 files in two sessions.
 
-### Group B — Shared library extraction (2-3 sessions, mechanical)
+### Group B — Shared library extraction ✅ COMPLETE
 
 | ID | Issue | Status |
 |---|---|---|
 | H21 + N6 | 7 copies of `getDelegatedToken` → extract `_lib/google-auth.js` with caching | ✅ closed — helper landed `7adedb6`; 5 duplicates migrated in `17d0ae8`, `4e77e55`, `568a868`, `d592381`, `1d9c835` (Group B.1) |
 | H4, H24, M10, M16 | `fetch()` without AbortController — extract `fetchWithTimeout` helper | ✅ closed — helper landed `12c805f`; H4 `f2a1b70`, H24 `0163f65`, M10 `274f273`, M16 `0d2c56d` + `2512c46` (Group B.2) |
-| Pattern 12 | Migrate ~30 inline Supabase fetches in 5 big files to `sb.query`/`sb.mutate` | 1-2 sessions |
-| H30, L7, L8, L22 | Duplicated helpers (Fathom dedup, Resend events, sbGet) | H30 ✅ closed (subsumed by H21 migration — Gmail/Fathom now share token cache); L8 ✅ closed; L7 + L22 open |
+| Pattern 12 + L1 + L22 | Repo-wide migration of inline Supabase fetches to `sb.query`/`sb.mutate` | ✅ closed — 22 commits `5af2619` → `8e523ce` across 21 files / ~88 call sites (Group B.3) |
+| H30, L7, L8, L22 | Duplicated helpers (Fathom dedup, Resend events, sbGet) | H30 ✅ closed (subsumed by H21); L8 ✅ closed; L22 ✅ closed (Group B.3); L7 open |
 
-**Status:** Group B.1 (H21 migration) and Group B.2 (AbortController extraction) complete — see retrospectives below. Remaining Group B work is the repo-wide Supabase helper migration (Group B.3).
+**Status:** All three Group B sub-sessions complete. Group B.1 (H21 migration), Group B.2 (AbortController extraction), and Group B.3 (Supabase helper migration) — see retrospectives below.
 
 ### Group C — Template/email escape defaults ✅ COMPLETE
 
@@ -139,23 +139,22 @@ Items I recommend marking "won't fix" or "needs design":
 
 ## Recommended next session
 
-**Group B.3 — Supabase helper migration (Pattern 12 sweep).**
+**Group I — Lows + Nits reconciliation sweep.**
 
 Reasoning:
 - All non-deferred Highs are closed. H29 waits on the 4 design decisions captured in the Group G batch 2 retrospective; no code session will move it forward until those land.
-- The audit is now out of attack-chain territory. What remains is consistency and polish work, and the single biggest remaining mechanical-cleanup is the ~30 inline `fetch(sb.url() + '/rest/v1/...')` sites still present outside the four files Group B.2 swept. L1 explicitly flags `generate-proposal.js:62,80` plus additional sites; Pattern 12 is also called out in "Patterns to fix systemically" in the audit.
-- The helper surface is already there (`sb.query`, `sb.mutate`, `sb.one`, all timeout-backed via `_lib/fetch-with-timeout` since H4). Migration is value-per-effort-positive and compounds with the B.2 work already banked.
-- Group I (Lows + Nits reconciliation sweep) is also defensible. Several Lows are plausibly stale after Phase 4 + Groups A-G; a 1-session verify-and-fix pass would close that tail. B.3 has clearer scope, so it reads like higher value next.
+- All three Group B sub-sessions (B.1 google-auth, B.2 fetchWithTimeout, B.3 Supabase helper migration) are closed. The audit is now out of attack-chain *and* out of shared-library-extraction territory.
+- What remains is 21 open Lows (several plausibly stale after Phase 4 + Groups A–G) and 6 Nits. A single reconciliation sweep can mark stale entries as verified-fine, fix the ≤10-line remainders, and leave a clean tail.
+- Group H (M1 Stripe metadata) still waits on product decision; same for M19 / M37 / M39.
 
 Recommended sequence:
 
-1. **Group B.3 Supabase helper migration** (1-2 sessions) — sweep remaining Pattern 12 call sites
-2. **Group I Lows + Nits sweep** (1 session) — reconcile stale Lows, close ≤10-line remainders
-3. **H29 design session** (whenever ready to make the 4 decisions) closes H29
-4. **Group H M1 Stripe metadata** (once dashboard metadata is added)
-5. **M19, M37, M39** product-decision items, fold in when ready
+1. **Group I Lows + Nits sweep** (1 session) — reconcile stale Lows, close ≤10-line remainders
+2. **H29 design session** (whenever ready to make the 4 decisions) closes H29
+3. **Group H M1 Stripe metadata** (once dashboard metadata is added)
+4. **M19, M37, M39** product-decision items, fold in when ready
 
-Approximately 2-3 sessions to fully clear the audit, or stop here with "every non-deferred High resolved" as a clean finish line.
+Approximately 1-2 sessions to fully clear the audit, or stop here with "every non-deferred High closed + Pattern 12 fully swept" as a clean finish line.
 
 ## Executed prompt — Group G batch 1 (historical, for reference)
 
@@ -511,6 +510,59 @@ Out of scope for Group B.2 (flagged for future):
 - `api/_lib/google-drive.js` (has bespoke fetch + caching) — tracked under N6.
 - Chat/streaming endpoints (`agreement-chat.js`, `content-chat.js`, `proposal-chat.js`, `report-chat.js`, `generate-content-page.js` NDJSON) — they stream with their own retry; not in B.2's list.
 
+## Group B.3 — Supabase helper migration (Pattern 12 repo-wide sweep) ✅ COMPLETE (2026-04-18)
+
+Full repo-wide migration of every server-side bare `fetch(sb.url() + '/rest/v1/…')` call site to `sb.query` / `sb.mutate` / `sb.one`. 22 file-level commits, 21 files, ~88 call sites, all READY on first Vercel build. Closes L1, L22, and the long-running Pattern 12 systemic finding. Final repo-wide grep confirms zero remaining server-side direct-REST Supabase fetches.
+
+Commits landed on main (biggest-first):
+
+- `5af2619` — **generate-content-page.js** (12 sites; dropped unused `var headers = sb.headers()`)
+- `bbf19a7` — **seed-content-pages.js** (9 sites; **also collapsed a pre-existing duplicate `var sb = require('./_lib/supabase')` at L21/L23**)
+- `1a2b78c` — **activate-reporting.js** (6)
+- `c530220` — **bootstrap-access.js** (5)
+- `1004858` — **convert-to-prospect.js** (5)
+- `25d7f99` — **discover-services.js** (5; **also fixed a latent `ReferenceError: headers is not defined` in `upsertReportConfig` — the PATCH and POST branches referenced a bare `headers` ident that was never defined in the function scope. Every "save discovered service" call (4 callers at L102/L156/L192/L240) had been throwing and getting swallowed into a 500 on the caller. The migration to `sb.mutate` needs no headers arg, so the fix landed as a side-effect**)
+- `f54ee19` + `1f78fa2` — **enrich-proposal.js** (4 + 3 sites; the follow-up commit caught 3 multi-line sites the first pass missed)
+- `4fca6e2` — **cron/enqueue-reports.js** (4; dropped unused `var headers`)
+- `994dc7f` — **cron/process-queue.js** (**5** sites; pre-verified 4, one multi-line at L26-29 surfaced in-session; dropped unused `sbHeaders`)
+- `0a0fc1a` — **generate-followups.js** (4)
+- `d4955c5` — **generate-proposal.js** (3 server-side sites; the client-side `track_proposal_view` IIFE at L532 embedded in a template literal is intentionally preserved — runs in browser with anon-key JWT, can't use `sb.query`)
+- `d634663` — **content-chat.js** (**4** sites in `fetchPageContext` helper; pre-verified 3, one multi-line at L157-160 surfaced; stream retry loop untouched per scope-fence)
+- `48d44ec` — **trigger-batch-audit.js** (**4** sites; pre-verified 3, one multi-line at L72-76 surfaced)
+- `a48df07` — **delete-client.js** (2 sites in the DELETE cascade loop; per-table `ok: true/false` reporting preserved by wrapping each `sb.mutate` in its own try/catch)
+- `5495019` — **process-batch-synthesis.js** (**2** sites; pre-verified 1, one multi-line at L48-52 surfaced)
+- `aa53037` — **generate-audit-followups.js** (**3** sites; pre-verified 1, two multi-line at L31-35 and L43-47 surfaced)
+- `be72b93` — **cron/process-followups.js** (**5** sites; pre-verified 1, four multi-line surfaced; **also simplified `patchRecord(sbUrl, sbHeaders, table, id, data)` → `patchRecord(table, id, data)` since the first two params were dead (shadowed by closure-captured `sb`); also collapsed a local `sbHeaders` function and an unused `sbKey` var**)
+- `2464454` — **digest.js** (4 call sites + **deleted the `sbGet` helper — closes L22**)
+- `c9a7759` — **proposal-chat.js** (2 sites in `fetchProposalByContactId` helper; same scope-fence pattern as content-chat — data loader outside stream retry loop, safe to migrate)
+- `1759a55` — **ingest-surge-content.js** (2 sites; dropped unused `sbHeaders`)
+- `8e523ce` — **cron/process-batch-pages.js** (3 sites across main handler + `checkBatchComplete` helper)
+
+Final doc update: `5b184db` — marks L1 and L22 resolved in `api-audit-2026-04.md` with full Resolution blocks, updates Pattern 12 entry, adds resolution log row, bumps Lows 5 → 7 resolved.
+
+Net result:
+- **L1 resolved.** L22 resolved (folded into the digest.js migration). Pattern 12 closed.
+- Tallies: **Lows 7 / 28 resolved (21 open). Total ≥68 resolved / ≤50 open across 118 findings.**
+- All 22 code commits went straight to READY on first Vercel build. Zero rollbacks, zero amend-for-syntax commits.
+
+Process note — multi-line grep drift:
+- The session-prompt pre-verification used the single-line regex `fetch(sb.url()\|fetch(.*rest/v1/\|SUPABASE_URL.*rest/v1` which returned 74 matches across 18 files. That systematically undercounted because many call sites split the `fetch(` and the `sb.url() + '/rest/v1/...'` argument across two lines — these don't match a single-line pattern.
+- A follow-up multi-line Python walker (pair `await fetch(` on one line with `sb.url() + '/rest/v1/...'` on the next 1–4 lines, exclude `fetchT`) surfaced **16 additional sites** missed by the single-line grep: 1 in `cron/process-queue`, 1 in `content-chat`, 2 in `trigger-batch-audit`, 1 in `process-batch-synthesis`, 2 in `generate-audit-followups`, 4 in `cron/process-followups`, 3 in `enrich-proposal`, 2 in `proposal-chat`, 2 in `ingest-surge-content`, 3 in `cron/process-batch-pages`.
+- 4 additional files outside the pre-verified 17 were discovered this way — all migrated in-session. Future Pattern-12-style sweeps should run both the single-line grep AND the multi-line walker.
+
+Behavior-preservation notes:
+- `sb.mutate` throws on PostgREST 4xx/5xx; raw `fetch` did not. Each migrated site was classified by its prior error shape: status flips / decorative `activity_log` writes / fire-and-forget PATCHes were wrapped in inner `try/catch` to preserve silent-fail; sites that previously threw custom error strings kept their outer throw shape with only the interior prefix changing to `Supabase mutate error:`.
+- `seed-content-pages.js` had silent-partial-failure semantics (a mid-loop `createDel` returned a non-array on error, `result[0]` was undefined, loop continued). Migration makes it strict: any error aborts with 500. Idempotent seed (pageExists/findDel dedup on retry) makes this correct but is a real behavior change — watch first retries.
+- `activate-reporting.js` "campaigns created but failed to store keys" 500 path now surfaces `sb.mutate`'s `"Supabase mutate error: <postgrest msg>"` prefix instead of the raw PostgREST response body; same Pattern-7 leak shape, no worse, kept as-is for behavior preservation (Pattern 7 cleanup is Group I / future session).
+- `content-chat.js` and `proposal-chat.js` are scope-fenced streaming endpoints. In both cases the migrated call sites were inside clean data-loader helpers (`fetchPageContext`, `fetchProposalByContactId`) called once per request, outside the NDJSON stream loop and its retry/heartbeat logic. Stream loops not touched.
+- The single-line grep's first hit for `api/digest.js:145` was the `sbGet` helper's internal fetch — the function itself was Pattern 12. Migrating the 4 callers and deleting the helper closed both L1 and L22 simultaneously.
+- 3 dead helper-param cleanups opportunistically landed alongside the migrations: `patchRecord(sbUrl, sbHeaders, ...)` simplified in `cron/process-followups.js`; `var sbHeaders = sb.headers(...)` vars removed from 6 files after the migrated sites no longer needed them; `var sbKey = process.env.SUPABASE_SERVICE_ROLE_KEY` removed from `cron/process-followups.js` (dead after the local `sbHeaders` function got deleted).
+
+Out of scope for Group B.3 (flagged for future):
+- `fetchT(sb.url() + '/rest/v1/...')` sites — a handful of files already have the timeout wrapper from B.2 but still construct direct PostgREST URLs instead of using `sb.query`/`sb.mutate`. Final repo-wide sweep shows zero of these remain in scope: `analyze-design-spec.js`, `search-stock-images.js`, `onboarding-action.js`, `action.js` all legitimately use `sb.url() + '/rest/v1/'` as URL construction for their own custom routing layers (action.js / onboarding-action.js are the generic mutation-API handlers themselves). No separate L29 filing needed.
+- `api/_lib/google-drive.js` bespoke fetch + caching — tracked under N6, untouched.
+- Chat/streaming endpoints' stream loops (`agreement-chat.js`, `report-chat.js`) — no Supabase fetches to migrate inside those loops.
+
 ## Group D — AI prompt injection hardening ✅ COMPLETE (2026-04-17)
 
 Five findings closed across the Claude-prompting code paths. Pattern: `sanitizer.sanitizeText(value, maxLen)` applied at field source where possible; bracketed `=== ... === / === END SOURCE MATERIAL ===` delimiter framing added around large untrusted blobs.
@@ -835,7 +887,7 @@ Then doc update:
     like better value at the time.
 ```
 
-## Prompt for next session (Group B.3 — Supabase helper migration)
+## Executed prompt — Group B.3 (historical, for reference)
 
 ```
 Group B.3 — Pattern 12 Supabase helper migration. Sweep the remaining
@@ -914,6 +966,126 @@ Then doc updates:
   - post-phase-4-status.md: mark Group B.3 complete with a
     retrospective mirroring B.2's shape, update tallies, point next
     session at Group I (Lows + Nits reconciliation sweep).
+```
+
+## Prompt for next session (Group I — Lows + Nits reconciliation sweep)
+
+```
+Group I — Lows + Nits reconciliation sweep. With Pattern 12 closed by
+Group B.3 and all non-deferred Highs resolved, what remains is the
+cleanup tail: 21 open Lows (L2, L3, L4, L5, L6, L7, L9, L10, L11, L12,
+L13, L15, L17, L18, L19, L20, L21, L23, L24, L25, L28) and 6 Nits
+(N1-N6). The theme of this session is reconciliation first, fixes
+second: several of these entries are plausibly stale after Groups A-G
+and Phase 4.
+
+Read docs/api-audit-2026-04.md Low and Nit sections; then read
+docs/post-phase-4-status.md for the full group history.
+
+─────────────────────────────────────────────────────────────────────
+Pre-verification required at session start
+─────────────────────────────────────────────────────────────────────
+
+Confirm Group B.3 landed on main before starting:
+  - Repo-wide grep: `grep -rn "fetch(sb.url()" api/ | grep -v "^api/_lib/supabase.js"`
+    should return zero server-side results (only the client-side
+    template-literal IIFE at api/generate-proposal.js:532 should match
+    against a broader `SB+'/rest/v1/'` search).
+  - docs/api-audit-2026-04.md should show L1 and L22 marked
+    ✅ RESOLVED with Resolution blocks referencing the 22 Group B.3
+    commits.
+
+If either doesn't match expected state, pause and investigate.
+
+─────────────────────────────────────────────────────────────────────
+Scope — reconciliation pass
+─────────────────────────────────────────────────────────────────────
+
+Walk each open Low and Nit in order. For each one:
+
+1. READ the finding in docs/api-audit-2026-04.md.
+2. READ the code at the cited line number on current main.
+3. CLASSIFY into one of three buckets:
+
+   (a) Already fixed by a previous group. Mark ✅ RESOLVED with a
+       Resolution block referencing the earlier commit that closed it
+       and a one-line justification.
+
+   (b) Small fix, ≤10 lines of code. Migrate, test via node --check
+       and Vercel deploy status, mark ✅ RESOLVED.
+
+   (c) Non-trivial or product-decision-gated. Leave open, add a
+       "Current state (2026-04-18)" note under the finding so the
+       next reader doesn't re-read the same code to re-diagnose.
+
+Don't force (b) if the fix isn't actually small. The reconciliation
+into (a) or the note into (c) is the primary value of this session;
+code changes are a bonus.
+
+─────────────────────────────────────────────────────────────────────
+Known reconciliation candidates (likely bucket (a))
+─────────────────────────────────────────────────────────────────────
+
+Some of these are likely already closed by earlier groups. Verify on
+current main before deciding:
+
+  - L3 (`var`-style declarations) — already on the "won't-fix-now"
+    list. Mark as intentional and skip.
+  - L13 (hardcoded asset URLs) — on the "won't-fix-now" list.
+  - L15 (long-exp anon key) — on the "won't-fix-now" list; RLS is
+    the control.
+  - L17 (generate-proposal.js customPricing.amount_cents null check)
+    — Group C commit `aabdac1` added `Number.isFinite` guards; verify.
+  - L19 (enrich-proposal hardcoded personal-email domain blocklist)
+    — likely still present but inconsequential; decide fix or note.
+  - L20 (compile-report.js "14 inlined Supabase fetches") — should
+    be fully closed by Group B.2 `0163f65`. Verify and mark ✅.
+  - L23 (newsletter-generate stripEmDashes six-step replace chain)
+    — cosmetic; decide.
+  - L24 (send-audit-email.js wrong calendar URL?) — verify the URL
+    against the canonical "moonraker-free-strategy-call" memory.
+  - L28 (chat.js anthropic upstream error body pass-through) — known,
+    tracked as "fold into future ops-batch session"; this is that
+    session.
+
+Bucket (b) candidates (≤10 lines):
+  - N1 (sb.one returns null on error-shape) — likely a small fix in
+    api/_lib/supabase.js.
+  - N3 (monitor.js slug newline injection) — likely a small fix.
+
+Remaining L/N entries: walk each, classify, reconcile, or note.
+
+─────────────────────────────────────────────────────────────────────
+Deliverables
+─────────────────────────────────────────────────────────────────────
+
+Commit shape depends on what each reconciliation produces. Expect
+several doc-only commits (bucket (a) and (c)) and maybe 2-5 code
+commits (bucket (b)). Each code commit should be one file typically.
+
+Doc updates at the end:
+  - api-audit-2026-04.md: every L and N entry should either be
+    ✅ RESOLVED with a Resolution block OR have a "Current state
+    (2026-04-18)" note. Update running tallies accordingly.
+  - post-phase-4-status.md: add Group I retrospective mirroring
+    B.3's shape (what got reconciled to (a), what small code fixes
+    landed for (b), what stays open with updated notes for (c)).
+    Update "Where the audit stands" summary.
+
+If the session reveals anything new (a latent bug, a pattern worth
+extracting), file it with a fresh ID per the usual rule (continue
+numbering; next Low is L29, next Nit is N7) and decide bucket (b) or
+(c) for this session vs a future one.
+
+─────────────────────────────────────────────────────────────────────
+Session theme check
+─────────────────────────────────────────────────────────────────────
+
+If you find yourself wanting to refactor something substantial (> 30
+lines, or introducing a new helper, or touching multiple files for
+one finding), STOP — that's bucket (c) territory. Note it and move
+on. The point of Group I is to close out the tail, not start a new
+extraction project.
 ```
 
 ## Closing thought on the grouping approach
