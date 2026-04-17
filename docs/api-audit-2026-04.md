@@ -131,14 +131,20 @@ Then in `generate-content-page.js`:
 
 ## High
 
-### H1. `api/_lib/auth.js:160` — `_profileCache` has no TTL
+### H1. `api/_lib/auth.js:160` — `_profileCache` has no TTL ✅ RESOLVED
 Module-scoped cache persists across warm invocations (up to 15min). Removing an admin from `admin_profiles` has no effect until cold start. Add 60s TTL or drop the cache.
 
-### H2. Same filter-injection bug in `api/onboarding-action.js:81-93` (public) and `api/action.js:82-94` (admin)
+**Resolution (2026-04-18, commit `6e8a51a`, Group G batch 1):** `_profileCache` entries now store `{ profile, fetched_at }` with a 60s TTL (`PROFILE_CACHE_TTL_MS = 60000`). `getAdminProfile` checks `Date.now() - cached.fetched_at < PROFILE_CACHE_TTL_MS`; on miss or expiry, it re-queries `admin_profiles` and refreshes the cache entry. A deleted admin now loses access within 60s instead of persisting until the Vercel instance cold-starts. SELECT extended to include `last_login_at` so the M2 throttle (same commit) can read from cache without an extra DB round-trip. Bundled with M2 because both changes touch `_profileCache` and need to land atomically.
+
+### H2. Same filter-injection bug in `api/onboarding-action.js:81-93` (public) and `api/action.js:82-94` (admin) ✅ RESOLVED
 Same `buildFilter` helper duplicated in both files. Fix together via shared `_lib/postgrest-filter.js`.
 
-### H3. `api/_lib/auth.js:143-145` — `rawToDer()` dead code with misleading comment
+**Resolution (2026-04-17, commit `e00be4c`, Phase 4 S5, doc-marked in Group G batch 1):** Closed incidentally by the C4 remediation work. `api/_lib/postgrest-filter.js` was extracted with an operator allowlist and per-value `encodeURIComponent`, then wired into both `api/action.js` (three call sites at L60, L96, L132 via `pgFilter.buildFilter(filters)`) and `api/onboarding-action.js` (two call sites at L95, L105). Both files' inline `buildFilter` declarations were deleted. The dedup plus the hardening landed in the same commit — no remaining duplication and no remaining injection surface. Verified on current `main` during the Group G batch 1 walkthrough: the helper module exists, both handlers require it, and neither file defines a local `buildFilter`.
+
+### H3. `api/_lib/auth.js:143-145` — `rawToDer()` dead code with misleading comment ✅ RESOLVED
 Function returns input unchanged; `derSig` assignment is ignored. Comment claims ES256 needs DER, but `dsaEncoding: 'ieee-p1363'` handles it natively. Delete.
+
+**Resolution (2026-04-18, commit `f1c0d22`, Group G batch 1):** Deleted the `var derSig = rawToDer(signature);` assignment and its two-line misleading comment block at the call site, plus the `function rawToDer(raw) { return raw; }` declaration and its comment block below `verifyJwt`. Both `nodeCrypto.verify` calls at the original L111 and L123 were already passing the unconverted `signature` buffer — the dead variable never reached them. No behavioral change. Grep-verified no `rawToDer`/`derSig` references remain in the file after the edit.
 
 ### H4. `api/_lib/supabase.js` — no fetch timeout/retry ✅ RESOLVED
 `query()` and `mutate()` have no `AbortController`. PostgREST hang burns full function budget. Wrap in AbortController with 10s default + 1 retry with exponential backoff for 5xx.
@@ -205,10 +211,16 @@ Same pattern as chat endpoints. `curl` sends no Origin, passes.
 ### H16. `api/process-entity-audit.js:462, 492, 541` — template deployed without placeholder substitution
 `content: tmplData.content.replace(/\n/g, '')` pushes template verbatim. If template uses `{{SLUG}}` or `{{PRACTICE_NAME}}` placeholders expecting server-side substitution, deployed page shows literal placeholders. Verify pattern vs proposal template.
 
-### H17. `api/process-entity-audit.js:570-575` — internal auth fallback pattern unsafe
+### H17. `api/process-entity-audit.js:570-575` — internal auth fallback pattern unsafe ✅ RESOLVED
 `var internalAuth = process.env.CRON_SECRET || process.env.AGENT_API_KEY || '';` — falls back to empty string; downstream call to `send-audit-email` gets `Authorization: Bearer ` which fails closed. But the pattern of OR'ing server secrets is wrong shape — hard-require at module load.
 
 Line 599 onwards embeds `contact.first_name`, `contact.last_name` in notification email HTML without escaping. Free-audit contacts come from `submit-entity-audit.js` (public). Malicious submitter → injected HTML in team notification emails.
+
+**Resolution (2026-04-18, commit `7f094dc`, Group G batch 1):** Both sub-issues closed in one commit.
+
+**Sub 1 (auth):** The `CRON_SECRET || AGENT_API_KEY || ''` chain at L550 replaced with an explicit `process.env.AGENT_API_KEY` read and a `throw new Error('AGENT_API_KEY not configured — cannot call send-audit-email')` guard. The route is only invoked from the agent callback path (not a cron), so AGENT_API_KEY is the deliberate identity and CRON_SECRET was never semantically correct for this call. The throw lands inside the existing try/catch, which emits `step: 'auto_send_warning'` with the error text so the manual-send fallback kicks in. Env regression now produces a visible per-audit warning instead of a silent 401 at send-audit-email.
+
+**Sub 2 (HTML injection):** Added `var sanitizer = require('./_lib/html-sanitizer')` at the top of the file alongside the other `_lib` imports. Both notification email bodies (premium-review at L579-585 and quarterly at L623-628) now wrap every interpolated variable in `sanitizer.sanitizeText()` at reasonable length caps: `contact.first_name`/`contact.last_name` 100, `practiceName` 200, `audit.audit_period` 50, `cresScore` 20 (via `String(cresScore)`). `auditId` uses `encodeURIComponent` inside the `<a href="...audit-...">` URLs because `sanitizeText` would strip the hyphens a UUID needs. `varianceHtml` left raw because it's built from server-computed numeric scores and percentage deltas via `fmtDelta()` — no user-controlled surface. Subject lines also sanitized since Resend renders them in the team inbox's HTML preview. Scope fence held: the file has other HTML-emitting sites (scorecard page template read/substitute/push around L419-538) but those are out of H17's stated scope — any additional interpolation-safety findings there should file separately per the session prompt.
 
 ### H18. `_lib/newsletter-template.js:53, 55, 58, 66, 68, 218-231` — untrusted content rendered unescaped ✅ RESOLVED
 Story `body`, `headline`, action items, quick wins, `finalThoughts` all inserted raw. If AI generation glitch produces malformed HTML, breaks every subscriber's layout. Compromised admin JWT could inject HTML into emails to all subscribers.
@@ -343,8 +355,10 @@ Also noted: a stray `var auth = require('./_lib/auth');` at line 182 inside the 
 3. Change detection logic in stripe-webhook.js to prefer `session.metadata.product` with a fallback to the current amount check for backward compat with any events already in flight.
 4. After observing metadata-based detection work for ~30 days, remove the amount fallback.
 
-### M2. `api/_lib/auth.js:199-204, 253-259` — `last_login_at` updated every request
+### M2. `api/_lib/auth.js:199-204, 253-259` — `last_login_at` updated every request ✅ RESOLVED
 Every authenticated API call PATCHes `admin_profiles`. 29+ admin routes × 3-5 calls/page = PATCH/second during normal use. Update only on actual login, or throttle to >60s since last update.
+
+**Resolution (2026-04-18, commit `6e8a51a`, Group G batch 1):** New `maybeUpdateLastLogin(userId)` helper replaces the inline fire-and-forget PATCH blocks in both `requireAdmin` and `requireAdminOrInternal`. Reads `last_login_at` from the (now TTL-cached, see H1) admin profile without a DB round-trip, skips the PATCH if `Date.now() - prevTs < LAST_LOGIN_THROTTLE_MS` (60s), and updates the cache in-place *before* firing so concurrent same-window calls short-circuit cleanly. Fire-and-forget `.catch(function(){})` shape preserved — the PATCH is still non-critical and a failure should not block the request. Under normal use this collapses from ~PATCH/second per active admin to at most 1 PATCH/min/admin. Trade-off: up to 60s of missed `last_login_at` granularity, which matches the explicit threshold called out in the finding. Bundled with H1 in one commit because both touch `_profileCache` and the M2 fix depends on H1's SELECT extension.
 
 ### M3. `api/action.js:24` — 40+ tables allowlisted with no action granularity
 `signed_agreements`, `payments`, `workspace_credentials`, `settings`, `error_log` all mutable. Shape allowlist as `{ table, actions: ['read','create'] }`. `signed_agreements` and `payments` read-only via this endpoint. `workspace_credentials` requires elevated role.
@@ -408,8 +422,12 @@ Template reads, destination checks, pushes, Claude API call on line 197. Hung fe
 ### M17. `api/process-entity-audit.js` — 15+ inlined Supabase fetches bypass `_lib/supabase.js`
 Biggest holdout of consistency pattern.
 
-### M18. `api/process-entity-audit.js:388` — composite checklist_items ID uses first 8 hex chars
+### M18. `api/process-entity-audit.js:388` — composite checklist_items ID uses first 8 hex chars ✅ RESOLVED
 Birthday collision around 65K audits. Use full UUID or index-based synthetic id.
+
+**Resolution (2026-04-18, commits `e092cae` + `4fb46a7`, Group G batch 1):** `checklist_items.id` column verified as `text` via `information_schema` (no length constraint). Existing data verified safe: 1875 rows across 80 distinct 8-char prefixes, no current collisions, uniform 12-char ids (confirms the pattern was consistent). No downstream code parses the prefix — every reader accesses rows by `client_slug` or `audit_id`, and the one direct-id read (`_templates/progress.html:316`) treats it as opaque. Fix switches from `auditId.substring(0, 8) + '-' + idx.padStart(3, '0')` to `auditId + '-' + idx.padStart(3, '0')` — 44-char composite (40 UUID + dash + 3 digits). Only affects new rows; existing 12-char ids remain valid.
+
+**Sister site closed in same group:** `api/setup-audit-schedule.js:124` had the identical copy-pasted pattern (lead-to-client conversion path that explodes the audit's `tasks` JSONB into `checklist_items` rows). Fixed in `4fb46a7` with the same substitution. Same collision surface, same column, same bug — closing only one writer would have left the collision risk open. The audit finding was scoped to `process-entity-audit.js` but the second site emits into the same table and the shape was byte-identical.
 
 ### M19. `api/process-entity-audit.js:568-582` — webhook race with auto-send email
 Stripe webhook upgrading `audit_tier` to premium can race with agent callback auto-sending free scorecard. Free email goes out → webhook flips to premium → premium Loom flow never triggers.
@@ -709,12 +727,12 @@ _(Brought forward from Phase 7 since Chris chose "ship now" over "wait for traff
 ## Running tallies
 
 - **Critical:** 9 total (C1–C9). **Resolved: 9 ✅** (all).
-- **High:** 36 total (H1–H36). **Resolved: 27** (H4, H5, H7, H8, H9, H10, H11, H12, H14, H15, H18, H19, H20, H21, H22, H24, H25, H26, H27, H28, H30, H31, H32, H33, H34, H35, H36). **Open: 9.**
-- **Medium:** 39 total (M1–M39; M39 added by Group F). **Resolved: 15** (M6, M8, M9, M10, M11, M12, M13, M14, M15, M16, M20, M22, M26, M30, M38; several more likely closed via Phase 4 action-schema work — needs verification sweep). **Open: ~24.**
+- **High:** 36 total (H1–H36). **Resolved: 31** (H1, H2, H3, H4, H5, H7, H8, H9, H10, H11, H12, H14, H15, H17, H18, H19, H20, H21, H22, H24, H25, H26, H27, H28, H30, H31, H32, H33, H34, H35, H36). **Open: 5.**
+- **Medium:** 39 total (M1–M39; M39 added by Group F). **Resolved: 17** (M2, M6, M8, M9, M10, M11, M12, M13, M14, M15, M16, M18, M20, M22, M26, M30, M38; several more likely closed via Phase 4 action-schema work — needs verification sweep). **Open: ~22.**
 - **Low:** 28 total (L1–L28). **Resolved: 5** (L8, L14, L16, L26, L27-documented-only). **Open: 23.**
 - **Nit:** 6 total (N1–N6). **Open: 6.**
 
-**Total: 118 findings. Resolved: ≥56. Open: ≤62.**
+**Total: 118 findings. Resolved: ≥62. Open: ≤56.**
 
 ### Resolution log
 | Finding | Commit / Session | Date |
@@ -766,6 +784,11 @@ _(Brought forward from Phase 7 since Chris chose "ship now" over "wait for traff
 | H32 | `898dd621` (digest.js — recipients[] @moonraker.ai allowlist after required-fields validation, Group F) | 2026-04-18 |
 | M12 | `2ce32b89` (manage-site.js — strict FQDN regex after normalization, rejects port/path/userinfo/query, Group F) | 2026-04-18 |
 | M20 | `d36e6577` (newsletter-unsubscribe.js — sb.one existence check before PATCH, success response regardless of membership, Group F) | 2026-04-18 |
+| H1 + M2 | `6e8a51a` (auth.js — 60s TTL on _profileCache, maybeUpdateLastLogin throttle helper replaces fire-and-forget PATCH in requireAdmin + requireAdminOrInternal, Group G batch 1) | 2026-04-18 |
+| H2 | `e00be4c` (Phase 4 S5 — extracted `_lib/postgrest-filter.js`, wired into action.js L60/L96/L132 and onboarding-action.js L95/L105; doc-marked 2026-04-18 in Group G batch 1) | 2026-04-17 |
+| H3 | `f1c0d22` (auth.js — delete rawToDer + derSig dead code, Group G batch 1) | 2026-04-18 |
+| M18 | `e092cae` (process-entity-audit.js — full auditId in checklist_items composite id) + `4fb46a7` (setup-audit-schedule.js same sister-site fix, Group G batch 1) | 2026-04-18 |
+| H17 | `7f094dc` (process-entity-audit.js — hard-require AGENT_API_KEY with loud throw, sanitizer.sanitizeText on every notification-email interpolation, encodeURIComponent on auditId href, Group G batch 1) | 2026-04-18 |
 
 Audit was performed across five sessions reading ~11,000 lines of API route code, the eight `_lib/` modules, relevant templates, and git history for secret leakage. Unread in detail: chat system prompt bodies (low-risk content), several `send-*-email.js` / `trigger-*` / `ingest-*` routes (expected to follow already-catalogued patterns), most `api/admin/*` read-only dashboard routes. The audit is considered comprehensive for Critical and High findings; Medium/Low/Nit counts would grow modestly with further reading.
 
