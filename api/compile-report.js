@@ -24,6 +24,7 @@ var auth = require('./_lib/auth');
 var monitor = require('./_lib/monitor');
 var google = require('./_lib/google-delegated');
 var sanitizer = require('./_lib/html-sanitizer');
+var fetchT = require('./_lib/fetch-with-timeout');
 
 
 module.exports = async function handler(req, res) {
@@ -86,31 +87,13 @@ module.exports = async function handler(req, res) {
     catch (e) { errors.push(label + ': ' + (e.message || String(e))); return null; }
   }
 
-  async function fetchT(url, opts, timeoutMs) {
-    timeoutMs = timeoutMs || 25000;
-    var controller = new AbortController();
-    var timer = setTimeout(function() { controller.abort(); }, timeoutMs);
-    try {
-      var mergedOpts = Object.assign({}, opts, { signal: controller.signal });
-      var resp = await fetch(url, mergedOpts);
-      clearTimeout(timer);
-      return resp;
-    } catch (e) {
-      clearTimeout(timer);
-      if (e.name === 'AbortError') throw new Error('Timeout after ' + timeoutMs + 'ms');
-      throw e;
-    }
-  }
-
   // ─── STEP 1: Load report config + contact ─────────────────────
   try {
-    var configResp = await fetch(sb.url() + '/rest/v1/report_configs?client_slug=eq.' + clientSlug + '&active=eq.true&limit=1', { headers: sb.headers() });
-    var configs = await configResp.json();
+    var configs = await sb.query('report_configs?client_slug=eq.' + clientSlug + '&active=eq.true&limit=1');
     if (!configs || configs.length === 0) return res.status(404).json({ error: 'No active report_config for ' + clientSlug });
     var config = configs[0];
 
-    var contactResp = await fetch(sb.url() + '/rest/v1/contacts?slug=eq.' + clientSlug + '&select=id,slug,first_name,last_name,practice_name,email,campaign_start,status,campaign_type', { headers: sb.headers() });
-    var contacts = await contactResp.json();
+    var contacts = await sb.query('contacts?slug=eq.' + clientSlug + '&select=id,slug,first_name,last_name,practice_name,email,campaign_start,status,campaign_type');
     if (!contacts || contacts.length === 0) return res.status(404).json({ error: 'Contact not found for ' + clientSlug });
     var contact = contacts[0];
   } catch (e) {
@@ -134,8 +117,7 @@ module.exports = async function handler(req, res) {
   // ─── STEP 1b: Load tracked keywords ───────────────────────────
   var trackedKeywords = [];
   try {
-    var kwResp = await fetch(sb.url() + '/rest/v1/tracked_keywords?client_slug=eq.' + clientSlug + '&active=eq.true&order=priority.asc,keyword.asc', { headers: sb.headers() });
-    var kwRows = await kwResp.json();
+    var kwRows = await sb.query('tracked_keywords?client_slug=eq.' + clientSlug + '&active=eq.true&order=priority.asc,keyword.asc');
     if (Array.isArray(kwRows) && kwRows.length > 0) {
       trackedKeywords = kwRows;
     }
@@ -170,9 +152,7 @@ module.exports = async function handler(req, res) {
   // ─── STEP 2: Load previous month snapshot for deltas ──────────
   var prevSnap = await safe('prev_snapshot', async function() {
     var pm = prevMonth(reportMonth);
-    var r = await fetch(sb.url() + '/rest/v1/report_snapshots?client_slug=eq.' + clientSlug + '&report_month=eq.' + pm + '&limit=1', { headers: sb.headers() });
-    var rows = await r.json();
-    return (rows && rows.length > 0) ? rows[0] : null;
+    return await sb.one('report_snapshots?client_slug=eq.' + clientSlug + '&report_month=eq.' + pm + '&limit=1');
   });
 
   // ─── STEPS 3-5: Pull all data sources IN PARALLEL ─────────────
@@ -210,10 +190,7 @@ module.exports = async function handler(req, res) {
       var corrected = await resolveGscProperty(token, config.gsc_property);
       if (corrected && corrected !== config.gsc_property) {
         // Update report_configs with the corrected property
-        await fetch(sb.url() + '/rest/v1/report_configs?client_slug=eq.' + clientSlug, {
-          method: 'PATCH', headers: sb.headers(),
-          body: JSON.stringify({ gsc_property: corrected, updated_at: new Date().toISOString() })
-        });
+        await sb.mutate('report_configs?client_slug=eq.' + clientSlug, 'PATCH', { gsc_property: corrected, updated_at: new Date().toISOString() });
         config.gsc_property = corrected;
         warnings.push('GSC: auto-corrected property from ' + oldProp + ' to ' + corrected);
 
@@ -568,8 +545,7 @@ module.exports = async function handler(req, res) {
 
   // --- 5. Tasks (unchanged) ---
   var taskFn = safe('tasks', async function() {
-    var taskResp = await fetchT(sb.url() + '/rest/v1/checklist_items?client_slug=eq.' + clientSlug + '&select=status', { headers: sb.headers() }, 10000);
-    var tasks = await taskResp.json();
+    var tasks = await sb.query('checklist_items?client_slug=eq.' + clientSlug + '&select=status');
     if (!Array.isArray(tasks)) return { total: 0, complete: 0, in_progress: 0, not_started: 0 };
     return {
       total: tasks.length,
@@ -593,16 +569,13 @@ module.exports = async function handler(req, res) {
 
   // Fetch CORE scores from entity_audits (fallback when prevSnap has none)
   var auditScores = await safe('entity_audits', async function() {
-    var resp = await fetch(sb.url() + '/rest/v1/entity_audits?client_slug=eq.' + clientSlug + '&order=audit_date.desc&limit=1&select=score_credibility,score_optimization,score_reputation,score_engagement,variance_score,cres_score', { headers: sb.headers() });
-    var rows = await resp.json();
-    return (Array.isArray(rows) && rows.length > 0) ? rows[0] : null;
+    return await sb.one('entity_audits?client_slug=eq.' + clientSlug + '&order=audit_date.desc&limit=1&select=score_credibility,score_optimization,score_reputation,score_engagement,variance_score,cres_score');
   });
 
   // Build citation_trend from historical snapshots
   if (aiData) {
     try {
-      var histResp = await fetch(sb.url() + '/rest/v1/report_snapshots?client_slug=eq.' + clientSlug + '&select=report_month,ai_visibility&order=report_month.asc&limit=12', { headers: sb.headers() });
-      var histRows = await histResp.json();
+      var histRows = await sb.query('report_snapshots?client_slug=eq.' + clientSlug + '&select=report_month,ai_visibility&order=report_month.asc&limit=12');
       if (Array.isArray(histRows)) {
         aiData.citation_trend = histRows.map(function(r) {
           var av = r.ai_visibility || {};
@@ -705,22 +678,14 @@ module.exports = async function handler(req, res) {
   // ─── STEP 9: Upsert snapshot to Supabase ──────────────────────
   var snapshotId = null;
   try {
-    var existResp = await fetch(sb.url() + '/rest/v1/report_snapshots?client_slug=eq.' + clientSlug + '&report_month=eq.' + reportMonth + '&limit=1', { headers: sb.headers() });
-    var existing = await existResp.json();
+    var existing = await sb.query('report_snapshots?client_slug=eq.' + clientSlug + '&report_month=eq.' + reportMonth + '&limit=1');
 
     if (existing && existing.length > 0) {
       snapshotId = existing[0].id;
       snapshot.updated_at = new Date().toISOString();
-      var updateResp = await fetch(sb.url() + '/rest/v1/report_snapshots?id=eq.' + snapshotId, {
-        method: 'PATCH', headers: sb.headers(), body: JSON.stringify(snapshot)
-      });
-      if (!updateResp.ok) throw new Error('PATCH failed: ' + (await updateResp.text()));
+      await sb.mutate('report_snapshots?id=eq.' + snapshotId, 'PATCH', snapshot);
     } else {
-      var insertResp = await fetch(sb.url() + '/rest/v1/report_snapshots', {
-        method: 'POST', headers: sb.headers(), body: JSON.stringify(snapshot)
-      });
-      if (!insertResp.ok) throw new Error('INSERT failed: ' + (await insertResp.text()));
-      var inserted = await insertResp.json();
+      var inserted = await sb.mutate('report_snapshots', 'POST', snapshot);
       snapshotId = Array.isArray(inserted) ? inserted[0].id : inserted.id;
     }
   } catch (e) {
@@ -732,52 +697,37 @@ module.exports = async function handler(req, res) {
   if (anthropicKey) {
     try {
       highlights = await generateHighlights(snapshot, prevSnap, practiceName, anthropicKey);
-      await fetch(sb.url() + '/rest/v1/report_highlights?client_slug=eq.' + clientSlug + '&report_month=eq.' + reportMonth, {
-        method: 'DELETE', headers: sb.headers()
-      });
+      try {
+        await sb.mutate('report_highlights?client_slug=eq.' + clientSlug + '&report_month=eq.' + reportMonth, 'DELETE');
+      } catch (e) { warnings.push('Highlights DELETE: ' + e.message); }
       if (highlights.length > 0) {
-        var hlResp = await fetch(sb.url() + '/rest/v1/report_highlights', {
-          method: 'POST', headers: sb.headers(), body: JSON.stringify(highlights)
-        });
-        if (!hlResp.ok) warnings.push('Highlights insert: ' + (await hlResp.text()));
+        try {
+          await sb.mutate('report_highlights', 'POST', highlights);
+        } catch (e) { warnings.push('Highlights insert: ' + e.message); }
       }
     } catch (e) {
       warnings.push('Highlight generation: ' + e.message);
       // Fallback: generate basic highlights from data
       highlights = buildFallbackHighlights(snapshot, practiceName);
       if (highlights.length > 0) {
-        await fetch(sb.url() + '/rest/v1/report_highlights?client_slug=eq.' + clientSlug + '&report_month=eq.' + reportMonth, {
-          method: 'DELETE', headers: sb.headers()
-        });
-        await fetch(sb.url() + '/rest/v1/report_highlights', {
-          method: 'POST', headers: sb.headers(), body: JSON.stringify(highlights)
-        });
+        try { await sb.mutate('report_highlights?client_slug=eq.' + clientSlug + '&report_month=eq.' + reportMonth, 'DELETE'); } catch (_e) {}
+        try { await sb.mutate('report_highlights', 'POST', highlights); } catch (_e) {}
       }
     }
   }
 
   // ─── STEP 11: Flip status to internal_review ──────────────────
   try {
-    var statusResp = await fetch(sb.url() + '/rest/v1/report_snapshots?id=eq.' + snapshotId, {
-      method: 'PATCH', headers: sb.headers(),
-      body: JSON.stringify({ report_status: 'internal_review', updated_at: new Date().toISOString() })
-    });
-    if (!statusResp.ok) {
-      var statusErr = await statusResp.text();
-      warnings.push('Status flip failed: ' + statusResp.status + ' ' + statusErr);
-    }
+    await sb.mutate('report_snapshots?id=eq.' + snapshotId, 'PATCH', { report_status: 'internal_review', updated_at: new Date().toISOString() });
   } catch (e) { warnings.push('Status flip: ' + e.message); }
 
   // ─── STEP 12: Update report_configs compile timestamp ─────────
   try {
-    await fetch(sb.url() + '/rest/v1/report_configs?id=eq.' + config.id, {
-      method: 'PATCH', headers: sb.headers(),
-      body: JSON.stringify({
-        last_compiled_at: new Date().toISOString(),
-        last_compiled_status: errors.length > 0 ? 'partial' : 'success',
-        last_compiled_errors: errors.concat(warnings.length > 0 ? warnings.map(function(w) { return 'WARN: ' + w; }) : []),
-        updated_at: new Date().toISOString()
-      })
+    await sb.mutate('report_configs?id=eq.' + config.id, 'PATCH', {
+      last_compiled_at: new Date().toISOString(),
+      last_compiled_status: errors.length > 0 ? 'partial' : 'success',
+      last_compiled_errors: errors.concat(warnings.length > 0 ? warnings.map(function(w) { return 'WARN: ' + w; }) : []),
+      updated_at: new Date().toISOString()
     });
   } catch (e) { /* non-fatal */ }
 
@@ -825,7 +775,7 @@ module.exports = async function handler(req, res) {
         footerNote: 'This is an internal notification for the Moonraker team.'
       });
 
-      var emailResp = await fetch('https://api.resend.com/emails', {
+      var emailResp = await fetchT('https://api.resend.com/emails', {
         method: 'POST',
         headers: { 'Authorization': 'Bearer ' + resendKey, 'Content-Type': 'application/json' },
         body: JSON.stringify({
@@ -834,17 +784,14 @@ module.exports = async function handler(req, res) {
           subject: 'Report Ready: ' + practiceName + ' - Month ' + campaignMonth,
           html: emailHtml
         })
-      });
+      }, 15000);
       notificationSent = emailResp.ok;
       if (!notificationSent) {
         var resendErr = await emailResp.text();
         warnings.push('Resend failed: ' + emailResp.status + ' ' + resendErr);
       }
       if (notificationSent) {
-        await fetch(sb.url() + '/rest/v1/report_configs?id=eq.' + config.id, {
-          method: 'PATCH', headers: sb.headers(),
-          body: JSON.stringify({ last_notified_at: new Date().toISOString() })
-        });
+        await sb.mutate('report_configs?id=eq.' + config.id, 'PATCH', { last_notified_at: new Date().toISOString() });
       }
     } catch (e) { warnings.push('Resend notification: ' + e.message); }
   }
@@ -930,9 +877,9 @@ async function resolveGscProperty(token, currentProp) {
     if (!domain) return null;
 
     // List all sites accessible to the service account
-    var sitesResp = await fetch('https://www.googleapis.com/webmasters/v3/sites', {
+    var sitesResp = await fetchT('https://www.googleapis.com/webmasters/v3/sites', {
       headers: { 'Authorization': 'Bearer ' + token }
-    });
+    }, 15000);
     if (!sitesResp.ok) return null;
     var sitesData = await sitesResp.json();
     var allSites = (sitesData.siteEntry || []).map(function(s) { return s.siteUrl; });
@@ -1029,7 +976,7 @@ async function generateHighlights(snapshot, prevSnap, practiceName, apiKey) {
 
   var claudeResp = null;
   for (var _attempt = 0; _attempt <= 2; _attempt++) {
-    claudeResp = await fetch('https://api.anthropic.com/v1/messages', {
+    claudeResp = await fetchT('https://api.anthropic.com/v1/messages', {
       method: 'POST',
       headers: { 'x-api-key': apiKey, 'anthropic-version': '2023-06-01', 'Content-Type': 'application/json' },
     body: JSON.stringify({
@@ -1037,7 +984,7 @@ async function generateHighlights(snapshot, prevSnap, practiceName, apiKey) {
       max_tokens: 1000,
       messages: [{ role: 'user', content: 'Generate exactly 3 report highlights for a client\'s monthly campaign report. Each highlight should be a win or milestone.\n\nIMPORTANT CONTEXT:\n- This is Month ' + snapshot.campaign_month + ' of an ongoing SEO campaign. Do NOT describe it as a new launch, first month, or initial setup unless campaign_month is 1.\n- The practice name is "' + practiceName + '". Use the practice name in highlights, not the owner\'s personal name.\n- Focus on concrete data points and month-over-month trends when previous data is available.\n\nMetrics:\n' + metricsContext + '\n\nReturn ONLY a JSON array (no markdown, no backticks) with 3 objects, each having:\n- icon: one of "chart-up", "phone", "bot", "target", "globe", "users", "check", "map-pin"\n- headline: short punchy headline (max 8 words, no em dashes)\n- body: 1-2 sentence explanation with specific numbers. ARP = Average Rank Position (lower is better, 1 is top). ATRP = Average Top Rank Position. SoLV = Share of Local Voice (higher is better, 100% means top position everywhere in the grid).\n- metric_ref: the primary metric referenced (e.g. "gsc_clicks", "gbp_rating", "ai_visibility", "maps_geogrid")\n- highlight_type: "win" or "milestone"\n\nPrioritize AI visibility data and geogrid/maps performance when available. Always include concrete numbers.' }]
       })
-    });
+    }, 60000);
     if (claudeResp.status !== 529) break;
     if (_attempt < 2) await new Promise(function(r) { setTimeout(r, Math.pow(2, _attempt) * 1000 + Math.random() * 500); });
   }
@@ -1147,6 +1094,7 @@ function ordinal(n) {
   var v = n % 100;
   return n + (s[(v - 20) % 10] || s[v] || s[0]);
 }
+
 
 
 
