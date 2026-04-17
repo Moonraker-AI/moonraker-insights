@@ -6,11 +6,11 @@
 var sb = require('./_lib/supabase');
 var auth = require('./_lib/auth');
 
-// SerpAPI Google search (news tab) - num=5 limits results at API level
+// SerpAPI Google search (news tab) - num=10 doubles raw candidate pool
 async function searchNews(query, apiKey) {
   var url = 'https://serpapi.com/search.json?engine=google' +
     '&q=' + encodeURIComponent(query) +
-    '&tbm=nws&num=5&tbs=qdr:m' +
+    '&tbm=nws&num=10&tbs=qdr:m' +
     '&gl=us&hl=en' +
     '&api_key=' + apiKey;
   try {
@@ -27,7 +27,7 @@ async function searchNews(query, apiKey) {
       if (item.title) {
         results.push({
           title: item.title,
-          snippet: (item.snippet || '').substring(0, 150),
+          snippet: (item.snippet || '').substring(0, 300),
           source: item.source || '',
           link: item.link || '',
           date: item.date || ''
@@ -101,7 +101,7 @@ module.exports = async function handler(req, res) {
       }
     }
 
-    // Deduplicate by URL
+    // Deduplicate by URL (within this run)
     var seen = {};
     var uniqueResults = [];
     for (var r = 0; r < allResults.length; r++) {
@@ -114,8 +114,21 @@ module.exports = async function handler(req, res) {
     var totalFound = uniqueResults.length;
     allResults = null; // free memory
 
+    // Pre-filter: remove URLs already used in previous editions BEFORE Claude sees them
+    // This prevents Claude from "wasting" picks on stories we'd just filter out after
+    var preFilterCount = uniqueResults.length;
+    uniqueResults = uniqueResults.filter(function(item) {
+      if (!item.link) return true;
+      var normalized = item.link.replace(/\/$/, '').toLowerCase();
+      return !existingUrls.has(normalized);
+    });
+    var preFilteredDups = preFilterCount - uniqueResults.length;
+    if (preFilteredDups > 0) {
+      console.log('Newsletter research: pre-filtered ' + preFilteredDups + ' candidate(s) already covered in previous editions');
+    }
+
     if (uniqueResults.length === 0) {
-      return res.status(500).json({ error: 'No search results found. SerpAPI may be rate-limited.' });
+      return res.status(500).json({ error: 'No fresh search results found (all candidates already covered in previous editions).' });
     }
 
     console.log('Newsletter research: ' + uniqueResults.length + ' unique results, sending to Claude');
@@ -123,7 +136,7 @@ module.exports = async function handler(req, res) {
     // Phase 2: Claude analyzes and curates
     var today = new Date().toISOString().split('T')[0];
 
-    var systemPrompt = 'You are a newsletter curator for Moonraker AI, serving therapy practice owners in the U.S. and Canada.\n\nFrom the search results, pick the 8-12 MOST RELEVANT stories. Write your own headlines.\n\nCRITERIA (meet at least 2): recent, has deadlines/dates, actionable for therapists, affects visibility/revenue/compliance, shows AI opportunity.\n\nTOPICS: GBP updates, Google algorithm changes, Medicare/telehealth policy, AI tools for therapists, HIPAA enforcement, FTC advertising, review platforms.\n\nAVOID: general AI news without therapist angle, medical/drug topics, speculation, duplicates.\n\nBALANCE: 70% compliance/risk, 30% AI opportunities.\n\nSORT: Return stories sorted by published_date DESCENDING (most recent first).\n\nToday: ' + today + '\n\nReturn ONLY a JSON array. No markdown, no backticks. Each object:\n{"headline":"...","summary":"2-3 sentences","source_url":"...","source_name":"...","published_date":"YYYY-MM-DD","relevance_note":"...","image_suggestion":"..."}';
+    var systemPrompt = 'You are a newsletter curator for Moonraker AI, serving therapy practice owners in the U.S. and Canada.\n\nFrom the search results, pick every story that is genuinely relevant. Aim for 8-12 but return fewer only if the pool is thin, and return more if more are strong. Do not force picks that do not fit, but do not leave strong stories on the table either. All candidates below are already fresh (not previously covered).\n\nWrite your own headlines in an engaging, practitioner-focused voice.\n\nCRITERIA (meet at least 2): recent, has deadlines/dates, actionable for therapists, affects visibility/revenue/compliance, shows AI opportunity.\n\nTOPICS: GBP updates, Google algorithm changes, Medicare/telehealth policy, AI tools for therapists, HIPAA enforcement, FTC advertising, review platforms.\n\nAVOID: general AI news without therapist angle, medical/drug topics, speculation, duplicates.\n\nBALANCE: lean 70% compliance/risk, 30% AI opportunities, but do not drop a strong story just to hit the ratio.\n\nSORT: Return stories sorted by published_date DESCENDING (most recent first).\n\nToday: ' + today + '\n\nReturn ONLY a JSON array. No markdown, no backticks. Each object:\n{"headline":"...","summary":"2-3 sentences","source_url":"...","source_name":"...","published_date":"YYYY-MM-DD","relevance_note":"...","image_suggestion":"..."}';
 
     // Build compact search text
     var searchText = uniqueResults.length + ' search results:\n\n';
@@ -185,7 +198,8 @@ module.exports = async function handler(req, res) {
       return res.status(500).json({ error: 'Empty stories array' });
     }
 
-    // URL-based dedup: filter out stories already used in previous editions
+    // Post-Claude safety dedup: URLs were pre-filtered, but Claude could theoretically
+    // hallucinate a URL that matches a previous one. Very rare, kept as a safety net.
     var beforeCount = stories.length;
     stories = stories.filter(function(s) {
       if (!s.source_url) return true; // keep stories without URLs
@@ -194,7 +208,7 @@ module.exports = async function handler(req, res) {
     });
     var dupsRemoved = beforeCount - stories.length;
     if (dupsRemoved > 0) {
-      console.log('Newsletter research: removed ' + dupsRemoved + ' duplicate URL(s)');
+      console.log('Newsletter research: safety-net removed ' + dupsRemoved + ' duplicate URL(s) from Claude output');
     }
 
     console.log('Newsletter research: Claude returned ' + stories.length + ' stories, saving to DB');
@@ -247,8 +261,10 @@ module.exports = async function handler(req, res) {
     return res.status(200).json({
       success: true,
       search_results_found: totalFound,
+      pre_filtered_duplicates: preFilteredDups,
+      candidates_sent_to_ai: totalFound - preFilteredDups,
       stories_curated: stories.length + dupsRemoved,
-      duplicates_removed: dupsRemoved,
+      safety_duplicates_removed: dupsRemoved,
       stories_saved: saved.length,
       stories: saved
     });
@@ -262,6 +278,7 @@ module.exports = async function handler(req, res) {
     }
   }
 };
+
 
 
 
