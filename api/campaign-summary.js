@@ -360,17 +360,27 @@ async function pullLocalFalcon(reportConfig) {
 
 // ── Cost / unit economics ──────────────────────────────────────────
 //
-// Computes total spend across the engagement. Uses contacts.plan_amount_cents
-// as the monthly retainer, capped at 12 months (the typical contract length)
-// to avoid overstating spend for clients past contract end.
+// Computes total spend across the engagement window. Uses contacts.plan_amount_cents
+// as the monthly retainer. Billed months = the actual length of the engagement
+// window (capped at the contract length when known). Works for engagements
+// of any length (3 months, 6 months, 12 months, etc.).
 
 function pullCost(client, monthBuckets) {
   if (!client.plan_amount_cents) {
     return { available: false, error: 'No plan_amount_cents set on contact' };
   }
   var monthlyCents = Number(client.plan_amount_cents);
-  var contractMonths = 12;
-  var billedMonths = Math.min(monthBuckets.length, contractMonths);
+
+  // Determine billed months: prefer the explicit campaign window when
+  // campaign_end is set; otherwise use the elapsed buckets.
+  var billedMonths = monthBuckets.length;
+  if (client.campaign_start && client.campaign_end) {
+    var start = new Date(client.campaign_start + 'T00:00:00Z');
+    var end = new Date(client.campaign_end + 'T00:00:00Z');
+    var contractMonths = Math.max(1, Math.round((end - start) / (30.44 * 24 * 60 * 60 * 1000)));
+    billedMonths = Math.min(billedMonths, contractMonths);
+  }
+
   var totalCents = monthlyCents * billedMonths;
   return {
     available: true,
@@ -378,8 +388,7 @@ function pullCost(client, monthBuckets) {
     monthly_dollars: monthlyCents / 100,
     total_cents: totalCents,
     total_dollars: totalCents / 100,
-    billed_months: billedMonths,
-    contract_months: contractMonths
+    billed_months: billedMonths
   };
 }
 
@@ -675,7 +684,7 @@ module.exports = async function handler(req, res) {
   try {
     // 1. Load client
     var clients = await sb.query('contacts?slug=eq.' + encodeURIComponent(slug)
-      + '&select=id,slug,first_name,last_name,practice_name,city,state_province,website_url,campaign_start,plan_amount_cents&limit=1');
+      + '&select=id,slug,first_name,last_name,practice_name,city,state_province,website_url,campaign_start,campaign_end,plan_amount_cents&limit=1');
     if (!clients || clients.length === 0) {
       res.status(404).json({ error: 'Client not found' });
       return;
@@ -687,16 +696,20 @@ module.exports = async function handler(req, res) {
       + '&select=*&limit=1');
     var reportConfig = (configs && configs[0]) || null;
 
-    // 3. Build window: campaign_start → today
+    // 3. Build window: campaign_start → min(campaign_end, today)
     var todayISO = new Date().toISOString().slice(0, 10);
     var startISO = client.campaign_start || todayISO;
     if (startISO > todayISO) startISO = todayISO;
-    var monthBuckets = buildMonthBuckets(startISO, todayISO);
+    var endISO = todayISO;
+    if (client.campaign_end && client.campaign_end < todayISO) {
+      endISO = client.campaign_end;
+    }
+    var monthBuckets = buildMonthBuckets(startISO, endISO);
 
     // 4. Pull all sources in parallel
     var [bookings, gsc, localfalcon, deliverables, attribution] = await Promise.all([
       pullBookings(client, monthBuckets),
-      pullGsc(reportConfig && reportConfig.gsc_property, monthBuckets, startISO, todayISO),
+      pullGsc(reportConfig && reportConfig.gsc_property, monthBuckets, startISO, endISO),
       pullLocalFalcon(reportConfig),
       pullDeliverables(client.id),
       pullAttribution(client.id)
@@ -749,8 +762,8 @@ module.exports = async function handler(req, res) {
       },
       window: {
         start: startISO,
-        end: todayISO,
-        days: Math.floor((new Date(todayISO) - new Date(startISO)) / 86400000),
+        end: endISO,
+        days: Math.floor((new Date(endISO) - new Date(startISO)) / 86400000),
         months: monthBuckets.length
       },
       bookings: bookings,
@@ -762,6 +775,10 @@ module.exports = async function handler(req, res) {
       deliverables: deliverables,
       attribution: attribution,
       guarantee: guarantee,
+      next_period: {
+        heading: (reportConfig && reportConfig.next_period_heading) || null,
+        body:    (reportConfig && reportConfig.next_period_body)    || null
+      },
       generated_at: new Date().toISOString(),
       duration_ms: Date.now() - t0
     });
