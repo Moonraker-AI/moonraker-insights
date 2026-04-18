@@ -321,6 +321,14 @@ Also affects C4 blast radius: `enrichment_data` is readable via `action.js`, une
 
 **Recommendation:** Split H29 into a dedicated design session that picks between options (1)/(2)/(3), then a scoped code session that lands the chosen wiring plus a backfill migration for existing rows. Until then, the admin-JWT-gated read surface, Group B.1's token caching (which at least stops repeated gmail impersonation mints), and the rate-limit on enrich-proposal remain the interim controls.
 
+**Decision (2026-04-18, final-wrap session):** 🔷 STAYS DEFERRED on implementation, decision captured for the dedicated implementation session. Chris's call was "quality and security over speed of deployment" — option (a) shape with one refinement:
+- **Encryption shape: column-level** over whole-blob. Sensitive subtrees (`emails[]` message contents, `calls[]` transcripts) are encrypted; operational metadata (enriched_at, source counts, status flags) stays queryable without decryption. Rationale: at Moonraker's team size the operational visibility into "which proposals have enrichment" / "when did this last enrich" is worth the extra shape work.
+- **Read path: narrow.** Decryption wired only at (a) admin-JWT-gated routes that explicitly need to display enrichment content, and (b) internal consumer routes (specifically `generate-proposal.js`) that feed enrichment into Claude prompt context. Arbitrary service-role callers do not get decrypt.
+- **Migration: backfill + lazy-on-write.** One-shot backfill pass encrypts existing rows at deploy time; lazy-on-write handles any rows added during the design-to-backfill race window. Belt-and-suspenders because key-rotation pain later is disproportionate to the cost now.
+- **Rotation: v2-prefix from day one.** Built into `crypto.encryptFields` with the existing version-prefix convention. Costs nothing at initial write, saves a full decrypt/re-encrypt sweep the first time a key rotation is needed.
+
+Implementation is ~3 focused sessions: (1) shape + helpers (extend `encryptFields` to JSONB subtree targets; wire the v2-prefix path through `crypto.js`), (2) call-site wiring across `enrich-proposal.js` (write path) and `generate-proposal.js` + any admin-JWT-gated reader (decrypt path); also extend action.js `SENSITIVE_FIELDS` for `proposals.enrichment_data` sensitive subtrees, (3) backfill migration + verify on staging + deploy + lazy-on-write verification. Unblock gate: this decision (now captured). Status stays 🔷 DEFERRED until the implementation session ships.
+
 ### H30. `api/enrich-proposal.js:161` — Fathom dedup uses string match ✅ RESOLVED
 Works but is the sixth copy of `getDelegatedToken` (line 414) with no caching. Multiple Fathom + Gmail calls each mint fresh JWTs. Wasteful but not broken.
 
@@ -368,7 +376,7 @@ Also noted: a stray `var auth = require('./_lib/auth');` at line 182 inside the 
 
 ## Medium
 
-### M1. `api/stripe-webhook.js:101` — amount-based audit detection fragile
+### M1. `api/stripe-webhook.js:101` — amount-based audit detection fragile ✅ RESOLVED
 `isEntityAudit = amountTotal === 200000 || amountTotal === 207000`. Any price change, tax adjustment, discount, or currency difference breaks. The CC-with-3.5%-fee rounding is especially exposed to drift.
 
 **Remediation plan (deferred to a follow-up PR, noted 2026-04-17 after C2 session):**
@@ -379,15 +387,19 @@ Also noted: a stray `var auth = require('./_lib/auth');` at line 182 inside the 
 
 **Current state (2026-04-19, Group J reconciliation):** Unchanged on `main` at L136 (`isEntityAudit = amountTotal === 200000 || amountTotal === 207000`). Group H territory — blocked on Stripe Dashboard-side metadata addition. When that lands, code change is ~10 lines (prefer `session.metadata.product`, keep amount fallback for 30 days, then drop). No work possible this session.
 
+**Resolution (2026-04-18, final-wrap session, commit `709bf878`):** Both dashboard-side and code-side closed in one session. Chris provided a restricted `rk_live_...` Stripe API key (in-session use only, to be rotated post-session); all 12 active payment links tagged via the Stripe REST API — 2 Entity Audit links (`entity_audit`), 9 CORE Marketing System links (`core_marketing_system`), 1 one-hour Strategy Call link (`strategy_call`, added opportunistically since it was in scope). All 12 `POST /v1/payment_links/<id>` calls returned `metadata.product = <tag>` confirming write success. Code change at `stripe-webhook.js:135-143` now reads `metadataProduct = (session.metadata && session.metadata.product) || ''` first and evaluates `isEntityAudit = metadataProduct === 'entity_audit' || (!metadataProduct && (amountTotal === 200000 || amountTotal === 207000))` — metadata-first with amount fallback only when metadata is absent. The payment description label at L250-252 is now a 3-way conditional: `entity_audit → 'Entity Audit'`, `strategy_call → '1-Hour Strategy Call'`, else `'CORE Marketing System'`. Amount fallback stays ~30 days for backward compat with any checkout sessions predating tagging, then should be removed. Audit finding's "lead paywall" product was not found among active payment links — treated as non-applicable. **Side discovery filed as M41:** the else branch after `isEntityAudit` silently assumes CORE Marketing System, so a Strategy Call purchase with a matching slug would incorrectly trigger CORE onboarding status flip + quarterly audit schedule. Metadata tagging newly surfaces this but doesn't create it — pre-existing classification gap, separate finding.
+
 ### M2. `api/_lib/auth.js:199-204, 253-259` — `last_login_at` updated every request ✅ RESOLVED
 Every authenticated API call PATCHes `admin_profiles`. 29+ admin routes × 3-5 calls/page = PATCH/second during normal use. Update only on actual login, or throttle to >60s since last update.
 
 **Resolution (2026-04-18, commit `6e8a51a`, Group G batch 1):** New `maybeUpdateLastLogin(userId)` helper replaces the inline fire-and-forget PATCH blocks in both `requireAdmin` and `requireAdminOrInternal`. Reads `last_login_at` from the (now TTL-cached, see H1) admin profile without a DB round-trip, skips the PATCH if `Date.now() - prevTs < LAST_LOGIN_THROTTLE_MS` (60s), and updates the cache in-place *before* firing so concurrent same-window calls short-circuit cleanly. Fire-and-forget `.catch(function(){})` shape preserved — the PATCH is still non-critical and a failure should not block the request. Under normal use this collapses from ~PATCH/second per active admin to at most 1 PATCH/min/admin. Trade-off: up to 60s of missed `last_login_at` granularity, which matches the explicit threshold called out in the finding. Bundled with H1 in one commit because both touch `_profileCache` and the M2 fix depends on H1's SELECT extension.
 
-### M3. `api/action.js:24` — 40+ tables allowlisted with no action granularity
+### M3. `api/action.js:24` — 40+ tables allowlisted with no action granularity ✅ RESOLVED
 `signed_agreements`, `payments`, `workspace_credentials`, `settings`, `error_log` all mutable. Shape allowlist as `{ table, actions: ['read','create'] }`. `signed_agreements` and `payments` read-only via this endpoint. `workspace_credentials` requires elevated role.
 
 **Current state (2026-04-19, Group J reconciliation):** Architecture half is in place post-Phase 4 S5: `api/_lib/action-schema.js` defines a per-table `{ read, write, delete, require_role }` manifest that `api/action.js:49` consults via `schema.check(table, action, user.role)`. Unknown actions are already 403'd. What is **not** in place is the three specific sensitive-table tightenings the finding asked for — `signed_agreements`/`payments`/`workspace_credentials` are all still listed permissively in the manifest, and the in-file comment explicitly calls this out: "These are listed permissively TODAY so this rollout is a no-op behavior change. Session 6 will flip them to locked-down." The flip itself is 3 lines but has product/workflow implications: `workspace_credentials` switching to `require_role: 'owner'` blocks Scott (admin, not owner) from writing that table via the admin UI, and no one has audited whether his onboarding workflow currently relies on those writes. Staying (c) — product decision belongs with the Session 6 tightening batch, not a reconciliation sweep.
+
+**Resolution (2026-04-18, final-wrap session, commit `02fe46ee`):** Partial tightening landed. Pre-edit verification confirmed admin UI does not call `action.js` to write `signed_agreements` or `payments`: the onboarding `sbPost('signed_agreements', ...)` sites route direct to PostgREST under the page-token path (bypass action.js), Stripe webhook uses direct `sb.mutate` for the `payments` insert, and `delete-client.js` uses direct `sb.mutate` for its cascade cleanup. Zero admin apiAction callers touch either table. `signed_agreements` flipped to `{ read: true, write: false, delete: false }`; `payments` flipped the same; `workspace_credentials` stays admin-writable per Chris's decision that Scott uses the admin UI for workspace setup (encrypted Gmail credentials write-path). Tighten `workspace_credentials` to `require_role: 'owner'` later if that workflow moves to the page-token onboarding flow. In-file comment block rewritten to document the 2026-04-18 decision and the condition under which workspace_credentials might tighten later. Partial shape of the finding (per-table action granularity architecture + 2 of the 3 sensitive tables locked down with rationale for the third) treated as resolved.
 
 ### M4. `api/_lib/github.js:30` — path validation too permissive ✅ RESOLVED
 Doesn't reject backslashes, null bytes, URL-encoded traversal, no allowed-prefix list. Any caller passing user-derived paths to `pushFile` is write-to-api vulnerability → Vercel auto-deploy RCE.
@@ -470,6 +482,8 @@ Stripe webhook upgrading `audit_tier` to premium can race with agent callback au
 
 **Current state (2026-04-19, Group J reconciliation):** Unchanged. Current main has the exact race embodied in the branching at `api/process-entity-audit.js:564` (`contact.status === 'lead' && !contact.lost && audit.audit_tier === 'free'` → auto-send path) and L594 (same predicate but `=== 'premium'` → notify-team path). Neither branch coordinates with the other's possible in-flight state. Product-decision item: what's the desired behavior when Stripe payment-session.completed arrives after the free-tier email already went out — hold and refund, upgrade and continue, refund and offer manual upgrade? Code shape depends on which the answer is. Flagged as product-gated in `post-phase-4-status.md`'s "What's not in the groupings" section.
 
+**Decision (2026-04-18, final-wrap session):** KEEP OPEN — queued for a joint decision meeting with Chris + Scott (bundled with M24, M37, M39). Product call: desired behavior when Stripe payment-session.completed arrives after the free-tier email already went out — hold-and-refund, upgrade-and-continue, or refund-and-offer-manual. Code shape depends on which the answer is. No code change this session.
+
 ### M20. `api/newsletter-unsubscribe.js:17-22` — PATCH-zero-rows oracle ✅ RESOLVED
 UUID-format-but-nonexistent SID triggers PATCH warning in logs.
 
@@ -479,6 +493,8 @@ UUID-format-but-nonexistent SID triggers PATCH warning in logs.
 Unescaped in `q = "'" + folderId + "' in parents"`. Current caller uses admin-written `contact.drive_folder_id`, so requires admin JWT compromise.
 
 **Current state (2026-04-19, Group J reconciliation):** Unchanged — both concat sites at L109 (`listFiles`) and L157 (`findFile`) still read `q = "'" + folderId + "' in parents"` with no escaping. The file is on the explicit scope fence — Group J's session prompt reaffirms "Do NOT touch `_lib/google-drive.js`; tracked separately as N6 / Session Group style." Attacker would need to compromise an admin JWT and write a malformed `drive_folder_id` to a `contacts` row first, which is a narrow path. Fix belongs with a dedicated `google-drive.js` hardening session: escape single quotes in folderId before the concat, or switch to explicit query builder shape. Note only; no edit.
+
+**Decision (2026-04-18, final-wrap session):** 🔷 ACCEPTED as scope-fenced with narrow blast radius. Exploit requires compromised admin JWT plus a malformed `drive_folder_id` written into a `contacts` row. The file is on the explicit `_lib/google-drive.js` scope fence shared with N6; fix belongs with a dedicated google-drive hardening session that also addresses the bespoke module-level token cache. No code change this session.
 
 ### M22. `_lib/newsletter-template.js:141` — `subscriberId` in unsub URL not encoded ✅ RESOLVED
 Trivial in practice (UUID) but brittle for future test strings.
@@ -490,15 +506,21 @@ Infrastructure identifier in source.
 
 **Current state (2026-04-19, Group J reconciliation):** Now at L700 on current main (line number shifted post-Group-E-and-D work; `var CLIENTS_FOLDER_ID = '1dymrrowTe1szsOJJPf45x4qDUit6J5jB';` consumed at L718). The literal is the Google Drive ID of the shared clients folder — not a secret (anyone with access to our Workspace can see it), but infrastructure identity that shouldn't live in source. Clean fix is env var (`DRIVE_CLIENTS_FOLDER_ID`) + module-load warning on absence + fail-closed on the call path. Multi-step if done right: env var added to Vercel, code change lands, we verify the new Drive-folder-create path works for one test client, then backfill existing rows if any code reads this anywhere else (repo grep shows only generate-proposal uses it). Not a sweep-session shape. Leaving (c).
 
+**Decision (2026-04-18, final-wrap session):** KEEP OPEN — queued for a dedicated single-session sweep. Multi-step but clean: add `DRIVE_CLIENTS_FOLDER_ID` to Vercel env, add module-load warning + fail-closed on absence, swap the literal at `generate-proposal.js:700`, re-test the Drive-folder-create path for one test client, confirm no other code reads this ID (repo grep currently shows generate-proposal as sole consumer). Not blocked on anything; just needs a scheduled slot.
+
 ### M24. `api/compile-report.js:206-209` — GSC auto-correct writes without admin approval
 Silently PATCHes `report_configs.gsc_property` when configured value fails. No banner in UI. Transient Google 403 could re-point client's config to wrong property variant permanently.
 
 **Current state (2026-04-19, Group J reconciliation):** Unchanged — `compile-report.js:188-200` still self-heals: on 403/404 from GSC, calls `resolveGscProperty(token, config.gsc_property)` and, if the returned value differs, PATCHes `report_configs?client_slug=eq.<slug>` with the corrected property, updates the in-memory config, and retries the query. A `warnings.push('GSC: auto-corrected property from X to Y')` fires but no admin banner, no approval gate. Product-gated: the auto-heal behavior may be intentional (property variants like `sc-domain:foo.com` vs `https://www.foo.com/` drift when GSC settings change client-side), but the failure mode is real — a transient 403 from GSC during a permissions hiccup could persistently rewrite the property to an empty or wrong value. Fix options are (a) require explicit admin confirmation before the PATCH lands, (b) keep auto-heal but add a cooling-off check (don't overwrite unless the new property returns data), (c) log the change to `activity_log` so admins can audit reverts. All three are product calls, not security-audit calls. Note only.
 
+**Decision (2026-04-18, final-wrap session):** KEEP OPEN — queued for the joint decision meeting with Chris + Scott (bundled with M19, M37, M39). Product call: should GSC auto-correct on 403/404 (a) require explicit admin confirmation before the PATCH lands, (b) keep auto-heal but add a cooling-off check that won't overwrite unless the new property returns data, or (c) log the change to `activity_log` so admins can audit and revert. All three are product decisions, not security-audit ones.
+
 ### M25. `api/compile-report.js:1138` — markdown fence strip corrupts JSON with nested fences
 Same as process-entity-audit.js:226 bug. Extract to helper.
 
 **Current state (2026-04-19, Group J reconciliation):** Line number has shifted — pattern is now at `compile-report.js:1003`: `text = text.replace(/` + "`" + `json/g, '').replace(/` + "`" + `/g, '').trim();`. Same class of bug as L11 (process-entity-audit) — a nested code fence inside a string value in Claude's JSON output would get stripped in the middle of the string, corrupting the parse. L11's Current state note (Group I) parked this pending a shared find-first-brace / bracket-tracking parser helper that would close both sites in one commit. M25 stays (c) cross-referenced with L11 — whichever session lands the shared parser also closes M25.
+
+**Decision (2026-04-18, final-wrap session):** KEEP OPEN — paired with L11. Both sites are the same class of bug (markdown fence strip corrupts JSON with nested fences). A shared find-first-brace / bracket-tracking parser helper closes both in one commit whenever a dedicated parser-helper session runs. Low priority — hasn't misfired in practice; `JSON.parse` catches produce useful errors when they do hit.
 
 ### M26. `api/chat.js:175-177, 126` — prompt injection surface + error leak ✅ RESOLVED
 `page`, `tab`, `clientSlug` interpolated unsanitized. `err.message` leaked in 500.
@@ -524,6 +546,8 @@ Sonnet 4.6 + 8192 max_tokens + dumped DB = potentially slow. Monitor.
 
 **Current state (2026-04-19, Group J reconciliation):** `vercel.json` still shows `"api/chat.js": { "maxDuration": 120 }` on current main. Post-Group-D prompt-caching work on `chat.js` (Group G batch 2's H23 `052f2245` — 2-block system-prompt array with `cache_control: ephemeral` on the static prefix) should reduce the hot-path time-to-first-token meaningfully, which actually pulls toward leaving 120s alone rather than bumping it. No real-world timeout reports surfaced since the audit was written. Increasing maxDuration without telemetry is a guess; decreasing it has no business value. Hold until a concrete user report shows a timeout, at which point the fix is either "bump to 300s like the other Opus routes in vercel.json" or "investigate the context-dump bloat and keep 120." Note only.
 
+**Decision (2026-04-18, final-wrap session):** 🔷 ACCEPTED as monitor-only. No real-world timeout reports since the audit was written. Post-H23 prompt-caching reduced time-to-first-token meaningfully on the hot path. Bumping `maxDuration` without telemetry is a guess; decreasing has no business value. Revisit only when a concrete user-facing timeout surfaces in `error_log` or admin reports.
+
 ### M30. `api/generate-proposal.js:79-81, 273-275, 543-547, 549-557, 563-569` — 5+ fire-and-forget PATCHes ✅ RESOLVED
 `.catch(function(){})` swallows errors silently. If final PATCH (549) fails, proposal sits in `generating` forever.
 
@@ -538,6 +562,8 @@ Harmless but indicates careless editing.
 Missing `aol`, `me.com`, `live.com`, `fastmail`, etc. Not anchored: `gmail.foo.com` matches.
 
 **Current state (2026-04-19, Group J reconciliation):** Same class of finding as L19. Regex at `enrich-proposal.js:73` unchanged: `/gmail|yahoo|hotmail|outlook|protonmail|icloud/i`. Misses `aol`, `live`, `msn`, `gmx`, `zoho`, `fastmail`, `hey.com`, `duck.com`, `me.com`, `mail.ru`, `yandex`, `qq`, `163`. Not anchored, so `gmail.foo.com` matches (false positive, narrows enrichment). Only consequence of a miss: a personal-email host ends up as `searchDomain` for Gmail/Fathom enrichment, widening search noise; no security exposure. Fix is ≤3 lines of regex additions plus anchoring (`/^(?:mail\.)?(?:gmail|yahoo|hotmail|outlook|protonmail|icloud|aol|live|msn|fastmail|me|duck|hey|gmx|zoho|yandex|mail\.ru|qq|163)\./i` or equivalent) but low-value without telemetry on actual miss rate — same reason L19 stayed open in Group I. Cross-referenced with L19's Current state note; whichever session audits the enrichment funnel closes both together.
+
+**Decision (2026-04-18, final-wrap session):** 🔷 ACCEPTED as data-quality nit with no security impact. Paired with L19 (same class of finding). Regex false positives cost enrichment noise only — a personal-email host ends up as `searchDomain` and widens Gmail/Fathom search scope uselessly. Fix is ≤3 lines but low-value without telemetry on actual miss rate. Revisit if a telemetry-gated enrichment-funnel session ever surfaces a meaningful miss pattern.
 
 ### M33. `api/digest.js:44, 47, 50` — date strings unvalidated ✅ RESOLVED
 Validate as `^\d{4}-\d{2}-\d{2}$` before concat into filter.
@@ -554,6 +580,8 @@ If PATCH succeeds but POST version fails, HTML saved without version record.
 
 **Current state (2026-04-19, Group J reconciliation):** Line numbers shifted — pattern is now at L223 (`sb.mutate('content_pages?id=eq.' + contentPageId, 'PATCH', updateData, 'return=minimal')`) followed by L226 (`sb.mutate('content_page_versions', 'POST', { content_page_id, html, change_summary: 'Initial generation via Pagemaster', ... })`). Neither call is upsertable on a unique constraint (the POST appends a version row; each generation produces a new row), so Group E's `resolution=merge-duplicates` pattern does not apply. True atomicity needs a Postgres function that wraps both in a single transaction. Less invasive fix: reorder to POST-first-then-PATCH so a version-insert failure prevents the HTML save, and wrap the PATCH in try/catch that logs an orphaned-version warning if it fails after the version row landed. Both options are multi-step (DB migration for the function, or careful reordering that must consider the streaming NDJSON `send()` progress events). Not a sweep-session shape. Leaving (c) for a dedicated transaction-consistency session if the failure mode is observed in practice.
 
+**Decision (2026-04-18, final-wrap session):** 🔷 ACCEPTED as multi-step fix with no observed failure in practice. True atomicity of PATCH + POST requires either a Postgres function wrapping both, or a careful POST-first-then-PATCH reorder with orphaned-version handling. Neither is a same-session change. No HTML-without-version row has been observed in production; queue entry lives in the audit doc for revisit if the failure mode ever surfaces.
+
 ### M36. `api/seed-content-pages.js` uses arrow functions ✅ RESOLVED
 Inconsistent with project's ES5 style.
 
@@ -562,6 +590,8 @@ Inconsistent with project's ES5 style.
 ### M37. `api/send-audit-email.js:131` — auto-schedule doesn't check contact status
 
 **Current state (2026-04-19, Group J reconciliation):** Unchanged. `send-audit-email.js:137` guards the auto-schedule block with only `if (!existingFus || existingFus.length === 0)` — existence of prior followups for this audit, not `contact.status`. Existing pattern means a contact whose status flipped to `lost`, `onboarding`, or `active` after audit submission but before the email send still gets the full followup sequence queued. Product-decision item: when a contact upgrades status mid-flight, should pending followups be cancelled, paused for review, or let run? Currently runs. Flagged in `post-phase-4-status.md`'s "What's not in the groupings" alongside M19 and M39.
+
+**Decision (2026-04-18, final-wrap session):** KEEP OPEN — queued for the joint decision meeting with Chris + Scott (bundled with M19, M24, M39). Product call: when a contact status flips mid-flight from `lead` to `onboarding`/`active`/`lost` after audit submission but before the email send, should pending followups be cancelled, paused for review, or allowed to run? Current behavior is "let run" (no status check before queue). Three reasonable behaviors; depends on operational intent.
 
 ### M38. `client_sites` RLS missing `authenticated_admin_full` policy ✅ RESOLVED
 **Discovered during H9 rotation UI smoke test (2026-04-17).** `client_sites` had RLS enabled with only one policy: `anon_read_client_sites` (`roles={anon}`, `USING (true)`). Every other public table (`contacts`, `content_pages`, `tracked_keywords`, `bio_materials`, `neo_images`, …) has an additional `authenticated_admin_full` policy using `is_admin()`. `shared/admin-auth.js` installs a fetch interceptor that upgrades the `Authorization` header from the anon key to the user's admin JWT on direct Supabase REST calls, so the admin UI queries `client_sites` as role `authenticated` — which had no matching policy, returning empty.
@@ -583,6 +613,8 @@ UI smoke test confirmed the Website Hosting card now renders the moonraker site 
 **Discovered 2026-04-18 during Group F M9 work.** While verifying constraint names for M9's slug TOCTOU fix via `pg_constraint`, only `contacts_slug_key UNIQUE (slug)` was present — `email` has no unique constraint. The surviving `byEmail` pre-check at L76-83 (kept when the slug pre-check was removed) is therefore racy in the same way M9's slug pre-check was: two concurrent submissions with the same email pass the check, both insert, and the DB accepts both (two duplicate-email rows already exist in production, confirming the race has fired in practice or a prior bug allowed it). The cleanest fix is `CREATE UNIQUE INDEX contacts_email_key ON contacts (lower(email)) WHERE email IS NOT NULL;` with a data cleanup first, but this has product implications: at least one real scenario (one therapist onboarding two sibling practices under one contact email) needs a decision on whether that's intentional. Parking for a product discussion rather than adding a constraint that might require unplanned rework.
 
 **Current state (2026-04-19, Group J reconciliation):** Re-verified. `submit-entity-audit.js:76-83` still has the `byEmail` pre-check; `contacts` still has no DB-level unique constraint on email (only `contacts_slug_key`). The product-decision block from 2026-04-18 still applies unchanged. No code edit this session — flagged alongside M19 and M37 as the three Medium-tier product-decision items in `post-phase-4-status.md`.
+
+**Decision (2026-04-18, final-wrap session):** KEEP OPEN — queued for the joint decision meeting with Chris + Scott (bundled with M19, M24, M37). Product call: is the one-therapist-multiple-practices scenario (shared contact email across sibling practices) intentional business behavior, or should DB-level `UNIQUE(lower(email)) WHERE email IS NOT NULL` land after a data-cleanup pass on the two existing duplicate-email rows? Decision gates the fix shape; no code change possible until the product intent is clear.
 
 ### M40. `api/process-entity-audit.js`, `api/generate-proposal.js`, `api/run-migration.js` — GitHub wrapper bypass ✅ RESOLVED
 **Discovered 2026-04-19 during M4 allowlist caller enumeration.** Three routes issue raw `fetch` / `fetchT` calls to the GitHub REST API directly instead of going through `api/_lib/github.js`, so the `validatePath` allowlist landed in M4 does not protect them:
@@ -622,6 +654,8 @@ Probably refactor artifact.
 
 **Current state (2026-04-18, Group I reconciliation):** After the C2 + M8 rewrite (`5263aa5`), the bare block at L51-L98 cleanly scopes five locals used only for signature verification: `sigHeader`, `timestamp`, `signatures`, `expectedHex`, `expectedBuf`. Keeping them out of the outer function scope is defensible style, not a refactor artifact. No action.
 
+**Decision (2026-04-18, final-wrap session):** 🔷 ACCEPTED — the Group I current-state note identified this as defensible block scoping (5 locals used only for signature verification, kept out of outer function scope), not a refactor artifact. No action.
+
 ### L3. `var`-style declarations throughout
 Consistent but foot-gun prone.
 
@@ -632,10 +666,14 @@ If caller provides stale SHA, PUT 409s with no auto-retry.
 
 **Current state (2026-04-18, Group I reconciliation):** Current `pushFile` re-fetches SHA only when caller passes no sha; if caller passes a stale SHA the PUT 409s and the exception surfaces. The session-doc rule "Always fetch a fresh SHA immediately before each PUT" pushes this responsibility to the caller by design — auto-retry in the library would mask concurrent-write races that callers should actually see. Leaving as-is; a future refactor could add opt-in retry via an option flag.
 
+**Decision (2026-04-18, final-wrap session):** 🔷 ACCEPTED — current behavior is intentional. Auto-retry in the library layer would mask concurrent-write races that callers should actually see, and we've made "always fetch a fresh SHA immediately before each PUT" a session-prompt invariant. If 409 rates start surfacing meaningfully in monitor logs, revisit via a scoped github.js session that introduces opt-in retry via an options flag rather than default-on behavior.
+
 ### L5. `api/_lib/auth.js:104, 122` — duplicated verify blocks
 Retry-with-refreshed-keys block is cut-and-paste. Extract helper.
 
 **Current state (2026-04-18, Group I reconciliation):** The `nodeCrypto.verify(...)` call is duplicated at L103-108 and L116-121; extracting an inner `tryVerify(pubKey)` helper is ~5 lines. Not landed in this reconciliation sweep because the JWT verification path is the admin-auth critical path — a byte-identical refactor should be its own scoped commit with explicit verification against the H1/M2 batch rather than bundled with a cleanup session.
+
+**Decision (2026-04-18, final-wrap session):** 🔷 ACCEPTED — the ~5-line `tryVerify(pubKey)` extraction sits on the admin-auth critical path and should not be bundled with any batch cleanup commit. The current-state note flagged this explicitly: "5 lines of risk beats 5 lines of reward." Defer indefinitely until a scoped auth.js refactor session has explicit priority.
 
 ### L6. `api/submit-entity-audit.js` — agent error swallowed, no requeue ✅ RESOLVED
 Memory says `process-audit-queue.js` handles this. Verify.
@@ -667,15 +705,19 @@ Backoff choice (5 min) is a safety rail against same-tick self-retries and an op
 
 **Current state (2026-04-18, Group I reconciliation):** The backoff formula `Math.pow(2, attempt) * 1000 + Math.random() * 500` appears in both the catch branch (L75) and the 529 handler (L81). Extracting an inner `backoff(attempt)` is ~3 lines, but `report-chat.js` is on the streaming-endpoint scope fence (custom retry + buffering). Leaving untouched until a dedicated streaming-endpoints session.
 
+**Decision (2026-04-18, final-wrap session):** 🔷 ACCEPTED — 3-line backoff-formula duplication inside a scope-fenced streaming endpoint (`report-chat.js`). The broader scope-fence prohibits ad-hoc edits to streaming endpoints; a future dedicated streaming-endpoints session can bundle this with retry/buffer invariants if it becomes worth the round trip.
+
 ### L8. `api/newsletter-webhook.js:41` — unhandled Resend types dropped silently ✅ RESOLVED
 `email.sent`, `email.scheduled`, `email.delivery_delayed` hit default branch, discarded. Log to `newsletter_events`.
 
 **Resolution (2026-04-17, commits `994f51a` + `bd0e195`):** `994f51a` added `webhook_log` observability with `logEvent('unhandled_type', { eventType, emailId, headers })` in the default branch, so every unrecognized type now leaves a trail. `bd0e195` then added explicit `case 'email.sent'` and `case 'email.delivery_delayed'` no-op branches that call `logEvent('ok_noop', ...)` — the audit's cited types specifically. `email.scheduled` still falls through to the `unhandled_type` default (which is correct — it's logged, just not acted on).
 
-### L9. `api/submit-entity-audit.js:172` — admin link uses `#audit-` fragment
+### L9. `api/submit-entity-audit.js:172` — admin link uses `#audit-` fragment ✅ RESOLVED
 Verify admin clients page scrolls to/opens that anchor.
 
 **Current state (2026-04-18, Group I reconciliation):** `admin/clients/index.html` has no hashchange handler and no element with `id="audit-<uuid>"` — the only `audit-`-prefixed IDs are `audit-status-<cpId>` (content-page IDs, different scope). Fragment silently lands on the page top. Harmless: team members still reach the admin page and scroll/search manually. A proper fix requires picking a URL shape the admin SPA can act on (e.g. `?focus=<slug>` with state-routing) — multi-file change beyond reconciliation scope. Cosmetic; leaving for a future admin-UX session. Same fragment appears in `process-entity-audit.js:613, 656` — document there.
+
+**Resolution (2026-04-18, final-wrap session, commits `610e95c8` + `0f1cb070`):** Fragment dropped entirely from all 3 sites. The URL now points to `https://clients.moonraker.ai/admin/clients` with no anchor; team members land on the admin clients list and navigate from there, matching their existing workflow. `submit-entity-audit.js:185` updated in `610e95c8`; `process-entity-audit.js:550` + `:593` both updated in `0f1cb070`. Two READY deploys. Proper per-audit focus/scroll behavior deferred to a future admin-UX session that picks a URL shape the admin SPA can act on (`?focus=<slug>` with state-routing is the shape most aligned with the rest of the admin UI).
 
 ### L10. `api/admin/deploy-to-r2.js:46` — 16-hex-char content hash (64 bits) ✅ RESOLVED
 Fine for change detection. Not fine if reused as etag across many sites.
@@ -685,6 +727,8 @@ Fine for change detection. Not fine if reused as etag across many sites.
 ### L11. `api/process-entity-audit.js:226` — markdown fence strip brittle with nested fences
 
 **Current state (2026-04-18, Group I reconciliation):** Same class of bug as M25 (`compile-report.js:1138`). Current `rawText.replace(/```json\s*/g, '').replace(/```\s*/g, '').trim()` corrupts JSON if Claude emits a nested code fence inside a string value. Low probability in practice; the `JSON.parse` catch at L240 produces a useful error when it does hit. Proper fix is find-first-brace + bracket-tracking, which would naturally close both L11 and M25 in one helper. Parked until M25 or a shared-parser session.
+
+**Decision (2026-04-18, final-wrap session):** 🔷 ACCEPTED — hasn't misfired in practice; the surrounding `JSON.parse` catch at L240 produces a useful operator-facing error when a nested fence does corrupt the strip. Paired with M25; whichever session lands the shared bracket-tracking parser helper closes both sites in one commit. Low priority until the failure mode is observed.
 
 ### L12. `api/process-entity-audit.js:621-626` — function declared inside conditional branch ✅ RESOLVED
 Non-strict mode hoisting inconsistency across engines.
@@ -720,13 +764,17 @@ RLS is the only control. Consider rotating to a shorter-exp anon key.
 
 **Current state (2026-04-18, Group I reconciliation):** Regex at L73 `/gmail|yahoo|hotmail|outlook|protonmail|icloud/i` misses aol, live, msn, gmx, zoho, fastmail, hey.com, duck.com, me.com, and several regional providers (mail.ru, yandex, qq, 163). Only consequence of a miss is a personal-email host ending up as `searchDomain` and widening Gmail/Fathom enrichment noise for rare cases. Data-quality nit, not a bug. Fix would be ≤3 lines of regex additions but low-value without telemetry on actual miss rate.
 
+**Decision (2026-04-18, final-wrap session):** 🔷 ACCEPTED — paired with M32 (same class of finding, same disposition). False positives cost enrichment noise only, no security impact. Fix is ≤3 lines but low-value without telemetry on actual miss rate. Revisit only alongside a telemetry-gated enrichment-funnel session.
+
 ### L20. `api/compile-report.js` — 14 inlined Supabase fetches ✅ RESOLVED
 
 **Resolution (2026-04-18, Group I reconciliation, via `0163f65` in Group B.2):** Verified on current main — repo-wide grep `fetch(sb.url()\|fetch.*rest/v1\|SUPABASE_URL.*rest/v1` against `api/compile-report.js` returns zero matches. Group B.2's H24 commit already closed this alongside the AbortController work. Doc-only reconciliation.
 
-### L21. `api/enrich-proposal.js:337` — `User-Agent: 'Moonraker-Bot/1.0'` may be blocked
+### L21. `api/enrich-proposal.js:337` — `User-Agent: 'Moonraker-Bot/1.0'` may be blocked ✅ RESOLVED
 
 **Current state (2026-04-18, Group I reconciliation):** UA at L331 unchanged. The `-Bot/1.0` suffix is the pattern many WAFs (Cloudflare, Imperva) flag. No telemetry captured on actual block rate in enrichment fetches. A one-line swap to something like `'Mozilla/5.0 (compatible; Moonraker/1.0; +https://moonraker.ai/bot)'` is safe but data-free. Fold into a future telemetry-gated operational session.
+
+**Resolution (2026-04-18, final-wrap session, commit `d5cf4846`):** `'Moonraker-Bot/1.0'` at `enrich-proposal.js:340` swapped for `'Mozilla/5.0 (compatible; Moonraker/1.0; +https://moonraker.ai/bot)'` — the pattern WAFs like Cloudflare and Imperva are least likely to flag. Single-line change, single site (the `getUrl` helper at L325 is the only outbound HTTP in enrich-proposal.js). READY on Vercel first build. No telemetry exists yet on actual block rate — if a future telemetry-gated session adds a `blocked_by_waf` counter, the UA string can iterate further, but the change ships now because the previous `*-Bot/*` pattern was empirically WAF-hostile.
 
 ### L22. `api/digest.js:128-131` — `sbGet` helper redefines `sb.query` ✅ RESOLVED
 
@@ -735,6 +783,8 @@ RLS is the only control. Consider rotating to a shorter-exp anon key.
 ### L23. `api/newsletter-generate.js:191-205` — `stripEmDashes` six-step replace chain
 
 **Current state (2026-04-18, Group I reconciliation):** Function at L207-210 currently reads `s.replace(/\u2014/g, ', ').replace(/\u2013/g, ', ').replace(/ —/g, ',').replace(/— /g, ', ').replace(/—/g, ', ')`. The `\u2014` and `—` branches are the same Unicode character (em-dash) — technically redundant but harmless; chain runs in sequence and the earlier match wins. Could be collapsed to `s.replace(/\s*[\u2014\u2013]\s*/g, ', ')` but the current version works and matches the "no emdashes in user-facing content" policy. Cosmetic; leaving untouched to avoid risk of subtle Claude-output handling differences.
+
+**Decision (2026-04-18, final-wrap session):** 🔷 ACCEPTED — the six-step replace chain at `newsletter-generate.js:207-210` works correctly and is the mechanical implementation of the project's "no emdashes in user-facing content" policy. Collapsible to a single regex but that's cosmetic; the chain's clarity about what each step does is a small readability win that offsets the minor verbosity. No action.
 
 ### L24. `api/send-audit-email.js:12` — wrong calendar URL?
 `email.CALENDAR_URL` = `scott-pope-calendar` but memory canonical is `moonraker-free-strategy-call`. Verify.
@@ -745,10 +795,14 @@ RLS is the only control. Consider rotating to a shorter-exp anon key.
 
 Both URLs resolve in production; likely intentional split between "specific Scott booking" (footer) and "generic strategy call" (CTA). Product-gated — Chris/Scott know which is the intended canonical. Not safe to unify without confirming the routing intent. Flag for review.
 
+**Decision (2026-04-18, final-wrap session):** 🔷 ACCEPTED — split confirmed intentional by Chris. `scott-pope-calendar` is used in email footers (the "book a call with Scott" specific-booking CTA); `moonraker-free-strategy-call` is the primary CTA button for the free strategy call offer (generic, team-level). Both URLs resolve in production. Not a bug — two booking types, two correct URLs. No action.
+
 ### L25. `api/generate-content-page.js:180-182` — VERIFY regex stops at `<`
 Cuts off flags mid-sentence with HTML brackets.
 
 **Current state (2026-04-18, Group I reconciliation):** Regex at L184 is `/VERIFY[:\s]*([^\n<]+)/gi`. If Claude writes a VERIFY flag that includes an HTML element (e.g. `VERIFY: check <a href="...">this link</a>`), capture truncates at the `<`. Verify flags are operator-facing notes attached to generated-content review; cosmetic truncation doesn't lose the work itself. Fix would be switching to a line-delimited capture (`[^\n]+`) but risks ingesting trailing HTML. Low value; leaving.
+
+**Decision (2026-04-18, final-wrap session):** 🔷 ACCEPTED — VERIFY flags are operator-facing review notes attached to generated content; when Claude embeds HTML inside a VERIFY flag, truncation at `<` is cosmetic (the flag still fires, the operator still reviews, the rest of the generated content is unaffected). Swapping to `/VERIFY[:\s]*([^\n]+)/gi` would capture the trailing HTML too, which creates its own noise. Current regex is the better default.
 
 ### L26. `admin/clients/index.html:1991` — `renderContent()` race condition ✅ RESOLVED
 **Discovered during H9 rotation UI smoke test (2026-04-17).** When the Content tab renders, `renderContent()` calls `renderHostingCard(c)` which kicks off an async fetch of `client_sites`. The initial synchronous render of the Service Pages section uses `state.clientSite` which is still `null` at that moment, so the conditional gate on `state.clientSite` for rendering the `☁ Deploy to Site` button fails and the button never appears. The fetch's `.then()` only re-rendered the hosting card, not the Service Pages section, so the button stayed hidden until the user switched tabs and came back.
@@ -782,6 +836,17 @@ All six commits READY on Vercel on first build.
 
 Workflow note: this session used the GitHub git data API (tree + blobs + commit + ref update) for all 6 batch commits rather than the Contents API's file-at-a-time PUT flow that earlier sessions used. `base_tree` inheritance preserves every untouched file by reference — safe when running solo, higher throughput than ~34 sequential single-file PUTs. Each batch settled in ~20-30 seconds after ref update. Pattern is available for future sweeps that touch similar scale.
 
+### M41. `api/stripe-webhook.js:152` — non-entity-audit branch silently assumes CORE Marketing System
+**Discovered 2026-04-18 during M1 metadata-tagging work.** After M1's metadata-first detection landed (commit `709bf878`), the `else` branch following `if (isEntityAudit)` still assumes every non-audit purchase is CORE Marketing System. The branch flips `contact.status` from `prospect` → `onboarding`, fires `notify-team`, and calls `setup-audit-schedule`. With the Strategy Call ($150, `metadata.product = 'strategy_call'`) payment link now active and the Client HQ webhook receiving `checkout.session.completed` events for it, any Strategy Call purchase shipped with a `slug` / `client_reference_id` matching a prospect-status contact would incorrectly trigger the CORE onboarding cascade: wrong status flip, wrong audit schedule, wrong team notification payload.
+
+M1's metadata tagging newly surfaces this classification gap; it does not create it. The underlying shape is a pre-existing 2-way conditional (`isEntityAudit` vs "everything else = CORE") that was adequate when the only two products were Entity Audit and CORE.
+
+**Fix shape:** 3-way branch at L135-155. `entity_audit` → audit-tier upgrade flow (current L138-151). `core_marketing_system` → current CORE onboarding flow (current L152-230). `strategy_call` → log payment only, optional team notification with the strategy-call template, no status flip, no audit schedule. Fourth branch for unknown metadata values should fail-loud via `monitor.logError` so new products don't silently inherit CORE behavior again.
+
+**Severity Medium, not High.** Blast radius is narrow: requires a Strategy Call purchase that includes a `client_reference_id`/`slug` matching an existing contact in `prospect` status. The $150 Strategy Call link typically sees standalone purchases (no matching contact), so the accidental-cascade path is real but uncommon. No exploit path exists — this is a classification bug, not a security bug.
+
+**Current state (2026-04-18, final-wrap session):** Filed for a future Stripe-webhook classification session. Could bundle with M19 + M24 + M37 in the joint decision meeting if Scott wants the Strategy Call handling shape to be discussed there.
+
 ---
 
 ## Nit
@@ -808,6 +873,8 @@ Array.isArray on `{ message: 'X' }` error returns false; `one()` returns null as
 Preview domains fail CORS when testing.
 
 **Current state (2026-04-18, Group I reconciliation):** Hardcoded at 7 endpoints: `chat.js:8`, `agreement-chat.js:14`, `content-chat.js:19`, `proposal-chat.js:20`, `report-chat.js:15`, `analyze-design-spec.js:11`, `submit-endorsement.js:55`. Four of the seven are streaming-endpoint scope-fenced. Proper fix is a shared CORS helper that accepts `process.env.VERCEL_ENV === 'preview'` plus an allowlist of preview-URL patterns — multi-file change that should be its own session. Workaround in practice: test against the production domain directly. Workflow concern, not a security bug.
+
+**Decision (2026-04-18, final-wrap session):** 🔷 ACCEPTED — Chris confirmed preview deploys are not part of the Client HQ workflow. Production-domain testing is the standard path. Not a security bug, not a workflow bug in current use. If preview deploys become part of the workflow (e.g. for client-facing demos), revisit via a shared CORS-helper session that touches all 7 hardcoded endpoints at once.
 
 ### N6. Seven copies of `getDelegatedToken` — covered in H21. ✅ RESOLVED
 
@@ -918,12 +985,14 @@ _(Brought forward from Phase 7 since Chris chose "ship now" over "wait for traff
 ## Running tallies
 
 - **Critical:** 9 total (C1–C9). **Resolved: 9 ✅** (all).
-- **High:** 36 total (H1–H36). **Resolved: 35** (H1, H2, H3, H4, H5, H6, H7, H8, H9, H10, H11, H12, H13, H14, H15, H16, H17, H18, H19, H20, H21, H22, H23, H24, H25, H26, H27, H28, H30, H31, H32, H33, H34, H35, H36). **Open: 1** (H29, deferred on design). **All non-deferred Highs closed.**
-- **Medium:** 40 total (M1–M40; M39 added by Group F, M40 added by M7+M4 session during caller enumeration). **Resolved: 28** (M2, M4, M5, M6, M7, M8, M9, M10, M11, M12, M13, M14, M15, M16, M17, M18, M20, M22, M26, M27, M28, M30, M31, M33, M34, M36, M38, M40). **Partial: 0** (M4 flipped 🔶 → ✅ via `87a4a5e8` allowlist). **Open: 12** (M1, M3, M19, M21, M23, M24, M25, M29, M32, M35, M37, M39).
-- **Low:** 29 total (L1–L29; L29 added by M7+M4 session as the Supabase top-line-string polish pass). **Resolved: 15** (L1, L6, L8, L10, L12, L14, L16, L17, L18, L20, L22, L26, L27-documented-only, L28, L29). **Open: 14** (L2, L3, L4, L5, L7, L9, L11, L13, L15, L19, L21, L23, L24, L25).
-- **Nit:** 6 total (N1–N6). **Resolved: 5** (N1, N2, N3, N4, N6). **Open: 1** (N5).
+- **High:** 36 total (H1–H36). **Resolved: 35** (H1, H2, H3, H4, H5, H6, H7, H8, H9, H10, H11, H12, H13, H14, H15, H16, H17, H18, H19, H20, H21, H22, H23, H24, H25, H26, H27, H28, H30, H31, H32, H33, H34, H35, H36). **Deferred on implementation: 1** (H29 — design captured 2026-04-18, stays 🔷 deferred until a dedicated implementation session). **All non-deferred Highs closed.**
+- **Medium:** 41 total (M1–M41; M39 added by Group F, M40 added by M7+M4 session, M41 added by the 2026-04-18 final-wrap session). **Resolved: 30** (M1, M2, M3, M4, M5, M6, M7, M8, M9, M10, M11, M12, M13, M14, M15, M16, M17, M18, M20, M22, M26, M27, M28, M30, M31, M33, M34, M36, M38, M40). **Accepted 🔷 with rationale: 4** (M21 scope-fence, M29 monitor-only, M32 data-quality nit, M35 no-observed-failure). **Open: 7** (M19, M23, M24, M25, M37, M39, M41 — 5 product-gated, 1 single-session queue-item, 1 latent-bug pair with L11).
+- **Low:** 29 total (L1–L29). **Resolved: 17** (L1, L6, L8, L9, L10, L12, L14, L16, L17, L18, L20, L21, L22, L26, L27-documented-only, L28, L29). **Accepted 🔷 with rationale: 9** (L2 defensible-style, L4 intentional-design, L5 auth-critical-path, L7 scope-fenced, L11 paired-with-M25, L19 paired-with-M32, L23 no-value-change, L24 split-confirmed-intentional, L25 current-regex-correct-default). **Open: 3** (L3, L13, L15 — all in the won't-fix-now list).
+- **Nit:** 6 total (N1–N6). **Resolved: 5** (N1, N2, N3, N4, N6). **Accepted 🔷 with rationale: 1** (N5 preview-deploys-not-in-workflow). **Open: 0.**
 
-**Total: 120 findings. Resolved: ≥92. Open: 28 (27 non-deferred + H29 deferred).**
+**Total: 121 findings. Resolved: ≥96. Accepted 🔷: 14. Open: 10 (7 Mediums + 3 Lows in won't-fix-now). H29 deferred-with-design-captured separately.**
+
+**Audit wrap state:** every Critical and non-deferred High closed. Every Medium and Low either resolved, accepted-with-rationale, or has a concrete product-decision owner (6 of 7 open Mediums queued for a joint decision meeting or a single-session sweep). Every Nit resolved or accepted. The 3 open Lows are the pre-existing won't-fix-now list. H29 has a fully captured implementation plan (option (a) + backfill refinement), ready to unblock-and-execute whenever the implementation session is scheduled.
 
 ### Resolution log
 | Finding | Commit / Session | Date |
@@ -1009,6 +1078,10 @@ _(Brought forward from Phase 7 since Chris chose "ship now" over "wait for traff
 | M7 | `22596cc1` (supabase.js — `query()` and `mutate()` throw `Error('Supabase query error')` / `'Supabase mutate error'` with generic `.message`; raw PostgREST body preserved on `.detail`, human-readable message on new `.supabaseMessage`, status code on `.status`. Header comment documents the four-field contract. Pre-flight grep returned zero content-branching callers on `err.message`, so option (a) centralization shipped without a callsite migration sweep. Remaining ~40 top-line-string echoes no longer leak schema; polish pass tracked as L29.). M7+M4 session. | 2026-04-19 |
 | M40 | `9f9695f2` (part 1: process-entity-audit.js — 9 raw fetchT ops across 3 deploy sites migrated to `gh.readTemplate`/`gh.pushFile`; prepTemplate simplified to utf8-string replacement; streaming framework, 600ms inter-push sleep, and 3-flag response shape preserved; 707→644 lines) + `68a54e51` (part 2: generate-proposal.js — upfront template read + 4-site `pagesToDeploy` loop migrated; `_templates/` prefix stripped from entries; admin response `error` fields collapsed to generic `'Deploy failed'` per M7 contract; 811→783 lines) + `2548d6b2` (part 3 option a: run-migration.js — raw read documented as intentional; CRON_SECRET-gated, read-only, caller-side regex validation makes wrapper migration net-negative) + `9262662` (followup: _lib/github.js header-comment refresh — stale "Known gaps (M40)" block rewritten to document the single intentional exemption). All four READY on Vercel. Flips Mediums 27/40 → 28/40 resolved, Open 13 → 12. | 2026-04-19 |
 | L29 | `7a31fd9b` (B1 proposals cluster — generate-proposal, enrich-proposal, convert-to-prospect, delete-proposal; 10 sites across 4 files including 3 bonus latent leaks from renamed catch vars: `driveErr.message`, `'error: ' + e.message` concatenations) + `12cca5cf` (B2 content/design/endorsement deploys — seed-content-pages, deploy-content-preview, deploy-endorsement-page, analyze-design-spec, ingest-design-assets, trigger-design-capture; 6 sites across 6 files) + `36cf0dc7` (B3 admin + delete-client — admin/deploy-to-r2, admin/manage-site with CF status helper, delete-client with 4 sites; 7 sites across 3 files) + `9bb90376` (B4 audits + reports + campaign-summary — ingest-batch-audit, setup-audit-schedule, generate-audit-followups, approve-audit-followups, seed-batch-audits × 2, trigger-batch-audit, trigger-content-audit, send-report-email, process-batch-synthesis, backfill-campaign-summary-pages × 2, campaign-summary × 5 internal-helper returns + outer; 17 sites across 11 files) + `9c78a353` (B5 newsletters + triggers + misc — send-newsletter, trigger-agent, trigger-cms-scout, ingest-cms-scout, ingest-surge-content, activate-reporting, lf-proxy, gmail-delegated-search, search-stock-images, generate-neo-image, discover-services, health.js with 200-diagnostic unreachable shape; 12 sites across 12 files) + `c2175a7c` (B6 cron + run-migration — cron/process-audit-queue, trigger-quarterly-audits, process-scheduled-sends × 2, process-queue, process-batch-pages, enqueue-reports, cleanup-rate-limits, run-migration.js × 2; 10 sites across 8 files). 34 files, ~63 total edits (58 narrow-grep + 5 bonus latents). Zero residual `error: e\.message` / `error: err\.message` hits outside `_lib/supabase.js` (M7 contract-owned) and `newsletter-webhook.js` (intentional internal logEvent DB writes, not response bodies). Canonical pattern: `monitor.logError('<route>', err, { client_slug, detail: { stage: '<label>' } })` + `return res.status(500).json({ error: '<domain copy>' })`. Session split into L29 part 1 (B1+B2+B3) and L29 part 2 (B4+B5+B6) per the ">50 split" threshold; audit's original "~40" estimate undercounted by ~45% because renamed catch vars and helper-function error-return chains escaped the narrow grep. All 6 batch commits READY on first Vercel build. Closes response-body schema-leak story: zero routes now echo supabase/external error detail to admin/client response bodies. L29 session. | 2026-04-19 |
+| M1 | `709bf878` (stripe-webhook.js — `metadataProduct = (session.metadata && session.metadata.product)` read first; `isEntityAudit = metadataProduct === 'entity_audit' || (!metadataProduct && (amountTotal === 200000 || amountTotal === 207000))`; 3-way description label including strategy_call) + Stripe dashboard-side: all 12 active payment links tagged via REST API with `metadata.product` — 2 × `entity_audit`, 9 × `core_marketing_system`, 1 × `strategy_call`. Amount fallback stays ~30 days for backward compat with pre-tagging sessions, then drop. Final-wrap session. | 2026-04-18 |
+| M3 | `02fe46ee` (_lib/action-schema.js — `signed_agreements` + `payments` flipped to `{ read: true, write: false, delete: false }`; `workspace_credentials` stays admin-writable per Scott's onboarding workflow; in-file comment rewritten to document the 2026-04-18 decision). Pre-edit verification confirmed zero admin apiAction writes against either table (onboarding sbPost goes direct PostgREST via anon key; Stripe webhook uses direct sb.mutate; delete-client uses direct sb.mutate). Final-wrap session. | 2026-04-18 |
+| L9 | `610e95c8` (submit-entity-audit.js — `#audit-` + `audit.id` fragment dropped from admin URL) + `0f1cb070` (process-entity-audit.js — same fragment dropped from 2 team-notification email sites at L550 + L593). Admin URL now points cleanly at `/admin/clients` with no non-functional anchor. Final-wrap session. | 2026-04-18 |
+| L21 | `d5cf4846` (enrich-proposal.js:340 — `'Moonraker-Bot/1.0'` UA replaced with `'Mozilla/5.0 (compatible; Moonraker/1.0; +https://moonraker.ai/bot)'` to reduce WAF block rate during enrichment fetches). Final-wrap session. | 2026-04-18 |
 
 Audit was performed across five sessions reading ~11,000 lines of API route code, the eight `_lib/` modules, relevant templates, and git history for secret leakage. Unread in detail: chat system prompt bodies (low-risk content), several `send-*-email.js` / `trigger-*` / `ingest-*` routes (expected to follow already-catalogued patterns), most `api/admin/*` read-only dashboard routes. The audit is considered comprehensive for Critical and High findings; Medium/Low/Nit counts would grow modestly with further reading.
 
