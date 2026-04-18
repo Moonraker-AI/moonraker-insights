@@ -79,26 +79,29 @@ module.exports = async function handler(req, res) {
     }
 
     // ── Step 2: Probe Surge via the agent ─────────────────────────
-    // /admin/surge-status spins up an independent headless browser and
+    // /ops/surge-status spins up an independent headless browser and
     // reports maintenance_active + credits. 90s timeout covers a full
     // login (Playwright spawn + DOM fill + networkidle).
+    //
+    // Path is /ops/* (not /admin/*) because Caddy on the agent host
+    // routes /admin/* to the out-of-band admin service on port 8001.
     var status = null;
     var statusError = null;
 
     try {
       var probeResp = await fetchT(
-        AGENT_URL + '/admin/surge-status',
+        AGENT_URL + '/ops/surge-status',
         { headers: { 'Authorization': 'Bearer ' + AGENT_KEY } },
         90000
       );
 
       if (!probeResp.ok) {
-        statusError = 'Agent /admin/surge-status returned HTTP ' + probeResp.status;
+        statusError = 'Agent /ops/surge-status returned HTTP ' + probeResp.status;
       } else {
         status = await probeResp.json();
       }
     } catch (e) {
-      statusError = 'Agent /admin/surge-status failed: ' + e.message;
+      statusError = 'Agent /ops/surge-status failed: ' + e.message;
     }
 
     if (!status || status.error || statusError) {
