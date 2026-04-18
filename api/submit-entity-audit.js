@@ -160,10 +160,14 @@ module.exports = async function handler(req, res) {
       agentError = 'Agent service not configured';
     }
 
-    // If agent failed, still return success to the user (team will handle manually)
+    // If agent failed, still return success to the user (cron will auto-retry).
+    // L6 (2026-04-19): flip status to 'agent_error' with detail so admins can
+    // see what happened; cron/process-audit-queue.js Step 0.5 auto-retries after
+    // a 5-minute backoff. Team notification is now an FYI rather than an
+    // action-required signal.
     if (!agentTriggered && agentError) {
-      console.error('Agent trigger failed:', agentError, '- audit will need manual processing');
-      // Notify team about the failed trigger
+      console.error('Agent trigger failed:', agentError, '- cron will auto-retry');
+      // Notify team about the failed trigger (FYI; auto-retry is in progress)
       try {
         var resendKey = process.env.RESEND_API_KEY;
         if (resendKey) {
@@ -173,8 +177,8 @@ module.exports = async function handler(req, res) {
             body: JSON.stringify({
               from: 'Moonraker Notifications <notifications@clients.moonraker.ai>',
               to: ['notifications@clients.moonraker.ai'],
-              subject: 'Entity Audit Agent Failed - ' + brandQuery,
-              html: '<p>A new entity audit was submitted but the agent could not be triggered.</p>' +
+              subject: 'Entity Audit Agent Error (auto-retrying) - ' + brandQuery,
+              html: '<p>A new entity audit was submitted; the agent errored on first try. Cron will auto-retry every 30 min until it succeeds.</p>' +
                 '<p><strong>Contact:</strong> ' + firstName + ' ' + lastName + ' (' + email + ')</p>' +
                 '<p><strong>Practice:</strong> ' + brandQuery + '</p>' +
                 '<p><strong>Error:</strong> ' + agentError + '</p>' +
@@ -184,6 +188,17 @@ module.exports = async function handler(req, res) {
         }
       } catch (notifyErr) {
         console.error('Failed to send agent-failure notification:', notifyErr);
+      }
+      // Flip the audit to agent_error with detail so the cron can auto-retry
+      // and admins have visibility into the failure reason.
+      try {
+        await sb.mutate('entity_audits?id=eq.' + audit.id, 'PATCH', {
+          status: 'agent_error',
+          last_agent_error: String(agentError || 'Unknown error').substring(0, 500),
+          last_agent_error_at: new Date().toISOString()
+        }, 'return=minimal');
+      } catch (patchErr) {
+        console.error('[submit-entity-audit] agent_error flip failed:', patchErr.message);
       }
     }
 
