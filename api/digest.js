@@ -26,6 +26,17 @@ module.exports = async function handler(req, res) {
       return res.status(400).json({ error: 'from, to, and recipients required' });
     }
 
+    // M33: validate date format before concatenating into PostgREST filters.
+    // The values are admin-supplied via body.from / body.to and flow directly
+    // into &created_at=gte.<from>T00:00:00Z below — a value like
+    // `2026-01-01&created_at=lt.2000-01-01` would smuggle a second clause.
+    // Admin-JWT-gated endpoint so the risk is narrow, but the fix is a
+    // two-line regex.
+    var ISO_DATE = /^\d{4}-\d{2}-\d{2}$/;
+    if (!ISO_DATE.test(from) || !ISO_DATE.test(to)) {
+      return res.status(400).json({ error: 'from and to must be YYYY-MM-DD' });
+    }
+
     // H32: recipient allowlist. The digest sends from
     // notifications@clients.moonraker.ai (trusted internal identity);
     // without this guard, a compromised admin JWT or CRON_SECRET could
