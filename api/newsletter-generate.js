@@ -14,6 +14,15 @@ var monitor = require('./_lib/monitor');
 
 var PEXELS_KEY = process.env.PEXELS_API_KEY || '';
 
+// M34: loud warning at module load if PEXELS_API_KEY is unset. Mirrors the
+// H9/H10 pattern but fails open (not closed) because Pexels image lookup is
+// best-effort enrichment — newsletter generation can still proceed with
+// placeholder images. Without this warning the missing-key state was silent
+// and admins had no signal when stories rendered image-less.
+if (!process.env.PEXELS_API_KEY) {
+  console.error('[newsletter-generate] WARNING: PEXELS_API_KEY is not set. Stories will render without images.');
+}
+
 // Newsletter stories use Pexels for image sourcing. The image_suggestion from Claude
 // is run through imgq.cleanQuery to strip brand/initialism terms Pexels cannot parse
 // and to append a topical anchor when the query is thin.
