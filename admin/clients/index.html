@@ -624,8 +624,9 @@
 .modal-box .modal-desc { font-size: .82rem; color: var(--color-muted); margin-bottom: 1.25rem; }
 .modal-form-group { margin-bottom: .85rem; }
 .modal-form-group label { display: block; font-size: .75rem; font-weight: 600; text-transform: uppercase; letter-spacing: .04em; color: var(--color-muted); margin-bottom: .3rem; }
-.modal-form-group input, .modal-form-group select { width: 100%; padding: .4rem .6rem; border-radius: 8px; border: 1px solid var(--color-border); background: var(--color-bg); color: var(--color-body); font-family: inherit; font-size: .84rem; transition: border-color .15s; }
-.modal-form-group input:focus, .modal-form-group select:focus { border-color: var(--color-primary); outline: none; box-shadow: 0 0 0 2px rgba(0,212,126,.12); }
+.modal-form-group input, .modal-form-group select, .modal-form-group textarea { width: 100%; padding: .4rem .6rem; border-radius: 8px; border: 1px solid var(--color-border); background: var(--color-bg); color: var(--color-body); font-family: inherit; font-size: .84rem; transition: border-color .15s; box-sizing: border-box; }
+.modal-form-group input:focus, .modal-form-group select:focus, .modal-form-group textarea:focus { border-color: var(--color-primary); outline: none; box-shadow: 0 0 0 2px rgba(0,212,126,.12); }
+.modal-form-group textarea { resize: vertical; min-height: 4.5rem; line-height: 1.45; }
 .modal-form-group .help { font-size: .72rem; color: var(--color-muted); margin-top: .2rem; }
 .modal-form-row { display: grid; grid-template-columns: 1fr 1fr; gap: .75rem; }
 .modal-actions { display: flex; justify-content: flex-end; gap: .5rem; margin-top: 1.25rem; padding-top: 1rem; border-top: 1px solid var(--color-border); }
