@@ -26,6 +26,7 @@
 
 var nodeCrypto = require('crypto');
 var pg = require('pg');
+var monitor = require('./_lib/monitor');
 
 function constantTimeEqual(a, b) {
   if (!a || !b) return false;
@@ -141,7 +142,10 @@ module.exports = async function handler(req, res) {
         var r = await client.query('SELECT COUNT(*)::int AS c FROM ' + table);
         verification.push({ table: table, count: r.rows[0].c });
       } catch (e) {
-        verification.push({ table: table, error: e.message });
+        monitor.logError('run-migration', e, {
+          detail: { stage: 'verify_table', table: table, migration: migration }
+        });
+        verification.push({ table: table, error: 'Verification failed' });
       }
     }
 
@@ -154,9 +158,11 @@ module.exports = async function handler(req, res) {
       verification: verification
     });
   } catch (e) {
-    console.error('[run-migration] error:', e);
+    monitor.logError('run-migration', e, {
+      detail: { stage: 'run_handler', migration: (typeof migration !== 'undefined' ? migration : null) }
+    });
     res.status(500).json({
-      error: e.message || String(e),
+      error: 'Migration failed',
       duration_ms: Date.now() - t0
     });
   }

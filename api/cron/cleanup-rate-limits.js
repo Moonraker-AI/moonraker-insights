@@ -10,6 +10,7 @@
 
 var auth = require('../_lib/auth');
 var sb = require('../_lib/supabase');
+var monitor = require('../_lib/monitor');
 
 module.exports = async function handler(req, res) {
   if (req.method !== 'POST' && req.method !== 'GET') {
@@ -38,6 +39,9 @@ module.exports = async function handler(req, res) {
     return res.status(200).json({ ok: true, deleted: count, cutoff: cutoff });
   } catch (e) {
     console.error('[cleanup-rate-limits] error:', e.message);
-    return res.status(500).json({ error: e.message });
+    monitor.logError('cron/cleanup-rate-limits', e, {
+      detail: { stage: 'cron_handler' }
+    });
+    return res.status(500).json({ error: 'Rate limit cleanup failed' });
   }
 };

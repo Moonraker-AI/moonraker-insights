@@ -4,6 +4,7 @@
 
 var auth = require('../_lib/auth');
 var sb = require('../_lib/supabase');
+var monitor = require('../_lib/monitor');
 
 module.exports = async function handler(req, res) {
   if (req.method !== 'POST' && req.method !== 'GET') {
@@ -106,7 +107,10 @@ module.exports = async function handler(req, res) {
     });
 
   } catch (err) {
-    return res.status(500).json({ error: err.message || 'Internal error' });
+    monitor.logError('cron/enqueue-reports', err, {
+      detail: { stage: 'cron_handler' }
+    });
+    return res.status(500).json({ error: 'Report enqueue failed' });
   }
 };
 

@@ -4,6 +4,7 @@
 
 var auth = require('../_lib/auth');
 var sb = require('../_lib/supabase');
+var monitor = require('../_lib/monitor');
 
 module.exports = async function handler(req, res) {
   if (req.method !== 'POST' && req.method !== 'GET') {
@@ -53,13 +54,19 @@ module.exports = async function handler(req, res) {
         }
       } catch (e) {
         console.error('Scheduled send error for Edition #' + nl.edition_number + ':', e.message);
-        results.push({ edition: nl.edition_number, status: 'error', error: e.message });
+        monitor.logError('cron/process-scheduled-sends', e, {
+          detail: { stage: 'send_per_edition', edition: nl.edition_number }
+        });
+        results.push({ edition: nl.edition_number, status: 'error', error: 'Send failed' });
       }
     }
 
     return res.status(200).json({ processed: results.length, results: results });
   } catch (e) {
     console.error('process-scheduled-sends FATAL:', e.message);
-    return res.status(500).json({ error: e.message });
+    monitor.logError('cron/process-scheduled-sends', e, {
+      detail: { stage: 'cron_handler' }
+    });
+    return res.status(500).json({ error: 'Scheduled sends processing failed' });
   }
 };

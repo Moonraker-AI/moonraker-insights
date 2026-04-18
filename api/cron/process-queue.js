@@ -98,6 +98,9 @@ module.exports = async function handler(req, res) {
     }
 
   } catch (err) {
-    return res.status(500).json({ error: err.message || 'Internal error' });
+    monitor.logError('cron/process-queue', err, {
+      detail: { stage: 'cron_handler' }
+    });
+    return res.status(500).json({ error: 'Queue processing failed' });
   }
 };

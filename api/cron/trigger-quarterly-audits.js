@@ -11,6 +11,7 @@
 
 var auth = require('../_lib/auth');
 var sb = require('../_lib/supabase');
+var monitor = require('../_lib/monitor');
 
 module.exports = async function handler(req, res) {
   // Auth: admin JWT, CRON_SECRET, or AGENT_API_KEY (timing-safe)
@@ -149,6 +150,9 @@ module.exports = async function handler(req, res) {
 
   } catch (err) {
     console.error('trigger-quarterly-audits error:', err);
-    return res.status(500).json({ error: err.message });
+    monitor.logError('cron/trigger-quarterly-audits', err, {
+      detail: { stage: 'cron_handler' }
+    });
+    return res.status(500).json({ error: 'Quarterly audit trigger failed' });
   }
 };

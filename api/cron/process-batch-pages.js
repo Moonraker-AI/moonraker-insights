@@ -13,6 +13,7 @@
 
 var auth = require('../_lib/auth');
 var sb = require('../_lib/supabase');
+var monitor = require('../_lib/monitor');
 
 module.exports = async function(req, res) {
   // Auth: admin JWT, CRON_SECRET, or AGENT_API_KEY (timing-safe)
@@ -109,7 +110,10 @@ module.exports = async function(req, res) {
 
   } catch (err) {
     console.error('process-batch-pages cron error:', err);
-    return res.status(500).json({ error: err.message || 'Internal error' });
+    monitor.logError('cron/process-batch-pages', err, {
+      detail: { stage: 'cron_handler' }
+    });
+    return res.status(500).json({ error: 'Batch pages processing failed' });
   }
 };
 

@@ -14,6 +14,7 @@
 
 var auth = require('../_lib/auth');
 var sb = require('../_lib/supabase');
+var monitor = require('../_lib/monitor');
 
 // How long an audit can stay in agent_running before we consider it stale
 // (only used when the agent IS actively processing something)
@@ -278,6 +279,9 @@ module.exports = async function handler(req, res) {
 
   } catch (err) {
     console.error('process-audit-queue error:', err);
-    return res.status(500).json({ error: err.message });
+    monitor.logError('cron/process-audit-queue', err, {
+      detail: { stage: 'cron_handler' }
+    });
+    return res.status(500).json({ error: 'Audit queue processing failed' });
   }
 };
