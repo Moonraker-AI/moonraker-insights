@@ -520,6 +520,60 @@ ${surgeData}`;
         }, 30000);
         if (sendResp.ok) {
           send({ step: 'auto_send_done', message: 'Scorecard email sent to ' + (contact.email || 'client') });
+
+          // ── M19 race-case detection ──
+          // Record auto_sent_at so stripe-webhook can detect the race
+          // when a premium-upgrade payment lands AFTER this email went
+          // out. Then re-read the audit row; if audit_tier has flipped
+          // to 'premium' between our initial load (L501) and now, the
+          // webhook's upgrade landed DURING our processing, the customer
+          // paid for premium but already got free delivery, so fire a
+          // Loom team notification. Idempotent via race_loom_notified_at
+          // (conditional PATCH WHERE race_loom_notified_at IS NULL);
+          // stripe-webhook's own entity_audit branch may also attempt
+          // this claim from the other side of the race. Whichever writer
+          // flips the column from NULL first wins and sends the email.
+          try {
+            await sb.mutate('entity_audits?id=eq.' + auditId, 'PATCH', {
+              auto_sent_at: new Date().toISOString()
+            });
+            var rechecked = await sb.one('entity_audits?id=eq.' + auditId + '&select=audit_tier&limit=1');
+            if (rechecked && rechecked.audit_tier === 'premium') {
+              var loomClaim = await sb.mutate(
+                'entity_audits?id=eq.' + auditId + '&race_loom_notified_at=is.null',
+                'PATCH',
+                { race_loom_notified_at: new Date().toISOString() }
+              );
+              if (loomClaim && loomClaim.length > 0) {
+                send({ step: 'race_loom_notify', message: 'Upgrade landed during processing -- notifying team for premium Loom delivery' });
+                var loomResendKey = process.env.RESEND_API_KEY;
+                if (loomResendKey) {
+                  await fetchT('https://api.resend.com/emails', {
+                    method: 'POST',
+                    headers: { 'Authorization': 'Bearer ' + loomResendKey, 'Content-Type': 'application/json' },
+                    body: JSON.stringify({
+                      from: 'Moonraker Notifications <notifications@clients.moonraker.ai>',
+                      to: ['notifications@clients.moonraker.ai'],
+                      subject: 'Premium Audit Paid After Free Delivery -- Loom Required for ' + sanitizer.sanitizeText(practiceName, 200),
+                      html: '<p><strong>Race-case premium audit detected.</strong> The customer paid for a premium entity audit during audit processing. The free scorecard was auto-sent moments ago; the team now needs to record a Loom walkthrough to complete the premium delivery.</p>' +
+                        '<p><strong>Client:</strong> ' + sanitizer.sanitizeText(contact.first_name, 100) + ' ' + sanitizer.sanitizeText(contact.last_name, 100) + '</p>' +
+                        '<p><strong>Practice:</strong> ' + sanitizer.sanitizeText(practiceName, 200) + '</p>' +
+                        '<p><strong>Audit ID:</strong> ' + sanitizer.sanitizeText(String(auditId), 64) + '</p>' +
+                        '<p style="margin-top:16px;"><strong>Next steps:</strong></p>' +
+                        '<ol><li>Record a personalized Loom walkthrough covering the same audit data</li><li>Add the Loom URL to the audit in admin</li><li>Send the premium delivery email from admin</li></ol>' +
+                        '<p><a href="https://clients.moonraker.ai/admin/clients">Open in Admin</a></p>'
+                    })
+                  }, 15000);
+                  send({ step: 'race_loom_notify_done', message: 'Team notified about race-case premium upgrade.' });
+                }
+              }
+            }
+          } catch (raceEx) {
+            // Race-detection is best-effort. stripe-webhook's own branch
+            // will catch the same race from the other direction (its PATCH
+            // return shows auto_sent_at set). Log but don't fail the handler.
+            send({ step: 'race_loom_warning', message: 'Race-check error: ' + raceEx.message });
+          }
         } else {
           var sendErr = '';
           try { sendErr = (await sendResp.json()).error || ''; } catch(e) {}
