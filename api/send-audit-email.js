@@ -131,8 +131,18 @@ module.exports = async function handler(req, res) {
     }, 'return=minimal');
 
     // ── Auto-generate and schedule follow-up sequence ──
+    // M37 (2026-04-18) pre-creation guard: if contact.status flipped from
+    // 'lead' to prospect/onboarding/active, or contact.lost became true,
+    // between audit submission and now, don't queue the lead-followup
+    // sequence at all. The cron processor (cron/process-followups.js:85)
+    // also cancels pending followups on dequeue for the same conditions,
+    // but catching it here prevents unnecessary queue-creation + downstream
+    // cron cancellation churn.
     var followupsScheduled = 0;
     try {
+      if (contact.status !== 'lead' || contact.lost) {
+        console.log('send-audit-email: skipping followup queue for ' + auditId + ' -- contact.status=' + contact.status + ', lost=' + (contact.lost ? 'true' : 'false'));
+      } else {
       var existingFus = await sb.query('audit_followups?audit_id=eq.' + auditId + '&limit=1');
       if (!existingFus || existingFus.length === 0) {
         var fuEmails = buildFollowupSequence(audit, contact);
@@ -155,6 +165,7 @@ module.exports = async function handler(req, res) {
         await sb.mutate('audit_followups', 'POST', rows, 'return=minimal');
         followupsScheduled = rows.length;
         console.log('Auto-scheduled ' + followupsScheduled + ' follow-ups for audit ' + auditId);
+      }
       }
     } catch (fuErr) {
       console.error('Auto follow-up generation failed (non-critical):', fuErr.message);
