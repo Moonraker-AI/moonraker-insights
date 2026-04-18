@@ -669,11 +669,26 @@ Respond with ONLY valid JSON (no markdown, no backticks). The JSON must have the
 
   // ─── 8. Create Google Drive folder hierarchy ──────────────────
   var saJson = process.env.GOOGLE_SERVICE_ACCOUNT_JSON;
-  var CLIENTS_FOLDER_ID = '1dymrrowTe1szsOJJPf45x4qDUit6J5jB';
+  // M23 (2026-04-18): DRIVE_CLIENTS_FOLDER_ID is the shared parent folder
+  // containing all per-client subfolders; read from env instead of a
+  // hardcoded literal. Per-client subfolder IDs still flow through
+  // contacts.drive_folder_id (created on-demand at L690 below) -- this env
+  // var is only the parent. Missing env var skips the Drive-folder-create
+  // block with the same "skipped" shape as missing GOOGLE_SERVICE_ACCOUNT_JSON;
+  // the proposal itself continues successfully.
+  var CLIENTS_FOLDER_ID = process.env.DRIVE_CLIENTS_FOLDER_ID;
   results.drive = {};
 
   if (contact.drive_folder_id) {
     results.drive.skipped = 'Drive folder already exists: ' + contact.drive_folder_id;
+  } else if (!CLIENTS_FOLDER_ID) {
+    results.drive.skipped = 'DRIVE_CLIENTS_FOLDER_ID env var not configured';
+    try {
+      await monitor.logError('generate-proposal', new Error('DRIVE_CLIENTS_FOLDER_ID not configured'), {
+        client_slug: slug,
+        detail: { stage: 'drive_folder_create' }
+      });
+    } catch (_) { /* observability-only; don't mask the 200 */ }
   } else if (saJson) {
     try {
       var practiceName = contact.practice_name || slug;
