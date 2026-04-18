@@ -25,6 +25,7 @@ var monitor = require('./_lib/monitor');
 var google = require('./_lib/google-delegated');
 var sanitizer = require('./_lib/html-sanitizer');
 var fetchT = require('./_lib/fetch-with-timeout');
+var jsonParser = require('./_lib/json-parser');
 var gbp = require('./_lib/gbp');
 
 
@@ -971,8 +972,9 @@ async function generateHighlights(snapshot, prevSnap, practiceName, apiKey) {
     }
   }
 
-  text = text.replace(/```json/g, '').replace(/```/g, '').trim();
-  var parsed = JSON.parse(text);
+  // M25: use jsonParser.parseFenced which handles adversarial Claude output
+  // (backticks or braces inside string values) without corrupting the parse.
+  var parsed = jsonParser.parseFenced(text);
 
   return parsed.map(function(h, idx) {
     return {
