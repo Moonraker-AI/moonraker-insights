@@ -28,18 +28,10 @@
 //   - Hard limit of 200 deploys per call to avoid runaway
 //   - Paces pushes with a small delay to avoid GitHub secondary rate limits
 
-var nodeCrypto = require('crypto');
 var sb = require('./_lib/supabase');
 var monitor = require('./_lib/monitor');
 var gh = require('./_lib/github');
-
-function constantTimeEqual(a, b) {
-  if (!a || !b) return false;
-  var bufA = Buffer.from(String(a));
-  var bufB = Buffer.from(String(b));
-  if (bufA.length !== bufB.length) return false;
-  return nodeCrypto.timingSafeEqual(bufA, bufB);
-}
+var auth = require('./_lib/auth');
 
 function sleep(ms) {
   return new Promise(function(r) { setTimeout(r, ms); });
@@ -51,17 +43,8 @@ module.exports = async function handler(req, res) {
     return;
   }
 
-  var expected = process.env.CRON_SECRET;
-  if (!expected) {
-    res.status(500).json({ error: 'CRON_SECRET not configured' });
-    return;
-  }
-  var authHeader = req.headers['authorization'] || '';
-  var match = authHeader.match(/^Bearer\s+(.+)$/);
-  if (!match || !constantTimeEqual(match[1], expected)) {
-    res.status(401).json({ error: 'Unauthorized' });
-    return;
-  }
+  var user = await auth.requireCronSecret(req, res);
+  if (!user) return;
 
   var body = req.body || {};
   var dryRun = !!body.dry_run;
