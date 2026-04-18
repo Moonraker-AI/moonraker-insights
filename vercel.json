@@ -142,6 +142,10 @@
     "api/backfill-gbp-warehouse.js": {
       "maxDuration": 300,
       "memory": 1024
+    },
+    "api/backfill-campaign-summary-pages.js": {
+      "maxDuration": 300,
+      "memory": 1024
     }
   },
   "crons": [
