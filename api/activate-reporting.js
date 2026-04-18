@@ -13,6 +13,7 @@
 // ENV VARS: SUPABASE_SERVICE_ROLE_KEY, LOCALFALCON_API_KEY
 
 var sb = require('./_lib/supabase');
+var monitor = require('./_lib/monitor');
 var auth = require('./_lib/auth');
 
 module.exports = async function handler(req, res) {
@@ -197,7 +198,11 @@ module.exports = async function handler(req, res) {
     });
 
   } catch (e) {
-    return res.status(500).json({ error: e.message || 'Internal error' });
+    monitor.logError('activate-reporting', e, {
+      client_slug: (typeof clientSlug !== 'undefined' ? clientSlug : null),
+      detail: { stage: 'activate_handler' }
+    });
+    return res.status(500).json({ error: 'Failed to activate reporting' });
   }
 };
 

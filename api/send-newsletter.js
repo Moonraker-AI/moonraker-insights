@@ -12,6 +12,7 @@
 // a ramp step).
 
 var sb = require('./_lib/supabase');
+var monitor = require('./_lib/monitor');
 var auth = require('./_lib/auth');
 var nl = require('./_lib/newsletter-template');
 
@@ -304,6 +305,9 @@ module.exports = async function handler(req, res) {
         await sb.mutate('newsletters?id=eq.' + body.newsletter_id, 'PATCH', { status: 'draft' });
       }
     } catch (e2) {}
-    return res.status(500).json({ error: e.message });
+    monitor.logError('send-newsletter', e, {
+      detail: { stage: 'send_handler' }
+    });
+    return res.status(500).json({ error: 'Failed to send newsletter' });
   }
 };

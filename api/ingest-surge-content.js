@@ -16,6 +16,7 @@
 var auth = require('./_lib/auth');
 var email = require('./_lib/email-template');
 var sb = require('./_lib/supabase');
+var monitor = require('./_lib/monitor');
 
 module.exports = async function(req, res) {
   if (req.method !== 'POST') {
@@ -102,7 +103,10 @@ module.exports = async function(req, res) {
 
   } catch (err) {
     console.error('ingest-surge-content error:', err);
-    return res.status(500).json({ error: err.message || 'Internal error' });
+    monitor.logError('ingest-surge-content', err, {
+      detail: { stage: 'ingest_handler' }
+    });
+    return res.status(500).json({ error: 'Failed to ingest surge content' });
   }
 };
 

@@ -6,6 +6,7 @@
 // Returns discovered properties/locations and saves to contact + report_configs
 
 var sb = require('./_lib/supabase');
+var monitor = require('./_lib/monitor');
 var auth = require('./_lib/auth');
 var google = require('./_lib/google-delegated');
 
@@ -246,7 +247,11 @@ module.exports = async function handler(req, res) {
     }
 
   } catch (err) {
-    return res.status(500).json({ error: err.message || 'Internal error' });
+    monitor.logError('discover-services', err, {
+      client_slug: clientSlug,
+      detail: { stage: 'discover_handler' }
+    });
+    return res.status(500).json({ error: 'Failed to discover services' });
   }
 };
 

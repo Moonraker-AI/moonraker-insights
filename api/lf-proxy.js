@@ -13,6 +13,7 @@
 // ENV: LOCALFALCON_API_KEY
 
 var auth = require('./_lib/auth');
+var monitor = require('./_lib/monitor');
 module.exports = async function handler(req, res) {
   if (req.method !== 'POST') return res.status(405).json({ error: 'Method not allowed' });
   // Require authenticated admin
@@ -152,6 +153,9 @@ module.exports = async function handler(req, res) {
     return res.status(400).json({ error: 'Unknown action: ' + action + '. Use search, add, or saved.' });
 
   } catch (e) {
-    return res.status(500).json({ error: e.message || 'Internal error' });
+    monitor.logError('lf-proxy', e, {
+      detail: { stage: 'proxy_handler' }
+    });
+    return res.status(500).json({ error: 'LocalFalcon proxy failed' });
   }
 };

@@ -9,6 +9,7 @@
  */
 
 var sb = require('./_lib/supabase');
+var monitor = require('./_lib/monitor');
 var auth = require('./_lib/auth');
 
 module.exports = async function(req, res) {
@@ -59,7 +60,10 @@ module.exports = async function(req, res) {
 
   } catch (err) {
     console.error('ingest-cms-scout error:', err);
-    return res.status(500).json({ error: err.message || 'Internal error' });
+    monitor.logError('ingest-cms-scout', err, {
+      detail: { stage: 'ingest_handler' }
+    });
+    return res.status(500).json({ error: 'Failed to ingest CMS scout data' });
   }
 };
 

@@ -18,7 +18,7 @@ module.exports = async function handler(req, res) {
       await sb.query('settings?key=eq.__health_check__&limit=1');
       status.supabase = { ok: true, latency_ms: Date.now() - start };
     } catch (e) {
-      status.supabase = { ok: false, error: e.message };
+      status.supabase = { ok: false, error: 'unreachable' };
     }
   } else {
     status.supabase = { ok: false, error: 'not configured' };

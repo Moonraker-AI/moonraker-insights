@@ -6,6 +6,7 @@
 // If no prompt, generates one from the keyword + practice context.
 
 var sb = require('./_lib/supabase');
+var monitor = require('./_lib/monitor');
 var auth = require('./_lib/auth');
 
 var GEMINI_API = 'https://generativelanguage.googleapis.com/v1beta/models';
@@ -151,7 +152,11 @@ module.exports = async function(req, res) {
 
   } catch (err) {
     console.error('generate-neo-image error:', err);
-    return res.status(500).json({ error: err.message });
+    monitor.logError('generate-neo-image', err, {
+      client_slug: (typeof slug !== 'undefined' ? slug : null),
+      detail: { stage: 'generate_handler' }
+    });
+    return res.status(500).json({ error: 'Failed to generate image' });
   }
 };
 

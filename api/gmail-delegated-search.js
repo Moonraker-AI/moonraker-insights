@@ -20,6 +20,7 @@
 
 var nodeCrypto = require('crypto');
 var auth = require('./_lib/auth');
+var monitor = require('./_lib/monitor');
 
 // ── Service account access token via JWT-bearer + DWD ─────────────
 
@@ -226,6 +227,9 @@ module.exports = async function handler(req, res) {
     });
   } catch (err) {
     console.error('[gmail-delegated-search]', err);
-    res.status(500).json({ error: err.message || 'Search failed' });
+    monitor.logError('gmail-delegated-search', err, {
+      detail: { stage: 'search_handler' }
+    });
+    res.status(500).json({ error: 'Gmail search failed' });
   }
 };
