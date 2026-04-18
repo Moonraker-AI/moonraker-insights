@@ -6,6 +6,7 @@
 var sb = require('./_lib/supabase');
 var gh = require('./_lib/github');
 var auth = require('./_lib/auth');
+var monitor = require('./_lib/monitor');
 
 module.exports = async function handler(req, res) {
   if (req.method !== 'POST') return res.status(405).json({ error: 'Method not allowed' });
@@ -58,8 +59,11 @@ module.exports = async function handler(req, res) {
     });
 
   } catch (err) {
-    console.error('Deploy content preview error:', err);
-    return res.status(500).json({ error: err.message });
+    monitor.logError('deploy-content-preview', err, {
+      client_slug: (typeof clientSlug !== 'undefined' ? clientSlug : null),
+      detail: { stage: 'deploy_preview' }
+    });
+    return res.status(500).json({ error: 'Failed to deploy content preview' });
   }
 };
 

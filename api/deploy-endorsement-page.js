@@ -12,6 +12,7 @@
 var gh        = require('./_lib/github');
 var auth      = require('./_lib/auth');
 var sb        = require('./_lib/supabase');
+var monitor   = require('./_lib/monitor');
 var pageToken = require('./_lib/page-token');
 
 module.exports = async function handler(req, res) {
@@ -65,7 +66,10 @@ module.exports = async function handler(req, res) {
       token_exp: pageToken.verify(token, 'endorsement').exp
     });
   } catch (err) {
-    console.error('deploy-endorsement-page error:', err);
-    return res.status(500).json({ error: err.message || 'Deploy failed' });
+    monitor.logError('deploy-endorsement-page', err, {
+      client_slug: slug,
+      detail: { stage: 'deploy_endorsement' }
+    });
+    return res.status(500).json({ error: 'Failed to deploy endorsement page' });
   }
 };

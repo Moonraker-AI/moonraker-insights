@@ -5,6 +5,7 @@
 // POST body: { design_spec_id, screenshots: {homepage, service, about}, computed_css, crawled_text, crawled_urls }
 
 var auth = require('./_lib/auth');
+var monitor = require('./_lib/monitor');
 var sb = require('./_lib/supabase');
 
 module.exports = async function(req, res) {
@@ -61,7 +62,9 @@ module.exports = async function(req, res) {
     });
 
   } catch (err) {
-    console.error('ingest-design-assets error:', err);
-    return res.status(500).json({ error: err.message });
+    monitor.logError('ingest-design-assets', err, {
+      detail: { stage: 'ingest_handler' }
+    });
+    return res.status(500).json({ error: 'Failed to ingest design assets' });
   }
 };

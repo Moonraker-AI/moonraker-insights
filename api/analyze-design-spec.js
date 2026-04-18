@@ -5,6 +5,7 @@
 
 var sb = require('./_lib/supabase');
 var auth = require('./_lib/auth');
+var monitor = require('./_lib/monitor');
 
 module.exports = async function handler(req, res) {
   if (req.method === 'OPTIONS') {
@@ -256,7 +257,10 @@ Important rules:
     });
 
   } catch (err) {
-    console.error('Design spec analysis error:', err);
-    return res.status(500).json({ error: err.message });
+    monitor.logError('analyze-design-spec', err, {
+      client_slug: (typeof clientSlug !== 'undefined' ? clientSlug : null),
+      detail: { stage: 'analyze_handler' }
+    });
+    return res.status(500).json({ error: 'Failed to analyze design spec' });
   }
 };

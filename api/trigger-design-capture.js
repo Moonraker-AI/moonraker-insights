@@ -6,6 +6,7 @@
 
 var sb = require('./_lib/supabase');
 var auth = require('./_lib/auth');
+var monitor = require('./_lib/monitor');
 
 module.exports = async function(req, res) {
   if (req.method !== 'POST') return res.status(405).json({ error: 'Method not allowed' });
@@ -88,7 +89,9 @@ module.exports = async function(req, res) {
     });
 
   } catch (err) {
-    console.error('trigger-design-capture error:', err);
-    return res.status(500).json({ error: err.message });
+    monitor.logError('trigger-design-capture', err, {
+      detail: { stage: 'trigger_handler', contact_id: contactId }
+    });
+    return res.status(500).json({ error: 'Failed to trigger design capture' });
   }
 };

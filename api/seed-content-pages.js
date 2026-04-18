@@ -20,6 +20,7 @@
 
 var sb = require('./_lib/supabase');
 var auth = require('./_lib/auth');
+var monitor = require('./_lib/monitor');
 
 module.exports = async function(req, res) {
   if (req.method !== 'POST') return res.status(405).json({ error: 'Method not allowed' });
@@ -281,7 +282,10 @@ module.exports = async function(req, res) {
     });
 
   } catch (err) {
-    console.error('seed-content-pages error:', err);
-    return res.status(500).json({ error: err.message });
+    monitor.logError('seed-content-pages', err, {
+      client_slug: slug,
+      detail: { stage: 'seed_handler' }
+    });
+    return res.status(500).json({ error: 'Failed to seed content pages' });
   }
 };
