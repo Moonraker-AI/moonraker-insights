@@ -135,6 +135,9 @@ module.exports = async function handler(req, res) {
     // ============================================================
     // STEP 0.5: Flip agent_error rows back to queued for retry.
     // ============================================================
+    // Only rows with agent_error_retriable=true are requeued. Terminal
+    // failures (credits_exhausted, surge_maintenance, surge_rejected)
+    // are set retriable=false by the agent and require manual intervention.
     // 5-min backoff is a safety rail against a submit-time failure being
     // immediately retried in the same cron tick that's about to dispatch;
     // well below the cron interval so no real throttling happens in practice.
@@ -143,6 +146,7 @@ module.exports = async function handler(req, res) {
     var errorBackoffCutoff = new Date(Date.now() - 5 * 60 * 1000).toISOString();
     var errorRows = await sb.query(
       'entity_audits?status=eq.agent_error' +
+      '&agent_error_retriable=eq.true' +
       '&last_agent_error_at=lt.' + encodeURIComponent(errorBackoffCutoff) +
       '&select=id'
     );
@@ -285,3 +289,4 @@ module.exports = async function handler(req, res) {
     return res.status(500).json({ error: 'Audit queue processing failed' });
   }
 };
+
