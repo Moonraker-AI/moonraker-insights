@@ -125,6 +125,27 @@ module.exports = async function(req, res) {
         break;
       }
 
+      case 'attribution': {
+        // Pull all periods for this contact, then all sources linked to
+        // those periods in a second query. Downstream pullAttribution()
+        // in api/campaign-summary.js uses the same shape.
+        var periods = await sb.query(
+          'client_attribution_periods?select=*&contact_id=eq.' + cid
+          + '&order=period_start.asc'
+        );
+        var sources = [];
+        if (periods && periods.length > 0) {
+          var pids = periods.map(function(p) { return p.id; }).join(',');
+          sources = await sb.query(
+            'client_attribution_sources?select=*&period_id=in.(' + pids + ')'
+            + '&order=created_at.asc'
+          );
+        }
+        data.periods = periods || [];
+        data.sources = sources || [];
+        break;
+      }
+
       default:
         return res.status(400).json({ error: 'Unknown tab: ' + tab });
     }
