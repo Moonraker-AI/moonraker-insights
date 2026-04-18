@@ -13,6 +13,7 @@
 
 var sb = require('./_lib/supabase');
 var auth = require('./_lib/auth');
+var monitor = require('./_lib/monitor');
 var google = require('./_lib/google-delegated');
 
 module.exports = async function handler(req, res) {
@@ -144,7 +145,11 @@ module.exports = async function handler(req, res) {
           }
         }
       } catch (e) {
-        enrichment.sources.gmail.push({ account: acct, error: e.message || String(e) });
+        monitor.logError('enrich-proposal', e, {
+          client_slug: contact.slug,
+          detail: { stage: 'enrich_gmail', account: acct }
+        });
+        enrichment.sources.gmail.push({ account: acct, error: 'Failed to enrich from Gmail' });
       }
     }
     enrichment.summary.email_count = enrichment.data.emails.length;
@@ -292,7 +297,11 @@ module.exports = async function handler(req, res) {
         enrichment.sources.fathom.push({ owner: fk.owner, error: 'HTTP ' + fResp.status + ': ' + errText.substring(0, 200) });
       }
     } catch (e) {
-      enrichment.sources.fathom.push({ owner: fk.owner, error: e.message || String(e) });
+      monitor.logError('enrich-proposal', e, {
+        client_slug: contact.slug,
+        detail: { stage: 'enrich_fathom', owner: fk.owner }
+      });
+      enrichment.sources.fathom.push({ owner: fk.owner, error: 'Failed to enrich from Fathom' });
     }
   }
   enrichment.summary.call_count = enrichment.data.calls.length;
@@ -357,7 +366,11 @@ module.exports = async function handler(req, res) {
         enrichment.summary.has_website = true;
       }
     } catch (e) {
-      enrichment.sources.website = { url: contact.website_url, error: e.message || String(e) };
+      monitor.logError('enrich-proposal', e, {
+        client_slug: contact.slug,
+        detail: { stage: 'enrich_website', url: contact.website_url }
+      });
+      enrichment.sources.website = { url: contact.website_url, error: 'Failed to scrape website' };
     }
   }
 

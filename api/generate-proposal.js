@@ -731,7 +731,11 @@ Respond with ONLY valid JSON (no markdown, no backticks). The JSON must have the
         }
       }
     } catch (driveErr) {
-      results.drive.error = driveErr.message || String(driveErr);
+      monitor.logError('generate-proposal', driveErr, {
+        client_slug: slug,
+        detail: { stage: 'create_drive_folders' }
+      });
+      results.drive.error = 'Drive folder creation failed';
     }
   } else {
     results.drive.skipped = 'GOOGLE_SERVICE_ACCOUNT_JSON not configured';
@@ -761,12 +765,11 @@ async function createDriveFolder(name, parentId, headers) {
       })
     });
     if (!resp.ok) {
-      var errBody = await resp.text();
-      return { error: 'Drive API ' + resp.status + ': ' + errBody };
+      return { error: 'Drive folder creation failed (HTTP ' + resp.status + ')' };
     }
     return await resp.json();
   } catch (e) {
-    return { error: e.message || String(e) };
+    return { error: 'Drive folder creation failed' };
   }
 }
 

@@ -9,6 +9,7 @@
 var sb = require('./_lib/supabase');
 var gh = require('./_lib/github');
 var auth = require('./_lib/auth');
+var monitor = require('./_lib/monitor');
 
 module.exports = async function handler(req, res) {
   if (req.method !== 'POST') return res.status(405).json({ error: 'Method not allowed' });
@@ -53,7 +54,11 @@ module.exports = async function handler(req, res) {
         var deleted = await gh.deleteFile(path, null, 'Delete ' + path + ' (proposal deleted)');
         results.github.push({ path: path, ok: !!deleted });
       } catch (e) {
-        results.github.push({ path: path, ok: false, error: e.message });
+        monitor.logError('delete-proposal', e, {
+          client_slug: slug,
+          detail: { stage: 'delete_file', path: path }
+        });
+        results.github.push({ path: path, ok: false, error: 'Delete failed' });
       }
     }
   }
@@ -63,7 +68,11 @@ module.exports = async function handler(req, res) {
     await sb.mutate('proposals?id=eq.' + proposalId, 'DELETE', null, 'return=minimal');
     results.supabase = 'deleted';
   } catch (e) {
-    results.supabase = 'error: ' + e.message;
+    monitor.logError('delete-proposal', e, {
+      client_slug: slug,
+      detail: { stage: 'delete_proposal_row', proposal_id: proposalId }
+    });
+    results.supabase = 'error: delete failed';
   }
 
   // Reset contact status back to lead if they were only a prospect because of this proposal

@@ -9,6 +9,7 @@
 
 var sb = require('./_lib/supabase');
 var auth = require('./_lib/auth');
+var monitor = require('./_lib/monitor');
 var google = require('./_lib/google-delegated');
 
 module.exports = async function handler(req, res) {
@@ -148,7 +149,11 @@ module.exports = async function handler(req, res) {
           }
         }
       } catch (driveErr) {
-        results.drive.error = driveErr.message || String(driveErr);
+        monitor.logError('convert-to-prospect', driveErr, {
+          client_slug: slug,
+          detail: { stage: 'create_drive_folders' }
+        });
+        results.drive.error = 'Drive folder creation failed';
       }
     } else {
       results.drive.skipped = 'GOOGLE_SERVICE_ACCOUNT_JSON not configured';
@@ -157,7 +162,11 @@ module.exports = async function handler(req, res) {
     return res.status(200).json({ success: true, results: results });
 
   } catch (err) {
-    return res.status(500).json({ error: err.message, results: results });
+    monitor.logError('convert-to-prospect', err, {
+      client_slug: slug,
+      detail: { stage: 'convert_handler' }
+    });
+    return res.status(500).json({ error: 'Failed to convert lead to prospect', results: results });
   }
 };
 
@@ -177,11 +186,10 @@ async function createDriveFolder(name, parentId, headers) {
       })
     });
     if (!resp.ok) {
-      var errBody = await resp.text();
-      return { error: 'Drive API ' + resp.status + ': ' + errBody };
+      return { error: 'Drive folder creation failed (HTTP ' + resp.status + ')' };
     }
     return await resp.json();
   } catch (e) {
-    return { error: e.message || String(e) };
+    return { error: 'Drive folder creation failed' };
   }
 }
