@@ -547,7 +547,7 @@ ${surgeData}`;
                 '<p><strong>CRES Score:</strong> ' + sanitizer.sanitizeText(String(cresScore || 'N/A'), 20) + '</p>' +
                 '<p style="margin-top:16px;"><strong>Next steps:</strong></p>' +
                 '<ol><li>Record a personalized Loom walkthrough</li><li>Add the Loom URL to the audit in admin</li><li>Send the delivery email from admin</li></ol>' +
-                '<p><a href="https://clients.moonraker.ai/admin/clients#audit-' + encodeURIComponent(auditId) + '">Open in Admin</a></p>'
+                '<p><a href="https://clients.moonraker.ai/admin/clients">Open in Admin</a></p>'
             })
           }, 15000);
           send({ step: 'notify_team_done', message: 'Team notified. Premium audit awaiting Loom review.' });
@@ -590,7 +590,7 @@ ${surgeData}`;
                 '<p><strong>CRES Score:</strong> ' + sanitizer.sanitizeText(String(cresScore), 20) + '/40</p>' +
                 varianceHtml +
                 '<p>This audit is for internal reference ahead of the client check-in call. It will not be sent to the client automatically.</p>' +
-                '<p><a href="https://clients.moonraker.ai/admin/clients#audit-' + encodeURIComponent(auditId) + '" style="color:#00D47E;">View in Admin</a></p>' +
+                '<p><a href="https://clients.moonraker.ai/admin/clients" style="color:#00D47E;">View in Admin</a></p>' +
                 '</div>'
             })
           }, 15000);
