@@ -17,6 +17,10 @@
 
 WITH updated AS (
   UPDATE contacts
+  -- plan_type -> months mapping is also encoded in JS at
+  -- api/_lib/contract.js (deriveContractMonths) and in
+  -- migrations/2026-04-17-trigger-campaign-dates-on-active.sql.
+  -- If you add a plan_type value, update all three sites.
   SET campaign_end = campaign_start + CASE COALESCE(plan_type, 'annual')
     WHEN 'quarterly' THEN INTERVAL '3 months'
     WHEN 'annual'    THEN INTERVAL '12 months'
@@ -36,3 +40,4 @@ SELECT
 FROM updated
 GROUP BY status, plan_type
 ORDER BY status, plan_type;
+
