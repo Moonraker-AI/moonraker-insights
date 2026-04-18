@@ -132,8 +132,15 @@ module.exports = async function handler(req, res) {
 
     var results = { slug: slug, session_id: session.id };
 
-    // Entity Audit: $2,000 (200000 cents) or $2,070 (207000 cents for CC)
-    var isEntityAudit = amountTotal === 200000 || amountTotal === 207000;
+    // M1 (2026-04-18): prefer session.metadata.product set dashboard-side on
+    // each payment link (entity_audit / core_marketing_system / strategy_call).
+    // Amount-threshold fallback stays for backward compat with any checkout
+    // sessions that predate the metadata tagging (ACH $2000 / CC $2070 for
+    // the Entity Audit product). Remove the amount fallback after ~30 days
+    // of observing every new session carrying session.metadata.product.
+    var metadataProduct = (session.metadata && session.metadata.product) || '';
+    var isEntityAudit = metadataProduct === 'entity_audit'
+      || (!metadataProduct && (amountTotal === 200000 || amountTotal === 207000));
 
     if (isEntityAudit) {
       // ── Premium Entity Audit payment ──
@@ -240,7 +247,9 @@ module.exports = async function handler(req, res) {
         amount_cents: amountTotal,
         payment_method: session.payment_method_types ? session.payment_method_types[0] : null,
         status: paymentStatus,
-        description: isEntityAudit ? 'Entity Audit' : 'CORE Marketing System'
+        description: isEntityAudit ? 'Entity Audit'
+                   : metadataProduct === 'strategy_call' ? '1-Hour Strategy Call'
+                   : 'CORE Marketing System'
       }, 'return=minimal');
     } catch (logErr) {
       console.log('Failed to log payment:', logErr.message);
