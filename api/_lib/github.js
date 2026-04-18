@@ -27,7 +27,23 @@ function headers() {
 }
 
 function validatePath(p) {
-  if (!p || p.indexOf('..') !== -1 || p.startsWith('/')) throw new Error('Invalid path: ' + p);
+  if (!p) throw new Error('Invalid path: empty');
+  // Reject obvious traversal (`..`) and absolute paths
+  if (p.indexOf('..') !== -1 || p.startsWith('/')) throw new Error('Invalid path: ' + p);
+  // Reject backslash — Windows-style separator, treated as literal by the
+  // GitHub API so a `a\..\b` path could smuggle past `..` checks on POSIX
+  if (p.indexOf('\\') !== -1) throw new Error('Invalid path: ' + p);
+  // Reject null byte — some fs APIs terminate at \0 and treat the suffix as
+  // unchecked; the GitHub API does not but keep the invariant firm here
+  if (p.indexOf('\0') !== -1) throw new Error('Invalid path: null byte');
+  // Reject any URL-encoding. Legitimate repo paths are ASCII letters, digits,
+  // dashes, underscores, dots, and forward slashes — none of which require
+  // percent-encoding. A `%` in the input is almost certainly an attempt to
+  // smuggle an encoded `..` / `/` / `\` past the raw-string checks above.
+  if (p.indexOf('%') !== -1) throw new Error('Invalid path: encoded characters');
+  // Allow-prefix list is still TODO (M4 full resolution) — that requires
+  // enumerating every caller of pushFile/readFile/deleteFile. Tracked
+  // separately.
 }
 
 // Read a file from the repo. Returns { content: string, sha: string }.
