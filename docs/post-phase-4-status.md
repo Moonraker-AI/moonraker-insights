@@ -11,9 +11,11 @@ All 9 Criticals closed. **Thirty-five Highs closed** (H1, H2, H3, H4, H5, H6, H7
 
 **Group I (2026-04-18) closed the Lows + Nits tail.** Classify-first reconciliation pass across 27 open findings produced: 4 small code commits (L12 `62e6ec3` fmtDelta block-function hoisting fix, L28 `be6ad05` chat.js Anthropic upstream error → monitor pattern, N3 `e694dce` monitor.js CR/LF log sanitization, N4 `d53a1fa` onboarding-action header comment rewrite); 7 doc-only reconciliations marking findings already-closed-incidentally by earlier groups (L10 conditional-concern-doesn't-apply, L17 via H22/Group C, L18 intentional scaffolding, L20 via H24/Group B.2, N1 obsolete after supabase.js throws, N2 via C2+M8 rewrite, N6 via H21/Group B.1); and "Current state (2026-04-18)" notes on the 16 remaining open findings (15 Lows + N5) explaining why each stays open so the next reader doesn't re-diagnose. **Tallies after Group I: Lows 13/28 resolved (was 7), Nits 5/6 resolved (was 0), total ≥79 resolved of 118, ≤39 open.**
 
-~39 findings remain. None of them are attack chains of the same severity as C1-C9, no actionable Highs are left, the entire Group B shared-library extraction is closed, and the Lows/Nits tail has been walked end-to-end. What's left is 15 open Lows (all documented with current-state notes), 1 open Nit (N5 — CORS preview-domain workflow concern), ~22 Mediums (several plausibly stale — see Group J below if filed), and H29 waiting on design.
+**Group J (2026-04-19) closed the L6 pre-task and the Medium-tier reconciliation tail.** L6 shipped as specified (Chris signed off 2026-04-18): migration `entity_audits_last_agent_error` (new error-detail columns + partial index) + `7f5103a4` (submit-entity-audit agent-failure flip to `agent_error` with detail, updated email copy for auto-retry semantics) + `a985b05b` (cron STEP 0.5 requeues `agent_error`→`queued` with 5-min backoff, dispatch-failure PATCH populates error columns, `agent_error_requeued` counter added to all 5 return sites). Backfill returned 0 pre-L6 `pending` rows, so no UPDATE needed. Medium classify sweep then produced 4 doc-only closures (M5, M17, M31, M36 — all already closed incidentally by H11/M16/B.3), 4 bucket-(b) code commits (`b36c231c` M4-partial github.js path rejection, `d626fcc8` M27+M28 bootstrap-access client_slug regex + compound filter encoding, `180665ae` M33 digest.js ISO date validation, `1d8fd43f` M34 newsletter-generate Pexels key warning), and Current-state (2026-04-19) notes on 13 remaining Mediums (M1, M3, M7, M19, M21, M23, M24, M25, M29, M32, M35, M37, M39). **Tallies after Group J: Lows 14/28 resolved, Mediums 25/39 fully resolved + 1 partial (M4 🔶), Nits 5/6 unchanged, total ≥89 resolved of 118, ≤29 open.**
 
-**One new finding flagged during Group I: L6 state-machine gap is real.** `submit-entity-audit.js:112` creates audit rows with `status='pending'` and flips to `'agent_running'` only on successful agent trigger — on agent failure, status stays `'pending'` forever and `cron/process-audit-queue.js` only picks up `status='queued'`. No auto-retry path exists; only the team-notification email fires (and its admin-URL fragment from L9 doesn't scroll anywhere). One-line fix (flip to `'queued'` on failure) was deliberately not landed in reconciliation scope — it's a state-machine change on a public-facing endpoint and warrants Chris/Scott product sign-off. Captured in L6's Current state note.
+~29 findings remain. None of them are attack chains of the same severity as C1-C9, no actionable Highs are left, the entire Group B shared-library extraction is closed, and both the Lows/Nits tail (Group I) and the Mediums tail (Group J) have been walked end-to-end. What's left is 14 open Lows (all documented with current-state notes), 1 open Nit (N5 — CORS preview-domain workflow concern), 13 open Mediums (all documented with current-state notes) + 1 partial Medium (M4 🔶), and H29 waiting on design.
+
+**One latent finding formerly blocked Group J (now closed): L6 state-machine gap** fixed by Group J's pre-task. `submit-entity-audit.js` now flips agent-failure rows to `status='agent_error'` with detail, and `cron/process-audit-queue.js` STEP 0.5 auto-requeues them to `status='queued'` after a 5-min backoff. Admin visibility into failure reasons preserved.
 
 ---
 
@@ -140,6 +142,23 @@ Documented plan in M1 section. Blocked on you adding `metadata: { product: ... }
 
 **Group I done.** 11 findings closed (4 code + 7 doc-only reconciliations), 16 stay open with explicit current-state notes. See retrospective below.
 
+### Group J — Medium-tier reconciliation sweep + L6 pre-task ✅ COMPLETE (2026-04-19)
+
+| ID | Outcome | Commit / Note |
+|---|---|---|
+| L6 | ✅ closed — migration + submit-side agent_error flip + cron auto-retry | migration `entity_audits_last_agent_error` + `7f5103a4` + `a985b05b` |
+| M4 | 🔶 partial — validatePath rejects backslash, null byte, `%` (allow-prefix half still open) | `b36c231c` |
+| M27 + M28 | ✅ closed — client_slug regex at entry + `encodeURIComponent` on compound deliverables filter | `d626fcc8` |
+| M33 | ✅ closed — digest.js ISO date regex validation | `180665ae` |
+| M34 | ✅ closed — newsletter-generate PEXELS_API_KEY module-load warning | `1d8fd43f` |
+| M5 | ✅ closed — doc-only, via H11 `b9b8f47` (signature verification mandatory) | doc commit |
+| M17 | ✅ closed — doc-only, via M16 `0d2c56d`+`2512c46` (B.2) | doc commit |
+| M31 | ✅ closed — doc-only, via B.3 `bbf19a7` (duplicate require collapsed) | doc commit |
+| M36 | ✅ closed — doc-only, via B.3 `bbf19a7` (zero arrow fns) | doc commit |
+| M1, M3, M7, M19, M21, M23, M24, M25, M29, M32, M35, M37, M39 | Open with "Current state (2026-04-19)" note | doc commit |
+
+**Group J done.** L6 pre-task (migration + 2 commits) landed cleanly with 0-row backfill. 9 findings closed (4 code + 4 doc-only + 1 partial), 13 Mediums stay open with explicit current-state notes. See retrospective below.
+
 ---
 
 ## What's **not** in the groupings
@@ -150,24 +169,28 @@ Items marked "won't fix" or "needs design":
 - **L13** (hardcoded asset URLs): single-domain app. Skip. Confirmed per Group I.
 - **L15** (anon key exp 2089): RLS is the control; since C3/C7 landed the page_token gate, public writes are all token-gated and the anon-key surface is now read-only RLS. Confirmed per Group I.
 - **L16** (two Google auth functions in compile-report.js): closed with H21 (`1d9c835`).
-- **L19** (personal-email blocklist): data-quality nit, low-value without telemetry. Confirmed per Group I.
+- **L19** (personal-email blocklist): data-quality nit, low-value without telemetry. Confirmed per Group I. Cross-referenced with M32 (same class) per Group J.
 - **L24** (two calendar URLs): needs Chris/Scott sign-off on which is canonical — flagged during Group I.
-- **L6** (agent-failure requeue gap): one-line fix pending product sign-off on state-machine change. Flagged during Group I.
+- **M3** (action-schema Session 6 tightening of `signed_agreements`/`payments`/`workspace_credentials`): architecture in place; product decision needed on whether `workspace_credentials` → `require_role: 'owner'` would break Scott's onboarding workflow. Flagged during Group J.
+- **M7** (supabase.js `err.message` with PostgREST detail leaking to ~40 response-body sites): dedicated pattern-7 sweep session, not a reconciliation item. Group A closed the specific High-severity response leaks (H28/H33/H34/H35/M13/M26-err-leak); the rest is mostly admin-JWT-gated. Flagged during Group J.
 - **M19** (webhook race with auto-send): needs a design — what's the desired behavior when Stripe lands after the free tier email already sent? Hold and refund? Upgrade anyway? Product decision, not a code decision.
-- **M37** (auto-schedule doesn't check post-submit status flip): same — is this a bug or intended?
+- **M24** (compile-report GSC auto-correct): product call on whether the silent PATCH-on-3xx self-heal is desired behavior or should require approval. Flagged during Group J.
+- **M37** (auto-schedule doesn't check post-submit status flip): same — is this a bug or intended? Flagged during Group J.
+- **M39** (email TOCTOU with no unique constraint): product-gated since Group F 2026-04-18; one scenario (one therapist, two sibling practices, shared email) may be intentional. Re-verified unchanged during Group J.
 
 ---
 
 ## Recommended next session
 
-**The audit is at a natural stopping point.** All Criticals closed, all non-deferred Highs closed, the Lows + Nits tail walked end-to-end. What remains falls into four categories, none of which require urgency:
+**The audit is at a natural stopping point.** All Criticals closed, all non-deferred Highs closed, the Lows + Nits tail walked end-to-end (Group I), the Mediums tail walked end-to-end (Group J), L6 pre-task shipped. What remains falls into five categories, none of which require urgency:
 
-1. **Group J — Medium-tier reconciliation sweep** (≤1 session). ~22 open Mediums with the same "plausibly stale after Groups A–G" profile as the Lows had before Group I. Worth a single classify-first pass mirroring Group I's shape: bucket (a) doc-only closures for findings already resolved incidentally, bucket (b) small code fixes for those that survived, bucket (c) notes on anything that needs product sign-off. Likely bucket (a) candidates based on Group I reading: M1 (awaits dashboard metadata — see Group H), M3 (action.js tightening probably overlaps post-P4S5 state), M4 (github.js path validation — worth verifying against post-Group-B state), M7 (supabase error detail — same-class as N3 CR/LF sanitization), several process-entity-audit Mediums (M17/M21/M25/M29/etc.) that may have been swept by Group B.2's work on that file. M19/M37/M39 stay (c) pending product decisions.
-2. **L6 close-out** — Chris signed off 2026-04-18 on a richer design than the original one-line fix: preserve the real error reason (`status='agent_error'` + `last_agent_error` + `last_agent_error_at` columns) AND auto-retry indefinitely (cron flips `agent_error` → `queued` with 5-min backoff). Three-part fix: Supabase migration (new columns + partial index) + `submit-entity-audit.js` agent-failure branch + `cron/process-audit-queue.js` new step 0.5. Now a mandatory pre-task inside Group J's prompt, not a separate session.
-3. **H29 design session** (whenever ready). Waits on the 4 design decisions captured in the Group G batch 2 retrospective (JSONB encryption + read-path + migration + rotation). No code session will move it forward until those land.
-4. **Group H M1 Stripe metadata** (10 min code + 30-day observation window). Blocked on dashboard-side `metadata: { product: ... }` addition.
+1. **Pattern-7 err.message sweep** (≥1 session). M7 flagged that `api/_lib/supabase.js` constructs thrown error messages as `'Supabase query error: ' + (data.message || JSON.stringify(data))` where `data` is the raw PostgREST body, and ~40 call-site catches still echo `err.message` into 5xx response bodies. Two implementation shapes: (a) centralize — have `supabase.js` strip PostgREST detail from `err.message` while keeping `err.detail` on the error object for server-side logging, single-point fix covering all callers; or (b) callsite — walk every `catch` that returns `err.message` in a response body and route through `monitor.logError` with a generic user-facing string, the pattern already used in Group A for H28/H33/H34/H35/M13/M26. (a) is less invasive and surfaces diagnostic info server-side only by default; (b) is more explicit at the cost of touching many files. Decide first, then execute.
+2. **M4 allow-prefix-list follow-up** (≤0.5 session). Walk every `gh.pushFile`/`readFile`/`deleteFile`/`fileSha` caller across the repo, enumerate legitimate path prefixes (at minimum `_templates/`, `<slug>/proposal/`, `<slug>/report/`, `<slug>/agreement/`, `<slug>/onboarding/`, `<slug>/content/`, `<slug>/endorsement/`), add `startsWith` check to `validatePath`. Defensive-reject half already shipped as `b36c231c`.
+3. **H29 design session** (whenever ready). Waits on 4 design decisions captured in Group G batch 2 retrospective (JSONB encryption + read-path + migration + rotation). No code session will move it forward until those land.
+4. **M3 Session 6 tightening** (product-gated, 0.5 session once decision lands). Flip `signed_agreements` + `payments` to `{ write: false, delete: false }` and `workspace_credentials` to `{ require_role: 'owner' }` in `api/_lib/action-schema.js`. The 3-line edit is trivial; the product call on whether `workspace_credentials` tightening breaks Scott's onboarding workflow is the gate.
+5. **Group H M1 Stripe metadata** (10 min code + 30-day observation window). Blocked on dashboard-side `metadata: { product: ... }` addition.
 
-Or stop here with **"every non-deferred High closed + every actionable Low/Nit closed or explicitly-noted"** as the clean finish line. The audit docs now read cleanly top-to-bottom: every C/H is resolved or deferred-with-rationale, every L/N is resolved or has a Current-state note explaining why it stays open. That's a defensible resting state.
+Or stop here with **"every Critical closed, every non-deferred High closed, every Low + Nit + Medium resolved or explicitly-noted with current-state documentation"** as the clean finish line. The audit docs now read cleanly top-to-bottom: every C/H is resolved or deferred-with-rationale, every L/N/M is resolved or has a Current-state note explaining why it stays open. That's a defensible resting state.
 
 ## Executed prompt — Group G batch 1 (historical, for reference)
 
@@ -575,6 +598,66 @@ Out of scope for Group B.3 (flagged for future):
 - `fetchT(sb.url() + '/rest/v1/...')` sites — a handful of files already have the timeout wrapper from B.2 but still construct direct PostgREST URLs instead of using `sb.query`/`sb.mutate`. Final repo-wide sweep shows zero of these remain in scope: `analyze-design-spec.js`, `search-stock-images.js`, `onboarding-action.js`, `action.js` all legitimately use `sb.url() + '/rest/v1/'` as URL construction for their own custom routing layers (action.js / onboarding-action.js are the generic mutation-API handlers themselves). No separate L29 filing needed.
 - `api/_lib/google-drive.js` bespoke fetch + caching — tracked under N6, untouched.
 - Chat/streaming endpoints' stream loops (`agreement-chat.js`, `report-chat.js`) — no Supabase fetches to migrate inside those loops.
+
+## Group J — Medium-tier reconciliation sweep + L6 pre-task ✅ COMPLETE (2026-04-19)
+
+Classify-first reconciliation pass across all 22 open Mediums, preceded by the mandatory L6 three-part pre-task (state-machine change on agent-failure requeue, Chris-signed-off 2026-04-18). Same theme as Group I: verification over shipping, don't force (b) if the fix isn't genuinely small. Final outcome: **L6 fully resolved + 8 Mediums fully resolved + 1 Medium partially resolved (🔶) + 13 Mediums stay open with Current-state notes.**
+
+**L6 pre-task (3 parts, landed before the Medium sweep began):**
+
+- Migration `entity_audits_last_agent_error` — `ALTER TABLE entity_audits ADD COLUMN last_agent_error TEXT, last_agent_error_at TIMESTAMPTZ` + partial index `idx_entity_audits_agent_error ON (last_agent_error_at) WHERE status = 'agent_error'`. Applied via Supabase MCP `apply_migration`. Verified via `information_schema.columns` and `pg_indexes`.
+- `7f5103a4` — `api/submit-entity-audit.js` agent-failure branch: row flips to `status='agent_error'` with `last_agent_error` (capped 500 chars) and `last_agent_error_at`. Email subject changed to `Entity Audit Agent Error (auto-retrying) - <brand>`, p1 body reflects "cron will auto-retry every 30 min." `<strong>Error:</strong>` line and admin href preserved. Response shape unchanged (`agent_triggered: false` still returned to prospect).
+- `a985b05b` — `api/cron/process-audit-queue.js`: new STEP 0.5 flips `agent_error` rows older than 5 min back to `queued` without clearing the error detail columns (admins retain "errored N min ago, retrying" visibility); existing Step 1 dispatch-failure PATCH extended to populate the error columns with `'Agent returned ' + status + ': ' + errText.substring(0, 400)` capped at 500 chars; `agent_error_requeued` counter added to all 5 return sites. One extension beyond spec: spec called for counter at 3 return sites, this added it at all 5 wherever `stale_requeued` already lived (consistency with the existing pattern; additive-only).
+- Backfill: `SELECT id FROM entity_audits WHERE status = 'pending' AND created_at < '2026-04-19'` returned 0 rows at migration time — no pre-L6 lost audits existed to recover, so no UPDATE was run.
+
+All 3 pre-task outputs (migration + 2 commits) verified READY in Vercel between commits 2 and 3 per session-prompt sequencing.
+
+**Bucket (a) — doc-only reconciliations (4 findings):**
+
+- **M5** (newsletter-webhook optional signature verification) — mandatory now via H11 `b9b8f47`. Verified raw-body read, timestamp window, `timingSafeEqual` with length guard.
+- **M17** (process-entity-audit.js 15+ inlined Supabase fetches) — spec grep `grep -rn "fetch(sb.url()\|fetch.*rest/v1" api/process-entity-audit.js` returns 0; bare `fetch(` count also 0. Closed via M16 `0d2c56d` + `2512c46` in Group B.2.
+- **M31** (seed-content-pages.js duplicate `require('./_lib/supabase')`) — single require at L21. Closed via Group B.3 `bbf19a7` which collapsed the duplicate.
+- **M36** (seed-content-pages.js arrow functions) — zero arrows; 3 ES5 function-expressions. Same `bbf19a7` rewrote the affected sections.
+
+**Bucket (b) — small code fixes (4 commits, 4 findings + 1 partial):**
+
+- `b36c231c` — **M4 (partial 🔶)** `api/_lib/github.js` `validatePath` rejects backslash, null byte, and `%` in addition to the existing `..` / leading-`/` checks. Three-for-one rule: backslash blocks `a\..\b` smuggling past POSIX `..` on Windows-style separators; null-byte blocks any downstream fs termination; `%` rejection closes all URL-encoded traversal (`%2e%2e`, `%2f`, `%5c`) in one rule since legitimate repo paths are ASCII-only. 9 boundary cases verified before push. Allow-prefix-list half **stays open** — requires enumerating every `gh.pushFile`/`readFile`/`deleteFile`/`fileSha` caller in the repo to produce the allowlist, which is more than a sweep-session can do confidently. Filed as partial; follow-up session should close.
+- `d626fcc8` — **M27 + M28** `api/bootstrap-access.js` — `/^[a-z0-9-]{1,60}$/` client_slug regex at entry (L41) so every downstream concat site (`sb.one('contacts?slug=eq.' + clientSlug)`, 4 response-body echoes) is safe by construction; compound deliverables PATCH filter wraps `contact.id` and `upd.type` in `encodeURIComponent` as safe-by-default defense-in-depth (values are currently trusted but encoding costs nothing and protects against a future copy-paste into a request-controlled path). Inline comments explain the rationale on both edits.
+- `180665ae` — **M33** `api/digest.js` ISO date regex `/^\d{4}-\d{2}-\d{2}$/` on `from`/`to` before PostgREST concat. 7 boundary cases tested including the explicit injection probe `2026-04-18&created_at=lt.2000-01-01` (rejected correctly). Admin-JWT-gated endpoint so exploit surface was narrow but consistent defensive-input-at-entry pattern now in place across all public and admin input handlers touched in Groups F and J.
+- `1d8fd43f` — **M34** `api/newsletter-generate.js` module-load warning on missing `PEXELS_API_KEY`. Fails **open** deliberately (newsletter generation proceeds without Pexels images via placeholders), unlike H9/H10 which fail closed. The audit finding's concern was "no admin signal," not "must block" — module-load `console.error` in Vercel logs addresses that signal without introducing a new 500 path that would surprise anyone whose workflow previously relied on silent degrade.
+
+All 4 bucket-(b) commits READY on first Vercel build.
+
+**Bucket (c) — open with Current-state notes (13 findings):**
+
+Grouped by why they stay open:
+
+- **Blocked on dashboard-side config or 30-day observation window** (1): M1 (Stripe metadata product detection — Group H territory).
+- **Product decision required** (4): M3 (action-schema `signed_agreements`/`payments`/`workspace_credentials` tightening — workspace_credentials has workflow implication for Scott; "Session 6" flagged in-code), M19 (Stripe premium-upgrade race with free-tier email auto-send), M24 (compile-report GSC auto-correct self-heal — product call on whether to keep auto-heal vs require approval), M37 (send-audit-email followup scheduling ignoring `contact.status` mid-flight).
+- **Scope-fenced** (1): M21 (google-drive folderId query injection — explicit fence per session prompt).
+- **Multi-step / needs dedicated session** (3): M4 (allow-prefix-list half — caller enumeration), M23 (hardcoded `CLIENTS_FOLDER_ID` — env var + rollout), M35 (generate-content-page PATCH+POST transaction — needs Postgres function or careful POST-first reorder).
+- **Pattern-level repo sweep** (1): M7 (supabase.js error detail in thrown messages — 40+ sites still return `err.message` to response bodies; dedicated "pattern 7" sweep session, not a reconciliation item).
+- **Cross-refs to parked L-tier findings** (3): M25 (markdown fence strip — same class as L11, pending shared-parser helper), M29 (chat.js maxDuration — no telemetry to justify change; hold pending concrete user-report), M32 (enrich-proposal personal-email regex — same class as L19, low-value without telemetry).
+- **Product decision already captured, re-verified** (1): M39 (email TOCTOU with no unique constraint — product-gated since Group F 2026-04-18; re-verified unchanged).
+
+**Key discovery flagged: none.** The L6 pre-task landed cleanly, the classify pass produced no new latent bugs (unlike Group B.3 which caught a `ReferenceError` in `discover-services.js`, or Group I which caught the orphan fragment that drifted from L25 to L27's section). One micro-fix: the M37 section had an orphan one-line fragment ("Follow-up sequence scheduled even if contact has since flipped to `lost`/`onboarding`/`active`.") that had drifted below M38's resolution block — this was the original M37 finding text, restored as part of M37's Current-state note and the drift-line deleted.
+
+**Process note — the pre-task was half the session.** L6 alone was migration + 2 commits + verification + backfill check, roughly 40% of total effort. The Medium classify phase itself was faster than Group I's Lows+Nits pass because Group I had already documented the "this whole file has been swept" patterns that made M17 / M31 / M36 / M5 quick to verify. Net ratio: ~60 lines of code shipped across 4 commits + migration vs ~120 lines of doc content documenting 22 findings' current state.
+
+Net result:
+- **L6: ✅ RESOLVED.** Lows tally: 13/28 → 14/28 resolved. Open: 15 → 14.
+- **Mediums: 25/39 fully resolved (was 17). 1 partial (M4 🔶). 13 open — all with Current-state notes.**
+- **Nits: 5/6 unchanged (N5 still open).**
+- **Total ≥89 of 118 findings resolved (with M4 partial counted), ≤29 open.**
+
+Remaining work falls into four categories, none of which require urgency:
+- **H29 design session** (whenever ready). Waits on the 4 design decisions from Group G batch 2 retrospective (JSONB encryption + read-path + migration + rotation).
+- **Pattern-7 systemic sweep** (M7 and its 40+ call-site surface). Either update `supabase.js` to strip PostgREST detail from `err.message` while keeping it on `err.detail`, or walk every catch echoing `err.message` to a 5xx body.
+- **M3 Session 6 tightening** (product call on workspace_credentials write access).
+- **M4 allow-prefix-list half** (caller enumeration for `gh.pushFile`/`readFile`/`deleteFile`/`fileSha`).
+- **Product-decision items** (M19, M24, M37, M39, L24, N5).
+
+The audit now reads cleanly top-to-bottom: every Critical / High / Low / Nit / Medium finding is resolved, deferred-with-rationale, or has an explicit Current-state note explaining why it stays open.
 
 ## Group I — Lows + Nits reconciliation sweep ✅ COMPLETE (2026-04-18)
 
