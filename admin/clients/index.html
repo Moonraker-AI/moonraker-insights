@@ -555,12 +555,6 @@
 .ws-masked { font-family: monospace; letter-spacing: .1em; cursor: pointer; user-select: none; }
 .ws-masked:hover { color: var(--color-primary); }
 .ws-full-width { grid-column: 1 / -1; }
-.ws-qr-paste { border: 2px dashed var(--color-border); border-radius: 8px; padding: 1rem; text-align: center; cursor: pointer; transition: border-color .2s, background .2s; min-height: 80px; display: flex; align-items: center; justify-content: center; flex-direction: column; gap: .35rem; }
-.ws-qr-paste:hover, .ws-qr-paste.drag-over { border-color: var(--color-primary); background: var(--color-primary-subtle); }
-.ws-qr-paste img { max-width: 160px; max-height: 160px; border-radius: 6px; }
-.ws-qr-paste .paste-hint { font-size: .75rem; color: var(--color-muted); }
-.ws-qr-thumb { max-width: 120px; max-height: 120px; border-radius: 6px; cursor: pointer; border: 1px solid var(--color-border); }
-.ws-qr-thumb:hover { border-color: var(--color-primary); }
 .ws-backup-code:hover { background: var(--color-primary-subtle); color: var(--color-primary); }
 .ws-backup-code::after { content: ''; position: absolute; inset: 0; }
 .ws-code-copied { background: var(--color-primary) !important; color: #fff !important; }
@@ -2624,28 +2618,6 @@
     h += '<div class="ws-field"><span class="ws-label">Backup Phone</span><span class="ws-value">' + maskVal('backup_phone', ws.backup_phone) + '</span></div>';
     h += '<div class="ws-field"><span class="ws-label">2FA Enabled</span><span class="ws-value">' + (ws.two_fa_enabled ? '<span style="color:var(--color-success);">Yes</span>' : '<span style="color:var(--color-danger);">No</span>') + '</span></div>';
     h += '<div class="ws-field"><span class="ws-label">App Password</span><span class="ws-value">' + maskVal('app_password', ws.app_password) + '</span></div>';
-    if ((ws.authenticator_backup_codes && ws.authenticator_backup_codes.length > 0) || ws.qr_code_image) {
-      // QR code in left column
-      if (ws.qr_code_image) {
-        h += '<div class="ws-field"><span class="ws-label">2FA QR Code</span><div style="margin-top:.25rem;"><img src="' + ws.qr_code_image + '" class="ws-qr-thumb" onclick="showQrFullsize()" alt="2FA QR Code"></div></div>';
-      } else if (ws.authenticator_backup_codes && ws.authenticator_backup_codes.length > 0) {
-        h += '<div class="ws-field"></div>';
-      }
-      // Backup codes in right column
-      if (ws.authenticator_backup_codes && ws.authenticator_backup_codes.length > 0) {
-        h += '<div class="ws-field"><span class="ws-label">Backup Codes</span>';
-        if (wsRevealedFields['backup_codes']) {
-          h += '<div style="display:grid;grid-template-columns:repeat(2,auto);gap:.2rem .75rem;justify-content:start;font-family:monospace;font-size:.82rem;margin-top:.25rem;">';
-          ws.authenticator_backup_codes.forEach(function(c, i) {
-            h += '<span class="ws-backup-code" onclick="copyBackupCode(this,\'' + esc(c) + '\')" title="Click to copy" style="cursor:pointer;padding:.15rem .4rem;border-radius:4px;transition:background .15s,color .15s;position:relative;user-select:none;">' + esc(c) + '</span>';
-          });
-          h += '</div>';
-        } else {
-          h += '<span class="ws-value ws-masked" onclick="revealWsField(\'backup_codes\')" title="Click to reveal" style="display:block;margin-top:.25rem;">\u2022\u2022\u2022\u2022 (' + ws.authenticator_backup_codes.length + ' codes)</span>';
-        }
-        h += '</div>';
-      }
-    }
     h += '</div>';
     el.innerHTML = h;
   }
@@ -2653,82 +2625,6 @@
   window.revealWsField = function(key) {
     wsRevealedFields[key] = true;
     renderWorkspace();
-  };
-
-  window.copyBackupCode = function(el, code) {
-    navigator.clipboard.writeText(code).then(function() {
-      el.classList.add('ws-code-copied');
-      el.setAttribute('data-copied', 'true');
-      setTimeout(function() { el.classList.remove('ws-code-copied'); el.removeAttribute('data-copied'); }, 1200);
-    });
-  };
-
-  function initQrPasteZone() {
-    var zone = document.getElementById('wsQrPasteZone');
-    if (!zone) return;
-    zone.addEventListener('paste', function(e) {
-      var items = (e.clipboardData || e.originalEvent.clipboardData).items;
-      for (var i = 0; i < items.length; i++) {
-        if (items[i].type.indexOf('image') !== -1) {
-          e.preventDefault();
-          handleQrImage(items[i].getAsFile());
-          return;
-        }
-      }
-    });
-    zone.addEventListener('dragover', function(e) { e.preventDefault(); zone.classList.add('drag-over'); });
-    zone.addEventListener('dragleave', function() { zone.classList.remove('drag-over'); });
-    zone.addEventListener('drop', function(e) {
-      e.preventDefault();
-      zone.classList.remove('drag-over');
-      var files = e.dataTransfer.files;
-      if (files.length > 0 && files[0].type.indexOf('image') !== -1) {
-        handleQrImage(files[0]);
-      }
-    });
-    zone.addEventListener('click', function() {
-      var inp = document.createElement('input');
-      inp.type = 'file';
-      inp.accept = 'image/*';
-      inp.onchange = function() { if (inp.files[0]) handleQrImage(inp.files[0]); };
-      inp.click();
-    });
-  }
-
-  function handleQrImage(file) {
-    var reader = new FileReader();
-    reader.onload = function(e) {
-      var dataUrl = e.target.result;
-      wsQrPendingImage = dataUrl;
-      if (state.workspace) state.workspace.qr_code_image = dataUrl;
-      var zone = document.getElementById('wsQrPasteZone');
-      if (zone) {
-        zone.innerHTML = '<img src="' + dataUrl + '" alt="QR Code"><div class="paste-hint">Paste or drop to replace &middot; <span onclick="event.stopPropagation();removeQrImage();" style="color:var(--color-danger);cursor:pointer;text-decoration:underline;">Remove</span></div>';
-      }
-    };
-    reader.readAsDataURL(file);
-  }
-
-  window.removeQrImage = function() {
-    wsQrPendingImage = '';
-    if (state.workspace) state.workspace.qr_code_image = null;
-    var zone = document.getElementById('wsQrPasteZone');
-    if (zone) {
-      zone.innerHTML = '<svg width="24" height="24" fill="none" stroke="currentColor" stroke-width="1.5" viewBox="0 0 24 24" style="color:var(--color-muted);"><path d="M15.172 7l-6.586 6.586a2 2 0 102.828 2.828L18 9.828a4 4 0 00-5.656-5.656L5.757 10.757a6 6 0 008.486 8.486L20.5 13"/></svg><div class="paste-hint">Paste (Ctrl+V) or drop a QR code screenshot</div>';
-    }
-  };
-
-  window.showQrFullsize = function() {
-    var ws = state.workspace;
-    if (!ws || !ws.qr_code_image) return;
-    var overlay = document.createElement('div');
-    overlay.style.cssText = 'position:fixed;top:0;left:0;right:0;bottom:0;background:rgba(0,0,0,.7);display:flex;align-items:center;justify-content:center;z-index:9999;cursor:pointer;';
-    overlay.onclick = function() { document.body.removeChild(overlay); };
-    var img = document.createElement('img');
-    img.src = ws.qr_code_image;
-    img.style.cssText = 'max-width:90vw;max-height:90vh;border-radius:8px;box-shadow:0 4px 24px rgba(0,0,0,.4);';
-    overlay.appendChild(img);
-    document.body.appendChild(overlay);
   };
 
   window.createWorkspace = function() {
@@ -2763,52 +2659,13 @@
     h += '<div class="ws-field"><span class="ws-label">Backup Phone</span>' + inp('backup_phone', ws.backup_phone, 'Recovery phone') + '</div>';
     h += '<div class="ws-field"><span class="ws-label">2FA Enabled</span><select id="ws_two_fa" style="width:100%;padding:.4rem .6rem;border:1px solid var(--color-border);border-radius:6px;font-size:.84rem;background:var(--color-surface);color:var(--color-heading);font-family:inherit;"><option value="false"' + (!ws.two_fa_enabled ? ' selected' : '') + '>No</option><option value="true"' + (ws.two_fa_enabled ? ' selected' : '') + '>Yes</option></select></div>';
     h += '<div class="ws-field"><span class="ws-label">App Password</span>' + inp('app_password', ws.app_password, '16-char app password') + '</div>';
-    h += '<div class="ws-field"><span class="ws-label">2FA QR Code</span>';
-    h += '<div class="ws-qr-paste" id="wsQrPasteZone" tabindex="0" style="margin-top:.25rem;">';
-    if (ws.qr_code_image) {
-      h += '<img src="' + ws.qr_code_image + '" alt="QR Code"><div class="paste-hint">Paste or drop a new image to replace</div>';
-    } else {
-      h += '<svg width="24" height="24" fill="none" stroke="currentColor" stroke-width="1.5" viewBox="0 0 24 24" style="color:var(--color-muted);"><path d="M15.172 7l-6.586 6.586a2 2 0 102.828 2.828L18 9.828a4 4 0 00-5.656-5.656L5.757 10.757a6 6 0 008.486 8.486L20.5 13"/></svg>';
-      h += '<div class="paste-hint">Paste (Ctrl+V) or drop a QR code screenshot</div>';
-    }
-    h += '</div></div>';
-    h += '<div class="ws-field"><span class="ws-label">Backup Codes</span><textarea id="ws_backup_codes" rows="5" placeholder="Paste backup codes in any format" style="width:100%;padding:.5rem .6rem;border:1px solid var(--color-border);border-radius:6px;font-size:.82rem;font-family:monospace;background:var(--color-surface);color:var(--color-heading);resize:vertical;line-height:1.6;margin-top:.25rem;">' + esc((ws.authenticator_backup_codes || []).join('\n')) + '</textarea></div>';
     h += '</div>';
     el.innerHTML = h;
-    initQrPasteZone();
   }
-
-  var wsQrPendingImage = null;
 
   function saveWorkspaceCredentials() {
     var ws = state.workspace;
     if (!ws) return;
-    var codesRaw = document.getElementById('ws_backup_codes').value.trim();
-    var codes = [];
-    if (codesRaw) {
-      // Split by newlines or commas first
-      var lines = codesRaw.split(/[\n,]+/).map(function(l) { return l.trim(); }).filter(Boolean);
-      lines.forEach(function(line) {
-        // Extract all digit groups from each line
-        var digits = line.match(/\d+/g);
-        if (!digits) return;
-        // Pair consecutive 4-digit groups into "XXXX XXXX" codes
-        var i = 0;
-        while (i < digits.length) {
-          if (digits[i].length === 4 && i + 1 < digits.length && digits[i + 1].length === 4) {
-            codes.push(digits[i] + ' ' + digits[i + 1]);
-            i += 2;
-          } else if (digits[i].length === 8) {
-            codes.push(digits[i].substring(0, 4) + ' ' + digits[i].substring(4));
-            i++;
-          } else {
-            // Keep as-is for non-standard formats
-            codes.push(digits[i]);
-            i++;
-          }
-        }
-      });
-    }
     var data = {
       gmail_address: document.getElementById('ws_gmail_address').value.trim() || null,
       gmail_password: document.getElementById('ws_gmail_password').value.trim() || null,
@@ -2816,12 +2673,8 @@
       backup_phone: document.getElementById('ws_backup_phone').value.trim() || null,
       two_fa_enabled: document.getElementById('ws_two_fa').value === 'true',
       app_password: document.getElementById('ws_app_password').value.trim() || null,
-      authenticator_backup_codes: codes.length > 0 ? codes : null,
       updated_at: new Date().toISOString()
     };
-    if (wsQrPendingImage !== null) {
-      data.qr_code_image = wsQrPendingImage || null;
-    }
     fetch('/api/action', {
       method: 'POST', headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({ action: 'update_record', table: 'workspace_credentials', filters: { id: ws.id }, data: data })
@@ -2829,7 +2682,6 @@
       if (res.success) {
         Object.assign(state.workspace, data);
         wsRevealedFields = {};
-        wsQrPendingImage = null;
         renderWorkspace();
       }
     });

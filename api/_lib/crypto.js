@@ -184,12 +184,6 @@ function decryptFields(data, fields) {
       result[fields[i]] = decrypt(result[fields[i]]);
     }
   }
-  // Handle backup_codes array
-  if (result.authenticator_backup_codes && Array.isArray(result.authenticator_backup_codes)) {
-    result.authenticator_backup_codes = result.authenticator_backup_codes.map(function(code) {
-      return decrypt(code);
-    });
-  }
   return result;
 }
 
@@ -200,11 +194,11 @@ function isConfigured() {
 
 // The fields that should be encrypted for workspace_credentials.
 // cms_login_url is NOT included — it's a plaintext URL (e.g. /wp-admin), not a secret.
+// authenticator_secret_key / authenticator_backup_codes / qr_code_image were
+// dropped 2026-04-18 — Moonraker does not manage client-Gmail TOTP credentials.
 var SENSITIVE_FIELDS = [
   'gmail_password',
   'app_password',
-  'authenticator_secret_key',
-  'qr_code_image',
   'cms_username',
   'cms_password',
   'cms_app_password'
