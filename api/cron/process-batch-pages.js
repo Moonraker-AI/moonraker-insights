@@ -37,27 +37,27 @@ module.exports = async function(req, res) {
       var result = { batch_id: batch.id, client_slug: batch.client_slug };
 
       try {
-        // Find next page to process
-        var pages = await sb.query('content_pages?batch_id=eq.' + batch.id +
-          '&surge_status=eq.raw_stored&order=created_at.asc&limit=1');
+        // Atomic page claim via RPC (see migrations/2026-04-19-queue-claim-rpcs.sql).
+        // Returns 0 or 1 rows with surge_status already flipped to 'processing'.
+        // SKIP LOCKED in the RPC prevents two concurrent cron invocations from
+        // parsing the same page's surge_raw_data twice.
+        var claimed = await sb.mutate(
+          'rpc/claim_next_content_page',
+          'POST',
+          { p_batch_id: batch.id }
+        );
 
-        if (!pages || pages.length === 0) {
-          // All pages done, check completion
+        if (!claimed || !Array.isArray(claimed) || claimed.length === 0) {
+          // All pages done (or all currently locked by another claim), check completion
           await checkBatchComplete(batch.id);
           result.action = 'checked_completion';
           results.push(result);
           continue;
         }
 
-        var page = pages[0];
+        var page = claimed[0];
         result.content_page_id = page.id;
         result.keyword = page.target_keyword || page.page_name;
-
-        // Mark processing
-        await sb.mutate('content_pages?id=eq.' + page.id, 'PATCH', {
-          surge_status: 'processing',
-          updated_at: new Date().toISOString()
-        }, 'return=minimal');
 
         // Extract RTPBA and schema
         var raw = page.surge_raw_data || '';

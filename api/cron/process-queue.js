@@ -19,20 +19,17 @@ module.exports = async function handler(req, res) {
   if (!sb.isConfigured()) return res.status(500).json({ error: 'SUPABASE_SERVICE_ROLE_KEY not configured' });
 
   try {
-    // Find the next pending item where scheduled_for <= now
-    var now = new Date().toISOString();
-    var items = await sb.query('report_queue?status=eq.pending&scheduled_for=lte.' + now + '&order=scheduled_for.asc&limit=1');
+    // Atomic claim via RPC (see migrations/2026-04-19-queue-claim-rpcs.sql).
+    // Returns 0 or 1 rows. FOR UPDATE SKIP LOCKED in the RPC prevents two
+    // overlapping cron invocations from claiming the same row and doing the
+    // same Anthropic compile twice.
+    var claimed = await sb.mutate('rpc/claim_next_report_queue', 'POST', {});
 
-    if (!items || items.length === 0) {
+    if (!claimed || !Array.isArray(claimed) || claimed.length === 0) {
       return res.status(200).json({ success: true, message: 'No pending items ready to process', processed: 0 });
     }
 
-    var item = items[0];
-
-    // Mark as processing
-    await sb.mutate('report_queue?id=eq.' + item.id, 'PATCH', {
-      status: 'processing', started_at: now, attempt: (item.attempt || 0) + 1
-    });
+    var item = claimed[0];
 
     // Call compile-report via custom domain (VERCEL_URL is behind deployment protection)
     var baseUrl = 'https://clients.moonraker.ai';
