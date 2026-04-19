@@ -66,8 +66,11 @@ module.exports = async function handler(req, res) {
   if (ALLOWED_STATUSES.indexOf(nextStatus) === -1) {
     return res.status(400).json({ error: 'Invalid status' });
   }
-  // UUID sanity check keeps bogus input from hitting the DB.
-  if (!/^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(itemId)) {
+  // checklist_items.id is a text column. Legacy format is "<8-hex>-<3-digit>";
+  // newer rows may be UUIDs. Accept both by whitelisting a loose identifier
+  // shape (alphanumerics + hyphens + underscores, up to 64 chars) — tight
+  // enough to keep bogus input out, broad enough to cover both formats.
+  if (!/^[A-Za-z0-9_-]{1,64}$/.test(itemId)) {
     return res.status(400).json({ error: 'Invalid item_id' });
   }
 
