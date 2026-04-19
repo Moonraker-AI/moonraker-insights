@@ -14,8 +14,9 @@
 var auth = require('../_lib/auth');
 var sb = require('../_lib/supabase');
 var monitor = require('../_lib/monitor');
+var cronRuns = require('../_lib/cron-runs');
 
-module.exports = async function(req, res) {
+async function handler(req, res) {
   // Auth: admin JWT, CRON_SECRET, or AGENT_API_KEY (timing-safe)
   var user = await auth.requireAdminOrInternal(req, res);
   if (!user) return;
@@ -115,7 +116,9 @@ module.exports = async function(req, res) {
     });
     return res.status(500).json({ error: 'Batch pages processing failed' });
   }
-};
+}
+
+module.exports = cronRuns.withTracking('process-batch-pages', handler);
 
 
 async function checkBatchComplete(batchId) {

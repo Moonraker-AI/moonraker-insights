@@ -208,6 +208,10 @@
     {
       "path": "/api/cron/backfill-gbp-daily",
       "schedule": "0 9 * * *"
+    },
+    {
+      "path": "/api/cron/cron-heartbeat-check",
+      "schedule": "0 8 * * *"
     }
   ]
 }

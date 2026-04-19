@@ -15,6 +15,7 @@
 var auth = require('../_lib/auth');
 var sb = require('../_lib/supabase');
 var monitor = require('../_lib/monitor');
+var cronRuns = require('../_lib/cron-runs');
 
 // How long an audit can stay in agent_running before we consider it stale
 // (only used when the agent IS actively processing something)
@@ -25,7 +26,7 @@ var STALE_THRESHOLD_HOURS = 2;
 // network round-trip + agent accept latency.
 var DISPATCHING_STALE_MS = 2 * 60 * 1000;
 
-module.exports = async function handler(req, res) {
+async function handler(req, res) {
   // Auth: admin JWT, CRON_SECRET, or AGENT_API_KEY (timing-safe)
   var user = await auth.requireAdminOrInternal(req, res);
   if (!user) return;
@@ -344,5 +345,7 @@ module.exports = async function handler(req, res) {
     });
     return res.status(500).json({ error: 'Audit queue processing failed' });
   }
-};
+}
+
+module.exports = cronRuns.withTracking('process-audit-queue', handler);
 

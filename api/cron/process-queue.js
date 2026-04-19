@@ -5,8 +5,9 @@
 var auth = require('../_lib/auth');
 var sb = require('../_lib/supabase');
 var monitor = require('../_lib/monitor');
+var cronRuns = require('../_lib/cron-runs');
 
-module.exports = async function handler(req, res) {
+async function handler(req, res) {
   if (req.method !== 'POST' && req.method !== 'GET') {
     return res.status(405).json({ error: 'Method not allowed' });
   }
@@ -100,4 +101,6 @@ module.exports = async function handler(req, res) {
     });
     return res.status(500).json({ error: 'Queue processing failed' });
   }
-};
+}
+
+module.exports = cronRuns.withTracking('process-queue', handler);

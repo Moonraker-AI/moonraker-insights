@@ -27,6 +27,7 @@ var sb = require('../_lib/supabase');
 var monitor = require('../_lib/monitor');
 var fetchT = require('../_lib/fetch-with-timeout');
 var email = require('../_lib/email-template');
+var cronRuns = require('../_lib/cron-runs');
 
 var HEALABLE_CODES = ['surge_maintenance', 'credits_exhausted'];
 
@@ -37,7 +38,7 @@ var CODE_LABELS = {
   generic_exception: 'Unhandled agent error'
 };
 
-module.exports = async function handler(req, res) {
+async function handler(req, res) {
   var user = await auth.requireAdminOrInternal(req, res);
   if (!user) return;
 
@@ -205,7 +206,9 @@ module.exports = async function handler(req, res) {
     }).catch(function() {});
     return res.status(500).json({ error: 'check-surge-blocks failed' });
   }
-};
+}
+
+module.exports = cronRuns.withTracking('check-surge-blocks', handler);
 
 // ── Digest email builder ──────────────────────────────────────────
 

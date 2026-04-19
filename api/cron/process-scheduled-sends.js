@@ -21,11 +21,12 @@
 var auth = require('../_lib/auth');
 var sb = require('../_lib/supabase');
 var monitor = require('../_lib/monitor');
+var cronRuns = require('../_lib/cron-runs');
 
 var MAX_ATTEMPTS = 3;
 var BACKOFF_MINUTES = [5, 15, 60]; // applied after attempt 1, 2, 3 respectively
 
-module.exports = async function handler(req, res) {
+async function handler(req, res) {
   if (req.method !== 'POST' && req.method !== 'GET') {
     return res.status(405).json({ error: 'Method not allowed' });
   }
@@ -126,7 +127,9 @@ module.exports = async function handler(req, res) {
     });
     return res.status(500).json({ error: 'Scheduled sends processing failed' });
   }
-};
+}
+
+module.exports = cronRuns.withTracking('process-scheduled-sends', handler);
 
 // 4xx (other than 408/429) are bad-request style errors. No point retrying.
 function isPermanentHttpStatus(status) {

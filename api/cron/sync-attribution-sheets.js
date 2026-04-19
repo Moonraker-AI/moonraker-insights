@@ -14,8 +14,9 @@ var sb = require('../_lib/supabase');
 var monitor = require('../_lib/monitor');
 var sheets = require('../_lib/google-sheets');
 var syncLib = require('../admin/attribution-sync');
+var cronRuns = require('../_lib/cron-runs');
 
-module.exports = async function handler(req, res) {
+async function handler(req, res) {
   // Auth normalized to requireAdminOrInternal for consistency with the other
   // 10 cron routes (cron audit M5). Previous requireCronSecret is reserved
   // for routes with DDL / bulk-push superpowers (run-migration, backfill-
@@ -130,4 +131,6 @@ module.exports = async function handler(req, res) {
     });
     res.status(500).json({ error: 'Cron run failed', detail: e.message, summary: summary });
   }
-};
+}
+
+module.exports = cronRuns.withTracking('sync-attribution-sheets', handler);

@@ -7,8 +7,9 @@ var auth = require('../_lib/auth');
 var email = require('../_lib/email-template');
 var sb = require('../_lib/supabase');
 var monitor = require('../_lib/monitor');
+var cronRuns = require('../_lib/cron-runs');
 
-module.exports = async function handler(req, res) {
+async function handler(req, res) {
   if (req.method !== 'POST' && req.method !== 'GET') {
     return res.status(405).json({ error: 'Method not allowed' });
   }
@@ -109,7 +110,9 @@ module.exports = async function handler(req, res) {
     });
     return res.status(500).json({ error: 'Cron failed: ' + e.message, results: results });
   }
-};
+}
+
+module.exports = cronRuns.withTracking('process-followups', handler);
 
 async function sendFollowupEmail(resendKey, contact, followup, fromAddress) {
   try {

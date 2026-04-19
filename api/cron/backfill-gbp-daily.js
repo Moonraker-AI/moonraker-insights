@@ -21,9 +21,10 @@
 
 var auth = require('../_lib/auth');
 var monitor = require('../_lib/monitor');
+var cronRuns = require('../_lib/cron-runs');
 var upstream = require('../backfill-gbp-warehouse');
 
-module.exports = async function handler(req, res) {
+async function handler(req, res) {
   var user = await auth.requireAdminOrInternal(req, res);
   if (!user) return;
 
@@ -45,4 +46,6 @@ module.exports = async function handler(req, res) {
       return res.status(500).json({ error: 'backfill-gbp-daily failed' });
     }
   }
-};
+}
+
+module.exports = cronRuns.withTracking('backfill-gbp-daily', handler);
