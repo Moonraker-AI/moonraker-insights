@@ -1,16 +1,16 @@
 <!DOCTYPE html>
-<html lang="en">
+<html lang="en" data-theme="light">
+<script>try{var st=localStorage.getItem('moonraker-theme');if(st){document.documentElement.setAttribute('data-theme',st)}}catch(e){}</script>
 <head>
 <meta charset="UTF-8">
+<meta name="robots" content="noindex, nofollow">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
-<title>Client Results - Moonraker</title>
-<link rel="icon" type="image/png" href="/assets/logo.png">
-<link href="https://fonts.googleapis.com/css2?family=Outfit:wght@400;600;700;800&family=Inter:wght@400;500;600&display=swap" rel="stylesheet">
-<script>
-(function(){var t=localStorage.getItem('moonraker-theme');if(t==='dark')document.documentElement.classList.add('dark')})();
-</script>
+<title>Client HQ - Moonraker</title>
 <style>
-:root {
+@import url('https://fonts.googleapis.com/css2?family=Outfit:wght@400;600;700&display=swap');
+@import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600&display=swap');
+
+:root, [data-theme="light"] {
   --color-primary: #00D47E;
   --color-primary-hover: #00b86c;
   --color-primary-light: #B4EEE0;
@@ -22,9 +22,13 @@
   --color-body: #333F70;
   --color-muted: #6B7599;
   --color-navy: #141C3A;
-  --color-overlay: rgba(30,42,94,.65);
+  --color-success: #00D47E;
+  --color-warning: #F59E0B;
+  --color-danger: #EF4444;
+  --color-info: #3B82F6;
 }
-html.dark {
+[data-theme="dark"] {
+  --color-primary: #00D47E;
   --color-primary-hover: #00f598;
   --color-primary-light: #1A4A38;
   --color-primary-subtle: #0D2E22;
@@ -35,474 +39,795 @@ html.dark {
   --color-body: #C8D8D0;
   --color-muted: #5A7A6E;
   --color-navy: #0A1630;
-  --color-overlay: rgba(8,15,11,.8);
+  --color-success: #00D47E;
+  --color-warning: #F59E0B;
+  --color-danger: #FF6B6B;
+  --color-info: #60A5FA;
 }
+
 *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
-body { font-family: 'Inter', sans-serif; background: var(--color-bg); color: var(--color-body); line-height: 1.6; -webkit-font-smoothing: antialiased; }
+html { scroll-behavior: smooth; font-size: 16px; }
+body { font-family: 'Inter', -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif; font-weight: 400; color: var(--color-body); background: var(--color-bg); line-height: 1.7; -webkit-font-smoothing: antialiased;  }
 ::view-transition-old(root), ::view-transition-new(root) { animation-duration: .25s; }
-/* ── Top Bar (dark navy strip) ── */
-.top-bar {
-  background: #141C3A; position: relative; overflow: hidden;
-}
-html.dark .top-bar { background: #0A1630; }
-.top-bar::before {
-  content: ''; position: absolute; top: -60%; right: -10%; width: 500px; height: 500px;
-  background: radial-gradient(circle, rgba(0,212,126,.06) 0%, transparent 70%);
-  pointer-events: none;
-}
-.top-bar-inner {
-  max-width: 1200px; margin: 0 auto;
-  display: flex; align-items: center; justify-content: space-between;
-  padding: 1rem 2rem; position: relative; z-index: 1;
-}
-.top-bar-left { display: flex; align-items: center; gap: .85rem; }
-.top-bar-left img { height: 32px; }
-.top-bar-divider { width: 1px; height: 18px; background: rgba(255,255,255,.15); }
-.top-bar-label { font-family: 'Outfit', sans-serif; font-weight: 600; font-size: .875rem; color: rgba(232,245,239,.55); letter-spacing: .02em; }
-.theme-toggle { width: 36px; height: 36px; border-radius: 50%; border: 1px solid rgba(255,255,255,.15); background: rgba(255,255,255,.06); cursor: pointer; display: flex; align-items: center; justify-content: center; font-size: 1rem; transition: background .2s, border-color .2s; }
-.theme-toggle:hover { border-color: var(--color-primary); }
+h1, h2, h3, h4 { font-family: 'Outfit', sans-serif; font-weight: 700; color: var(--color-heading); line-height: 1.15; }
+h1 { font-size: 2.75rem; letter-spacing: -0.02em; }
+h2 { font-size: 2rem; margin-bottom: .75rem; letter-spacing: -0.01em; }
+h3 { font-size: 1.35rem; }
+h4 { font-size: 1.15rem; }
+p { margin-bottom: 1rem; }
+a { color: var(--color-primary); text-decoration: none; transition: color .2s; }
+a:hover { color: var(--color-primary-hover); }
+strong { font-weight: 600; color: var(--color-heading); }
 
-/* ── Hero with gradient ── */
-.hero-wrap {
-  background: linear-gradient(165deg, var(--color-primary-subtle) 0%, var(--color-bg) 50%, var(--color-surface) 100%);
-  border-bottom: 1px solid var(--color-border);
-  padding: 4rem 2rem 3rem;
-  position: relative; overflow: hidden;
-}
-.hero-wrap::before {
-  content: ''; position: absolute; top: -40%; right: -10%; width: 600px; height: 600px;
-  background: radial-gradient(circle, rgba(0,212,126,.06) 0%, transparent 70%);
-  pointer-events: none;
-}
-.hero-wrap::after {
-  content: ''; position: absolute; bottom: -30%; left: -8%; width: 500px; height: 500px;
-  background: radial-gradient(circle, rgba(30,42,94,.04) 0%, transparent 70%);
-  pointer-events: none;
-}
-html.dark .hero-wrap {
-  background: linear-gradient(165deg, var(--color-primary-subtle) 0%, var(--color-bg) 60%);
-}
-html.dark .hero-wrap::before { background: radial-gradient(circle, rgba(0,212,126,.08) 0%, transparent 70%); }
-.hero { text-align: center; max-width: 940px; margin: 0 auto; position: relative; z-index: 1; }
-.hero h1 { font-family: 'Outfit', sans-serif; font-weight: 800; font-size: 3.5rem; line-height: 1.15; color: var(--color-heading); margin-bottom: 1rem; }
-.hero h1 span { color: var(--color-primary); }
-.hero p { font-size: 1.3rem; color: var(--color-muted); max-width: 680px; margin: 0 auto; line-height: 1.7; }
-.partners-section { padding: 2rem 2rem 2.5rem; max-width: 1100px; margin: 0 auto; text-align: center; }
-.section-heading { font-family: 'Outfit', sans-serif; font-weight: 800; font-size: 2.75rem; color: var(--color-heading); margin-bottom: .5rem; }
-.section-subhead { font-size: 1.0625rem; color: var(--color-muted); max-width: 540px; margin: 0 auto 2.5rem; }
-.partners-rows { display: flex; flex-direction: column; align-items: center; gap: 2rem; }
-.partner-row { display: flex; align-items: center; justify-content: center; gap: 2rem 3rem; flex-wrap: wrap; }
-.partner-logo { height: 80px; max-width: 200px; object-fit: contain; transition: transform .2s, opacity .2s; opacity: .85; }
-.partner-logo:hover { transform: scale(1.08); opacity: 1; }
-html.dark .partner-logo { filter: brightness(1.1) contrast(1.05); opacity: .75; }
-html.dark .partner-logo:hover { opacity: .95; }
-.stats-bar { display: flex; justify-content: center; gap: 3rem; padding: 3.5rem 2rem 1.5rem; }
-.stat-item { text-align: center; }
-.stat-value { font-family: 'Outfit', sans-serif; font-weight: 800; font-size: 2.25rem; color: var(--color-primary); line-height: 1; }
-.stat-label { font-size: .8125rem; font-weight: 600; text-transform: uppercase; letter-spacing: .06em; color: var(--color-muted); margin-top: .35rem; }
-.filters { display: flex; justify-content: center; gap: .5rem; padding: .5rem 2rem 3rem; flex-wrap: wrap; }
-.filter-pill { padding: .45rem 1.1rem; border-radius: 99px; font-size: .9375rem; font-weight: 500; border: 1px solid var(--color-border); background: var(--color-surface); color: var(--color-muted); cursor: pointer; transition: all .2s; }
-.filter-pill:hover { border-color: var(--color-primary); color: var(--color-heading); }
-.filter-pill.active { background: var(--color-primary); color: #fff; border-color: var(--color-primary); }
-.filter-pill .count { display: inline-block; background: rgba(255,255,255,.2); border-radius: 99px; padding: 0 .45rem; font-size: .75rem; margin-left: .25rem; }
-.filter-pill:not(.active) .count { background: var(--color-primary-subtle); color: var(--color-primary); }
-.results-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(320px, 1fr)); gap: 1.25rem; padding: 0 2rem 3rem; max-width: 1200px; margin: 0 auto; }
-.result-card { background: var(--color-surface); border-radius: 12px; border: 1px solid var(--color-border); overflow: hidden; cursor: pointer; transition: transform .2s, box-shadow .2s; }
-.result-card:hover { transform: translateY(-3px); box-shadow: 0 8px 24px rgba(0,0,0,.08); }
-.result-card.hidden { display: none; }
-.card-image-wrap { position: relative; overflow: hidden; aspect-ratio: 16/9; background: var(--color-navy); }
-.card-image-wrap.portrait { aspect-ratio: 4/5; }
-.card-image-wrap img { width: 100%; height: 100%; object-fit: cover; transition: transform .3s; }
-.result-card:hover .card-image-wrap img { transform: scale(1.03); }
-.card-badge { position: absolute; top: .75rem; right: .75rem; background: var(--color-primary); color: #fff; font-family: 'Outfit', sans-serif; font-weight: 700; font-size: .875rem; padding: .3rem .7rem; border-radius: 8px; box-shadow: 0 2px 8px rgba(0,0,0,.2); }
-.card-body { padding: .75rem 1rem; }
-.card-meta { font-size: .875rem; color: var(--color-muted); display: flex; align-items: center; gap: .5rem; }
-.card-type-tag { display: inline-block; background: var(--color-primary-subtle); color: var(--color-primary); font-weight: 600; font-size: .75rem; padding: .15rem .5rem; border-radius: 6px; }
-.section-divider { max-width: 1200px; margin: 0 auto; padding: 0 2rem; }
-.section-divider hr { border: none; border-top: 1px solid var(--color-border); }
+.progress-bar { position: fixed; top: 0; left: 0; height: 3px; background: var(--color-primary); width: 0%; z-index: 999; transition: width .1s linear; box-shadow: 0 0 8px rgba(0,212,126,.4); }
 
-/* ── Full-width Testimonials (carousel) ── */
-.testimonials-section { padding: 4rem 2rem; max-width: 900px; margin: 0 auto; }
-.testimonial-carousel { position: relative; }
-.testimonial-slide { display: none; animation: fadeSlide .4s ease; }
-.testimonial-slide.active { display: block; }
-@keyframes fadeSlide { from { opacity: 0; transform: translateY(8px); } to { opacity: 1; transform: translateY(0); } }
-.testimonial-card { background: var(--color-surface); border: 1px solid var(--color-border); border-radius: 16px; padding: 2.5rem 3rem; position: relative; overflow: hidden; }
-.testimonial-card::before { content: '\201C'; position: absolute; top: 1rem; right: 1.5rem; font-family: Georgia, serif; font-size: 5rem; line-height: 1; color: var(--color-primary); opacity: .12; }
-.testimonial-result-img { width: 100%; border-radius: 10px; margin-bottom: 1.75rem; border: 1px solid var(--color-border); }
-.testimonial-text { font-size: 1.125rem; line-height: 1.8; color: var(--color-body); margin-bottom: 2rem; font-style: italic; position: relative; }
-.testimonial-author { display: flex; align-items: center; gap: 1.25rem; }
-.testimonial-headshot { width: 96px; height: 96px; border-radius: 50%; object-fit: cover; border: 3px solid var(--color-primary-light); }
-.testimonial-name { font-family: 'Outfit', sans-serif; font-weight: 600; font-size: 1.0625rem; color: var(--color-heading); }
-.testimonial-role { font-size: .9375rem; color: var(--color-muted); }
-.testimonial-logo { height: 36px; max-width: 160px; object-fit: contain; margin-top: .4rem; opacity: .6; }
-html.dark .testimonial-logo { filter: brightness(1.3); }
-.carousel-nav { display: flex; align-items: center; justify-content: center; gap: 1.25rem; margin-top: 1.75rem; }
-.carousel-arrow { width: 40px; height: 40px; border-radius: 50%; border: 1px solid var(--color-border); background: var(--color-surface); cursor: pointer; display: flex; align-items: center; justify-content: center; font-size: 1rem; color: var(--color-muted); transition: all .2s; }
-.carousel-arrow:hover { border-color: var(--color-primary); color: var(--color-primary); }
-.carousel-dots { display: flex; gap: .5rem; }
-.carousel-dot { width: 10px; height: 10px; border-radius: 50%; background: var(--color-border); cursor: pointer; transition: background .2s, transform .2s; }
-.carousel-dot.active { background: var(--color-primary); transform: scale(1.2); }
+.section-nav { position: fixed; right: 2rem; top: 50%; transform: translateY(-50%); z-index: 100; display: flex; flex-direction: column; gap: 2px; }
+@media (max-width: 1140px) { .section-nav { display: none; } }
+.section-nav a { display: flex; align-items: center; gap: 10px; padding: 6px 12px 6px 8px; border-radius: 8px; font-size: .75rem; font-weight: 500; color: var(--color-muted); text-decoration: none; transition: all .25s ease; white-space: nowrap; }
+.section-nav a:hover { color: var(--color-heading); background: var(--color-surface); }
+.section-nav a.active { color: var(--color-primary); background: var(--color-primary-subtle); }
+.section-nav .nav-dot { width: 6px; height: 6px; border-radius: 50%; background: var(--color-border); flex-shrink: 0; transition: all .25s ease; }
+.section-nav a.active .nav-dot { background: var(--color-primary); width: 8px; height: 8px; box-shadow: 0 0 6px rgba(0,212,126,.5); }
 
-/* ── Google Reviews ── */
-.google-reviews-section { padding: 3rem 2rem; max-width: 1200px; margin: 0 auto; text-align: center; }
-.google-badge-large { display: inline-flex; align-items: center; gap: .75rem; background: var(--color-surface); border: 1px solid var(--color-border); border-radius: 14px; padding: .75rem 1.5rem; margin-bottom: 2rem; }
-.google-badge-large svg { width: 28px; height: 28px; flex-shrink: 0; }
-.badge-stars { color: #F59E0B; font-size: 1.25rem; letter-spacing: .1em; line-height: 1; }
-.badge-text { font-size: .875rem; color: var(--color-muted); }
-.reviews-masonry { columns: 3; column-gap: 1rem; padding-top: .5rem; }
-.review-card { break-inside: avoid; background: var(--color-surface); border: 1px solid var(--color-border); border-radius: 12px; padding: 1.25rem; margin-bottom: 1rem; text-align: left; transition: border-color .2s; }
-.review-card:hover { border-color: var(--color-primary); }
-.review-stars { color: #F59E0B; font-size: .9375rem; margin-bottom: .5rem; }
-.review-text { font-size: .9375rem; line-height: 1.65; color: var(--color-body); margin-bottom: .75rem; }
-.review-author { font-family: 'Outfit', sans-serif; font-weight: 600; font-size: .875rem; color: var(--color-heading); }
-.cta-section {
-  background: linear-gradient(135deg, #141C3A 0%, #1E3A5F 100%);
-  text-align: center; padding: 5rem 2rem; position: relative; overflow: hidden;
-}
-.cta-section::before {
-  content: ''; position: absolute; top: -40%; right: -10%; width: 500px; height: 500px;
-  background: radial-gradient(circle, rgba(0,212,126,.1) 0%, transparent 70%);
-  pointer-events: none;
-}
-.cta-inner { max-width: 650px; margin: 0 auto; position: relative; z-index: 1; }
-.cta-section h2 { font-family: 'Outfit', sans-serif; font-weight: 700; font-size: 2.25rem; color: #E8F5EF; margin-bottom: .75rem; }
-.cta-section p { font-size: 1.0625rem; color: rgba(200,216,208,.75); margin-bottom: 2rem; }
-.cta-btn { display: inline-block; padding: .875rem 2.75rem; border-radius: 99px; background: var(--color-primary); color: #fff; text-decoration: none; font-family: 'Outfit', sans-serif; font-weight: 600; font-size: 1.05rem; transition: background .2s, transform .15s, box-shadow .2s; box-shadow: 0 4px 20px rgba(0,212,126,.3); }
-.cta-btn:hover { background: var(--color-primary-hover); transform: translateY(-2px); box-shadow: 0 8px 32px rgba(0,212,126,.4); }
-/* ── Footer (dark navy) ── */
-.site-footer { background: #141C3A; padding: 3rem 0; text-align: center; }
-html.dark .site-footer { background: #0A1630; }
-.site-footer img { height: 28px; margin-bottom: .75rem; opacity: .6; }
-.site-footer a { color: var(--color-primary); text-decoration: none; font-size: .8125rem; }
-.site-footer a:hover { text-decoration: underline; }
-.footer-copy { font-size: .75rem; color: rgba(232,245,239,.3); margin-top: .5rem; }
-.lightbox { display: none; position: fixed; inset: 0; z-index: 200; background: var(--color-overlay); backdrop-filter: blur(12px); align-items: center; justify-content: center; padding: 2rem; }
-.lightbox.open { display: flex; }
-.lightbox-content { position: relative; display: inline-block; }
-.lightbox-content img { max-width: 90vw; max-height: 85vh; border-radius: 12px; box-shadow: 0 12px 48px rgba(0,0,0,.3); display: block; }
-.lightbox-close { position: absolute; top: 1.25rem; right: 1.5rem; background: none; border: none; color: #fff; font-size: 2rem; cursor: pointer; opacity: .7; transition: opacity .2s; }
-.lightbox-close:hover { opacity: 1; }
-.lightbox-caption { position: absolute; top: calc(100% + .75rem); left: 50%; transform: translateX(-50%); background: var(--color-primary); color: #fff; padding: .5rem 1.25rem; border-radius: 99px; font-size: .875rem; font-weight: 600; white-space: nowrap; box-shadow: 0 2px 12px rgba(0,0,0,.2); z-index: 1; }
+.container { max-width: 1060px; margin: 0 auto; padding: 0 3rem; }
+@media (max-width: 768px) { .container { padding: 0 1.5rem; } }
+section { padding: 4.5rem 0; }
+.divider { height: 1px; background: var(--color-border); border: none; margin: 0; }
 
-@media (max-width: 768px) {
-  .hero h1 { font-size: 2.5rem; }
-  .hero p { font-size: 1.0625rem; }
-  .section-heading { font-size: 2.25rem; }
-  .hero-wrap { padding: 3rem 1.5rem 2rem; }
-  .results-grid { grid-template-columns: 1fr; padding: 0 1rem 2rem; }
-  .testimonials-section { padding: 3rem 1rem; }
-  .testimonial-card { padding: 1.75rem 1.5rem; }
-  .testimonial-text { font-size: 1.0625rem; }
-  .partner-row { display: flex; flex-wrap: wrap; justify-content: center; align-items: center; gap: 1.25rem 1.5rem; width: 100%; }
-  .partner-row .partner-logo { width: calc(50% - 1rem); height: auto; max-height: 52px; max-width: none; object-fit: contain; }
-  .partner-row:first-child .partner-logo { width: calc(33.33% - 1.2rem); }
-  .partner-row:first-child .partner-logo:nth-child(n+4) { width: calc(40% - 1rem); }
-  .reviews-masonry { columns: 1; }
-  .stats-bar { gap: 1.5rem; }
+.theme-toggle { position: fixed; top: 1.25rem; right: 1.25rem; z-index: 200; background: var(--color-surface); border: 1px solid var(--color-border); border-radius: 50%; width: 40px; height: 40px; cursor: pointer; display: flex; align-items: center; justify-content: center; font-size: 1.15rem; transition: all .25s ease; box-shadow: 0 2px 8px rgba(0,0,0,.06); }
+.theme-toggle:hover { border-color: var(--color-primary); box-shadow: 0 2px 12px rgba(0,212,126,.15); }
+
+.header { background: var(--color-navy); padding: 2rem 0; position: relative; overflow: hidden; }
+.header::before { content: ''; position: absolute; top: -60%; right: -10%; width: 500px; height: 500px; background: radial-gradient(circle, rgba(0,212,126,.08) 0%, transparent 70%); pointer-events: none; }
+.header-inner { display: flex; justify-content: space-between; align-items: center; flex-wrap: wrap; gap: 1rem; }
+.header img { height: 36px; }
+.header-meta { text-align: right; }
+.header-meta p { margin: 0; font-size: .8125rem; color: rgba(232,245,239,.45); }
+.header-meta .name { color: #E8F5EF; font-weight: 600; font-size: .9375rem; }
+
+/* Hero */
+.hero { padding: 5.5rem 0 4rem; position: relative; overflow: hidden; }
+.hero::before { content: ''; position: absolute; top: -100px; right: -80px; width: 500px; height: 500px; background: radial-gradient(circle at 30% 40%, rgba(0,212,126,.06) 0%, transparent 60%); pointer-events: none; }
+.hero h1 { margin-bottom: 1rem; }
+.hero .subtitle { font-size: 1.0625rem; color: var(--color-muted); max-width: 600px; line-height: 1.7; }
+.badge { display: inline-block; background: var(--color-primary-subtle); color: var(--color-primary); font-weight: 600; font-size: .75rem; padding: .4rem 1rem; border-radius: 100px; letter-spacing: .04em; text-transform: uppercase; margin-bottom: 1rem; }
+.badge.status-active { background: rgba(0,212,126,.1); color: var(--color-success); }
+.badge.status-onboarding { background: rgba(59,130,246,.1); color: var(--color-info); }
+.badge.status-lead, .badge.status-prospect { background: rgba(245,158,11,.1); color: var(--color-warning); }
+
+/* Campaign timeline bar */
+.campaign-timeline { margin-top: 2rem; max-width: 500px; }
+.campaign-timeline-label { display: flex; justify-content: space-between; font-size: .75rem; color: var(--color-muted); margin-bottom: .5rem; }
+.campaign-timeline-track { height: 8px; background: var(--color-border); border-radius: 4px; overflow: hidden; position: relative; }
+.campaign-timeline-fill { height: 100%; background: linear-gradient(90deg, var(--color-primary), var(--color-primary-hover)); border-radius: 4px; transition: width 1s ease; }
+.campaign-timeline-meta { display: flex; justify-content: space-between; font-size: .75rem; color: var(--color-muted); margin-top: .35rem; }
+
+/* Quick links grid */
+.quick-links { display: grid; grid-template-columns: repeat(auto-fit, minmax(220px, 1fr)); gap: 1rem; margin: 2rem 0; }
+.quick-link { background: var(--color-surface); border: 1px solid var(--color-border); border-radius: 14px; padding: 1.75rem; text-decoration: none; transition: transform .3s, box-shadow .3s, border-color .3s; display: flex; flex-direction: column; gap: .5rem; position: relative; overflow: hidden; }
+.quick-link:hover { transform: translateY(-3px); box-shadow: 0 8px 28px rgba(0,0,0,.07); border-color: var(--color-primary); }
+.quick-link::after { content: ''; position: absolute; bottom: 0; left: 0; right: 0; height: 3px; background: var(--color-primary); transform: scaleX(0); transition: transform .3s ease; transform-origin: left; }
+.quick-link:hover::after { transform: scaleX(1); }
+.quick-link-icon { font-size: 1.75rem; margin-bottom: .25rem; }
+.quick-link h4 { color: var(--color-heading); font-size: 1.1rem; margin: 0; }
+.quick-link p { color: var(--color-muted); font-size: .8125rem; margin: 0; line-height: 1.5; }
+.quick-link .link-arrow { color: var(--color-primary); font-size: .8125rem; font-weight: 600; margin-top: auto; padding-top: .5rem; }
+
+/* CORE score mini gauges */
+.core-mini-grid { display: grid; grid-template-columns: repeat(4, 1fr); gap: 1rem; margin: 2rem 0; }
+@media (max-width: 640px) { .core-mini-grid { grid-template-columns: repeat(2, 1fr); } }
+.core-mini-card { background: var(--color-surface); border: 1px solid var(--color-border); border-radius: 14px; padding: 1.25rem 1rem; text-align: center; position: relative; overflow: hidden; transition: transform .3s, box-shadow .3s; }
+.core-mini-card:hover { transform: translateY(-2px); box-shadow: 0 8px 24px rgba(0,0,0,.06); }
+.core-mini-card::after { content: ''; position: absolute; bottom: 0; left: 0; right: 0; height: 3px; }
+.core-mini-card.score-low::after { background: var(--color-danger); }
+.core-mini-card.score-med::after { background: var(--color-warning); }
+.core-mini-card.score-high::after { background: var(--color-success); }
+.ring-wrap { position: relative; width: 72px; height: 72px; margin: 0 auto 8px; }
+.ring-bg, .ring-fg { fill: none; stroke-width: 5; stroke-linecap: round; }
+.ring-bg { stroke: var(--color-border); }
+.ring-fg { transition: stroke-dashoffset 1.4s cubic-bezier(.4,0,.2,1); transform: rotate(-90deg); transform-origin: center; }
+.score-val { position: absolute; top: 50%; left: 50%; transform: translate(-50%,-50%); font-family: 'Outfit', sans-serif; font-weight: 700; font-size: 1.2rem; }
+.score-val span { font-size: .7rem; opacity: .4; font-weight: 400; }
+.score-low .ring-fg { stroke: var(--color-danger); }
+.score-low .score-val { color: var(--color-danger); }
+.score-med .ring-fg { stroke: var(--color-warning); }
+.score-med .score-val { color: var(--color-warning); }
+.score-high .ring-fg { stroke: var(--color-success); }
+.score-high .score-val { color: var(--color-success); }
+.core-mini-label { font-size: .6875rem; font-weight: 600; letter-spacing: .07em; text-transform: uppercase; color: var(--color-muted); }
+
+/* Task progress */
+.task-progress { margin: 1.5rem 0; }
+.progress-track { height: 10px; background: var(--color-border); border-radius: 5px; overflow: hidden; display: flex; }
+.progress-fill-complete { background: var(--color-success); transition: width .8s ease; }
+.progress-fill-inprogress { background: var(--color-warning); transition: width .8s ease; }
+.progress-stats { display: flex; gap: 1.5rem; margin-top: .75rem; font-size: .875rem; flex-wrap: wrap; }
+.progress-stat { display: flex; align-items: center; gap: .35rem; }
+.progress-stat .dot { width: 8px; height: 8px; border-radius: 50%; flex-shrink: 0; }
+.progress-stat .dot.complete { background: var(--color-success); }
+.progress-stat .dot.inprogress { background: var(--color-warning); }
+.progress-stat .dot.notstarted { background: var(--color-border); }
+
+/* Onboarding checklist */
+.onboarding-list { list-style: none; margin: 1.5rem 0; }
+.onboarding-item { display: flex; align-items: center; gap: 1rem; padding: .875rem 1rem; border-bottom: 1px solid var(--color-border); font-size: .9375rem; transition: background .2s; }
+.onboarding-item:last-child { border-bottom: none; }
+.onboarding-item:hover { background: var(--color-primary-subtle); }
+.onboarding-item a { display: flex; align-items: center; gap: 1rem; text-decoration: none; color: inherit; width: 100%; }
+.onboarding-check { width: 24px; height: 24px; border-radius: 50%; flex-shrink: 0; display: flex; align-items: center; justify-content: center; font-size: .75rem; }
+.onboarding-check.done { background: var(--color-success); color: #fff; }
+.onboarding-check.pending { background: var(--color-border); color: var(--color-muted); }
+.onboarding-check.active { background: rgba(245,158,11,.15); color: var(--color-warning); border: 2px solid var(--color-warning); }
+.onboarding-step-label { color: var(--color-heading); font-weight: 500; }
+.onboarding-step-label.done-label { color: var(--color-muted); }
+.onboarding-step-note { font-size: .75rem; color: var(--color-muted); margin-left: auto; max-width: 250px; text-align: right; }
+
+/* Deliverables list */
+.deliverables-list { list-style: none; margin: 1.5rem 0; }
+.deliverable-row { display: flex; align-items: center; gap: 1rem; padding: .875rem 0; border-bottom: 1px solid var(--color-border); }
+.deliverable-row:last-child { border-bottom: none; }
+.deliverable-icon { width: 36px; height: 36px; border-radius: 10px; background: var(--color-primary-subtle); display: flex; align-items: center; justify-content: center; font-size: 1rem; flex-shrink: 0; }
+.deliverable-info { flex: 1; }
+.deliverable-title { font-weight: 600; font-size: .9375rem; color: var(--color-heading); }
+.deliverable-meta { font-size: .75rem; color: var(--color-muted); }
+.deliverable-link { font-size: .8125rem; font-weight: 600; color: var(--color-primary); white-space: nowrap; }
+
+/* Team cards */
+.team-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(260px, 1fr)); gap: 1rem; margin: 2rem 0; }
+.team-card { background: var(--color-surface); border: 1px solid var(--color-border); border-radius: 14px; padding: 1.5rem; transition: transform .2s, box-shadow .2s; }
+.team-card:hover { transform: translateY(-2px); box-shadow: 0 8px 24px rgba(0,0,0,.06); }
+.team-name { font-family: 'Outfit', sans-serif; font-weight: 700; font-size: 1.05rem; color: var(--color-heading); }
+.team-role { font-size: .8125rem; color: var(--color-muted); margin-bottom: .75rem; }
+.team-contact { font-size: .8125rem; }
+.team-contact a { display: inline-flex; align-items: center; gap: .35rem; }
+
+/* CTA banner */
+.cta-banner { background: var(--color-navy); border-radius: 16px; padding: 2.5rem; text-align: center; margin: 2rem 0; position: relative; overflow: hidden; }
+.cta-banner::before { content: ''; position: absolute; top: -50%; left: -20%; width: 600px; height: 600px; background: radial-gradient(circle, rgba(0,212,126,.1) 0%, transparent 70%); pointer-events: none; }
+.cta-banner h3 { color: #E8F5EF; margin-bottom: .5rem; font-size: 1.5rem; position: relative; }
+.cta-banner p { color: rgba(232,245,239,.6); margin-bottom: 1.25rem; font-size: .9375rem; position: relative; }
+.cta-btn { display: inline-block; background: var(--color-primary); color: #fff; font-family: 'Outfit', sans-serif; font-weight: 700; font-size: .9375rem; padding: .75rem 2rem; border-radius: 10px; text-decoration: none; transition: background .2s, transform .2s; position: relative; }
+.cta-btn:hover { background: var(--color-primary-hover); transform: translateY(-1px); color: #fff; }
+
+/* Loading state */
+.loading-state { text-align: center; padding: 6rem 0; }
+.loading-spinner { width: 40px; height: 40px; border: 3px solid var(--color-border); border-top-color: var(--color-primary); border-radius: 50%; animation: spin 1s linear infinite; margin: 0 auto 1rem; }
+@keyframes spin { to { transform: rotate(360deg); } }
+.loading-text { color: var(--color-muted); font-size: .9375rem; }
+
+/* Error state */
+.error-state { text-align: center; padding: 6rem 0; }
+.error-state h2 { font-size: 1.5rem; margin-bottom: .5rem; }
+.error-state p { color: var(--color-muted); max-width: 400px; margin: 0 auto 1.5rem; }
+
+/* Reveal animation */
+.reveal { opacity: 0; transform: translateY(20px); transition: opacity .7s ease, transform .7s ease; }
+.reveal.visible { opacity: 1; transform: translateY(0); }
+
+/* Print */
+@media print {
+  .progress-bar, .section-nav, .theme-toggle { display: none !important; }
+  body { background: #fff; color: #333; }
+  .header { background: #141C3A !important; -webkit-print-color-adjust: exact; print-color-adjust: exact; }
+  section { break-inside: avoid; padding: 2rem 0; }
 }
-@media (max-width: 480px) { .stats-bar { gap: 1rem; } .hero h1 { font-size: 2rem; } .section-heading { font-size: 1.75rem; } .partner-logo { max-height: 40px; } }
-@media (min-width: 769px) and (max-width: 1024px) { .reviews-masonry { columns: 2; } .partner-logo { height: 60px; } }
+
+.confidential { text-align: center; padding: 2rem 0; color: var(--color-muted); font-size: .8125rem; letter-spacing: .04em; }
+.footer { background: var(--color-navy); padding: 3rem 0; text-align: center; color: rgba(232,245,239,.4); font-size: .8125rem; }
+.footer img { height: 28px; margin-bottom: .75rem; opacity: .6; }
+.footer a { color: var(--color-primary); }
 </style>
 </head>
 <body>
-<div class="top-bar">
-  <div class="top-bar-inner">
-    <div class="top-bar-left">
-      <img src="/assets/logo.png" alt="Moonraker" width="32" height="32">
-      <div class="top-bar-divider"></div>
-      <span class="top-bar-label">Client Results</span>
-    </div>
-    <button class="theme-toggle" onclick="toggleTheme()" aria-label="Toggle dark mode" id="themeBtn">&#127769;</button>
-  </div>
-</div>
 
-<div class="hero-wrap">
-<section class="hero">
-  <h1>Real Results for <span>Real Practices</span></h1>
-  <p>Verified Google Search Console data showing how therapy practices grow their online visibility with Moonraker. No vanity metrics, just the numbers that matter.</p>
-</section>
-</div>
+<div class="progress-bar" id="progressBar"></div>
+<button class="theme-toggle" id="themeBtn" aria-label="Toggle theme">&#x1F319;</button>
 
-<section class="partners-section">
-  <h2 class="section-heading">Trusted by the Experts Who Educate Therapists</h2>
-  <p class="section-subhead">We partner with the industry's most respected names in practice building, clinical training, and therapist entrepreneurship.</p>
-  <div class="partners-rows">
-    <div class="partner-row">
-      <img class="partner-logo" src="/assets/partners/psychology-business-school.webp" alt="Psychology Business School">
-      <img class="partner-logo" src="/assets/partners/walker-co-strategy.webp" alt="Walker Co Strategy">
-      <img class="partner-logo" src="/assets/partners/traveling-therapist.webp" alt="The Traveling Therapist">
-      <img class="partner-logo" src="/assets/partners/berries.webp" alt="Berries">
-      <img class="partner-logo" src="/assets/partners/therasaas.webp" alt="TheraSaaS">
-    </div>
-    <div class="partner-row">
-      <img class="partner-logo" src="/assets/partners/scalingup-emdr.webp" alt="ScalingUp EMDR">
-      <img class="partner-logo" src="/assets/partners/entrepreneurial-therapist.webp" alt="Entrepreneurial Therapist">
-      <img class="partner-logo" src="/assets/partners/private-practice-academy.webp" alt="The Private Practice Academy">
-      <img class="partner-logo" src="/assets/partners/balanced-private-practice.webp" alt="Balanced Private Practice">
-    </div>
-    <div class="partner-row">
-      <img class="partner-logo" src="/assets/partners/private-practice-elevation.webp" alt="Private Practice Elevation">
-      <img class="partner-logo" src="/assets/partners/intensive-therapy-coach.webp" alt="Intensive Therapy Coach">
-      <img class="partner-logo" src="/assets/partners/prosperous-therapist.webp" alt="The Prosperous Therapist">
-      <img class="partner-logo" src="/assets/partners/mccance-method.webp" alt="The McCance Method">
+<nav class="section-nav" id="sectionNav"></nav>
+
+<!-- HEADER -->
+<div class="header">
+  <div class="container header-inner">
+    <img src="/assets/logo.png" alt="Moonraker">
+    <div class="header-meta">
+      <p class="name" id="headerName">Client HQ</p>
+      <p>Confidential</p>
     </div>
   </div>
-</section>
-
-<div class="section-divider"><hr></div>
-
-<div class="stats-bar">
-  <div class="stat-item"><div class="stat-value">22</div><div class="stat-label">Client Results</div></div>
-  <div class="stat-item"><div class="stat-value">115%</div><div class="stat-label">Average Increase</div></div>
-  <div class="stat-item"><div class="stat-value">308%</div><div class="stat-label">Top Result</div></div>
 </div>
-<div class="filters">
-  <button class="filter-pill active" onclick="filterCards('all')">All <span class="count">22</span></button>
-  <button class="filter-pill" onclick="filterCards('group')">Group Practices <span class="count">11</span></button>
-  <button class="filter-pill" onclick="filterCards('solo')">Solo Therapists <span class="count">11</span></button>
+
+<!-- LOADING STATE (visible on page load) -->
+<div id="loadingState" class="loading-state">
+  <div class="loading-spinner"></div>
+  <p class="loading-text">Loading your dashboard...</p>
 </div>
-<div class="results-grid" id="resultsGrid"></div>
 
-<div class="section-divider"><hr></div>
+<!-- ERROR STATE (hidden by default) -->
+<div id="errorState" class="error-state" style="display:none;">
+  <h2>Unable to Load Dashboard</h2>
+  <p id="errorMessage">Something went wrong. Please try refreshing the page.</p>
+  <a href="https://moonraker.ai" class="cta-btn">Visit Moonraker</a>
+</div>
 
-<section class="testimonials-section">
-  <h2 class="section-heading" style="text-align:center;">What Our Partners and Clients Say</h2>
-  <p class="section-subhead" style="text-align:center;">Feedback from the therapists, practice owners, and industry leaders we work with every day.</p>
-  <div class="testimonial-carousel" id="testimonialCarousel">
-    <div class="testimonial-slide active" data-slide="0">
-      <div class="testimonial-card">
-        <img class="testimonial-result-img" src="https://lh3.googleusercontent.com/d/1KjsF7BZyi-iRFbjcfsYm6s4UFVrBzKTY=w1200" alt="Audrey Shoen sharing her Moonraker results">
-        <div class="testimonial-text">"So. Good problem. The SEO is working too good!! I've had 8 inquiries in the past 10 days. And most are scheduling consultations. I'm now faced with some new challenges that I wasn't quite prepared to solve so soon. Time to figure out waitlist management. And further streamline or offload more tasks. My calendar books 2-3 weeks out now."</div>
-        <div class="testimonial-author">
-          <img class="testimonial-headshot" src="/assets/headshots/audrey-shoen.png" alt="Audrey Shoen">
-          <div>
-            <div class="testimonial-name">Audrey Shoen, LMFT</div>
-            <div class="testimonial-role">Founder, Balanced Private Practice</div>
-            <img class="testimonial-logo" src="/assets/partners/balanced-private-practice.webp" alt="Balanced Private Practice">
+<!-- MAIN CONTENT (hidden until data loads) -->
+<main id="mainContent" style="display:none;">
+
+  <!-- HERO -->
+  <section class="hero" id="overview">
+    <div class="container">
+      <div id="heroBadge"></div>
+      <h1 id="heroTitle">Client HQ</h1>
+      <p class="subtitle" id="heroSubtitle"></p>
+      <div id="campaignTimeline"></div>
+    </div>
+  </section>
+  <hr class="divider">
+
+  <!-- QUICK LINKS -->
+  <section id="pages">
+    <div class="container">
+      <h2 class="reveal">Your Pages</h2>
+      <p class="reveal" style="color:var(--color-muted);margin-bottom:1.5rem;">Everything we have built for your campaign, all in one place.</p>
+      <div class="quick-links reveal" id="quickLinks"></div>
+    </div>
+  </section>
+  <hr class="divider">
+
+  <!-- CAMPAIGN SNAPSHOT -->
+  <section id="snapshot">
+    <div class="container">
+      <h2 class="reveal">Campaign Snapshot</h2>
+      <div id="coreScores" class="reveal"></div>
+      <div id="taskProgress" class="reveal"></div>
+    </div>
+  </section>
+  <hr class="divider">
+
+  <!-- ONBOARDING (shown if onboarding not complete) -->
+  <section id="onboarding" style="display:none;">
+    <div class="container">
+      <h2 class="reveal">Onboarding Progress</h2>
+      <p class="reveal" style="color:var(--color-muted);">Here is where things stand with your account setup.</p>
+      <ul class="onboarding-list reveal" id="onboardingList"></ul>
+    </div>
+  </section>
+
+  <!-- DELIVERABLES -->
+  <section id="deliverables">
+    <div class="container">
+      <h2 class="reveal">Deliverables</h2>
+      <ul class="deliverables-list reveal" id="deliverablesList"></ul>
+    </div>
+  </section>
+  <hr class="divider">
+
+  <!-- YOUR TEAM -->
+  <section id="team">
+    <div class="container">
+      <h2 class="reveal">Your Moonraker Team</h2>
+      <p class="reveal" style="color:var(--color-muted);margin-bottom:1rem;">Have a question? Reach out anytime.</p>
+      <div class="team-grid reveal">
+        <div class="team-card">
+          <div class="team-name">Scott Pope</div>
+          <div class="team-role">Director of Growth &amp; Operations</div>
+          <div class="team-contact">
+            <a href="mailto:scott@moonraker.ai">scott@moonraker.ai</a><br>
+            <a href="https://msg.moonraker.ai/widget/bookings/scott-pope-calendar" target="_blank">Book a call &#8599;</a>
+          </div>
+        </div>
+        <div class="team-card">
+          <div class="team-name">Karen Francisco</div>
+          <div class="team-role">Client Success Manager</div>
+          <div class="team-contact">
+            <a href="mailto:support@moonraker.ai">support@moonraker.ai</a>
           </div>
         </div>
       </div>
-    </div>
-    <div class="testimonial-slide" data-slide="1">
-      <div class="testimonial-card">
-        <div class="testimonial-text">"As a multi-passionate entrepreneur, keeping my brands organized and visible online has always felt like herding cats. Enter Moonraker and Chris, absolute game-changers! Chris helped me untangle the chaos, streamline my marketing, and optimize my websites for SEO in a way that actually makes sense (and gets results). Whether it's refining my messaging, making sure my sites rank on Google, or creating a strategy that works across multiple brands, Moonraker has been an invaluable asset."</div>
-        <div class="testimonial-author">
-          <img class="testimonial-headshot" src="/assets/headshots/kym-tolson.png" alt="Kym Tolson">
-          <div>
-            <div class="testimonial-name">Kym Tolson</div>
-            <div class="testimonial-role">Founder, The Traveling Therapist</div>
-            <img class="testimonial-logo" src="/assets/partners/traveling-therapist.webp" alt="The Traveling Therapist">
-          </div>
-        </div>
+      <div class="cta-banner reveal" style="margin-top:2.5rem;">
+        <h3>Need to chat?</h3>
+        <p>Book a call with Scott to talk strategy, results, or next steps.</p>
+        <a href="https://msg.moonraker.ai/widget/bookings/scott-pope-calendar" target="_blank" class="cta-btn">Book a Call</a>
       </div>
     </div>
-    <div class="testimonial-slide" data-slide="2">
-      <div class="testimonial-card">
-        <div class="testimonial-text">"Chris was great to work with. He was responsive, answered our questions clearly, and explained things in a way that made sense. His help improved our SEO, and we appreciate his expertise. Highly recommend!"</div>
-        <div class="testimonial-author">
-          <img class="testimonial-headshot" src="/assets/headshots/kelly-smyth-dent.png" alt="Kelly Smyth-Dent">
-          <div>
-            <div class="testimonial-name">Kelly Smyth-Dent</div>
-            <div class="testimonial-role">Founder, ScalingUp EMDR</div>
-            <img class="testimonial-logo" src="/assets/partners/scalingup-emdr.webp" alt="ScalingUp EMDR">
-          </div>
-        </div>
-      </div>
-    </div>
-    <div class="testimonial-slide" data-slide="3">
-      <div class="testimonial-card">
-        <div class="testimonial-text">"If you're a therapist looking for SEO strategy and implementation, Chris and his Moonraker team know how to rank you high on Google. I highly recommend them."</div>
-        <div class="testimonial-author">
-          <img class="testimonial-headshot" src="/assets/headshots/brent-stutzman.png" alt="Brent Stutzman">
-          <div>
-            <div class="testimonial-name">Brent Stutzman</div>
-            <div class="testimonial-role">Founder, TheraSaaS</div>
-            <img class="testimonial-logo" src="/assets/partners/therasaas.webp" alt="TheraSaaS">
-          </div>
-        </div>
-      </div>
-    </div>
-    <div class="carousel-nav">
-      <button class="carousel-arrow" onclick="changeSlide(-1)" aria-label="Previous">&#8592;</button>
-      <div class="carousel-dots" id="carouselDots"></div>
-      <button class="carousel-arrow" onclick="changeSlide(1)" aria-label="Next">&#8594;</button>
-    </div>
-  </div>
-</section>
+  </section>
 
-<div class="section-divider"><hr></div>
+</main>
 
-<section class="google-reviews-section" id="googleReviews">
-  <h2 class="section-heading">Google Reviews</h2>
-  <p class="section-subhead">What our clients are saying on Google.</p>
-  <div class="google-badge-large">
-    <svg viewBox="0 0 24 24" fill="none"><path d="M22.56 12.25c0-.78-.07-1.53-.2-2.25H12v4.26h5.92a5.06 5.06 0 01-2.2 3.32v2.77h3.57c2.08-1.92 3.28-4.74 3.28-8.1z" fill="#4285F4"/><path d="M12 23c2.97 0 5.46-.98 7.28-2.66l-3.57-2.77c-.98.66-2.23 1.06-3.71 1.06-2.86 0-5.29-1.93-6.16-4.53H2.18v2.84C3.99 20.53 7.7 23 12 23z" fill="#34A853"/><path d="M5.84 14.09c-.22-.66-.35-1.36-.35-2.09s.13-1.43.35-2.09V7.07H2.18C1.43 8.55 1 10.22 1 12s.43 3.45 1.18 4.93l2.85-2.22.81-.62z" fill="#FBBC05"/><path d="M12 5.38c1.62 0 3.06.56 4.21 1.64l3.15-3.15C17.45 2.09 14.97 1 12 1 7.7 1 3.99 3.47 2.18 7.07l3.66 2.84c.87-2.6 3.3-4.53 6.16-4.53z" fill="#EA4335"/></svg>
-    <div><div class="badge-stars">&#9733;&#9733;&#9733;&#9733;&#9733;</div><div class="badge-text">4.9 stars from 44 Google reviews</div></div>
-  </div>
-  <div class="reviews-masonry" id="reviewsMasonry"></div>
-</section>
-
-<section class="cta-section">
-  <div class="cta-inner">
-    <h2>Ready to See Results Like These?</h2>
-    <p>Every practice shown here started right where you are now. Book a quick call with our team to see what Moonraker can do for yours.</p>
-    <a href="https://msg.moonraker.ai/widget/bookings/moonraker-free-strategy-call" target="_blank" rel="noopener" class="cta-btn">Book a Free Strategy Call</a>
-  </div>
-</section>
-<footer class="site-footer">
-  <img src="/assets/logo.png" alt="Moonraker">
-  <div class="footer-copy">&#169; 2026 Moonraker AI. All rights reserved.</div>
-</footer>
-
-<div class="lightbox" id="lightbox" onclick="closeLightbox()">
-  <button class="lightbox-close" onclick="closeLightbox()">&times;</button>
-  <div class="lightbox-content">
-    <img id="lightboxImg" src="" alt="">
-    <div class="lightbox-caption" id="lightboxCaption"></div>
-  </div>
-</div>
+<div class="confidential"><div class="container" id="confidentialLine">This dashboard is confidential.<br>&copy; 2026 Moonraker AI &middot; moonraker.ai</div></div>
+<footer class="footer"><div class="container"><img src="/assets/logo.png" alt="Moonraker"><br>moonraker.ai</div></footer>
 
 <script>
-var results = [
-  {pct:213,time:'6 months',type:'group',id:'1uVfNKUBxYy3KCEJEmJU92QE3DN9khHWA'},
-  {pct:170,time:'6 months',type:'group',id:'1spFbq2k8QOqwWbLuvz1JxLgWpM7VFfaa'},
-  {pct:156,time:'3 months',type:'group',id:'1jNjoiNtFgIINAyUpWyvH426qq1HTHG7X'},
-  {pct:137,time:'6 months',type:'group',id:'1kXJKL6OLlUvXNwweYGlAr_M0jNGeBIQa'},
-  {pct:106,time:'3 months',type:'group',id:'1nIQ_ufQh_pFGn49LK_fkehwrSsM7YP7b'},
-  {pct:94,time:'6 months',type:'group',id:'1HpumenhcJp-S7Xh1UHK-SGDQAS3QJWca'},
-  {pct:91,time:'6 months',type:'group',id:'1A7Kjutbuqb2Ak5UT_bw9IC77Qa2tySsb'},
-  {pct:71,time:'3 months',type:'group',id:'1i3SPnzTJwQidkuUHApV9u58LNVEEspCk'},
-  {pct:39,time:'3 months',type:'group',id:'1kaS8HcCcbKY3O9Dz-Y-e8SfRfiCZb3di'},
-  {pct:38,time:'6 months',type:'group',id:'1Auko_Q3Bx48qOucCPkVN2hBciM6VQQkh'},
-  {pct:31,time:'3 months',type:'group',id:'1Z-hA5D3xuMnUpWQkXUPAr5B6TDxstkeV'},
-  {pct:308,time:'3 months',type:'solo',id:'1ClS6rM1HrdGKr1qXKF7J9Yo32HaiFZOE'},
-  {pct:202,time:'6 months',type:'solo',id:'1fdthfPuD2hn4g-yR1yaEd3VYJTYdFN5l'},
-  {pct:168,time:'6 months',type:'solo',id:'1zTy0yzf_cZFPRiQNCykjxTLQfjoRDKVT'},
-  {pct:168,time:'3 months',type:'solo',id:'1I6I47jI8ieqvOviLT0IYn60l9DuGf_Il'},
-  {pct:127,time:'3 months',type:'solo',id:'1zJmPzlmek47aMDPizpJPaRSZHDK70OMc'},
-  {pct:84,time:'3 months',type:'solo',id:'1InJXxG5BGzd5fEu3CG7bqqPmviA6bSoY'},
-  {pct:61,time:'3 months',type:'solo',id:'1-clyu91xGiqKLWykIULLdxo_arM82dsV'},
-  {pct:53,time:'3 months',type:'solo',id:'1xZ6encxHVtjmwZ1frNHC8F9iMfhsyeSs'},
-  {pct:48,time:'3 months',type:'solo',id:'13fQGqw8RJuBEWbFkX6EzY4NyTGB1A-V-'},
-  {pct:36,time:'6 months',type:'solo',id:'1hegvRrLjbtBc-Ulux-7SVuQlgCgVBA1b'},
-  {pct:35,time:'6 months',type:'solo',id:'1XKx4iqwvpBLmzrny-KvPnmgbZGW7TCZi'}
-];
-var currentFilter = 'all';
-function imgUrl(fid, w) { return 'https://lh3.googleusercontent.com/d/' + fid + '=w' + (w || 800); }
-function renderGrid() {
-  var grid = document.getElementById('resultsGrid'), html = '';
-  results.forEach(function(r, i) {
-    var show = currentFilter === 'all' || r.type === currentFilter;
-    var badge = r.label || ('+' + r.pct + '%');
-    var type = r.type === 'group' ? 'Group Practice' : 'Solo Therapist';
-    html += '<div class="result-card' + (show ? '' : ' hidden') + '" data-type="' + r.type + '" onclick="openLightbox(' + i + ')">';
-    html += '<div class="card-image-wrap' + (r.portrait ? ' portrait' : '') + '"><img src="' + imgUrl(r.id, 800) + '" alt="' + type + ' result: +' + r.pct + '% in ' + r.time + '" loading="lazy"><div class="card-badge">' + badge + '</div></div>';
-    html += '<div class="card-body"><div class="card-meta"><span class="card-type-tag">' + type + '</span> ' + r.time + '</div></div></div>';
-  });
-  grid.innerHTML = html;
-}
-window.filterCards = function(type) {
-  currentFilter = type;
-  document.querySelectorAll('.filter-pill').forEach(function(pill) {
-    var t = pill.textContent.toLowerCase();
-    pill.classList.toggle('active', (type === 'all' && t.indexOf('all') !== -1) || (type === 'group' && t.indexOf('group') !== -1) || (type === 'solo' && t.indexOf('solo') !== -1));
-  });
-  renderGrid();
-};
-window.openLightbox = function(idx) {
-  var r = results[idx], lb = document.getElementById('lightbox');
-  document.getElementById('lightboxImg').src = imgUrl(r.id, 1400);
-  var type = r.type === 'group' ? 'Group Practice' : 'Solo Therapist';
-  document.getElementById('lightboxCaption').textContent = type + '  \u00B7  ' + (r.label || ('+' + r.pct + '%')) + '  \u00B7  ' + r.time;
-  lb.classList.add('open'); document.body.style.overflow = 'hidden';
-};
-window.closeLightbox = function() { document.getElementById('lightbox').classList.remove('open'); document.body.style.overflow = ''; };
-document.addEventListener('keydown', function(e) { if (e.key === 'Escape') closeLightbox(); });
-window.toggleTheme = function() {
-  function apply() {
-    var dark = document.documentElement.classList.toggle('dark');
-    localStorage.setItem('moonraker-theme', dark ? 'dark' : 'light');
-    document.getElementById('themeBtn').innerHTML = dark ? '&#9728;&#65039;' : '&#127769;';
-  }
-  if (document.startViewTransition) { document.startViewTransition(apply); } else { apply(); }
-};
-(function() { document.getElementById('themeBtn').innerHTML = document.documentElement.classList.contains('dark') ? '&#9728;&#65039;' : '&#127769;'; })();
-renderGrid();
-
-/* Carousel */
-var curSlide = 0, totalSlides = document.querySelectorAll('.testimonial-slide').length;
 (function() {
-  var dots = document.getElementById('carouselDots'), h = '';
-  for (var i = 0; i < totalSlides; i++) h += '<div class="carousel-dot' + (i === 0 ? ' active' : '') + '" onclick="goToSlide(' + i + ')"></div>';
-  dots.innerHTML = h;
-})();
-window.goToSlide = function(idx) {
-  curSlide = idx;
-  document.querySelectorAll('.testimonial-slide').forEach(function(s, i) { s.classList.toggle('active', i === idx); });
-  document.querySelectorAll('.carousel-dot').forEach(function(d, i) { d.classList.toggle('active', i === idx); });
-};
-window.changeSlide = function(dir) { goToSlide((curSlide + dir + totalSlides) % totalSlides); };
+  'use strict';
 
-/* Google Reviews */
-var googleReviews = [
-  {name:'Erinn E.',rating:5,text:'Chris is amazing! His expertise is so valuable and we experienced a significant increase in traffic and inquiries through our website with the help of his SEO knowledge. His honesty and transparency stands out among the service providers out there.'},
-  {name:'Nathan A.',rating:5,text:'Chris is very knowledgeable and a great teacher! Practical tools and resources were shared and explained, providing me with simple steps that I can take to move forward. I am more hopeful, encouraged and excited about building on what I am called to do!'},
-  {name:'Christine R.',rating:5,text:'Chris and his team are amazing at what they do. Their approach is comprehensive and up-to-date with the ever-changing landscape of SEO and AI. It\'s only been a couple of months and I\'m already starting to see results. I highly recommend them!'},
-  {name:'Carolynn',rating:5,text:'He has an excellent ability to distill information into chunks that are accessible and have a clear rationale for the goals they are trying to achieve. He is thorough and knowledgeable and has a clear expertise in SEO and driving traffic to websites.'},
-  {name:'George',rating:5,text:'So grateful I found Chris! He explained everything so clearly that I felt completely confident in his services, and within just eight months my returns had already doubled. Thanks, Chris!'},
-  {name:'Jennifer',rating:5,text:'Chris is so knowledgeable, explains things in a way I can understand without being condescending and is so patient! It is truly refreshing to work with someone on marketing who is as passionate about the mental health field as I am.'},
-  {name:'Kelly S.',rating:5,text:'Chris was great to work with. He was responsive, answered our questions clearly, and explained things in a way that made sense. His help improved our SEO, and we appreciate his expertise. Highly recommend!'},
-  {name:'Kym T.',rating:5,text:'Chris helped me untangle the chaos, streamline my marketing, and optimize my websites for SEO in a way that actually makes sense (and gets results). If you\'re juggling multiple businesses and need expert guidance, this is the team you want in your corner. Highly recommend!'},
-  {name:'Audrey S.',rating:5,text:'I\'ve been working with Chris from Moonraker for about 6 months now and the results are amazing! Clicks, impressions, and my avg position have all improved significantly. The investment is paying off big time. It\'s been a great experience!'},
-  {name:'Christopher B.',rating:5,text:'In a very short amount of time Chris was able to significantly improve the inbound traffic on my website. A significant chunk of the new business we\'ve gained this past year is due to Chris and the excellent work he does at Moonraker.'},
-  {name:'Julie Ann O.',rating:5,text:'Chris is an incredible, talented SEO wiz. After six months, I\'m seeing a significant increase in traffic to connect with the people I really want to find me. It has totally been worth the investment!'},
-  {name:'Jennifer K.',rating:5,text:'Chris has gone above and beyond for my company. He is very knowledgeable and you can tell that he has a true passion to help small businesses thrive.'},
-  {name:'Ivhan A.',rating:5,text:'Chris is simply phenomenal! His SEO expertise propelled our website to new heights: clear communication, impressive results, and a pleasure to work with. Highly recommend!'},
-  {name:'Hannah T.',rating:5,text:'Chris\' SEO skills are super effective. He is super communicative and personable, making him a joy and super easy to work with! Big thanks to Chris and Moonraker!!!'},
-  {name:'Matthew C.',rating:5,text:'You have to meet Chris to understand the power of what he is capable of doing to transform your business. He makes your visibility jump up dramatically in no time. Do yourself a favor, take a meeting with Chris.'},
-  {name:'Stephanie J.',rating:5,text:'He\'s a great human. Authentic, funny, personable, and present. He cares about my business AND me as a person. He\'s brilliant at his craft. I highly recommend Chris and his team!'},
-  {name:'Hayley J.',rating:5,text:'Chris is Awesome!!! He built me a beautiful customized website and online shop. He is kind and funny and creates a relaxed and enjoyable experience. I highly recommend!!!'},
-  {name:'Jessica D.',rating:5,text:'Chris is very professional and responsive in addition to offering high quality SEO services. I appreciate his innovative thinking and willingness to understand the specific challenges of my business.'},
-  {name:'Bambi R.',rating:5,text:'I honestly think that Chris/Moonraker is the best choice that anyone could ever make for digital marketing. When you hire Chris it\'s like you have an entire team behind you. He really is amazing!'},
-  {name:'Alina\'s Ristorante',rating:5,text:'He designed our online food ordering system from scratch. Ordering time was cut in HALF! This allowed us to cater to more clients and increased our sales. We highly recommend Chris!'},
-  {name:'Karada Detox',rating:5,text:'Chris is really THE BEST!! He is really good at finding opportunities to make money that I didn\'t even see in my business! His marketing knowledge makes me super excited about growing my business.'},
-  {name:'Bob B.',rating:5,text:'Chris is a marketing and search engine optimization genius! He can help increase your customer base exponentially. I cannot recommend his services or speak highly enough of the quality of his work!'},
-  {name:'Michael K.',rating:5,text:'Chris is a human Swiss army knife. He\'s a keen listener and good synthesizer of information when it comes to assessing the goals of a business. He brings humanity to SEO.'},
-  {name:'Ross H.',rating:5,text:'Chris is a magician with this SEO stuff. He held my hand, walked and talked me through it and things began to happen. He made it all work. Thank You Chris!'},
-  {name:'Tracy S.',rating:5,text:'Chris is an SEO Pro! He can scale up or down on projects and brings his great mind and keen wit to any ask. Highly recommend.'},
-  {name:'Mary Kay M.',rating:5,text:'Chris and his team have been fantastic to work with! He\'s professional and wise. His knowledge is unmatched and I can\'t recommend Moonraker enough!'},
-  {name:'Brent S.',rating:5,text:'If you\'re a therapist looking for SEO strategy and implementation, Chris and his Moonraker team know how to rank you high on Google. I highly recommend them.'},
-  {name:'Rocio R.',rating:5,text:'I admire his clarity, passion, and commitment to his partners. Always eager to help and enhance other professionals\' careers. What else can you ask for?'},
-  {name:'Uroboros Mediations',rating:5,text:'Moonraker was the best choice for web design and SEO services for our organization. They were conscientious and courteous. I am a satisfied customer!'},
-  {name:'John M.',rating:5,text:'Chris\'s SEO Services are top shelf. He is very creative and knowledgeable and his website update created more traffic, resulting in more business.'},
-  {name:'Eduardo P.',rating:5,text:'The website created for us was much better than what we expected. The look and feel, content, layout and pictures creates synergies. Recommended++'},
-  {name:'Steve B.',rating:5,text:'Chris is a Marketing & SEO Specialist! He is always friendly, easy to talk with and never pushy. A true gentleman. Thank you Chris!!'},
-  {name:'Shannon M.',rating:5,text:'Moonraker\'s service is the best investment you can make for your business. There isn\'t a problem I\'ve brought to the Moonraker team that they can\'t solve. If you like to win, you pick a winning team.'},
-  {name:'Laura B.',rating:5,text:'Chris is the best in the business! He is so knowledgeable and is always such a pleasure to work with. Go see him for all of your SEO needs!'},
-  {name:'Stephanie C.',rating:5,text:'Chris is an absolute pleasure to work with. He really dove in and got to know our business from the inside out. This knowledge translated into amazing reports with actionable insights.'},
-  {name:'Salim U.',rating:5,text:'They are responsive and reliable. Moonraker\'s biggest strength is being able to internalize the needs and desires of their clients and deliver through curated content.'},
-  {name:'Liz D.',rating:5,text:'Expert level SEO consultant! A true jedi master. Chris is like a living marketing encyclopedia determined to help his colleagues succeed.'},
-  {name:'Myles W.',rating:5,text:'Chris took a data-driven approach to helping us get more traffic and convert more of those visitors into leads. Highly recommended!'},
-  {name:'Rojan S.',rating:5,text:'Without any agreement or cost, Chris helped me take back my Google business account and helped me set it up properly. Highly recommend!'},
-  {name:'Christine C.',rating:5,text:'Chris has been a pleasure to work with. Went above and beyond in getting our website together! Call him, you will not be disappointed!'},
-  {name:'Amy S.',rating:5,text:'This service is even better than I expected. Chris is intuitive, accommodating and extremely competent. I highly recommend Moonraker for search engine optimization.'},
-  {name:'Sophie M.',rating:5,text:'Chris really knows his stuff! He cares deeply about his clients\' success and works hard to get it done.'},
-];
-function renderReviews() {
-  var c = document.getElementById('reviewsMasonry'); if (!c) return;
-  var h = '';
-  googleReviews.forEach(function(r) {
-    var stars = ''; for (var i=0;i<r.rating;i++) stars+='&#9733;'; for (var j=r.rating;j<5;j++) stars+='&#9734;';
-    var t = r.text, d = t.length > 220 ? t.substring(0,220)+'...' : t;
-    h += '<div class="review-card"><div class="review-stars">'+stars+'</div><div class="review-text">'+d+'</div><div class="review-author">'+r.name+'</div></div>';
-  });
-  c.innerHTML = h;
-}
-renderReviews();
+  // ============================================================
+  // CONFIG
+  // ============================================================
+  var SB_URL = 'https://ofmmwcjhdrhvxxkhcuww.supabase.co';
+  var SB_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6Im9mbW13Y2poZHJodnh4a2hjdXd3Iiwicm9sZSI6ImFub24iLCJpYXQiOjE3NzQzMjM1NTcsImV4cCI6MjA4OTg5OTU1N30.zMMHW0Fk9ixWjORngyxJTIoPOfx7GFsD4wBV4Foqqms';
+
+  // Extract slug from URL path: /sky-therapies/ -> sky-therapies
+  var pathParts = window.location.pathname.replace(/^\/|\/$/g, '').split('/');
+  var CLIENT_SLUG = pathParts[0] || '';
+
+  function esc(s) { var d = document.createElement('div'); d.textContent = s; return d.innerHTML; }
+
+  if (!CLIENT_SLUG) {
+    showError('No client specified in the URL.');
+    return;
+  }
+
+  // ============================================================
+  // SUPABASE HELPERS
+  // ============================================================
+  function sbHeaders() {
+    return { 'apikey': SB_KEY, 'Authorization': 'Bearer ' + SB_KEY, 'Accept': 'application/json' };
+  }
+
+  function sbFetch(table, query) {
+    return fetch(SB_URL + '/rest/v1/' + table + '?' + query, { headers: sbHeaders() })
+      .then(function(r) { if (!r.ok) throw new Error(r.status); return r.json(); });
+  }
+
+  // ============================================================
+  // ERROR / LOADING
+  // ============================================================
+  function showError(msg) {
+    document.getElementById('loadingState').style.display = 'none';
+    document.getElementById('errorState').style.display = 'block';
+    document.getElementById('errorMessage').textContent = msg;
+  }
+
+  // ============================================================
+  // FORMATTING HELPERS
+  // ============================================================
+  function fmtDate(iso) {
+    if (!iso) return '';
+    var d = new Date(iso);
+    return d.toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' });
+  }
+
+  function pct(num, den) {
+    return den > 0 ? Math.round((num / den) * 100) : 0;
+  }
+
+  function scoreClass(val) {
+    if (val <= 3) return 'score-low';
+    if (val <= 6) return 'score-med';
+    return 'score-high';
+  }
+
+  function ringGauge(val, max) {
+    var r = 28;
+    var circ = 2 * Math.PI * r;
+    var offset = circ - (val / max) * circ;
+    return '<div class="ring-wrap">' +
+      '<svg viewBox="0 0 64 64" width="72" height="72">' +
+      '<circle class="ring-bg" cx="32" cy="32" r="' + r + '"/>' +
+      '<circle class="ring-fg" cx="32" cy="32" r="' + r + '" stroke-dasharray="' + circ.toFixed(1) + '" stroke-dashoffset="' + offset.toFixed(1) + '"/>' +
+      '</svg>' +
+      '<div class="score-val">' + val + '<span>/10</span></div></div>';
+  }
+
+  // ============================================================
+  // SECTION NAV BUILDER
+  // ============================================================
+  function buildSectionNav(sections) {
+    var nav = document.getElementById('sectionNav');
+    nav.innerHTML = '';
+    sections.forEach(function(s) {
+      var a = document.createElement('a');
+      a.href = '#' + s.id;
+      a.innerHTML = '<span class="nav-dot"></span>' + s.label;
+      nav.appendChild(a);
+    });
+  }
+
+  // ============================================================
+  // DELIVERABLE TYPE ICONS
+  // ============================================================
+  var deliverableIcons = {
+    'audit_diagnosis': '&#128269;',
+    'audit_action_plan': '&#128203;',
+    'audit_progress': '&#9989;',
+    'report': '&#128202;',
+    'proposal': '&#128196;',
+    'target_page': '&#128196;',
+    'bio_page': '&#128100;',
+    'press_release': '&#128240;',
+    'faq_page': '&#10067;',
+    'default': '&#128230;'
+  };
+
+  function getIcon(type) {
+    return deliverableIcons[type] || deliverableIcons['default'];
+  }
+
+  // ============================================================
+  // RENDER: ACTIVE CLIENT MODE
+  // ============================================================
+  function renderActive(contact, practiceDetails, onboardingSteps, deliverables, auditScores, taskStats) {
+    // Page title
+    document.title = 'Client HQ - ' + contact.practice_name + ' - Moonraker';
+    document.getElementById('headerName').textContent = contact.practice_name;
+
+    // Hero
+    document.getElementById('heroBadge').innerHTML = '<span class="badge status-active">Active Campaign</span>';
+    document.getElementById('heroTitle').textContent = 'Welcome, ' + contact.first_name;
+    document.getElementById('heroSubtitle').textContent = 'Your ' + contact.practice_name + ' campaign hub. Everything related to your Moonraker engagement lives here.';
+
+    // Campaign timeline
+    if (contact.campaign_start && contact.campaign_end) {
+      var start = new Date(contact.campaign_start);
+      var end = new Date(contact.campaign_end);
+      var now = new Date();
+      var totalDays = (end - start) / (1000 * 60 * 60 * 24);
+      var elapsedDays = Math.max(0, (now - start) / (1000 * 60 * 60 * 24));
+      var progress = Math.min(100, pct(elapsedDays, totalDays));
+      var monthsElapsed = Math.max(1, Math.round(elapsedDays / 30));
+      var totalMonths = Math.round(totalDays / 30);
+
+      document.getElementById('campaignTimeline').innerHTML =
+        '<div class="campaign-timeline">' +
+        '<div class="campaign-timeline-label"><span>Month ' + monthsElapsed + ' of ' + totalMonths + '</span><span>' + progress + '% complete</span></div>' +
+        '<div class="campaign-timeline-track"><div class="campaign-timeline-fill" style="width:' + progress + '%"></div></div>' +
+        '<div class="campaign-timeline-meta"><span>' + fmtDate(contact.campaign_start) + '</span><span>' + fmtDate(contact.campaign_end) + '</span></div>' +
+        '</div>';
+    }
+
+    // Quick links
+    var links = '';
+    var hasAudit = false;
+    var hasReport = false;
+    deliverables.forEach(function(d) {
+      if (d.deliverable_type === 'audit_diagnosis') hasAudit = true;
+      if (d.deliverable_type === 'report') hasReport = true;
+    });
+
+    if (hasAudit) {
+      links += '<a href="/' + CLIENT_SLUG + '/audits/diagnosis" class="quick-link">' +
+        '<div class="quick-link-icon">&#128269;</div><h4>Diagnosis</h4>' +
+        '<p>Baseline audit with CORE scores and competitive analysis</p>' +
+        '<div class="link-arrow">View diagnosis &#8599;</div></a>';
+      links += '<a href="/' + CLIENT_SLUG + '/audits/action-plan" class="quick-link">' +
+        '<div class="quick-link-icon">&#128203;</div><h4>Action Plan</h4>' +
+        '<p>Phased roadmap with prioritized tasks and timeline</p>' +
+        '<div class="link-arrow">View plan &#8599;</div></a>';
+      links += '<a href="/' + CLIENT_SLUG + '/audits/progress" class="quick-link">' +
+        '<div class="quick-link-icon">&#9989;</div><h4>Progress Tracker</h4>' +
+        '<p>Interactive checklist with live task status updates</p>' +
+        '<div class="link-arrow">Track progress &#8599;</div></a>';
+    }
+    if (hasReport) {
+      links += '<a href="/' + CLIENT_SLUG + '/reports" class="quick-link">' +
+        '<div class="quick-link-icon">&#128202;</div><h4>Monthly Reports</h4>' +
+        '<p>GSC, GA4, and GBP performance data with trend analysis</p>' +
+        '<div class="link-arrow">View reports &#8599;</div></a>';
+    }
+    document.getElementById('quickLinks').innerHTML = links;
+
+    // CORE scores
+    if (auditScores && auditScores.length > 0) {
+      var a = auditScores[0];
+      var coreHTML = '<div class="core-mini-grid">';
+      var pillars = [
+        { key: 'score_credibility', label: 'Credibility', letter: 'C' },
+        { key: 'score_optimization', label: 'Optimization', letter: 'O' },
+        { key: 'score_reputation', label: 'Reputation', letter: 'R' },
+        { key: 'score_engagement', label: 'Engagement', letter: 'E' }
+      ];
+      pillars.forEach(function(p) {
+        var val = a[p.key] || 0;
+        coreHTML += '<div class="core-mini-card ' + scoreClass(val) + '">' +
+          ringGauge(val, 10) +
+          '<div class="core-mini-label">' + p.label + '</div></div>';
+      });
+      coreHTML += '</div>';
+      document.getElementById('coreScores').innerHTML = coreHTML;
+
+      // Animate ring gauges after a short delay
+      setTimeout(function() {
+        document.querySelectorAll('.ring-fg').forEach(function(el) {
+          el.style.strokeDashoffset = el.getAttribute('stroke-dashoffset');
+        });
+      }, 300);
+    }
+
+    // Task progress
+    if (taskStats) {
+      var total = taskStats.total || 0;
+      var complete = taskStats.complete || 0;
+      var inProgress = taskStats.inProgress || 0;
+      var notStarted = total - complete - inProgress;
+      var pctComplete = pct(complete, total);
+      var pctInProgress = pct(inProgress, total);
+
+      document.getElementById('taskProgress').innerHTML =
+        '<h3 style="margin:2.5rem 0 .75rem;">Task Progress</h3>' +
+        '<div class="task-progress">' +
+        '<div class="progress-track">' +
+        '<div class="progress-fill-complete" style="width:' + pctComplete + '%"></div>' +
+        '<div class="progress-fill-inprogress" style="width:' + pctInProgress + '%"></div>' +
+        '</div>' +
+        '<div class="progress-stats">' +
+        '<div class="progress-stat"><span class="dot complete"></span> ' + complete + ' Complete</div>' +
+        '<div class="progress-stat"><span class="dot inprogress"></span> ' + inProgress + ' In Progress</div>' +
+        '<div class="progress-stat"><span class="dot notstarted"></span> ' + notStarted + ' Not Started</div>' +
+        '</div></div>';
+    }
+
+    // Onboarding section (show if not fully complete)
+    if (onboardingSteps && onboardingSteps.length > 0) {
+      var allComplete = onboardingSteps.every(function(s) { return s.status === 'complete'; });
+      if (!allComplete) {
+        document.getElementById('onboarding').style.display = 'block';
+        var listHTML = '';
+        onboardingSteps.forEach(function(s) {
+          var checkClass = s.status === 'complete' ? 'done' : (s.status === 'in_progress' ? 'active' : 'pending');
+          var checkIcon = s.status === 'complete' ? '&#10003;' : (s.status === 'in_progress' ? '&#9679;' : '');
+          var labelClass = s.status === 'complete' ? 'done-label' : '';
+          var note = s.notes ? '<span class="onboarding-step-note">' + s.notes + '</span>' : '';
+          var href = '/' + CLIENT_SLUG + '/onboarding#' + s.step_key;
+          listHTML += '<li class="onboarding-item">' +
+            '<a href="' + href + '">' +
+            '<div class="onboarding-check ' + checkClass + '">' + checkIcon + '</div>' +
+            '<span class="onboarding-step-label ' + labelClass + '">' + s.label + '</span>' + note +
+            '</a></li>';
+        });
+        document.getElementById('onboardingList').innerHTML = listHTML;
+      }
+    }
+
+    // Deliverables list
+    if (deliverables && deliverables.length > 0) {
+      var dlHTML = '';
+      deliverables.forEach(function(d) {
+        var link = d.page_url ? '<a href="' + d.page_url + '" class="deliverable-link" target="_blank">Open &#8599;</a>' : '';
+        dlHTML += '<li class="deliverable-row">' +
+          '<div class="deliverable-icon">' + getIcon(d.deliverable_type) + '</div>' +
+          '<div class="deliverable-info">' +
+          '<div class="deliverable-title">' + d.title + '</div>' +
+          '<div class="deliverable-meta">' + (d.delivered_at ? 'Delivered ' + fmtDate(d.delivered_at) : d.status) + '</div>' +
+          '</div>' + link + '</li>';
+      });
+      document.getElementById('deliverablesList').innerHTML = dlHTML;
+    }
+
+    // Confidential line
+    var fullName = contact.first_name + ' ' + contact.last_name;
+    if (contact.credentials) fullName += ', ' + contact.credentials;
+    document.getElementById('confidentialLine').innerHTML =
+      'This dashboard is confidential and prepared exclusively for ' + esc(fullName) + '.<br>&copy; 2026 Moonraker AI &middot; moonraker.ai';
+
+    // Build section nav
+    var navSections = [
+      { id: 'overview', label: 'Overview' },
+      { id: 'pages', label: 'Pages' },
+      { id: 'snapshot', label: 'Snapshot' }
+    ];
+    if (document.getElementById('onboarding').style.display !== 'none') {
+      navSections.push({ id: 'onboarding', label: 'Onboarding' });
+    }
+    navSections.push({ id: 'deliverables', label: 'Deliverables' });
+    navSections.push({ id: 'team', label: 'Team' });
+    buildSectionNav(navSections);
+  }
+
+  // ============================================================
+  // RENDER: ONBOARDING MODE
+  // ============================================================
+  function renderOnboarding(contact, onboardingSteps) {
+    document.title = 'Onboarding - ' + contact.practice_name + ' - Moonraker';
+    document.getElementById('headerName').textContent = contact.practice_name;
+
+    document.getElementById('heroBadge').innerHTML = '<span class="badge status-onboarding">Onboarding</span>';
+    document.getElementById('heroTitle').textContent = 'Welcome aboard, ' + contact.first_name;
+    document.getElementById('heroSubtitle').textContent = 'We are setting up your ' + contact.practice_name + ' campaign. Here is what we need to get started.';
+    document.getElementById('campaignTimeline').innerHTML = '';
+
+    // Hide pages and snapshot for onboarding mode
+    document.getElementById('pages').style.display = 'none';
+    document.getElementById('snapshot').style.display = 'none';
+    document.querySelectorAll('.divider').forEach(function(d, i) { if (i === 1 || i === 2) d.style.display = 'none'; });
+
+    // Show onboarding section
+    document.getElementById('onboarding').style.display = 'block';
+    if (onboardingSteps && onboardingSteps.length > 0) {
+      var listHTML = '';
+      onboardingSteps.forEach(function(s) {
+        var checkClass = s.status === 'complete' ? 'done' : (s.status === 'in_progress' ? 'active' : 'pending');
+        var checkIcon = s.status === 'complete' ? '&#10003;' : (s.status === 'in_progress' ? '&#9679;' : '');
+        var labelClass = s.status === 'complete' ? 'done-label' : '';
+        var note = s.notes ? '<span class="onboarding-step-note">' + s.notes + '</span>' : '';
+        var href = '/' + CLIENT_SLUG + '/onboarding#' + s.step_key;
+        listHTML += '<li class="onboarding-item">' +
+          '<a href="' + href + '">' +
+          '<div class="onboarding-check ' + checkClass + '">' + checkIcon + '</div>' +
+          '<span class="onboarding-step-label ' + labelClass + '">' + s.label + '</span>' + note +
+          '</a></li>';
+      });
+      document.getElementById('onboardingList').innerHTML = listHTML;
+    }
+
+    // Deliverables likely empty at this stage but show section anyway
+    document.getElementById('deliverablesList').innerHTML =
+      '<li class="deliverable-row" style="justify-content:center;color:var(--color-muted);font-size:.9375rem;padding:2rem 0;">' +
+      'Deliverables will appear here once your campaign kicks off.</li>';
+
+    var fullName = contact.first_name + ' ' + contact.last_name;
+    if (contact.credentials) fullName += ', ' + contact.credentials;
+    document.getElementById('confidentialLine').innerHTML =
+      'This dashboard is confidential and prepared exclusively for ' + esc(fullName) + '.<br>&copy; 2026 Moonraker AI &middot; moonraker.ai';
+
+    buildSectionNav([
+      { id: 'overview', label: 'Overview' },
+      { id: 'onboarding', label: 'Onboarding' },
+      { id: 'deliverables', label: 'Deliverables' },
+      { id: 'team', label: 'Team' }
+    ]);
+  }
+
+  // ============================================================
+  // RENDER: LEAD / PROSPECT MODE
+  // ============================================================
+  function renderProspect(contact) {
+    document.title = contact.practice_name + ' - Moonraker';
+    document.getElementById('headerName').textContent = contact.practice_name;
+
+    var statusLabel = contact.status === 'lead' ? 'Lead' : 'Prospect';
+    document.getElementById('heroBadge').innerHTML = '<span class="badge status-' + esc(contact.status) + '">' + esc(statusLabel) + '</span>';
+    document.getElementById('heroTitle').textContent = 'Hi, ' + contact.first_name;
+    document.getElementById('heroSubtitle').textContent = 'Thanks for your interest in Moonraker. Here is what we have prepared for ' + contact.practice_name + '.';
+    document.getElementById('campaignTimeline').innerHTML = '';
+
+    // Show only a proposal link and CTA for prospects
+    document.getElementById('pages').style.display = 'none';
+    document.getElementById('snapshot').style.display = 'none';
+    document.getElementById('deliverables').style.display = 'none';
+    document.querySelectorAll('.divider').forEach(function(d) { d.style.display = 'none'; });
+
+    // Replace onboarding section with proposal CTA
+    document.getElementById('onboarding').style.display = 'block';
+    document.getElementById('onboarding').querySelector('h2').textContent = 'Your Proposal';
+    document.getElementById('onboarding').querySelector('p').textContent = '';
+    document.getElementById('onboardingList').innerHTML = '';
+
+    var proposalHTML =
+      '<div class="cta-banner" style="margin:0;">' +
+      '<h3>Your custom proposal is ready</h3>' +
+      '<p>See exactly how Moonraker can grow ' + esc(contact.practice_name) + '\'s visibility in AI and Google search.</p>' +
+      '<a href="/' + CLIENT_SLUG + '/proposal" class="cta-btn">View Your Proposal</a>' +
+      '</div>';
+    document.getElementById('onboarding').querySelector('.container').insertAdjacentHTML('beforeend', proposalHTML);
+
+    var fullName = contact.first_name + ' ' + contact.last_name;
+    if (contact.credentials) fullName += ', ' + contact.credentials;
+    document.getElementById('confidentialLine').innerHTML =
+      'This page is confidential and prepared exclusively for ' + esc(fullName) + '.<br>&copy; 2026 Moonraker AI &middot; moonraker.ai';
+
+    buildSectionNav([
+      { id: 'overview', label: 'Overview' },
+      { id: 'onboarding', label: 'Proposal' },
+      { id: 'team', label: 'Team' }
+    ]);
+  }
+
+  // ============================================================
+  // MAIN INIT
+  // ============================================================
+  function init() {
+    // Fetch contact by slug
+    sbFetch('contacts', 'slug=eq.' + CLIENT_SLUG + '&select=*&limit=1')
+      .then(function(contacts) {
+        if (!contacts || contacts.length === 0) {
+          showError('No account found for "' + CLIENT_SLUG + '". Please check the URL.');
+          return;
+        }
+        var contact = contacts[0];
+        var contactId = contact.id;
+
+        // Fetch all related data in parallel
+        return Promise.all([
+          Promise.resolve(contact),
+          sbFetch('practice_details', 'contact_id=eq.' + contactId + '&select=*&limit=1'),
+          sbFetch('onboarding_steps', 'contact_id=eq.' + contactId + '&select=*&order=sort_order'),
+          sbFetch('deliverables', 'contact_id=eq.' + contactId + '&select=*&order=delivered_at.desc'),
+          sbFetch('entity_audits', 'client_slug=eq.' + CLIENT_SLUG + '&select=*&order=audit_date.desc&limit=1'),
+          sbFetch('checklist_items', 'client_slug=eq.' + CLIENT_SLUG + '&select=status')
+        ]);
+      })
+      .then(function(results) {
+        if (!results) return; // contact not found already handled
+
+        var contact = results[0];
+        var practiceDetails = results[1] && results[1][0] ? results[1][0] : null;
+        var onboardingSteps = results[2] || [];
+        var deliverables = results[3] || [];
+        var auditScores = results[4] || [];
+        var taskRows = results[5] || [];
+
+        // Compute task stats
+        var taskStats = { total: taskRows.length, complete: 0, inProgress: 0 };
+        taskRows.forEach(function(t) {
+          if (t.status === 'complete') taskStats.complete++;
+          else if (t.status === 'in-progress') taskStats.inProgress++;
+        });
+
+        // Hide loading, show content
+        document.getElementById('loadingState').style.display = 'none';
+        document.getElementById('mainContent').style.display = 'block';
+
+        // Route to the appropriate render mode
+        if (contact.status === 'active') {
+          renderActive(contact, practiceDetails, onboardingSteps, deliverables, auditScores, taskStats);
+        } else if (contact.status === 'onboarding') {
+          renderOnboarding(contact, onboardingSteps);
+        } else {
+          renderProspect(contact);
+        }
+
+        // Trigger reveal animations
+        setTimeout(checkReveal, 100);
+      })
+      .catch(function(err) {
+        console.error('Failed to load dashboard:', err);
+        showError('Unable to connect to the data source. Please try refreshing.');
+      });
+  }
+
+  // ============================================================
+  // UI: THEME TOGGLE, PROGRESS BAR, SECTION NAV, REVEAL
+  // ============================================================
+  var themeBtn = document.getElementById('themeBtn');
+  if (themeBtn) {
+    themeBtn.addEventListener('click', function() {
+      var h = document.documentElement;
+      function apply() {
+        if (h.getAttribute('data-theme') === 'light') {
+          h.setAttribute('data-theme', 'dark');
+          themeBtn.innerHTML = '&#9728;&#65039;';
+          try { localStorage.setItem('moonraker-theme', 'dark'); } catch(e) {}
+        } else {
+          h.setAttribute('data-theme', 'light');
+          themeBtn.innerHTML = '&#x1F319;';
+          try { localStorage.setItem('moonraker-theme', 'light'); } catch(e) {}
+        }
+      }
+      if (document.startViewTransition) { document.startViewTransition(apply); } else { apply(); }
+    });
+  }
+
+  var progressBar = document.getElementById('progressBar');
+  function updateProgress() {
+    var scrollTop = window.scrollY;
+    var docHeight = document.documentElement.scrollHeight - window.innerHeight;
+    progressBar.style.width = (docHeight > 0 ? (scrollTop / docHeight) * 100 : 0) + '%';
+  }
+
+  function updateNav() {
+    var current = '';
+    document.querySelectorAll('section[id]').forEach(function(s) {
+      if (s.style.display !== 'none' && window.scrollY >= s.offsetTop - 200) current = s.id;
+    });
+    document.querySelectorAll('.section-nav a').forEach(function(l) {
+      l.classList.toggle('active', l.getAttribute('href') === '#' + current);
+    });
+  }
+
+  function checkReveal() {
+    document.querySelectorAll('.reveal').forEach(function(el) {
+      if (el.getBoundingClientRect().top < window.innerHeight * 0.88) el.classList.add('visible');
+    });
+  }
+
+  function onScroll() { updateProgress(); updateNav(); checkReveal(); }
+  window.addEventListener('scroll', onScroll);
+  onScroll();
+
+  // Start
+  init();
+})();
 </script>
+<script src="/shared/offline-banner.js" defer></script>
 </body>
 </html>
-
-
-
