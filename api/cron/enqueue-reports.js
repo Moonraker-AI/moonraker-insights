@@ -84,12 +84,31 @@ module.exports = async function handler(req, res) {
       });
     }
 
-    // Insert queue entries
+    // Insert queue entries. Prefer: resolution=ignore-duplicates handles the
+    // race where two concurrent cron invocations both see an empty existingMap
+    // and try to insert the same (client_slug, report_month) pairs. DB-level
+    // UNIQUE constraint (report_queue_client_month_uq) makes the drop safe.
     var inserted = 0;
     if (queued.length > 0) {
       try {
-        var result = await sb.mutate('report_queue', 'POST', queued);
+        var result = await sb.mutate(
+          'report_queue',
+          'POST',
+          queued,
+          'return=representation,resolution=ignore-duplicates'
+        );
         inserted = Array.isArray(result) ? result.length : queued.length;
+        if (inserted < queued.length) {
+          monitor.logError('cron/enqueue-reports', new Error('Duplicate queue insert detected'), {
+            detail: {
+              stage: 'insert_race',
+              attempted: queued.length,
+              inserted: inserted,
+              dropped: queued.length - inserted,
+              report_month: reportMonth
+            }
+          });
+        }
       } catch (e) {
         return res.status(500).json({ error: 'Failed to insert queue entries', detail: e.message });
       }
