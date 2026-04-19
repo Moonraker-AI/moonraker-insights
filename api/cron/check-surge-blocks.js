@@ -5,8 +5,10 @@
 //   - Only rows with status=agent_error AND agent_error_retriable=false
 //     AND last_agent_error_code IN ('surge_maintenance','credits_exhausted')
 //     are considered healable.
-//   - 'surge_rejected' and 'generic_exception' are NEVER auto-healed —
-//     those require human review.
+//   - 'surge_rejected', 'target_blocked', and 'generic_exception' are NEVER
+//     auto-healed — those require human review (target_blocked = the client
+//     site's WAF refused Surge's crawl; fix must happen on the client site,
+//     not by requeuing).
 //   - Healing means flipping the row back to queued+retriable=true with
 //     agent_task_id cleared. The existing 30-min process-audit-queue
 //     cron picks it up from there.
@@ -35,6 +37,7 @@ var CODE_LABELS = {
   surge_maintenance: 'Surge maintenance mode',
   credits_exhausted: 'Surge credits exhausted',
   surge_rejected: 'Surge silently rejected submission',
+  target_blocked: 'Target site WAF blocked Surge crawl',
   generic_exception: 'Unhandled agent error'
 };
 
