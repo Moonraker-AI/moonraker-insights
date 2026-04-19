@@ -104,6 +104,9 @@ module.exports = async function handler(req, res) {
 
     return res.status(200).json({ ok: true, results: results });
   } catch (e) {
+    monitor.logError('cron/process-followups', e, {
+      detail: { stage: 'cron_handler', results: results }
+    });
     return res.status(500).json({ error: 'Cron failed: ' + e.message, results: results });
   }
 };
@@ -122,9 +125,29 @@ async function sendFollowupEmail(resendKey, contact, followup, fromAddress) {
         html: followup.body_html
       })
     });
-    var emailData = await emailResp.json();
-    return !!emailData.id;
+    var emailData = null;
+    try { emailData = await emailResp.json(); } catch (e) {}
+    if (!emailResp.ok || !emailData || !emailData.id) {
+      monitor.logError('cron/process-followups', new Error('Resend send failed'), {
+        detail: {
+          stage: 'send_followup_email',
+          resend_status: emailResp.status,
+          resend_error: emailData && emailData.error ? emailData.error : null,
+          contact_email: contact.email,
+          followup_id: followup.id
+        }
+      });
+      return false;
+    }
+    return true;
   } catch (e) {
+    monitor.logError('cron/process-followups', e, {
+      detail: {
+        stage: 'send_followup_email_exception',
+        contact_email: contact.email,
+        followup_id: followup.id
+      }
+    });
     return false;
   }
 }

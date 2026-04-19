@@ -116,29 +116,42 @@ module.exports = async function handler(req, res) {
           '<td style="padding:8px 12px;border-bottom:1px solid #E2E8F0;">' + (r.next_due || '-') + '</td></tr>';
       }).join('');
 
-      await fetch('https://api.resend.com/emails', {
-        method: 'POST',
-        headers: { 'Authorization': 'Bearer ' + resendKey, 'Content-Type': 'application/json' },
-        body: JSON.stringify({
-          from: 'Moonraker Notifications <notifications@clients.moonraker.ai>',
-          to: ['notifications@clients.moonraker.ai'],
-          subject: 'Quarterly Audits Queued: ' + successCount + ' clients',
-          html: '<div style="font-family:Inter,sans-serif;max-width:600px;">' +
-            '<h2 style="font-family:Outfit,sans-serif;color:#1E2A5E;">Quarterly Entity Audits</h2>' +
-            '<p>' + successCount + ' audit' + (successCount !== 1 ? 's' : '') + ' queued for processing' +
-            (failCount > 0 ? ', ' + failCount + ' failed' : '') + '.</p>' +
-            '<p style="font-size:13px;color:#64748B;">Audits will be processed one at a time by the agent service (approximately 35 minutes each).</p>' +
-            '<table cellpadding="0" cellspacing="0" border="0" width="100%" style="font-size:14px;">' +
-            '<thead><tr style="background:#F7FDFB;">' +
-            '<th style="padding:8px 12px;text-align:left;font-weight:600;">Client</th>' +
-            '<th style="padding:8px 12px;text-align:left;font-weight:600;">Period</th>' +
-            '<th style="padding:8px 12px;text-align:left;font-weight:600;">Status</th>' +
-            '<th style="padding:8px 12px;text-align:left;font-weight:600;">Next Due</th></tr></thead>' +
-            '<tbody>' + tableRows + '</tbody></table>' +
-            '<p style="margin-top:16px;"><a href="https://clients.moonraker.ai/admin/audits" style="color:#00D47E;">View in Admin</a></p>' +
-            '</div>'
-        })
-      });
+      try {
+        var emailResp = await fetch('https://api.resend.com/emails', {
+          method: 'POST',
+          headers: { 'Authorization': 'Bearer ' + resendKey, 'Content-Type': 'application/json' },
+          body: JSON.stringify({
+            from: 'Moonraker Notifications <notifications@clients.moonraker.ai>',
+            to: ['notifications@clients.moonraker.ai'],
+            subject: 'Quarterly Audits Queued: ' + successCount + ' clients',
+            html: '<div style="font-family:Inter,sans-serif;max-width:600px;">' +
+              '<h2 style="font-family:Outfit,sans-serif;color:#1E2A5E;">Quarterly Entity Audits</h2>' +
+              '<p>' + successCount + ' audit' + (successCount !== 1 ? 's' : '') + ' queued for processing' +
+              (failCount > 0 ? ', ' + failCount + ' failed' : '') + '.</p>' +
+              '<p style="font-size:13px;color:#64748B;">Audits will be processed one at a time by the agent service (approximately 35 minutes each).</p>' +
+              '<table cellpadding="0" cellspacing="0" border="0" width="100%" style="font-size:14px;">' +
+              '<thead><tr style="background:#F7FDFB;">' +
+              '<th style="padding:8px 12px;text-align:left;font-weight:600;">Client</th>' +
+              '<th style="padding:8px 12px;text-align:left;font-weight:600;">Period</th>' +
+              '<th style="padding:8px 12px;text-align:left;font-weight:600;">Status</th>' +
+              '<th style="padding:8px 12px;text-align:left;font-weight:600;">Next Due</th></tr></thead>' +
+              '<tbody>' + tableRows + '</tbody></table>' +
+              '<p style="margin-top:16px;"><a href="https://clients.moonraker.ai/admin/audits" style="color:#00D47E;">View in Admin</a></p>' +
+              '</div>'
+          })
+        });
+        if (!emailResp.ok) {
+          var errBody = '';
+          try { errBody = await emailResp.text(); } catch (e) {}
+          monitor.logError('cron/trigger-quarterly-audits', new Error('Resend ' + emailResp.status), {
+            detail: { stage: 'digest_email', resend_status: emailResp.status, body: errBody.substring(0, 300), queued: successCount }
+          });
+        }
+      } catch (emailErr) {
+        monitor.logError('cron/trigger-quarterly-audits', emailErr, {
+          detail: { stage: 'digest_email', queued: successCount }
+        });
+      }
     }
 
     return res.status(200).json({
