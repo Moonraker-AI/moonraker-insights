@@ -197,7 +197,12 @@ function maybeUpdateLastLogin(userId) {
     'PATCH',
     { last_login_at: nowIso },
     'return=minimal'
-  ).catch(function() {});
+  ).catch(function(e) {
+    // Non-critical — admin-profiles display stays stale until next call.
+    // Log to Vercel stdout so persistent failures are still visible
+    // (cron audit M8: previous empty catch hid repeat-offender outages).
+    console.error('maybeUpdateLastLogin: ' + (e && e.message ? e.message : 'unknown'));
+  });
 }
 
 // ── Main middleware ────────────────────────────────────────────────

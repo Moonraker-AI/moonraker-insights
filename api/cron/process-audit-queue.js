@@ -292,7 +292,13 @@ module.exports = async function handler(req, res) {
           errText.substring(0, 400)).substring(0, 500),
         last_agent_error_at: new Date().toISOString()
       }, 'return=minimal');
+      // Return 200 + success:false (cron audit M3). Row already marked
+      // agent_error; Step 0.5 backoff requeue will pick up retriable failures
+      // on the next cron tick. Returning 5xx would make Vercel retry this
+      // entire cron, which is wasteful — the work to recover is already
+      // scheduled via the backoff path.
       return res.status(200).json({
+        success: false,
         error: 'Agent returned ' + agentResp.status,
         detail: errText.substring(0, 300),
         audit_id: audit.id,
