@@ -33,8 +33,12 @@ module.exports = async function(req, res) {
     var pages = body.pages || [];
     var pagesProcessed = 0;
     var pagesErrors = 0;
+    var pageErrorDetails = [];
 
-    // 2. Update each content page with Surge results
+    // 2. Update each content page with Surge results. Per-page errors are
+    // collected (not re-thrown) so a single PATCH failure cannot hide the
+    // successful work on other pages. The batch status is then derived from
+    // the aggregate success count below.
     for (var i = 0; i < pages.length; i++) {
       var pg = pages[i];
       if (!pg.content_page_id) continue;
@@ -61,19 +65,75 @@ module.exports = async function(req, res) {
       } catch (e) {
         console.error('Failed to update content_page ' + pg.content_page_id + ':', e.message);
         pagesErrors++;
+        pageErrorDetails.push({
+          content_page_id: pg.content_page_id,
+          error: (e && e.message ? e.message : 'Unknown').substring(0, 300)
+        });
       }
     }
 
-    // 3. Update batch record
+    // 3. Derive batch status from page-level outcomes (cron audit M2).
+    // Previously batch was always marked 'complete' regardless of per-page
+    // failures — admins couldn't tell "everything worked" apart from
+    // "callback half-succeeded and the batch was silently lost".
+    var batchStatus;
+    var errorMessage = null;
+    if (pages.length === 0) {
+      // No pages submitted in callback — treat as failed.
+      batchStatus = 'failed';
+      errorMessage = 'Agent callback contained no pages';
+    } else if (pagesErrors === 0) {
+      batchStatus = 'complete';
+    } else if (pagesProcessed === 0) {
+      batchStatus = 'failed';
+      errorMessage = 'All ' + pages.length + ' page update(s) failed';
+    } else {
+      // Partial success: keep the successful page writes, mark batch complete
+      // so downstream consumers (synthesis auto-trigger, admin UI) still run,
+      // but capture the partial failure for admin visibility.
+      batchStatus = 'complete';
+      errorMessage = pagesErrors + ' of ' + pages.length + ' page(s) failed to update';
+    }
+
     var batchUpdate = {
-      status: 'complete',
+      status: batchStatus,
       pages_processed: pagesProcessed,
       synthesis_raw: body.synthesis_raw || null,
       surge_batch_url: body.surge_batch_url || null,
-      error_message: pagesErrors > 0 ? pagesErrors + ' page(s) failed to update' : null,
+      error_message: errorMessage,
       updated_at: new Date().toISOString()
     };
     await sb.mutate('content_audit_batches?id=eq.' + body.batch_id, 'PATCH', batchUpdate, 'return=minimal');
+
+    // Surface partial or total failures to monitor so admins are notified.
+    if (pagesErrors > 0) {
+      var severity = pagesProcessed === 0 ? 'critical' : 'logError';
+      var err = new Error(errorMessage);
+      if (severity === 'critical') {
+        await monitor.critical('ingest-batch-audit', err, {
+          client_slug: batch.client_slug,
+          detail: {
+            batch_id: body.batch_id,
+            pages_total: pages.length,
+            pages_processed: pagesProcessed,
+            pages_errors: pagesErrors,
+            page_error_details: pageErrorDetails.slice(0, 10)
+          }
+        });
+      } else {
+        await monitor.logError('ingest-batch-audit', err, {
+          severity: 'warning',
+          client_slug: batch.client_slug,
+          detail: {
+            batch_id: body.batch_id,
+            pages_total: pages.length,
+            pages_processed: pagesProcessed,
+            pages_errors: pagesErrors,
+            page_error_details: pageErrorDetails.slice(0, 10)
+          }
+        });
+      }
+    }
 
     // 4. Send team notification
     if (RESEND_KEY) {
