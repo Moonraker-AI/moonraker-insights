@@ -171,8 +171,11 @@ async function loadHealth() {
   var data = await resp.json();
 
   var total = data.summary.length;
-  var healthy = data.summary.filter(function(r) { return !r.stale; }).length;
-  var stale = data.summary.filter(function(r) { return r.stale; }).length;
+  // "Stale" only counts rows that have a last_success AND exceed tolerance —
+  // matches the heartbeat cron's alert logic. Brand-new / never-run crons
+  // are a separate "no data yet" bucket (visible only in the per-row tag).
+  var healthy = data.summary.filter(function(r) { return r.last_success_completed_at && !r.stale; }).length;
+  var stale = data.summary.filter(function(r) { return r.last_success_completed_at && r.stale; }).length;
   var running = data.running.length;
 
   document.getElementById('sTotal').textContent = total;
@@ -182,9 +185,17 @@ async function loadHealth() {
 
   var tbody = document.getElementById('cronTbody');
   tbody.innerHTML = data.summary.map(function(r) {
-    var statusTag = r.stale
-      ? '<span class="tag tag-danger"><span class="status-dot red"></span>Stale</span>'
-      : '<span class="tag tag-success"><span class="status-dot green"></span>Healthy</span>';
+    var statusTag;
+    if (!r.last_success_completed_at) {
+      // Matches cron-heartbeat-check's non-alerting behaviour: no successful
+      // run yet ≠ broken. Usually a brand-new cron or a monthly that hasn't
+      // hit its schedule since the cron_runs table was introduced.
+      statusTag = '<span class="tag tag-muted"><span class="status-dot gray"></span>No data yet</span>';
+    } else if (r.stale) {
+      statusTag = '<span class="tag tag-danger"><span class="status-dot red"></span>Stale</span>';
+    } else {
+      statusTag = '<span class="tag tag-success"><span class="status-dot green"></span>Healthy</span>';
+    }
     var errorCell = r.last_run_status === 'error'
       ? '<div class="error-detail">' + esc((r.last_run_error || '').substring(0, 120)) + '</div>'
       : '';

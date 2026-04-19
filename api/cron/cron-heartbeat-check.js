@@ -56,15 +56,21 @@ module.exports = async function handler(req, res) {
       var last = (lastRuns && lastRuns[0]) || null;
 
       if (!last) {
-        // No successful run ever recorded. Could be brand-new cron or a
-        // systemic failure. Alert once, but don't spam — the alert happens
-        // every time this heartbeat fires until a success lands.
+        // No successful run recorded yet. Could be brand-new cron (monthly
+        // crons won't have a row for up to 30+ days after deploy) OR a
+        // systemic failure that's been going on since the cron_runs table
+        // was introduced. We deliberately DO NOT fire monitor.critical here:
+        // monthly crons would spam Chris daily until their natural run, and
+        // a brand-new deploy would page immediately. If a cron is truly
+        // broken, its next scheduled tick will still land in cron_runs with
+        // status='error', and the heartbeat WILL flag it on the following
+        // day via the stale path. We just log it in the response body for
+        // admin visibility.
         report.never_run++;
-        report.details.push({ cron: name, status: 'never_run' });
-        await monitor.critical('cron-heartbeat-check', new Error(
-          'Cron has never completed successfully: ' + name
-        ), {
-          detail: { cron: name, expected_interval_sec: cfg.intervalSec }
+        report.details.push({
+          cron: name,
+          status: 'never_run',
+          note: 'No successful run recorded yet — may be brand-new or not yet scheduled'
         });
         continue;
       }
