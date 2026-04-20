@@ -35,7 +35,8 @@ var PRICE_DEFAULTS = {
   monthly_ach:                200000,
   additional_service_page:     30000,
   additional_press_release:    30000,
-  content_edit_republish:      30000,
+  content_edit_republish:      30000,  // legacy alias — kept so any older page with a stale reference still resolves
+  nap_update:                  30000,
   paid_strategy_call:          15000,
   standalone_website_page:     60000
 };
@@ -239,7 +240,7 @@ window.buildCSAHtml = function(contactParam, pricingParam) {
       '<ul>' +
       '<li><strong>Additional Service Page:</strong> ' + P.price('additional_service_page') + ' per page, beyond the 5 included in the CORE Marketing Campaign. Available to active Clients.</li>' +
       '<li><strong>Additional Press Release:</strong> ' + P.price('additional_press_release') + ' per release. Available to anyone, including prospects and former Clients.</li>' +
-      '<li><strong>NAP Change (Name, Address, or Phone update with citation rebuild):</strong> ' + P.price('content_edit_republish') + ' per change. Available to anyone with live Moonraker-placed citations, including former Clients.</li>' +
+      '<li><strong>NAP Update (Name, Address, or Phone change with citation rebuild):</strong> ' + P.price('nap_update') + ' per change. Update your practice contact info across your website, local directories, and citation data aggregators.</li>' +
       '<li><strong>Paid Strategy Call:</strong> ' + P.price('paid_strategy_call') + ' for a one-hour session with Scott Pope. Available to anyone.</li>' +
       '<li><strong>Standalone Website:</strong> ' + P.price('standalone_website_page') + ' per page, including sitemap planning, design, copywriting, Surge audit for each page, and deployment on Moonraker\'s hosting infrastructure. Does not include ongoing marketing.</li>' +
       '</ul>' +
