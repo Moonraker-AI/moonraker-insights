@@ -9415,6 +9415,37 @@
     });
   };
 
+  // M6: promote every .collapsible-header into a keyboard-operable button.
+  // Headers are rendered all over this page (7+ in initial HTML, more via
+  // innerHTML). MutationObserver catches late-rendered ones too.
+  (function promoteCollapsibleA11y() {
+    function promote(el) {
+      if (!el || el._a11yPromoted) return;
+      el._a11yPromoted = true;
+      if (!el.hasAttribute('role')) el.setAttribute('role', 'button');
+      if (!el.hasAttribute('tabindex')) el.setAttribute('tabindex', '0');
+      el.addEventListener('keydown', function(e) {
+        if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); el.click(); }
+      });
+    }
+    function scan(root) {
+      if (!root || !root.querySelectorAll) return;
+      root.querySelectorAll('.collapsible-header').forEach(promote);
+    }
+    scan(document);
+    try {
+      new MutationObserver(function(mutations) {
+        mutations.forEach(function(m) {
+          m.addedNodes.forEach(function(n) {
+            if (n.nodeType !== 1) return;
+            if (n.classList && n.classList.contains('collapsible-header')) promote(n);
+            scan(n);
+          });
+        });
+      }).observe(document.body, { childList: true, subtree: true });
+    } catch (_) { /* old browser; static scan is enough */ }
+  })();
+
   loadData();
 })();
 </script>

@@ -282,3 +282,22 @@ strong { font-weight: 600; color: var(--color-heading); }
 
   .collapse-btn { display: none; }
 }
+
+/* M7: 44px touch-target floor on mobile for primary action buttons.
+   Applies to the common admin button classes; icon-only chrome buttons
+   (theme toggle, sidebar toggles, footer icons) are intentionally left
+   small — their hit area is still larger than the visual with padding
+   and they live in fixed-chrome locations. */
+@media (max-width: 768px) {
+  .btn,
+  .refresh-btn,
+  .save-btn,
+  .sync-btn,
+  .cta-btn,
+  button.action-btn,
+  button[type="submit"] {
+    min-height: 44px;
+  }
+  /* Collapsible header rows benefit too — they behave like buttons. */
+  .collapsible-header { min-height: 44px; }
+}
