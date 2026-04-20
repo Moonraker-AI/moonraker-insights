@@ -1,4 +1,15 @@
 <!DOCTYPE html>
+<!--
+  Auth model: admin-gated for writes, anon RLS for reads.
+
+  - Anon reads of content_pages / endorsements go directly through PostgREST
+    with the baked-in anon key. RLS on those tables is the gate.
+  - The Approve button posts to /api/action which hard-requires an admin
+    session (auth.requireAdmin). Non-admin visitors see the page but the
+    approve call will 401.
+  - No page-token scope is needed for this template: there is no
+    client-initiated mutation path.
+-->
 <html lang="en">
 <head>
 <meta charset="UTF-8">

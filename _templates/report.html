@@ -1,4 +1,15 @@
 <!DOCTYPE html>
+<!--
+  Auth model: admin-gated for writes, anon RLS for reads.
+
+  - Anon reads go directly through PostgREST (`report_snapshots`, etc.) using
+    the baked-in anon key. RLS on the backing tables is the gate.
+  - The admin-only "Approve & Publish" banner posts to /api/action with the
+    Supabase access token pulled from localStorage (admin session cookie is
+    populated by /admin after login). Non-admin clients cannot trigger writes.
+  - No page-token scope is needed for this template: there is no
+    client-initiated mutation path.
+-->
 <html lang="en" data-theme="light">
 <script>try{var st=localStorage.getItem('moonraker-theme');if(st){document.documentElement.setAttribute('data-theme',st)}}catch(e){}</script>
 <head>
