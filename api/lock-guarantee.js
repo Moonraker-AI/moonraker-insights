@@ -3,11 +3,12 @@
 // are finalized. Flips performance_guarantees.status from 'draft' to 'locked'.
 //
 // Scope boundary:
-//   This endpoint performs the status flip only. Clients sign inline at
-//   Step 9 of their onboarding page (same pattern as the CSA in Step 2),
-//   so there is no separate signing page to deploy. The "ready to sign"
-//   client email remains a TODO (3.5) — we don't want to send it until the
-//   signing endpoint is live.
+//   This endpoint performs the status flip AND sends the "ready to sign"
+//   email to the client on the first-time lock (not on already-locked
+//   retries — Scott can click Lock In a second time to re-confirm without
+//   spamming the client). Clients sign inline at Step 9 of their onboarding
+//   (same pattern as the CSA in Step 2). Signing happens through
+//   /api/sign-guarantee and writes to signed_performance_guarantees.
 //
 // Security:
 //   - Admin JWT only (auth.requireAdmin — no internal/agent access).
@@ -28,6 +29,57 @@
 var auth    = require('./_lib/auth');
 var sb      = require('./_lib/supabase');
 var monitor = require('./_lib/monitor');
+var email   = require('./_lib/email-template');
+
+var BASE_URL = 'https://clients.moonraker.ai';
+
+// Send the "ready to sign" email to the client. Non-fatal: email failures do
+// not fail the lock-in, which is an idempotent DB state change.
+async function sendReadyToSignEmail(contact) {
+  var resendKey = process.env.RESEND_API_KEY;
+  if (!resendKey) return { sent: false, error: 'RESEND_API_KEY not configured' };
+  if (!contact || !contact.email) return { sent: false, error: 'contact has no email' };
+
+  var firstName    = contact.first_name || 'there';
+  var practiceName = contact.practice_name ||
+    ((contact.first_name || '') + ' ' + (contact.last_name || '')).trim() ||
+    'your practice';
+  var onboardingUrl = BASE_URL + '/' + encodeURIComponent(contact.slug) + '/onboarding';
+
+  var html = email.wrap({
+    headerLabel: 'Your Performance Guarantee is Ready',
+    content:
+      email.greeting(firstName) +
+      email.pRaw('Your Performance Guarantee for ' + email.esc(practiceName) + ' is ready to sign.') +
+      email.pRaw('We reviewed your practice metrics together on the intro call and locked in the numbers. The final step is your signature, which activates the 12-month guarantee window.') +
+      email.cta(onboardingUrl + '#step-9', 'Review & Sign Your Guarantee') +
+      email.pRaw('When you open the link, head to <strong>Step 9</strong> of your onboarding. You will see the full document and a signature block, just like you did for the Client Service Agreement.') +
+      email.pRaw('If you have any questions, you can reply to this email and it will go directly to the Moonraker team.')
+  });
+
+  try {
+    var resp = await fetch('https://api.resend.com/emails', {
+      method: 'POST',
+      headers: {
+        'Authorization': 'Bearer ' + resendKey,
+        'Content-Type': 'application/json'
+      },
+      body: JSON.stringify({
+        from: email.FROM.notifications,
+        to: [contact.email],
+        cc: ['scott@moonraker.ai', 'support@moonraker.ai'],
+        reply_to: 'support@moonraker.ai',
+        subject: 'Your Performance Guarantee is ready to sign',
+        html: html
+      })
+    });
+    var data = await resp.json();
+    if (data && data.id) return { sent: true, id: data.id };
+    return { sent: false, error: (data && data.error) || 'resend-error' };
+  } catch (e) {
+    return { sent: false, error: (e && e.message) || 'fetch-error' };
+  }
+}
 
 var REQUIRED_FIELDS = [
   'avg_client_ltv_cents',
@@ -93,7 +145,7 @@ module.exports = async function handler(req, res) {
         guarantee_calls: pg.guarantee_calls,
         total_benchmark: pg.total_benchmark,
         slug: slug,
-        client_emailed: false   // TODO (3.5): send on signing-endpoint ship
+        client_emailed: false   // intentional: don't re-email on retry-lock
       });
     }
 
@@ -117,10 +169,27 @@ module.exports = async function handler(req, res) {
       throw new Error('Lock transition did not apply (PATCH returned no row with status=locked)');
     }
 
-    // TODO (3.5): send Resend email (notifications@clients.moonraker.ai) to
-    //             contact.email letting them know their guarantee is ready
-    //             to sign at Step 9 of their onboarding. Gate on the signing
-    //             endpoint being live.
+    // 7. Send the "ready to sign" email (first-time lock only). Failure here
+    //    is non-fatal — the DB is already locked, admin can manually re-send
+    //    by clicking Lock In again which will take the already-locked branch.
+    var emailResult = { sent: false };
+    try {
+      emailResult = await sendReadyToSignEmail(contact);
+      if (!emailResult.sent) {
+        await monitor.logError('lock-guarantee',
+          new Error('ready-to-sign email failed: ' + (emailResult.error || 'unknown')), {
+            client_slug: slug,
+            detail: { actor: user && user.email, stage: 'send_ready_to_sign' }
+          });
+      }
+    } catch (e) {
+      try {
+        await monitor.logError('lock-guarantee', e, {
+          client_slug: slug,
+          detail: { actor: user && user.email, stage: 'send_ready_to_sign_threw' }
+        });
+      } catch (_) {}
+    }
 
     return res.status(200).json({
       success: true,
@@ -129,7 +198,7 @@ module.exports = async function handler(req, res) {
       guarantee_calls: locked.guarantee_calls,
       total_benchmark: locked.total_benchmark,
       slug: slug,
-      client_emailed: false   // TODO (3.5)
+      client_emailed: !!emailResult.sent
     });
 
   } catch (err) {
