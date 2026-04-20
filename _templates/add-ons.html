@@ -1,0 +1,416 @@
+<!DOCTYPE html>
+<html lang="en" data-theme="light">
+<script>try{var st=localStorage.getItem('moonraker-theme');if(st){document.documentElement.setAttribute('data-theme',st)}}catch(e){}</script>
+<head>
+<meta charset="UTF-8">
+<meta name="robots" content="noindex, nofollow">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<link rel="icon" type="image/png" href="/assets/logo.png">
+<title>Add-ons - Moonraker</title>
+<style>
+@import url('https://fonts.googleapis.com/css2?family=Outfit:wght@400;600;700&display=swap');
+@import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600&display=swap');
+:root,[data-theme="light"]{--color-primary:#00D47E;--color-primary-hover:#00b86c;--color-primary-light:#B4EEE0;--color-primary-subtle:#DDF8F2;--color-bg:#F7FDFB;--color-surface:#FFFFFF;--color-border:#E2E8F0;--color-heading:#1E2A5E;--color-body:#333F70;--color-muted:#6B7599;--color-navy:#141C3A;--color-success:#00D47E;--color-warning:#F59E0B;--color-danger:#EF4444;--color-info:#3B82F6}
+[data-theme="dark"]{--color-primary:#00D47E;--color-primary-hover:#00f598;--color-primary-light:#1A4A38;--color-primary-subtle:#0D2E22;--color-bg:#080F0B;--color-surface:#0E1A14;--color-border:#1E3530;--color-heading:#E8F5EF;--color-body:#C8D8D0;--color-muted:#5A7A6E;--color-navy:#0A1630}
+*,*::before,*::after{box-sizing:border-box;margin:0;padding:0}
+html{scroll-behavior:smooth;font-size:16px}
+body{font-family:'Inter',-apple-system,BlinkMacSystemFont,'Segoe UI',sans-serif;font-weight:400;color:var(--color-body);background:var(--color-bg);line-height:1.7;-webkit-font-smoothing:antialiased;min-height:100vh;display:flex;flex-direction:column}
+::view-transition-old(root), ::view-transition-new(root) { animation-duration: .25s; }
+h1,h2,h3,h4{font-family:'Outfit',sans-serif;font-weight:700;color:var(--color-heading);line-height:1.15}
+a{color:var(--color-primary);text-decoration:none;transition:color .2s}
+a:hover{color:var(--color-primary-hover)}
+strong{font-weight:600;color:var(--color-heading)}
+
+.theme-toggle{position:fixed;top:1.25rem;right:1.25rem;z-index:200;background:var(--color-surface);border:1px solid var(--color-border);border-radius:50%;width:40px;height:40px;cursor:pointer;display:flex;align-items:center;justify-content:center;font-size:1.15rem;transition:all .25s;box-shadow:0 2px 8px rgba(0,0,0,.06)}
+.theme-toggle:hover{border-color:var(--color-primary)}
+
+.header{background:var(--color-navy);padding:2rem 0;position:relative;overflow:hidden}
+.header::before{content:'';position:absolute;top:-60%;right:-10%;width:500px;height:500px;background:radial-gradient(circle,rgba(0,212,126,.08) 0%,transparent 70%);pointer-events:none}
+.header-inner{max-width:1060px;margin:0 auto;padding:0 2rem;display:flex;justify-content:space-between;align-items:center;gap:1rem}
+.header img{height:36px}
+.header-meta{text-align:right}
+.header-meta p{margin:0;font-size:.8125rem;color:rgba(232,245,239,.45)}
+.header-meta .name{color:#E8F5EF;font-weight:600;font-size:.9375rem}
+
+.container{max-width:1060px;margin:0 auto;padding:0 2rem;width:100%}
+main{flex:1 0 auto;padding-bottom:3rem}
+
+.hero{padding:3.5rem 0 2rem;text-align:center}
+.hero h1{font-size:2rem;margin-bottom:.5rem;letter-spacing:-0.02em}
+.hero .subtitle{color:var(--color-muted);font-size:1rem;max-width:560px;margin:0 auto}
+
+.step-label{font-family:'Outfit',sans-serif;font-weight:700;font-size:.8125rem;letter-spacing:.06em;text-transform:uppercase;color:var(--color-primary);margin:2rem 0 .75rem}
+.step-label:first-of-type{margin-top:0}
+
+.products-grid{display:grid;grid-template-columns:repeat(3,1fr);gap:1rem;margin-bottom:1rem}
+@media(max-width:900px){.products-grid{grid-template-columns:1fr 1fr}}
+@media(max-width:640px){.products-grid{grid-template-columns:1fr}}
+
+.product-card{background:var(--color-surface);border:2px solid var(--color-border);border-radius:14px;padding:1.5rem;display:flex;flex-direction:column;gap:.65rem;cursor:pointer;transition:all .25s;position:relative}
+.product-card:hover{border-color:var(--color-primary);transform:translateY(-2px);box-shadow:0 8px 24px rgba(0,212,126,.08)}
+.product-card.selected{border-color:var(--color-primary);background:var(--color-primary-subtle)}
+.product-card.selected::after{content:'';position:absolute;top:.75rem;right:.75rem;width:22px;height:22px;background:var(--color-primary);border-radius:50%;background-image:url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='none' stroke='white' stroke-width='3' stroke-linecap='round' stroke-linejoin='round'%3E%3Cpolyline points='20 6 9 17 4 12'/%3E%3C/svg%3E");background-size:14px;background-position:center;background-repeat:no-repeat}
+.product-name{font-family:'Outfit',sans-serif;font-weight:700;font-size:1.05rem;color:var(--color-heading);line-height:1.3;padding-right:2rem}
+.product-price{font-family:'Outfit',sans-serif;font-weight:700;font-size:1.5rem;color:var(--color-heading);line-height:1.1}
+.product-price .currency{font-size:.95rem;vertical-align:super;margin-right:1px;color:var(--color-muted)}
+.product-price .period{font-size:.825rem;font-weight:400;color:var(--color-muted);margin-left:.25rem}
+.product-desc{font-size:.8125rem;color:var(--color-muted);line-height:1.55;flex:1}
+
+.methods-wrap{transition:opacity .3s, transform .3s, max-height .35s ease-in-out;overflow:hidden}
+.methods-wrap.hidden{opacity:0;pointer-events:none;max-height:0;transform:translateY(-6px)}
+.methods-wrap.visible{opacity:1;max-height:600px;transform:translateY(0);margin-top:1.5rem}
+
+.methods-grid{display:grid;grid-template-columns:1fr 1fr;gap:.85rem;margin-bottom:1rem}
+@media(max-width:640px){.methods-grid{grid-template-columns:1fr}}
+
+.method-card{background:var(--color-surface);border:2px solid var(--color-border);border-radius:12px;padding:1.15rem 1.25rem;cursor:pointer;transition:all .2s;display:flex;flex-direction:column;gap:.3rem;position:relative;text-align:left}
+.method-card:hover{border-color:var(--color-primary)}
+.method-card.selected{border-color:var(--color-primary);background:var(--color-primary-subtle)}
+.method-header{display:flex;justify-content:space-between;align-items:baseline;gap:1rem}
+.method-name{font-family:'Outfit',sans-serif;font-weight:700;font-size:1rem;color:var(--color-heading)}
+.method-price{font-family:'Outfit',sans-serif;font-weight:700;font-size:1.25rem;color:var(--color-heading)}
+.method-desc{font-size:.78rem;color:var(--color-muted);line-height:1.5}
+.method-desc .fee{color:var(--color-warning);font-weight:500}
+
+.checkout-btn{display:block;width:100%;background:var(--color-primary);color:#fff;font-family:'Outfit',sans-serif;font-weight:700;font-size:1.05rem;padding:1rem;border-radius:10px;border:none;cursor:pointer;transition:all .2s;text-align:center;margin-top:1rem}
+.checkout-btn:hover:not(:disabled){background:var(--color-primary-hover);transform:translateY(-1px);box-shadow:0 8px 24px rgba(0,212,126,.3)}
+.checkout-btn:disabled{opacity:.4;cursor:not-allowed;transform:none;box-shadow:none}
+
+.note-banner{background:var(--color-surface);border:1px solid var(--color-border);border-radius:12px;padding:1.15rem 1.4rem;margin:1.5rem 0 0;display:flex;align-items:flex-start;gap:.85rem;font-size:.875rem;color:var(--color-body)}
+.note-banner .icon{flex-shrink:0;font-size:1.2rem;margin-top:1px}
+.note-banner strong{display:block;margin-bottom:.15rem}
+
+.error-card{background:var(--color-surface);border:1px solid var(--color-danger);border-radius:14px;padding:2rem;text-align:center;margin:2rem 0;color:var(--color-danger)}
+.error-card h3{color:var(--color-danger);margin-bottom:.5rem}
+.error-card p{color:var(--color-muted);font-size:.9375rem}
+
+.loading{text-align:center;padding:5rem 2rem;color:var(--color-muted)}
+.hidden{display:none!important}
+
+.toast{position:fixed;bottom:1.5rem;right:1.5rem;padding:.75rem 1.2rem;border-radius:10px;font-size:.85rem;font-weight:500;z-index:1000;transform:translateY(120%);transition:transform .25s;background:var(--color-danger);color:#fff;max-width:min(360px,90vw)}
+.toast.show{transform:translateY(0)}
+
+.footer{background:var(--color-navy);padding:2.5rem 0;text-align:center;color:rgba(232,245,239,.4);font-size:.8125rem}
+.footer img{height:28px;margin-bottom:.75rem;opacity:.6}
+.footer a{color:var(--color-primary)}
+</style>
+</head>
+<body>
+<button class="theme-toggle" id="themeBtn" aria-label="Toggle theme">&#x1F319;</button>
+
+<div class="header">
+  <div class="header-inner">
+    <a href="/"><img src="/assets/logo.png" alt="Moonraker"></a>
+    <div class="header-meta">
+      <p class="name" id="headerName">Moonraker Add-ons</p>
+      <p>Exclusive for active clients</p>
+    </div>
+  </div>
+</div>
+
+<main>
+  <div id="loadingState" class="loading"><p>Loading your add-ons&hellip;</p></div>
+
+  <div id="mainContent" class="hidden">
+    <div class="container">
+      <div class="hero">
+        <h1 id="heroHeading">Your add-on services</h1>
+        <p class="subtitle">One-off services you can add to <span id="heroName">your practice</span> outside your main campaign. Choose an add-on, pick how you'd like to pay, and check out.</p>
+      </div>
+
+      <div class="step-label">1. Choose an add-on</div>
+      <div class="products-grid" id="productsGrid"></div>
+
+      <div class="methods-wrap hidden" id="methodsWrap">
+        <div class="step-label">2. Payment method</div>
+        <div class="methods-grid">
+          <div class="method-card" data-method="ach" onclick="window.__selectMethod('ach')">
+            <div class="method-header">
+              <span class="method-name">Bank transfer (ACH)</span>
+              <span class="method-price" id="priceAch">$&mdash;</span>
+            </div>
+            <div class="method-desc">Direct bank transfer. No additional fee.</div>
+          </div>
+          <div class="method-card" data-method="cc" onclick="window.__selectMethod('cc')">
+            <div class="method-header">
+              <span class="method-name">Credit card</span>
+              <span class="method-price" id="priceCc">$&mdash;</span>
+            </div>
+            <div class="method-desc">Visa, Mastercard, Amex. <span class="fee">+3.5% processing fee</span></div>
+          </div>
+        </div>
+        <button class="checkout-btn" id="checkoutBtn" onclick="window.__checkout()" disabled>Continue to checkout</button>
+      </div>
+
+      <div class="note-banner">
+        <span class="icon">&#128161;</span>
+        <div>
+          <strong>Not sure which one you need?</strong>
+          Book a quick call with Scott at <a href="https://msg.moonraker.ai/widget/bookings/moonraker-free-strategy-call" target="_blank" rel="noopener">msg.moonraker.ai/widget/bookings</a> and he'll help you pick the right add-on for your goals.
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <div id="errorState" class="hidden">
+    <div class="container">
+      <div class="error-card">
+        <h3 id="errorHeading">We couldn't load your add-ons</h3>
+        <p id="errorBody">Please refresh, or contact <a href="mailto:support@moonraker.ai">support@moonraker.ai</a> if the issue persists.</p>
+      </div>
+    </div>
+  </div>
+</main>
+
+<div class="toast" id="toast" role="status" aria-live="polite"></div>
+
+<div class="footer">
+  <div class="container">
+    <img src="/assets/logo.png" alt="Moonraker"><br>
+    <a href="https://moonraker.ai" target="_blank" rel="noopener">moonraker.ai</a>
+  </div>
+</div>
+
+<script>
+(function(){
+  // ─── Theme toggle ─────────────────────────────────────────────
+  var themeBtn = document.getElementById('themeBtn');
+  if (themeBtn) {
+    themeBtn.addEventListener('click', function() {
+      var h = document.documentElement;
+      function apply() {
+        if (h.getAttribute('data-theme') === 'light') {
+          h.setAttribute('data-theme', 'dark');
+          themeBtn.innerHTML = '&#9728;&#65039;';
+          try { localStorage.setItem('moonraker-theme', 'dark'); } catch (e) {}
+        } else {
+          h.setAttribute('data-theme', 'light');
+          themeBtn.innerHTML = '&#x1F319;';
+          try { localStorage.setItem('moonraker-theme', 'light'); } catch (e) {}
+        }
+      }
+      if (document.startViewTransition) document.startViewTransition(apply); else apply();
+    });
+    if (document.documentElement.getAttribute('data-theme') === 'dark') {
+      themeBtn.innerHTML = '&#9728;&#65039;';
+    }
+  }
+
+  // ─── Slug resolution from URL path ──────────────────────────
+  var pathParts = window.location.pathname.replace(/^\/|\/$/g, '').split('/');
+  var SLUG = (pathParts[0] || '').toLowerCase();
+
+  // ─── State ──────────────────────────────────────────────────
+  // products: [{ base, display_name, detail, period, ach: {...}, cc: {...} }]
+  var _products = [];
+  var _selectedBase = null;
+  var _selectedMethod = null;
+
+  function esc(s) {
+    if (s == null) return '';
+    return String(s).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;');
+  }
+
+  function toast(msg) {
+    var t = document.getElementById('toast');
+    if (!t) return;
+    t.textContent = msg;
+    t.className = 'toast show';
+    setTimeout(function(){ t.className = 'toast'; }, 3500);
+  }
+
+  function showError(heading, body) {
+    document.getElementById('loadingState').classList.add('hidden');
+    document.getElementById('mainContent').classList.add('hidden');
+    var el = document.getElementById('errorState');
+    el.classList.remove('hidden');
+    if (heading) document.getElementById('errorHeading').textContent = heading;
+    if (body)    document.getElementById('errorBody').innerHTML = body;
+  }
+
+  function fmtPrice(cents) {
+    if (typeof cents !== 'number') return '';
+    var dollars = cents / 100;
+    return Number.isInteger(dollars)
+      ? dollars.toLocaleString('en-US')
+      : dollars.toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 });
+  }
+
+  // ─── Guard against missing/invalid slug ─────────────────────
+  if (!SLUG || !/^[a-z0-9-]+$/.test(SLUG)) {
+    showError('This link isn\'t valid', 'The add-ons page needs a client identifier in the URL. If you received this link from Moonraker, please use the full URL provided to you.');
+    return;
+  }
+
+  async function loadAddons() {
+    var contact = null, tiers = [];
+    try {
+      var cr = await fetch('/api/public-contact?slug=' + encodeURIComponent(SLUG));
+      if (cr.status === 404) {
+        showError('No account found', 'We couldn\'t find an account for this link. Please double-check the URL or email <a href="mailto:support@moonraker.ai">support@moonraker.ai</a>.');
+        return;
+      }
+      if (!cr.ok) throw new Error('HTTP ' + cr.status);
+      var cb = await cr.json();
+      contact = cb && cb.contact;
+    } catch (e) {
+      showError('We couldn\'t load your add-ons', 'Please refresh, or contact <a href="mailto:support@moonraker.ai">support@moonraker.ai</a>.');
+      return;
+    }
+
+    try {
+      var pr = await fetch('/api/pricing?product=addons');
+      if (!pr.ok) throw new Error('HTTP ' + pr.status);
+      var pb = await pr.json();
+      tiers = (pb && pb.tiers) || [];
+    } catch (e) {
+      showError('We couldn\'t load your add-ons', 'Please refresh, or contact <a href="mailto:support@moonraker.ai">support@moonraker.ai</a>.');
+      return;
+    }
+
+    // Group tiers by base key (strip trailing _ach / _cc).
+    var byBase = {};
+    tiers.forEach(function(t) {
+      var m = /^(.+?)_(ach|cc)$/.exec(t.tier_key || '');
+      if (!m) return;  // skip unsuffixed legacy rows
+      var base = m[1], method = m[2];
+      if (!byBase[base]) {
+        byBase[base] = {
+          base: base,
+          display_name: t.display_name,
+          detail: t.detail,
+          period: t.period,
+          sort_order: t.sort_order || 0
+        };
+      }
+      byBase[base][method] = t;
+    });
+
+    // Keep only products that have BOTH payment variants live.
+    _products = Object.keys(byBase).map(function(k) { return byBase[k]; })
+      .filter(function(p) { return p.ach && p.cc; })
+      .sort(function(a, b) { return (a.sort_order || 0) - (b.sort_order || 0); });
+
+    renderPage(contact, _products);
+  }
+
+  function renderPage(contact, products) {
+    var practiceName = (contact && (contact.practice_name || ((contact.first_name || '') + ' ' + (contact.last_name || '')).trim())) || 'your practice';
+    document.getElementById('heroName').textContent = practiceName;
+    document.getElementById('headerName').textContent = practiceName;
+
+    var grid = document.getElementById('productsGrid');
+    if (!products.length) {
+      grid.innerHTML = '<div class="error-card" style="grid-column:1/-1;color:var(--color-muted);border-color:var(--color-border);"><p>No add-ons are available right now. Check back soon, or reach out to <a href="mailto:support@moonraker.ai">support@moonraker.ai</a>.</p></div>';
+      document.getElementById('loadingState').classList.add('hidden');
+      document.getElementById('mainContent').classList.remove('hidden');
+      return;
+    }
+
+    // Product cards use the ACH price (the base; CC is the surcharged variant).
+    grid.innerHTML = products.map(function(p) {
+      return '<div class="product-card" data-base="' + esc(p.base) + '" onclick="window.__selectProduct(\'' + esc(p.base) + '\')">' +
+        '<div class="product-name">' + esc(p.display_name) + '</div>' +
+        '<div class="product-price"><span class="currency">$</span>' + fmtPrice(p.ach.amount_cents) +
+          (p.period ? '<span class="period">' + esc(p.period) + '</span>' : '') +
+        '</div>' +
+        (p.detail ? '<div class="product-desc">' + esc(p.detail) + '</div>' : '<div class="product-desc"></div>') +
+      '</div>';
+    }).join('');
+
+    document.getElementById('loadingState').classList.add('hidden');
+    document.getElementById('mainContent').classList.remove('hidden');
+  }
+
+  window.__selectProduct = function(base) {
+    var p = _products.find(function(x) { return x.base === base; });
+    if (!p) return;
+
+    var prevBase = _selectedBase;
+    _selectedBase = base;
+    // Changing product wipes the method selection (user needs to re-pick).
+    if (prevBase !== base) _selectedMethod = null;
+
+    // Update product card visuals
+    document.querySelectorAll('.product-card').forEach(function(el) {
+      el.classList.toggle('selected', el.getAttribute('data-base') === base);
+    });
+
+    // Populate method prices and reveal Step 2
+    document.getElementById('priceAch').textContent = '$' + fmtPrice(p.ach.amount_cents);
+    document.getElementById('priceCc').textContent  = '$' + fmtPrice(p.cc.amount_cents);
+
+    // Reset method card visuals
+    document.querySelectorAll('.method-card').forEach(function(el) {
+      el.classList.toggle('selected', el.getAttribute('data-method') === _selectedMethod);
+    });
+
+    var wrap = document.getElementById('methodsWrap');
+    wrap.classList.remove('hidden');
+    wrap.classList.add('visible');
+
+    syncButton();
+
+    // Smooth scroll the method row into view on mobile
+    if (window.innerWidth <= 900) {
+      setTimeout(function() { wrap.scrollIntoView({ behavior: 'smooth', block: 'nearest' }); }, 250);
+    }
+  };
+
+  window.__selectMethod = function(method) {
+    if (!_selectedBase) return;
+    _selectedMethod = method;
+    document.querySelectorAll('.method-card').forEach(function(el) {
+      el.classList.toggle('selected', el.getAttribute('data-method') === method);
+    });
+    syncButton();
+  };
+
+  function syncButton() {
+    var btn = document.getElementById('checkoutBtn');
+    if (!btn) return;
+    btn.disabled = !(_selectedBase && _selectedMethod);
+    if (_selectedBase && _selectedMethod) {
+      var p = _products.find(function(x) { return x.base === _selectedBase; });
+      var t = p && p[_selectedMethod];
+      var label = _selectedMethod === 'ach' ? 'bank transfer' : 'credit card';
+      btn.textContent = 'Continue to checkout \u2014 $' + fmtPrice(t.amount_cents) + ' via ' + label;
+    } else {
+      btn.textContent = 'Continue to checkout';
+    }
+  }
+
+  window.__checkout = async function() {
+    if (!_selectedBase || !_selectedMethod) return;
+    var p = _products.find(function(x) { return x.base === _selectedBase; });
+    if (!p || !p[_selectedMethod]) return;
+    var tierKey = p[_selectedMethod].tier_key;
+
+    var btn = document.getElementById('checkoutBtn');
+    var original = btn.textContent;
+    btn.disabled = true;
+    btn.textContent = 'Redirecting\u2026';
+
+    try {
+      var resp = await fetch('/api/checkout/create-session', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ slug: SLUG, product: 'addons', tier_key: tierKey })
+      });
+      var data = await resp.json().catch(function(){ return {}; });
+      if (!resp.ok || !data.url) {
+        throw new Error((data && data.error) || ('HTTP ' + resp.status));
+      }
+      window.location.href = data.url;
+    } catch (e) {
+      btn.disabled = false;
+      btn.textContent = original;
+      toast('Checkout failed: ' + (e.message || e));
+    }
+  };
+
+  loadAddons();
+})();
+</script>
+</body>
+</html>
