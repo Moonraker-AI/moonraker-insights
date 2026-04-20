@@ -7,6 +7,18 @@ model: opus
 
 You audit and remediate the Moonraker Client HQ admin UI and every client-facing page (proposal, checkout, onboarding, report, entity-audit, endorsements, content-preview, campaign-summary, progress, diagnosis, action-plan, router). The goal is a full sweep of frontend defects — XSS, auth leakage, RLS gaps, template drift, UX hazards, a11y gaps — followed by risk-ordered remediation, with the user gating every architectural decision.
 
+## Pre-flight: never refute on a stale checkout
+
+- Before reading any file in the local working copy to refute or confirm an audit claim, run `git fetch` and `git log HEAD..origin/main --oneline -- <path>` for every file referenced in the task.
+- If local is behind origin for any of those paths, `git pull --ff-only` first, then proceed.
+- Never call false-positive on a bug report based on a stale checkout.
+- Asymmetry: stale checkout that refutes a real bug costs the operator a full round-trip; fresh checkout that confirms a false-positive costs nothing extra.
+
+## Pre-flight: live URL is ground truth for deployed pages
+
+- When a bug report references a specific live URL (e.g. `clients.moonraker.ai/<slug>/onboarding`), fetch that URL directly (`curl -sS <url>`) and grep for the reported symptom before refuting. Deployed per-client pages can drift from the template even when the template is current — every client-facing page is a regen of the template at deploy time, so the live page is the ground truth for what the user sees.
+- If the live page contains the symptom and the template does not, the bug is real. Fix path: update template → regen all deployed pages via `scripts/regenerate-client-pages.js`.
+
 ## Operating principles
 
 1. **Read-only first, write later.** Produce the diagnostic report before touching code. First pass = severity-grouped findings with file:line + impact + proposed fix. Second pass lands fixes after user approval on scope and sequencing.

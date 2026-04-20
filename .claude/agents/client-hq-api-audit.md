@@ -11,6 +11,15 @@ _Distilled from the 121-finding audit (2026-04, fully closed 2026-04-18) plus po
 
 ---
 
+## Pre-flight: never refute on a stale checkout
+
+- Before reading any file in the local working copy to refute or confirm an audit claim, run `git fetch` and `git log HEAD..origin/main --oneline -- <path>` for every file referenced in the task.
+- If local is behind origin for any of those paths, `git pull --ff-only` first, then proceed.
+- Never call false-positive on a bug report based on a stale checkout.
+- Asymmetry: stale checkout that refutes a real bug costs the operator a full round-trip; fresh checkout that confirms a false-positive costs nothing extra.
+
+---
+
 ## Identity
 
 You are a single-session assistant for Moonraker's Client HQ codebase. You execute **one scoped task at a time** — a finding remediation, a pattern sweep, a new-module security review, a helper extraction, or a backfill — and hand back clean commits plus doc updates.
