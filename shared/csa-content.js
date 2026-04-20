@@ -4,16 +4,96 @@
 // When a client signs, the rendered HTML is snapshotted into signed_agreements.document_html.
 //
 // Usage: <script src="/shared/csa-content.js"></script>
-// Call:  renderCSA(contact)  where contact has: first_name, last_name, credentials,
+// Call:  renderCSA(contact)              — on onboarding, uses window._csaPricing
+//        buildCSAHtml(contact, pricing)  — pass explicit pricing for standalone renders
+//
+//        where contact has: first_name, last_name, credentials,
 //        practice_name, practice_address_line1, city, state_province, postal_code,
 //        country, plan_type, email
 //
-// Version: 2026-04-16 (SOW aligned with actual deliverables)
+//        and pricing (optional) is the shape returned by GET /api/pricing with
+//        no product filter: { tiers: [{tier_key, amount_cents, ...}], config: {key: value} }
+//
+// Pricing resolution falls back to the built-in PRICE_DEFAULTS if pricing is
+// not supplied or a tier is missing — so the /agreement reference page and
+// any offline snapshot still render with sensible numbers even if the API is
+// unreachable. Signed CSAs freeze the resolved HTML into
+// signed_agreements.document_html, so the prices a client agreed to remain
+// visible even after admins edit pricing_tiers.
+//
+// Version: 2026-04-20 (pricing pulled from pricing_tiers + pricing_config)
+
+// Dollar amounts in cents. These mirror the values that were literally hardcoded
+// in this file before 2026-04-20; if /api/pricing is unreachable, the CSA still
+// renders with today's pricing. Keep in sync if pricing_tiers schema changes.
+var PRICE_DEFAULTS = {
+  annual_upfront_ach:        2000000,
+  annual_quarterly_ach:       500000,
+  annual_monthly_ach:         166700,
+  quarterly_upfront_ach:      500000,
+  quarterly_monthly_ach:      166700,
+  monthly_ach:                200000,
+  additional_service_page:     30000,
+  additional_press_release:    30000,
+  content_edit_republish:      30000,
+  paid_strategy_call:          15000,
+  standalone_website_page:     60000
+};
+var CONFIG_DEFAULTS = { cc_surcharge_pct: 3.5 };
+
+function _fmtCents(c) {
+  if (c == null || isNaN(c)) return '$—';
+  var d = c / 100;
+  return '$' + d.toLocaleString('en-US', Number.isInteger(d) ? {} : { minimumFractionDigits: 2, maximumFractionDigits: 2 });
+}
+
+// Build a pricing helper from a /api/pricing response (or nothing → defaults).
+function resolvePricing(pricing) {
+  var tierMap = {};
+  var configMap = Object.assign({}, CONFIG_DEFAULTS);
+  if (pricing && Array.isArray(pricing.tiers)) {
+    pricing.tiers.forEach(function(t) {
+      if (t && t.tier_key && typeof t.amount_cents === 'number') {
+        tierMap[t.tier_key] = t.amount_cents;
+      }
+    });
+  }
+  if (pricing && pricing.config) {
+    Object.keys(pricing.config).forEach(function(k) {
+      var v = Number(pricing.config[k]);
+      if (isFinite(v)) configMap[k] = v;
+    });
+  }
+  function cents(key) {
+    return (tierMap[key] != null) ? tierMap[key] : PRICE_DEFAULTS[key];
+  }
+  return {
+    price: function(key) { return _fmtCents(cents(key)); },
+    priceCents: cents,
+    priceExpr: function(key, multiplier) { return _fmtCents(Math.round(cents(key) * multiplier)); },
+    ccSurchargePct: configMap.cc_surcharge_pct
+  };
+}
+
+// Optional helper: fetch current pricing into window._csaPricing so subsequent
+// buildCSAHtml() / renderCSA() calls pick it up automatically. Returns a Promise
+// that resolves to the pricing object (or null if the API is unreachable —
+// which is fine, defaults cover it).
+window.loadCSAPricing = function() {
+  return fetch('/api/pricing')
+    .then(function(r) { return r.ok ? r.json() : null; })
+    .then(function(data) {
+      if (data && (data.tiers || data.config)) window._csaPricing = data;
+      return data;
+    })
+    .catch(function() { return null; });
+};
 
 // Pure HTML builder. Can be called by any page that just needs to render
 // the CSA text, including /agreement which has no signature fields.
-window.buildCSAHtml = function(contactParam) {
+window.buildCSAHtml = function(contactParam, pricingParam) {
     var contact = contactParam || window._onboardingContact || {};
+    var P = resolvePricing(pricingParam || window._csaPricing);
     var clientName = (contact.first_name || '') + ' ' + (contact.last_name || '');
     if (contact.credentials) clientName += ', ' + contact.credentials;
     var practiceName = contact.practice_name || 'the Client';
@@ -135,17 +215,17 @@ window.buildCSAHtml = function(contactParam) {
       '<p>Moonraker offers six pricing options for the CORE Marketing Campaign, grouped by whether a 12-month commitment is included. Annual commitment plans unlock the Performance Guarantee described in the next section; non-commitment plans do not.</p>' +
       '<p><strong>Annual Commitment (12 months, Performance Guarantee included):</strong></p>' +
       '<ul>' +
-      '<li><strong>Annual Paid Upfront:</strong> $20,000 one-time. Also includes a custom website built on Moonraker\'s hosting infrastructure.</li>' +
-      '<li><strong>Annual Paid Quarterly:</strong> $5,000 per quarter, four payments over 12 months.</li>' +
-      '<li><strong>Annual Paid Monthly:</strong> $1,667 per month for 12 months.</li>' +
+      '<li><strong>Annual Paid Upfront:</strong> ' + P.price('annual_upfront_ach') + ' one-time. Also includes a custom website built on Moonraker\'s hosting infrastructure.</li>' +
+      '<li><strong>Annual Paid Quarterly:</strong> ' + P.price('annual_quarterly_ach') + ' per quarter, four payments over 12 months.</li>' +
+      '<li><strong>Annual Paid Monthly:</strong> ' + P.price('annual_monthly_ach') + ' per month for 12 months.</li>' +
       '</ul>' +
       '<p><strong>No Commitment (Performance Guarantee not included):</strong></p>' +
       '<ul>' +
-      '<li><strong>Quarterly Upfront:</strong> $5,000 one-time for three months of service.</li>' +
-      '<li><strong>Quarterly Paid Monthly:</strong> $1,667 per month for three months.</li>' +
-      '<li><strong>Month-to-Month:</strong> $2,000 per month, continues until cancelled.</li>' +
+      '<li><strong>Quarterly Upfront:</strong> ' + P.price('quarterly_upfront_ach') + ' one-time for three months of service.</li>' +
+      '<li><strong>Quarterly Paid Monthly:</strong> ' + P.price('quarterly_monthly_ach') + ' per month for three months.</li>' +
+      '<li><strong>Month-to-Month:</strong> ' + P.price('monthly_ach') + ' per month, continues until cancelled.</li>' +
       '</ul>' +
-      '<p>Credit card payments add a 3.5% processing fee. ACH and bank transfer payments have no added fee. All prices are in US dollars. The Client\'s chosen plan is recorded in Moonraker\'s client management system at the time of signing.</p>';
+      '<p>Credit card payments add a ' + P.ccSurchargePct + '% processing fee. ACH and bank transfer payments have no added fee. All prices are in US dollars. The Client\'s chosen plan is recorded in Moonraker\'s client management system at the time of signing.</p>';
 
     html += '<h4>Performance Guarantee</h4>' +
       '<p>The Performance Guarantee is available exclusively to Clients on an annual commitment plan (Annual Paid Upfront, Annual Paid Quarterly, or Annual Paid Monthly). It is not available on quarterly or month-to-month plans.</p>' +
@@ -157,17 +237,17 @@ window.buildCSAHtml = function(contactParam) {
     html += '<h4>Additional Services & Add-ons</h4>' +
       '<p>The following add-on services are available outside the base CORE Marketing Campaign and are billed separately. Availability notes indicate which are restricted to active Clients versus available to anyone.</p>' +
       '<ul>' +
-      '<li><strong>Additional Service Page:</strong> $300 per page, beyond the 5 included in the CORE Marketing Campaign. Available to active Clients.</li>' +
-      '<li><strong>Additional Press Release:</strong> $300 per release. Available to anyone, including prospects and former Clients.</li>' +
-      '<li><strong>NAP Change (Name, Address, or Phone update with citation rebuild):</strong> $300 per change. Available to anyone with live Moonraker-placed citations, including former Clients.</li>' +
-      '<li><strong>Paid Strategy Call:</strong> $150 for a one-hour session with Scott Pope. Available to anyone.</li>' +
-      '<li><strong>Standalone Website:</strong> $600 per page, including sitemap planning, design, copywriting, Surge audit for each page, and deployment on Moonraker\'s hosting infrastructure. Does not include ongoing marketing.</li>' +
+      '<li><strong>Additional Service Page:</strong> ' + P.price('additional_service_page') + ' per page, beyond the 5 included in the CORE Marketing Campaign. Available to active Clients.</li>' +
+      '<li><strong>Additional Press Release:</strong> ' + P.price('additional_press_release') + ' per release. Available to anyone, including prospects and former Clients.</li>' +
+      '<li><strong>NAP Change (Name, Address, or Phone update with citation rebuild):</strong> ' + P.price('content_edit_republish') + ' per change. Available to anyone with live Moonraker-placed citations, including former Clients.</li>' +
+      '<li><strong>Paid Strategy Call:</strong> ' + P.price('paid_strategy_call') + ' for a one-hour session with Scott Pope. Available to anyone.</li>' +
+      '<li><strong>Standalone Website:</strong> ' + P.price('standalone_website_page') + ' per page, including sitemap planning, design, copywriting, Surge audit for each page, and deployment on Moonraker\'s hosting infrastructure. Does not include ongoing marketing.</li>' +
       '</ul>' +
       '<p>Add-ons purchased by active Clients do not alter the Client\'s plan, commitment terms, or Performance Guarantee. Additional pages purchased as add-ons are built to completion but are not added to the Client\'s tracked keyword set or ongoing reporting scope unless explicitly agreed in writing. Excessive revision requests or work orders outside the Agreement may incur additional fees.</p>';
 
     html += '<h4>Commitment & Cancellation</h4>' +
       '<p><strong>Annual commitment plans.</strong> Clients on annual plans (Annual Paid Upfront, Annual Paid Quarterly, Annual Paid Monthly) agree to a 12-month commitment. The Client may cancel in writing at any time, subject to the early termination fee below. Moonraker will complete all deliverables for the current billing cycle before offboarding.</p>' +
-      '<p><strong>Early termination fee (annual commitments).</strong> If the Client cancels an annual plan before the 12-month commitment is complete, the Client agrees to pay 50% of the remaining unbilled balance on the original plan. Example: a Client on the Annual Paid Quarterly plan who cancels after the first quarterly payment has $15,000 in unbilled balance and owes a $7,500 early termination fee. The Annual Paid Upfront plan has no unbilled balance and therefore no early termination fee; however, amounts already paid under the upfront plan are non-refundable regardless of when cancellation occurs, consistent with the Refund Policy below.</p>' +
+      '<p><strong>Early termination fee (annual commitments).</strong> If the Client cancels an annual plan before the 12-month commitment is complete, the Client agrees to pay 50% of the remaining unbilled balance on the original plan. Example: a Client on the Annual Paid Quarterly plan who cancels after the first quarterly payment has ' + P.priceExpr('annual_quarterly_ach', 3) + ' in unbilled balance and owes a ' + P.priceExpr('annual_quarterly_ach', 1.5) + ' early termination fee. The Annual Paid Upfront plan has no unbilled balance and therefore no early termination fee; however, amounts already paid under the upfront plan are non-refundable regardless of when cancellation occurs, consistent with the Refund Policy below.</p>' +
       '<p><strong>Non-commitment plans.</strong> The Quarterly Upfront, Quarterly Paid Monthly, and Month-to-Month plans may be cancelled at any time in writing with no early termination fee. Cancellation takes effect at the end of the current billing period, and Moonraker completes deliverables for that period before offboarding.</p>' +
       '<p><strong>Cancellation process.</strong> Submit a written cancellation request to support@moonraker.ai. For annual commitment cancellations, Moonraker will issue a termination invoice for the early termination fee; the Client\'s recurring subscription (if any) is cancelled once that invoice is paid. All Client-owned assets (website content, copy, images, analytics access, and Google Business Profile ownership) remain with the Client after offboarding.</p>';
 
@@ -189,7 +269,7 @@ window.buildCSAHtml = function(contactParam) {
       '<li>1 location page</li>' +
       '<li>Google Business Profile optimization</li>' +
       '<li>Citation audit and listings management via BrightLocal (15 citations + data aggregators)</li>' +
-      '<li>Press release syndication across 500+ national and international news outlets (1 included, additional at $300 each)</li>' +
+      '<li>Press release syndication across 500+ national and international news outlets (1 included, additional at ' + P.price('additional_press_release') + ' each)</li>' +
       '<li>Entity Veracity Hub deployment to establish a verified knowledge base for your practice</li>' +
       '<li>LiveDrive local signal deployment</li>' +
       '<li>Rising Tide social profile buildout and optimization across up to 9 platforms (YouTube, LinkedIn, Facebook, Instagram, Quora, Pinterest, TikTok, X, and Google Business Profile)</li>' +
@@ -220,9 +300,9 @@ window.buildCSAHtml = function(contactParam) {
 // wiring is null-guarded so renderCSA() can be called on the read-only
 // /agreement page which doesn't have those fields. Note: the /agreement page
 // calls buildCSAHtml() directly rather than renderCSA(), since it never signs.
-window.renderCSA = function(contactParam) {
+window.renderCSA = function(contactParam, pricingParam) {
     var contact = contactParam || window._onboardingContact || {};
-    var html = window.buildCSAHtml(contact);
+    var html = window.buildCSAHtml(contact, pricingParam);
     var clientName = (contact.first_name || '') + ' ' + (contact.last_name || '');
     if (contact.credentials) clientName += ', ' + contact.credentials;
 
