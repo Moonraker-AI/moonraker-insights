@@ -9,12 +9,9 @@
 <title>Pricing - Moonraker Admin</title>
 <link rel="stylesheet" href="/assets/admin-base.css">
 <style>
-  .container { margin: 0 auto; padding: 0 2rem; max-width: 1200px; }
-  @media (max-width: 768px) { .container { padding: 0 1rem; } }
-
-  .section-header { display: flex; align-items: baseline; gap: .75rem; margin: 2rem 0 1rem; flex-wrap: wrap; }
-  .section-header h2 { font-size: 1.05rem; font-weight: 600; }
-  .section-desc { font-size: .82rem; color: var(--color-muted); margin: 0 0 1rem; }
+  .section-header { display: flex; align-items: center; justify-content: space-between; margin-bottom: .25rem; flex-wrap: wrap; gap: .75rem; }
+  .section-header h2 { font-size: 1.35rem; margin: 0; }
+  .section-desc { font-size: .82rem; color: var(--color-muted); margin-bottom: 1.25rem; }
 
   .refresh-btn { background: var(--color-surface); border: 1px solid var(--color-border); color: var(--color-body); padding: .5rem 1rem; border-radius: 8px; font-size: .8rem; cursor: pointer; min-height: 36px; }
   .refresh-btn:hover { border-color: var(--color-primary); color: var(--color-primary); }
@@ -106,18 +103,19 @@
     <button class="mobile-toggle" id="mobileToggle" aria-label="Menu">&#9776;</button>
     <div style="flex:1;"></div>
     <div class="topbar-right">
-      <button class="refresh-btn" onclick="loadPricing()">Refresh</button>
+      <span style="font-size:.78rem;color:var(--color-muted);" id="lastRefresh"></span>
     </div>
   </div>
 
-  <div class="content">
-    <div class="container">
-      <div class="section-header"><h2>Pricing</h2></div>
-      <p class="section-desc">Single source of truth for checkout prices. The checkout and entity-audit-checkout pages fetch these at page load, and <code>/api/checkout/create-session</code> builds a Stripe Checkout Session inline from the <code>Amount</code> value — no pre-existing Stripe Price required. Edit a value here and it takes effect on the next checkout.</p>
+  <div class="content" style="padding: 2rem;">
+    <div class="section-header">
+      <h2>Pricing</h2>
+      <button class="refresh-btn" onclick="loadPricing()">Refresh</button>
+    </div>
+    <p class="section-desc">Single source of truth for checkout prices. The checkout and entity-audit-checkout pages fetch these at page load, and <code>/api/checkout/create-session</code> builds a Stripe Checkout Session inline from the <code>Amount</code> value — no pre-existing Stripe Price required. Edit a value here and it takes effect on the next checkout.</p>
 
-      <div id="pricingContainer">
-        <div style="padding:2rem;text-align:center;color:var(--color-muted);">Loading pricing...</div>
-      </div>
+    <div id="pricingContainer">
+      <div style="padding:2rem;text-align:center;color:var(--color-muted);">Loading pricing...</div>
     </div>
   </div>
 </div>
@@ -182,6 +180,8 @@ async function loadPricing() {
     return;
   }
   renderPricing();
+  var lr = document.getElementById('lastRefresh');
+  if (lr) lr.textContent = 'Updated ' + new Date().toLocaleTimeString();
 }
 
 function renderPricing() {
