@@ -71,8 +71,21 @@ module.exports = async function handler(req, res) {
     return res.status(500).json({ error: 'sign failed: ' + e.message });
   }
 
-  var setCookie = pageToken.buildSetCookie(scope, slug, token);
-  res.setHeader('Set-Cookie', setCookie);
+  // Emit TWO Set-Cookie headers:
+  //   1. A Max-Age=0 clearer for the legacy Path=/<slug> cookie. Before
+  //      bc8fd76b (2026-04-20) this endpoint issued cookies with Path=/<slug>.
+  //      Per RFC 6265 §5.3, cookie storage is keyed on (name, domain, path),
+  //      so the old entry persists in the browser independent of the new
+  //      Path=/ cookie we're about to set. Per §5.4, when two cookies share
+  //      a name the browser sends both — more-specific path first — and our
+  //      readCookie() returns the first match, so the stale Path=/<slug>
+  //      token wins verification and every write 401s. This header evicts it.
+  //   2. The fresh Path=/ cookie carrying the current token.
+  // Node/Vercel honour an array value on Set-Cookie as multiple headers.
+  var legacyClear = pageToken.buildLegacyPathClearCookie(scope, slug);
+  var freshSet = pageToken.buildSetCookie(scope, slug, token);
+  var headers = legacyClear ? [legacyClear, freshSet] : [freshSet];
+  res.setHeader('Set-Cookie', headers);
   // No-store so intermediaries can't serve another visitor's Set-Cookie header.
   res.setHeader('Cache-Control', 'no-store');
 

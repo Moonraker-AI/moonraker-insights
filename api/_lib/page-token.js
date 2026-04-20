@@ -232,6 +232,21 @@ function buildClearCookie(scope, slug) {
   return cookieName(scope) + '=; Path=/; Max-Age=0; HttpOnly; SameSite=Lax; Secure';
 }
 
+// Build a Set-Cookie value that expires a *legacy* Path=/<slug> cookie. Browsers
+// key cookie storage on (name, domain, path) — an attribute-mismatched clear
+// header is silently ignored. We emit this alongside the fresh Path=/ cookie
+// from /api/page-token/request so visitors who previously received a
+// Path=/<slug> cookie (pre-2026-04-20 bc8fd76b) have the stale entry removed
+// instead of colliding with the new one. Per RFC 6265 §5.4, when two cookies
+// share a name, more-specific paths sort first — readCookie() returns the
+// first match, so a lingering Path=/<slug> cookie wins and verify() rejects it.
+function buildLegacyPathClearCookie(scope, slug) {
+  if (!slug) return null;
+  var safeSlug = String(slug).replace(/[^a-z0-9-]/gi, '');
+  if (!safeSlug) return null;
+  return cookieName(scope) + '=; Path=/' + safeSlug + '; Max-Age=0; HttpOnly; SameSite=Lax; Secure';
+}
+
 // Pull the most likely token for `expectedScope` out of a request. Cookie
 // is the only accepted path since C6 cutover — every client-facing page
 // mints its token via /api/page-token/request and the browser attaches it
@@ -267,6 +282,7 @@ module.exports = {
   readCookie: readCookie,
   buildSetCookie: buildSetCookie,
   buildClearCookie: buildClearCookie,
+  buildLegacyPathClearCookie: buildLegacyPathClearCookie,
   getTokenFromRequest: getTokenFromRequest,
   assertSlugBinding: assertSlugBinding
 };
