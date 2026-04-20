@@ -1,0 +1,177 @@
+<!DOCTYPE html>
+<html lang="en" data-theme="light">
+<script>try{var st=localStorage.getItem('moonraker-theme');if(st){document.documentElement.setAttribute('data-theme',st)}}catch(e){}</script>
+<head>
+<meta charset="UTF-8">
+<meta name="robots" content="noindex, nofollow">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Performance Guarantee (Example) - Moonraker</title>
+<link rel="icon" type="image/png" href="/assets/logo.png">
+
+<style>
+@import url('https://fonts.googleapis.com/css2?family=Outfit:wght@400;600;700&display=swap');
+@import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600&display=swap');
+
+:root,[data-theme="light"]{--color-primary:#00D47E;--color-primary-hover:#00b86c;--color-primary-light:#B4EEE0;--color-primary-subtle:#DDF8F2;--color-bg:#F7FDFB;--color-surface:#FFFFFF;--color-surface-alt:#F1F8F5;--color-border:#E2E8F0;--color-heading:#1E2A5E;--color-body:#333F70;--color-muted:#6B7599;--color-navy:#141C3A;--color-success:#00D47E;--color-warning:#F59E0B;--color-danger:#EF4444}
+[data-theme="dark"]{--color-primary:#00D47E;--color-primary-hover:#00f598;--color-primary-light:#1A4A38;--color-primary-subtle:#0D2E22;--color-bg:#080F0B;--color-surface:#0E1A14;--color-surface-alt:#14241B;--color-border:#1E3530;--color-heading:#E8F5EF;--color-body:#C8D8D0;--color-muted:#5A7A6E;--color-navy:#0A1630}
+
+*,*::before,*::after{box-sizing:border-box;margin:0;padding:0}
+html{scroll-behavior:smooth;font-size:16px}
+body{font-family:'Inter',-apple-system,BlinkMacSystemFont,'Segoe UI',sans-serif;font-weight:400;color:var(--color-body);background:var(--color-bg);line-height:1.7;-webkit-font-smoothing:antialiased;}
+::view-transition-old(root),::view-transition-new(root){animation-duration:.25s}
+h1,h2,h3,h4{font-family:'Outfit',sans-serif;font-weight:700;color:var(--color-heading);line-height:1.15}
+a{color:var(--color-primary);text-decoration:none;transition:color .2s}
+a:hover{color:var(--color-primary-hover)}
+strong{font-weight:600;color:var(--color-heading)}
+
+.theme-toggle{position:fixed;top:1.25rem;right:1.25rem;z-index:200;background:var(--color-surface);border:1px solid var(--color-border);border-radius:50%;width:40px;height:40px;cursor:pointer;display:flex;align-items:center;justify-content:center;font-size:1.15rem;transition:all .25s;box-shadow:0 2px 8px rgba(0,0,0,.06)}.theme-toggle:hover{border-color:var(--color-primary)}
+
+.header{background:var(--color-navy);padding:2rem 0;position:relative;overflow:hidden}
+.header::before{content:'';position:absolute;top:-60%;right:-10%;width:500px;height:500px;background:radial-gradient(circle,rgba(0,212,126,.08) 0%,transparent 70%);pointer-events:none}
+.header-inner{max-width:860px;margin:0 auto;padding:0 2rem;display:flex;justify-content:space-between;align-items:center}
+.header img{height:36px}
+.header-meta p{margin:0;font-size:.8125rem;color:rgba(232,245,239,.45)}
+.header-meta .name{color:#E8F5EF;font-weight:600;font-size:.9375rem}
+
+.container{max-width:860px;margin:0 auto;padding:0 2rem}
+.hero{padding:3rem 0 1.5rem;text-align:center}
+.hero .step-label{font-family:'Outfit',sans-serif;font-weight:700;font-size:.8125rem;letter-spacing:.06em;text-transform:uppercase;color:var(--color-primary);margin-bottom:.75rem}
+.hero h1{font-size:2rem;margin-bottom:.5rem;letter-spacing:-0.02em}
+.hero .subtitle{color:var(--color-muted);font-size:1rem;max-width:620px;margin:0 auto}
+
+.example-notice{background:var(--color-primary-subtle);border:1px solid rgba(0,212,126,.25);border-radius:12px;padding:1.1rem 1.25rem;display:flex;align-items:flex-start;gap:.85rem;margin-bottom:1.25rem}
+.example-notice .icon{font-size:1.25rem;line-height:1;flex-shrink:0}
+.example-notice .msg{font-size:.875rem;line-height:1.55;color:var(--color-body)}
+.example-notice .msg strong{color:var(--color-heading)}
+
+.doc-card{background:var(--color-surface);border:1px solid var(--color-border);border-radius:14px;padding:2.5rem;margin-bottom:1.5rem;box-shadow:0 2px 12px rgba(20,28,58,.04)}
+@media (max-width:640px){.doc-card{padding:1.5rem}}
+
+.pg-doc h2{font-size:1.6rem;margin:0 0 1rem;color:var(--color-heading)}
+.pg-doc h3{font-size:1.1rem;margin:1.75rem 0 .6rem;color:var(--color-heading)}
+.pg-doc p{margin:0 0 1rem;font-size:.9375rem;line-height:1.7}
+.pg-meta{display:flex;flex-wrap:wrap;gap:1rem 2.5rem;padding-bottom:1.25rem;margin-bottom:1.5rem;border-bottom:1px solid var(--color-border)}
+.pg-meta div{display:flex;flex-direction:column}
+.pg-meta-label{font-size:.6875rem;font-weight:600;letter-spacing:.08em;text-transform:uppercase;color:var(--color-muted);margin-bottom:.15rem}
+.pg-meta-value{font-size:.9375rem;font-weight:600;color:var(--color-heading)}
+.pg-numbers{width:100%;border-collapse:collapse;margin:.5rem 0 1rem;font-size:.9375rem}
+.pg-numbers td{padding:.6rem .85rem;border-bottom:1px solid var(--color-border)}
+.pg-numbers td:first-child{color:var(--color-body)}
+.pg-numbers td:last-child{text-align:right;color:var(--color-heading);font-variant-numeric:tabular-nums;white-space:nowrap}
+.pg-numbers tr:last-child td{border-bottom:none}
+.pg-numbers tr.pg-row-emphasis td{background:var(--color-primary-subtle);color:var(--color-heading)}
+
+.back-row{display:flex;justify-content:center;margin-top:.5rem}
+.back-row a{font-size:.875rem;font-weight:600;color:var(--color-primary)}
+
+.footer-bar{text-align:center;padding:2rem 1rem 3rem;font-size:.75rem;color:var(--color-muted)}
+</style>
+</head>
+<body>
+
+<button class="theme-toggle" id="themeBtn" aria-label="Toggle theme" onclick="toggleTheme()">&#x1F319;</button>
+
+<div class="header">
+  <div class="header-inner">
+    <a href="/"><img src="/assets/logo.png" alt="Moonraker"></a>
+    <div class="header-meta">
+      <p class="name">Performance Guarantee</p>
+      <p>Example Document</p>
+    </div>
+  </div>
+</div>
+
+<div class="container">
+
+  <div class="hero">
+    <div class="step-label">Reference</div>
+    <h1>Performance Guarantee Example</h1>
+    <p class="subtitle">This is what your Signed Performance Guarantee will look like. The numbers below are illustrative only.</p>
+  </div>
+
+  <div class="example-notice">
+    <div class="icon">&#8505;&#65039;</div>
+    <div class="msg">
+      <strong>This is a sample document.</strong> Your actual Performance Guarantee will use your own practice metrics, reviewed and finalized with Scott on your intro call. The structure, legal terms, and benchmark formula shown here are the same ones we will use for you.
+    </div>
+  </div>
+
+  <div class="doc-card">
+    <div id="guaranteeDocument"></div>
+  </div>
+
+  <div class="back-row">
+    <a href="/agreement">&larr; Review the full Client Service Agreement</a>
+  </div>
+
+</div>
+
+<div class="footer-bar">Confidential &middot; &copy; 2026 Moonraker AI &middot; moonraker.ai</div>
+
+<script src="/shared/guarantee-content.js" defer></script>
+<script>
+(function() {
+  'use strict';
+
+  // Mock data chosen to match the example numbers approved during design.
+  // LTV $6,000 * conv .75 * att .85 = $3,825 value per call
+  // guarantee_calls = ceil($20,000 * 2 / $3,825) = 11
+  // total_benchmark = 4 * 12 + 11 = 59
+  var MOCK_CONTACT = {
+    first_name: 'Example',
+    last_name: 'Client',
+    practice_name: 'Example Therapy Group'
+  };
+  var MOCK_PG = {
+    status:                         'locked',
+    locked_at:                      new Date().toISOString(),
+    avg_client_ltv_cents:           600000,
+    conversion_rate:                0.75,
+    attendance_rate:                0.85,
+    current_monthly_organic_calls:  4,
+    investment_cents:               2000000,
+    value_per_call_cents:           382500,
+    guarantee_calls:                11,
+    total_benchmark:                59
+  };
+
+  window.toggleTheme = function() {
+    var curr = document.documentElement.getAttribute('data-theme') || 'light';
+    var next = curr === 'light' ? 'dark' : 'light';
+    if (document.startViewTransition) {
+      document.startViewTransition(function() {
+        document.documentElement.setAttribute('data-theme', next);
+        try { localStorage.setItem('moonraker-theme', next); } catch (e) {}
+      });
+    } else {
+      document.documentElement.setAttribute('data-theme', next);
+      try { localStorage.setItem('moonraker-theme', next); } catch (e) {}
+    }
+  };
+
+  function render() {
+    var tries = 0;
+    var id = setInterval(function() {
+      tries++;
+      if (typeof window.buildGuaranteeHtml === 'function') {
+        clearInterval(id);
+        document.getElementById('guaranteeDocument').innerHTML =
+          window.buildGuaranteeHtml(MOCK_PG, MOCK_CONTACT);
+      } else if (tries > 40) {
+        clearInterval(id);
+        document.getElementById('guaranteeDocument').innerHTML =
+          '<p style="color:var(--color-muted);">Failed to load the example document. Please refresh.</p>';
+      }
+    }, 80);
+  }
+
+  if (document.readyState === 'loading') {
+    document.addEventListener('DOMContentLoaded', render);
+  } else {
+    render();
+  }
+})();
+</script>
+
+</body>
+</html>
