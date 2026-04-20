@@ -1279,6 +1279,10 @@
           </div>
         </div>
         <div class="card" style="margin-top:1rem;">
+          <div class="card-header"><h3>Add-on Offers Page</h3></div>
+          <div id="offersLinkBody" style="padding:0 1rem 1rem;"></div>
+        </div>
+        <div class="card" style="margin-top:1rem;">
           <div class="card-header"><h3>Performance Guarantee</h3></div>
           <div id="profileGuarantee"></div>
         </div>
@@ -7865,6 +7869,23 @@
   }
   window.disconnectSheet = disconnectSheet;
 
+  window.copyOffersLink = async function() {
+    var input = document.getElementById('offersUrlInput');
+    if (!input) return;
+    var url = input.value;
+    try {
+      if (navigator.clipboard && navigator.clipboard.writeText) {
+        await navigator.clipboard.writeText(url);
+      } else {
+        input.select();
+        document.execCommand('copy');
+      }
+      toast('Offers link copied to clipboard', 'success');
+    } catch (e) {
+      toast('Could not copy \u2014 please select the URL and copy manually', 'error');
+    }
+  };
+
   // ---- BILLING TAB ----
   function renderBilling(c) {
     var bf = document.getElementById('billingFields');
@@ -7888,6 +7909,23 @@
       if (signerName) agr.innerHTML += '<div class="field" style="margin-top:.5rem;"><div class="field-label">Signer</div><div class="field-value">' + esc(signerName) + '</div></div>';
     } else {
       agr.innerHTML = '<div style="display:flex;align-items:center;gap:.5rem;"><span class="dot dot-gray"></span><span style="font-size:.84rem;color:var(--color-muted);">Not yet signed</span></div>';
+    }
+
+    // Add-on Offers Page link (slug-scoped, existing clients can buy one-off services)
+    var olEl = document.getElementById('offersLinkBody');
+    if (olEl) {
+      var offersUrl = 'https://clients.moonraker.ai/' + c.slug + '/offers';
+      olEl.innerHTML =
+        '<p style="margin:.25rem 0 .75rem;font-size:.84rem;color:var(--color-muted);line-height:1.55;">' +
+          'Share this link with the client so they can browse and purchase add-on services (additional service pages, press releases, NAP updates, strategy calls).' +
+        '</p>' +
+        '<div style="display:flex;gap:.5rem;align-items:stretch;">' +
+          '<input type="text" readonly id="offersUrlInput" value="' + esc(offersUrl) + '" ' +
+            'style="flex:1;padding:.5rem .75rem;font-family:\'JetBrains Mono\',ui-monospace,monospace;font-size:.8125rem;border:1px solid var(--color-border);border-radius:8px;background:var(--color-bg);color:var(--color-body);" ' +
+            'onclick="this.select();">' +
+          '<button class="btn btn-secondary" onclick="window.copyOffersLink()" style="white-space:nowrap;">Copy link</button>' +
+          '<a class="btn btn-secondary" href="' + esc(offersUrl) + '" target="_blank" rel="noopener" style="white-space:nowrap;text-decoration:none;">Open</a>' +
+        '</div>';
     }
 
     // Performance Guarantee
