@@ -7944,34 +7944,41 @@
         var missingKeys = requiredKeys.filter(function(k) { return pg[k] == null; });
         var actionHtml = '';
         if (pg.status === 'locked') {
-          actionHtml = '<div style="padding:1rem;border-top:1px solid var(--color-border);">'
-            + '<div style="display:flex;align-items:center;gap:.6rem;margin-bottom:.5rem;">'
+          var signingUrl = contact.slug ? ('https://clients.moonraker.ai/' + encodeURIComponent(contact.slug) + '/guarantee') : '';
+          actionHtml = '<div style="padding:1.25rem;border-top:1px solid var(--color-border);display:flex;flex-direction:column;gap:.75rem;">'
+            + '<div style="display:flex;align-items:center;gap:.6rem;flex-wrap:wrap;">'
               + '<span style="color:var(--color-success);font-size:1.05rem;">&#128274;</span>'
               + '<strong style="color:var(--color-heading);">Guarantee locked</strong>'
               + (pg.locked_at ? '<span style="color:var(--color-muted);font-size:.8125rem;">on ' + new Date(pg.locked_at).toLocaleDateString() + '</span>' : '')
             + '</div>'
+            + (signingUrl
+                ? '<div style="font-size:.8125rem;line-height:1.55;">'
+                  + '<span style="color:var(--color-muted);">Signing page: </span>'
+                  + '<a href="' + signingUrl + '" target="_blank" rel="noopener" style="color:var(--color-primary);font-weight:600;">/' + esc(contact.slug) + '/guarantee &#8599;</a>'
+                + '</div>'
+                : '')
             + '<p style="margin:0;font-size:.8125rem;color:var(--color-muted);line-height:1.55;">'
-              + 'Signing page and client email will ship with the next deploy. Until then the numbers are frozen and the client cannot revise their draft.'
+              + 'Numbers are frozen and the client cannot revise their draft. The client email invitation will send in a future release.'
             + '</p>'
             + '</div>';
         } else if (!isAnnual) {
-          actionHtml = '<div style="padding:1rem;border-top:1px solid var(--color-border);font-size:.8125rem;color:var(--color-muted);">'
+          actionHtml = '<div style="padding:1.25rem;border-top:1px solid var(--color-border);font-size:.8125rem;color:var(--color-muted);line-height:1.55;">'
             + 'Lock-in is only available for annual plans. Current plan: <strong style="color:var(--color-body);">' + esc(contact.plan_tier || contact.plan_type || 'none') + '</strong>.'
             + '</div>';
         } else if (missingKeys.length > 0) {
-          actionHtml = '<div style="padding:1rem;border-top:1px solid var(--color-border);font-size:.8125rem;color:var(--color-warning);">'
+          actionHtml = '<div style="padding:1.25rem;border-top:1px solid var(--color-border);font-size:.8125rem;color:var(--color-warning);line-height:1.55;">'
             + 'Draft is incomplete \u2014 client needs to fill in all fields before this can be locked.'
             + '</div>';
         } else {
-          actionHtml = '<div style="padding:1rem;border-top:1px solid var(--color-border);display:flex;flex-direction:column;gap:.5rem;align-items:flex-start;">'
+          actionHtml = '<div style="padding:1.25rem;border-top:1px solid var(--color-border);display:flex;flex-direction:column;gap:.75rem;align-items:flex-start;">'
             + '<button class="btn btn-primary" id="lockGuaranteeBtn" onclick="window.lockGuarantee()" style="background:var(--color-primary);color:#fff;border:none;padding:.6rem 1.25rem;border-radius:8px;font-weight:600;cursor:pointer;font-size:.875rem;">Lock In Guarantee &#10003;</button>'
             + '<p style="margin:0;font-size:.8125rem;color:var(--color-muted);line-height:1.55;">'
-              + 'Freezes these numbers into a signed document. The client email + signing page deploy ships in the next release.'
+              + 'Freezes these numbers and deploys the client-facing signing page. The client email invitation will send in a future release.'
             + '</p>'
             + '</div>';
         }
 
-        pgEl.innerHTML = '<div class="field-group" style="padding:.75rem 1rem;">'
+        pgEl.innerHTML = '<div class="field-group" style="padding:1.125rem 1.25rem;gap:1rem 1.5rem;">'
           + '<div class="field-row"><span class="field-label">Status</span><span class="field-value">' + pgStatus + '</span></div>'
           + '<div class="field-row"><span class="field-label">Guarantee Calls</span><span class="field-value">' + (pg.guarantee_calls || 0) + ' calls in 12 months</span></div>'
           + '<div class="field-row"><span class="field-label">Total Benchmark</span><span class="field-value">' + (pg.total_benchmark || 0) + ' total organic calls</span></div>'
