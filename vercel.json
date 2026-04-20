@@ -57,6 +57,10 @@
     {
       "source": "/:slug/img/:path*",
       "destination": "https://ofmmwcjhdrhvxxkhcuww.supabase.co/storage/v1/object/public/images/:slug/:path*"
+    },
+    {
+      "source": "/:slug/offers",
+      "destination": "/_templates/offers.html"
     }
   ],
   "functions": {
