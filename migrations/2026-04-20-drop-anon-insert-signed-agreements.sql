@@ -1,0 +1,23 @@
+-- 2026-04-20 — Drop anon INSERT on signed_agreements
+-- ------------------------------------------------------------------
+-- Context: anon_insert_agreements_scoped let any holder of a leaked
+-- prospect/onboarding contact UUID forge a CSA row directly via
+-- PostgREST with self-chosen signer_name, signature_image, signed_at,
+-- document_html — contract-adjacent legal-evidence surface.
+--
+-- Remediation: the onboarding.html CSA write now goes through
+-- /api/onboarding-action (page-token gated, contact_id forced from the
+-- verified token, ip_address + user_agent populated server-side from
+-- request headers). service_role performs the actual INSERT and
+-- bypasses RLS, so the anon INSERT policy is no longer needed.
+--
+-- The anon SELECT policy (anon_read_agreements_scoped) is intentionally
+-- left in place: the onboarding page still reads its own CSA row via
+-- sbFetch for the "you already signed on X" display state, and a read
+-- scoped to the contact-status window is lower-risk than a write.
+--
+-- Closes the INSERT half of the finding added during the 2026-04-20
+-- page-token follow-up session.
+-- ------------------------------------------------------------------
+
+DROP POLICY IF EXISTS anon_insert_agreements_scoped ON public.signed_agreements;
