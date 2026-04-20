@@ -1279,7 +1279,7 @@
           </div>
         </div>
         <div class="card" style="margin-top:1rem;">
-          <div class="card-header"><h3>Add-on Offers Page</h3></div>
+          <div class="card-header"><h3>Add-ons Page</h3></div>
           <div id="offersLinkBody" style="padding:0 1rem 1rem;"></div>
         </div>
         <div class="card" style="margin-top:1rem;">
@@ -7880,7 +7880,7 @@
         input.select();
         document.execCommand('copy');
       }
-      toast('Offers link copied to clipboard', 'success');
+      toast('Add-ons link copied to clipboard', 'success');
     } catch (e) {
       toast('Could not copy \u2014 please select the URL and copy manually', 'error');
     }
@@ -7914,10 +7914,10 @@
     // Add-on Offers Page link (slug-scoped, existing clients can buy one-off services)
     var olEl = document.getElementById('offersLinkBody');
     if (olEl) {
-      var offersUrl = 'https://clients.moonraker.ai/' + c.slug + '/offers';
+      var offersUrl = 'https://clients.moonraker.ai/' + c.slug + '/add-ons';
       olEl.innerHTML =
         '<p style="margin:.25rem 0 .75rem;font-size:.84rem;color:var(--color-muted);line-height:1.55;">' +
-          'Share this link with the client so they can browse and purchase add-on services (additional service pages, press releases, NAP updates, strategy calls).' +
+          'Share this link with the client so they can browse and purchase add-on services (additional service pages, press releases, NAP updates).' +
         '</p>' +
         '<div style="display:flex;gap:.5rem;align-items:stretch;">' +
           '<input type="text" readonly id="offersUrlInput" value="' + esc(offersUrl) + '" ' +
