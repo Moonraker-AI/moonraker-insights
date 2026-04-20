@@ -119,7 +119,7 @@ module.exports = async function handler(req, res) {
     if (body.slug && !pageToken.assertSlugBinding(body.slug, contact.slug)) {
       return res.status(403).json({ error: 'Page token not valid for this client' });
     }
-    if (['onboarding', 'prospect', 'active'].indexOf(contact.status) === -1) {
+    if (['onboarding', 'active'].indexOf(contact.status) === -1) {
       return res.status(403).json({ error: 'Contact not in a valid state for PG draft' });
     }
 
