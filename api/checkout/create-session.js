@@ -116,8 +116,10 @@ module.exports = async function handler(req, res) {
 
   // ── Preferred path: Stripe Checkout Session with inline price_data ──
   if (typeof tier.amount_cents === 'number' && tier.amount_cents > 0) {
-    var secret = process.env.STRIPE_SECRET_KEY;
-    if (!secret) return res.status(500).json({ error: 'STRIPE_SECRET_KEY not configured' });
+    // Accept either STRIPE_SECRET_KEY (Stripe's canonical name) or
+    // STRIPE_API_KEY (the legacy name used in this project's Vercel env).
+    var secret = process.env.STRIPE_SECRET_KEY || process.env.STRIPE_API_KEY;
+    if (!secret) return res.status(500).json({ error: 'Stripe API key not configured (expected STRIPE_SECRET_KEY or STRIPE_API_KEY)' });
 
     var modeInfo = inferMode(tier);
     var priceData = {
