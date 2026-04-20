@@ -1,16 +1,23 @@
 // /api/pricing.js
-// Public GET endpoint returning active pricing tiers for a product.
-// Read by _templates/checkout.html and _templates/entity-audit-checkout.html
-// so prices are never hardcoded in deployed per-client copies.
+// Public GET endpoint returning pricing data.
 //
-// Query:
+// Two modes:
 //   GET /api/pricing?product=core_marketing
-//   GET /api/pricing?product=entity_audit_premium
+//     → { product, tiers: [...] }
+//       Used by _templates/checkout.html, entity-audit-checkout.html, and
+//       shared/proposal-pricing-refresh.js. Single-product scoped, array of tiers.
+//
+//   GET /api/pricing
+//     → { tiers: [...], config: { key: value, ... } }
+//       Returns every active tier across all products (each row includes its
+//       product_key so callers can group client-side) plus the pricing_config
+//       key-value map. Used by shared/csa-content.js to render the CSA with
+//       live pricing.
 //
 // Response:
 //   { tiers: [ { tier_key, display_name, amount_cents, amount_display, period,
 //                detail, payment_method, billing_term, billing_cadence,
-//                has_stripe_price_id, ... } ] }
+//                product_key? } ] }
 //
 // Notes:
 //   - stripe_price_id and stripe_payment_link are NEVER returned to the browser;
@@ -21,7 +28,7 @@
 
 var sb = require('./_lib/supabase');
 
-var ALLOWED_PRODUCTS = ['core_marketing', 'entity_audit_premium'];
+var ALLOWED_PRODUCTS = ['core_marketing', 'entity_audit_premium', 'addons'];
 
 function formatAmount(cents) {
   var dollars = cents / 100;
@@ -29,6 +36,22 @@ function formatAmount(cents) {
     return dollars.toLocaleString('en-US');
   }
   return dollars.toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 });
+}
+
+function shapeTier(r, includeProductKey) {
+  var out = {
+    tier_key: r.tier_key,
+    display_name: r.display_name,
+    amount_cents: r.amount_cents,
+    amount_display: formatAmount(r.amount_cents),
+    period: r.period || '',
+    detail: r.detail || '',
+    payment_method: r.payment_method,
+    billing_term: r.billing_term,
+    billing_cadence: r.billing_cadence
+  };
+  if (includeProductKey) out.product_key = r.product_key;
+  return out;
 }
 
 module.exports = async function handler(req, res) {
@@ -39,7 +62,39 @@ module.exports = async function handler(req, res) {
   if (!sb.isConfigured()) return res.status(500).json({ error: 'Supabase not configured' });
 
   var product = String(req.query.product || '').trim();
-  if (!product) return res.status(400).json({ error: 'product query param required' });
+
+  // ── Unscoped mode: return every tier + config map ───────────────────
+  if (!product) {
+    var rows, configRows;
+    try {
+      rows = await sb.query(
+        'pricing_tiers?active=eq.true&order=product_key.asc,sort_order.asc&select=' +
+        'product_key,tier_key,display_name,amount_cents,period,detail,payment_method,billing_term,billing_cadence'
+      );
+    } catch (e) {
+      return res.status(500).json({ error: 'pricing fetch failed: ' + e.message });
+    }
+    try {
+      configRows = await sb.query('pricing_config?select=key,value,unit,description');
+    } catch (_) {
+      configRows = []; // config table outage shouldn't block tier reads
+    }
+
+    var config = {};
+    (configRows || []).forEach(function(c) {
+      // value is NUMERIC in PG but comes back as string through PostgREST; coerce.
+      var n = Number(c.value);
+      config[c.key] = Number.isFinite(n) ? n : c.value;
+    });
+
+    res.setHeader('Cache-Control', 'public, max-age=60, s-maxage=60');
+    return res.status(200).json({
+      tiers: (rows || []).map(function(r) { return shapeTier(r, true); }),
+      config: config
+    });
+  }
+
+  // ── Scoped mode: existing single-product behavior ──────────────────
   if (ALLOWED_PRODUCTS.indexOf(product) === -1) {
     return res.status(400).json({ error: 'unknown product', allowed: ALLOWED_PRODUCTS });
   }
@@ -55,22 +110,11 @@ module.exports = async function handler(req, res) {
     return res.status(500).json({ error: 'pricing fetch failed: ' + e.message });
   }
 
-  var tiers = (rows || []).map(function(r) {
-    return {
-      tier_key: r.tier_key,
-      display_name: r.display_name,
-      amount_cents: r.amount_cents,
-      amount_display: formatAmount(r.amount_cents),
-      period: r.period || '',
-      detail: r.detail || '',
-      payment_method: r.payment_method,
-      billing_term: r.billing_term,
-      billing_cadence: r.billing_cadence
-    };
-  });
-
   // Edge-cache for 60s: pricing changes are infrequent and the endpoint is hit
   // by every checkout page load. Bust via ?v= if Scott needs instant propagation.
   res.setHeader('Cache-Control', 'public, max-age=60, s-maxage=60');
-  return res.status(200).json({ product: product, tiers: tiers });
+  return res.status(200).json({
+    product: product,
+    tiers: (rows || []).map(function(r) { return shapeTier(r, false); })
+  });
 };
