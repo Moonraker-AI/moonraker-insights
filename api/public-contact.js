@@ -35,7 +35,7 @@ var SAFE_COLUMNS = [
   'state_province',
   'postal_code',
   'country',
-  'time_zone',
+  'timezone',
   'npi_number',
   'team_size',
   'service_delivery',
