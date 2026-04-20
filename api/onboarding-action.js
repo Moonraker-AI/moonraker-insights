@@ -53,7 +53,7 @@ module.exports = async function handler(req, res) {
     var verifiedContactId = tokenData.contact_id;
 
     // ── 2. Enforce action/table allowlists ──────────────────────
-    var allowedTables = ['practice_details', 'bio_materials', 'social_platforms', 'directory_listings', 'contacts'];
+    var allowedTables = ['practice_details', 'bio_materials', 'social_platforms', 'directory_listings', 'contacts', 'signed_agreements'];
     if (allowedTables.indexOf(table) === -1) return res.status(400).json({ error: 'Table not allowed' });
 
     // Contacts updates are restricted to a narrow field set so the onboarding
@@ -72,6 +72,23 @@ module.exports = async function handler(req, res) {
       if (!data || typeof data !== 'object') return res.status(400).json({ error: 'data required' });
       var stray = Object.keys(data).filter(function(k) { return CONTACT_WRITE_ALLOWLIST.indexOf(k) === -1; });
       if (stray.length > 0) return res.status(400).json({ error: 'Disallowed contacts fields: ' + stray.join(',') });
+    }
+
+    // signed_agreements is create-only through this surface. The onboarding
+    // page writes one CSA row when the client signs; everything else (read,
+    // update, delete) goes through admin paths. contact_id is forced below
+    // from the verified page-token; ip_address and user_agent are populated
+    // server-side from request headers and cannot be set by the client.
+    var SIGNED_AGREEMENTS_WRITE_ALLOWLIST = [
+      'agreement_type', 'agreement_version', 'document_html',
+      'signer_name', 'signer_email', 'signer_title', 'signed_at',
+      'signature_image', 'plan_details'
+    ];
+    if (table === 'signed_agreements') {
+      if (action !== 'create_record') return res.status(400).json({ error: 'Only create_record allowed on signed_agreements' });
+      if (!data || typeof data !== 'object') return res.status(400).json({ error: 'data required' });
+      var strayAgr = Object.keys(data).filter(function(k) { return SIGNED_AGREEMENTS_WRITE_ALLOWLIST.indexOf(k) === -1; });
+      if (strayAgr.length > 0) return res.status(400).json({ error: 'Disallowed signed_agreements fields: ' + strayAgr.join(',') });
     }
 
     var allowedActions = ['create_record', 'update_record', 'delete_record'];
@@ -103,6 +120,15 @@ module.exports = async function handler(req, res) {
     if (action === 'create_record') {
       data = data || {};
       data.contact_id = verifiedContactId;
+      // signed_agreements: populate audit fields server-side so the client
+      // cannot forge them. ip_address comes from x-forwarded-for (trusted
+      // via Vercel edge); user_agent comes from the request header.
+      if (table === 'signed_agreements') {
+        var xff = (req.headers['x-forwarded-for'] || '').toString();
+        var ip = xff.split(',')[0].trim() || (req.socket && req.socket.remoteAddress) || null;
+        data.ip_address = ip;
+        data.user_agent = (req.headers['user-agent'] || '').toString().slice(0, 1024) || null;
+      }
     } else {
       // update_record or delete_record
       filters = filters || {};
