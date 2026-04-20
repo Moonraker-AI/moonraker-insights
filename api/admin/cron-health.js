@@ -23,7 +23,8 @@ var EXPECTED = {
   'cleanup-rate-limits':     { intervalSec: 86400,       toleranceSec: 12 * 3600 },
   'sync-attribution-sheets': { intervalSec: 30 * 86400,  toleranceSec: 5 * 86400 },
   'backfill-gbp-daily':      { intervalSec: 86400,       toleranceSec: 12 * 3600 },
-  'cron-heartbeat-check':    { intervalSec: 86400,       toleranceSec: 12 * 3600 }
+  'cron-heartbeat-check':    { intervalSec: 86400,       toleranceSec: 12 * 3600 },
+  'cleanup-stale-runs':      { intervalSec: 3600,        toleranceSec: 3 * 3600 }
 };
 
 module.exports = async function handler(req, res) {
@@ -48,9 +49,11 @@ module.exports = async function handler(req, res) {
         '&select=cron_name,status,started_at,completed_at,error,queue_depth,oldest_item_age_sec' +
         '&order=started_at.desc&limit=1000'
       ),
-      // Currently running (status='running') — helps spot hangs
+      // Currently "running" rows (no completed_at). Sorted newest-first so
+      // legitimately-live runs bubble to the top; older entries are usually
+      // zombies from crashed/timed-out executions.
       sb.query(
-        'cron_runs?status=eq.running&order=started_at.asc' +
+        'cron_runs?status=eq.running&order=started_at.desc' +
         '&select=id,cron_name,started_at,queue_depth,oldest_item_age_sec&limit=50'
       )
     ]);
@@ -61,7 +64,12 @@ module.exports = async function handler(req, res) {
     });
 
     var runs24h = results[1] || [];
-    var running = results[2] || [];
+    var running = (results[2] || []).map(function(r) {
+      var cfg = EXPECTED[r.cron_name];
+      return Object.assign({}, r, {
+        expected_interval_sec: cfg ? cfg.intervalSec : null
+      });
+    });
 
     var countsByName = {};
     var errorsByName = {};
