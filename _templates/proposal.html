@@ -163,7 +163,10 @@ section { padding: 4.5rem 0; }
 .guarantee-box { background: linear-gradient(135deg, #141C3A, #1E3A5F); border-radius: 16px; padding: 2.5rem; color: #E8F5EF; margin: 2rem 0; position: relative; overflow: hidden; border: 1px solid rgba(59,130,246,.2); }
 .guarantee-box::before { content: ''; position: absolute; top: -30%; right: -5%; width: 260px; height: 260px; background: radial-gradient(circle, rgba(0,212,126,.12) 0%, transparent 70%); pointer-events: none; }
 .guarantee-box h3 { color: var(--color-primary); margin-bottom: .75rem; }
-.guarantee-box p { color: rgba(232,245,239,.9); margin-bottom: .5rem; font-size: 1rem; line-height: 1.6; }
+.guarantee-box p { color: rgba(232,245,239,.9); margin-bottom: .5rem; font-size: 1rem; line-height: 1.6; position: relative; }
+.guarantee-box strong { color: #E8F5EF; }
+.guarantee-box a { color: var(--color-primary); text-decoration: underline; text-decoration-color: rgba(0,212,126,.5); text-underline-offset: 3px; }
+.guarantee-box a:hover { color: var(--color-primary-hover); text-decoration-color: var(--color-primary-hover); }
 .assets-note { background: var(--color-surface); border: 1px solid var(--color-border); border-radius: 12px; padding: 1.25rem 1.75rem; display: flex; gap: 1rem; align-items: flex-start; margin: 2rem 0; }
 .assets-note .icon { font-size: 1.25rem; flex-shrink: 0; }
 .assets-note p { margin: 0; font-size: .9375rem; }
