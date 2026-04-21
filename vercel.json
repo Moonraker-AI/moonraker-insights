@@ -105,6 +105,10 @@
     {
       "source": "/:slug([a-z0-9-]+)/proposal",
       "destination": "/_templates/proposal"
+    },
+    {
+      "source": "/:slug([a-z0-9-]+)",
+      "destination": "/_templates/router"
     }
   ],
   "functions": {
