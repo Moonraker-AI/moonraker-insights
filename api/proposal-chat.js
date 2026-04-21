@@ -171,17 +171,15 @@ async function fetchProposalByContactId(contactId) {
     var contact = await sb.one('contacts?id=eq.' + encodeURIComponent(contactId) + '&select=id,first_name,last_name,credentials,practice_name,email,website_url,city,state_province&limit=1');
     if (!contact) return null;
 
-    // Get the latest deployed proposal for this contact. Select
-    // active_version_id so we can load the current version content below.
-    // proposal_content is still selected for back-compat: legacy proposals
-    // that haven't been migrated to the versioning model fall back to it.
-    var proposal = await sb.one('proposals?contact_id=eq.' + contact.id + '&status=in.(ready,sent,viewed)&order=created_at.desc&select=campaign_lengths,custom_pricing,billing_options,proposal_content,active_version_id&limit=1');
+    // Get the latest deployed proposal for this contact. Every proposal now
+    // has an active_version_id; proposal_content as a JSONB column on the
+    // parent row was dropped once the versioning tables were live, so the
+    // version lookup below is the only path.
+    var proposal = await sb.one('proposals?contact_id=eq.' + contact.id + '&status=in.(ready,sent,viewed)&order=created_at.desc&select=campaign_lengths,custom_pricing,billing_options,active_version_id&limit=1');
     if (!proposal) return null;
 
-    // Preferred path: load the active proposal_versions row. Its
-    // proposal_content is the source of truth for any proposal generated
-    // after the versioning migration (api/generate-proposal.js stopped
-    // writing proposals.proposal_content once the migration landed).
+    // Load the active proposal_versions row. Its proposal_content JSONB is
+    // the source of truth for chatbot context.
     if (proposal.active_version_id) {
       try {
         var version = await sb.one('proposal_versions?id=eq.' + encodeURIComponent(proposal.active_version_id) + '&select=proposal_content&limit=1');
@@ -189,13 +187,9 @@ async function fetchProposalByContactId(contactId) {
           proposal._versionContent = version.proposal_content;
         }
       } catch (_) {
-        // Non-fatal. Fall through to legacy proposal_content.
+        // Non-fatal; the chatbot still has page_content + CSA text in the
+        // system prompt and can fall back to generic Moonraker context.
       }
-    }
-    // Legacy fallback: for proposals that predate versioning, proposal_content
-    // still lives on the parent row.
-    if (!proposal._versionContent && proposal.proposal_content) {
-      proposal._versionContent = proposal.proposal_content;
     }
 
     proposal._contact = contact;
