@@ -41,6 +41,7 @@ var SAFE_COLUMNS = [
   'service_delivery',
   'campaign_type',
   'campaign_start',
+  'campaign_end',
   'plan_type',
   'plan_amount_cents',
   'status',
