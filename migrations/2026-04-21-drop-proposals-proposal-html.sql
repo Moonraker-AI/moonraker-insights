@@ -1,0 +1,21 @@
+-- Drop legacy proposals.proposal_html column.
+--
+-- Applied via Supabase MCP: migration "drop_legacy_proposals_proposal_html_column"
+--
+-- Background: proposal_html was a rendered HTML string stored on the
+-- proposals parent row under the old baked-HTML architecture, where
+-- api/generate-proposal.js assembled a full page and persisted it for
+-- static serving. The dynamic-rendering migration (commits 860700953a15 ->
+-- 9e32079af3d7 -> 7084b128417a) moved rendering to _templates/proposal.html
+-- hydrating client-side from /api/public-proposal, which reads the JSONB
+-- content off proposal_versions.proposal_content. api/generate-proposal.js
+-- stopped writing proposal_html well before this migration, and the
+-- frontend-audit + backend sweep on 2026-04-21 confirmed zero readers
+-- repo-wide.
+--
+-- Pre-flight sanity check run before this migration:
+--   SELECT COUNT(*) FILTER (WHERE proposal_html IS NOT NULL) FROM proposals -> 0
+--   Full repo grep for "proposal_html" across js/html/sql/md/json/ts -> 0 hits
+-- All 22 rows had NULL; no code path read or wrote the column.
+
+ALTER TABLE proposals DROP COLUMN IF EXISTS proposal_html;
