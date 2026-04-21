@@ -61,6 +61,50 @@
     {
       "source": "/:slug/add-ons",
       "destination": "/_templates/add-ons"
+    },
+    {
+      "source": "/:slug([a-z0-9-]+)/audits/diagnosis",
+      "destination": "/_templates/diagnosis"
+    },
+    {
+      "source": "/:slug([a-z0-9-]+)/audits/action-plan",
+      "destination": "/_templates/action-plan"
+    },
+    {
+      "source": "/:slug([a-z0-9-]+)/audits/progress",
+      "destination": "/_templates/progress"
+    },
+    {
+      "source": "/:slug([a-z0-9-]+)/entity-audit-checkout",
+      "destination": "/_templates/entity-audit-checkout"
+    },
+    {
+      "source": "/:slug([a-z0-9-]+)/entity-audit",
+      "destination": "/_templates/entity-audit"
+    },
+    {
+      "source": "/:slug([a-z0-9-]+)/campaign-summary",
+      "destination": "/_templates/campaign-summary"
+    },
+    {
+      "source": "/:slug([a-z0-9-]+)/endorsements",
+      "destination": "/_templates/endorsements"
+    },
+    {
+      "source": "/:slug([a-z0-9-]+)/onboarding",
+      "destination": "/_templates/onboarding"
+    },
+    {
+      "source": "/:slug([a-z0-9-]+)/reports",
+      "destination": "/_templates/report"
+    },
+    {
+      "source": "/:slug([a-z0-9-]+)/checkout",
+      "destination": "/_templates/checkout"
+    },
+    {
+      "source": "/:slug([a-z0-9-]+)/proposal",
+      "destination": "/_templates/proposal"
     }
   ],
   "functions": {
