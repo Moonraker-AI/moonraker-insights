@@ -96,6 +96,23 @@ function withTracking(name, innerHandler) {
     // Expose to the inner handler so it can emit mid-run telemetry via
     // cronRuns.snapshot(req._cronRunId, { queue_depth, oldest_item_age_sec }).
     if (req) req._cronRunId = runId;
+
+    // Capture response body on >=400 so that handlers which catch their own
+    // exceptions and return 500 still propagate a useful error string into
+    // cron_runs.error (previously this column was null whenever the inner
+    // handler swallowed its exception — the common case). The wrapper only
+    // intercepts res.json() since every cron's 4xx/5xx path uses it.
+    var capturedBody = null;
+    if (res && typeof res.json === 'function') {
+      var origJson = res.json.bind(res);
+      res.json = function(body) {
+        try {
+          if (res.statusCode >= 400) capturedBody = body;
+        } catch (e) { /* never block the response */ }
+        return origJson(body);
+      };
+    }
+
     var capturedErr = null;
     try {
       return await innerHandler(req, res);
@@ -104,10 +121,24 @@ function withTracking(name, innerHandler) {
       throw e;
     } finally {
       if (runId) {
-        var status = capturedErr
-          ? 'error'
-          : (res.statusCode && res.statusCode >= 400 ? 'error' : 'success');
-        await finish(runId, status, { error: capturedErr });
+        var isError = !!capturedErr || (res && res.statusCode >= 400);
+        var status = isError ? 'error' : 'success';
+        var errForFinish = capturedErr;
+        // No thrown exception but handler responded with >=400 — synthesize
+        // a diagnostic string from the response body so cron_runs.error is
+        // populated (matches the prior behavior's intent, fixes null-error
+        // rows observed for process-audit-queue on 2026-04-21).
+        if (!errForFinish && isError) {
+          var summary = 'HTTP ' + (res.statusCode || '?');
+          if (capturedBody && typeof capturedBody === 'object') {
+            if (capturedBody.error) summary += ': ' + String(capturedBody.error).substring(0, 300);
+            else if (capturedBody.message) summary += ': ' + String(capturedBody.message).substring(0, 300);
+          } else if (typeof capturedBody === 'string') {
+            summary += ': ' + capturedBody.substring(0, 300);
+          }
+          errForFinish = new Error(summary);
+        }
+        await finish(runId, status, { error: errForFinish });
       }
     }
   };
