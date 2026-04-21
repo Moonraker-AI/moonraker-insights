@@ -8,7 +8,7 @@
 //   await sb.mutate('contacts?id=eq.' + id, 'PATCH', { status: 'active' });
 //   await sb.mutate('deliverables', 'POST', { contact_id: id, title: 'Setup' }, 'return=representation');
 //
-// Error contract for thrown Supabase errors (M7, 2026-04-19):
+// Error contract for thrown Supabase errors (M7, 2026-04-19; expanded 2026-04-21):
 //   .status           HTTP status code from PostgREST.
 //   .detail           Raw PostgREST response body. Safe for server-side
 //                     logging via monitor.logError; NEVER echo to response
@@ -18,13 +18,20 @@
 //                     still contain column names. Prefer `.detail` for
 //                     structured logging; prefer generic strings for
 //                     response bodies.
-//   .message          Generic 'Supabase query error' / 'Supabase mutate
-//                     error'. Safe to echo into 5xx response bodies (still
-//                     reveals the upstream is Supabase, which is a narrow
-//                     leak we accept in exchange for the consistency win).
-//                     Callers that branch on structured info should use
-//                     `.detail.code` / `.detail.constraint` / `.status` —
-//                     never pattern-match on `.message`.
+//   .message          Diagnostic string including HTTP status + PostgREST
+//                     code/constraint/message (truncated). Format:
+//                       'Supabase mutate error (HTTP 400, code=23514, constraint=entity_audits_status_check): new row violates check constraint'
+//                     This echoes into 5xx response bodies and into
+//                     cron_runs.error via withTracking — both server-side
+//                     channels. The Authorization/apikey headers never round-
+//                     trip into PostgREST's response body, so detail exposure
+//                     is limited to schema/constraint info (same risk surface
+//                     .detail already has). Callers that branch on structured
+//                     info should use `.detail.code` / `.detail.constraint` /
+//                     `.status` — never pattern-match on `.message`.
+//                     If the detail leak is a concern for a specific caller's
+//                     response body, catch the error and substitute a generic
+//                     string before responding.
 
 // Loud warning at module load if NEXT_PUBLIC_SUPABASE_URL is unset, so config
 // gaps surface in Vercel logs before any route hits url(). Mirrors the H9/H10
@@ -36,6 +43,26 @@ if (!process.env.NEXT_PUBLIC_SUPABASE_URL) {
 var fetchT = require('./fetch-with-timeout');
 
 var SUPABASE_URL = null;
+
+// Build a diagnostic error message from a PostgREST failure response.
+// Format: '<op> error (HTTP <status>[, code=<pg_code>][, constraint=<name>]): <message>'
+// Keeps detail compact (<~300 chars) so it survives cron_runs.error's 1000-char
+// limit alongside any stack context. Falls back gracefully when body isn't JSON.
+function buildErrorMessage(op, resp, data) {
+  var parts = ['HTTP ' + resp.status];
+  if (data && typeof data === 'object') {
+    if (data.code) parts.push('code=' + String(data.code).substring(0, 40));
+    if (data.constraint) parts.push('constraint=' + String(data.constraint).substring(0, 80));
+  }
+  var prefix = 'Supabase ' + op + ' error (' + parts.join(', ') + ')';
+  var tail = '';
+  if (data && typeof data === 'object' && data.message) {
+    tail = String(data.message).substring(0, 240);
+  } else if (typeof data === 'string' && data) {
+    tail = data.substring(0, 240);
+  }
+  return tail ? prefix + ': ' + tail : prefix;
+}
 
 function url() {
   if (!SUPABASE_URL) {
@@ -68,9 +95,14 @@ async function query(path, opts) {
     method: 'GET',
     headers: headers((opts && opts.prefer) || undefined)
   }, (opts && opts.timeoutMs) || 10000);
-  var data = await resp.json();
+  // PostgREST errors aren't always JSON (e.g. gateway 502). Parse defensively.
+  var data;
+  try { data = await resp.json(); }
+  catch (e) {
+    try { data = await resp.text(); } catch (e2) { data = null; }
+  }
   if (!resp.ok) {
-    var err = new Error('Supabase query error');
+    var err = new Error(buildErrorMessage('query', resp, data));
     err.status = resp.status;
     err.detail = data;
     err.supabaseMessage = (data && data.message) || null;
@@ -90,9 +122,14 @@ async function mutate(path, method, body, prefer, timeoutMs) {
   }, timeoutMs || 10000);
   // For DELETE with no content or return=minimal success
   if (resp.status === 204) return null;
-  var data = await resp.json();
+  // Parse defensively — PostgREST errors aren't always JSON.
+  var data;
+  try { data = await resp.json(); }
+  catch (e) {
+    try { data = await resp.text(); } catch (e2) { data = null; }
+  }
   if (!resp.ok) {
-    var err = new Error('Supabase mutate error');
+    var err = new Error(buildErrorMessage('mutate', resp, data));
     err.status = resp.status;
     err.detail = data;
     err.supabaseMessage = (data && data.message) || null;
