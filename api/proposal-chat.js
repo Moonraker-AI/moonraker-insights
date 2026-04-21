@@ -171,15 +171,182 @@ async function fetchProposalByContactId(contactId) {
     var contact = await sb.one('contacts?id=eq.' + encodeURIComponent(contactId) + '&select=id,first_name,last_name,credentials,practice_name,email,website_url,city,state_province&limit=1');
     if (!contact) return null;
 
-    // Get the latest deployed proposal for this contact
-    var proposal = await sb.one('proposals?contact_id=eq.' + contact.id + '&status=in.(ready,sent,viewed)&order=created_at.desc&select=campaign_lengths,custom_pricing,billing_options,proposal_content&limit=1');
+    // Get the latest deployed proposal for this contact. Select
+    // active_version_id so we can load the current version content below.
+    // proposal_content is still selected for back-compat: legacy proposals
+    // that haven't been migrated to the versioning model fall back to it.
+    var proposal = await sb.one('proposals?contact_id=eq.' + contact.id + '&status=in.(ready,sent,viewed)&order=created_at.desc&select=campaign_lengths,custom_pricing,billing_options,proposal_content,active_version_id&limit=1');
     if (!proposal) return null;
+
+    // Preferred path: load the active proposal_versions row. Its
+    // proposal_content is the source of truth for any proposal generated
+    // after the versioning migration (api/generate-proposal.js stopped
+    // writing proposals.proposal_content once the migration landed).
+    if (proposal.active_version_id) {
+      try {
+        var version = await sb.one('proposal_versions?id=eq.' + encodeURIComponent(proposal.active_version_id) + '&select=proposal_content&limit=1');
+        if (version && version.proposal_content) {
+          proposal._versionContent = version.proposal_content;
+        }
+      } catch (_) {
+        // Non-fatal. Fall through to legacy proposal_content.
+      }
+    }
+    // Legacy fallback: for proposals that predate versioning, proposal_content
+    // still lives on the parent row.
+    if (!proposal._versionContent && proposal.proposal_content) {
+      proposal._versionContent = proposal.proposal_content;
+    }
 
     proposal._contact = contact;
     return proposal;
   } catch(e) {
     return null;
   }
+}
+
+// ─── Build proposal content context from proposal_versions.proposal_content ──
+//
+// The chatbot historically relied on client-side DOM extraction (the
+// `page_content` field on the request body) for proposal-specific context.
+// That approach is fragile on the dynamic template — the chatbot can cache
+// pre-hydration DOM (nearly empty) if the user opens it fast, and even when
+// it does capture hydrated text, it gets a flat blob with no structural
+// labels. This helper reads the server-authoritative JSONB on the active
+// proposal_versions row and formats it as a labeled, severity-aware block
+// the model can reason about directly ("what are my critical engagement
+// findings?" becomes a tractable lookup instead of a DOM scrape).
+//
+// Findings keep the same severity classifier as /api/public-proposal so
+// counts and ordering stay consistent between what the prospect sees in the
+// accordion teasers and what the chatbot knows.
+
+function stripHtmlToText(html) {
+  if (!html || typeof html !== 'string') return '';
+  return html
+    .replace(/<[^>]+>/g, ' ')
+    .replace(/&nbsp;/gi, ' ')
+    .replace(/&#(\d+);/g, function(_, n) { try { return String.fromCodePoint(parseInt(n, 10)); } catch (_) { return ''; } })
+    .replace(/&#x([0-9a-f]+);/gi, function(_, n) { try { return String.fromCodePoint(parseInt(n, 16)); } catch (_) { return ''; } })
+    .replace(/&amp;/g, '&')
+    .replace(/&lt;/g, '<')
+    .replace(/&gt;/g, '>')
+    .replace(/&quot;/g, '"')
+    .replace(/&#39;/g, "'")
+    .replace(/\s+/g, ' ')
+    .trim();
+}
+
+function classifyFindingSeverity(html) {
+  if (!html) return 'warning';
+  // Class-based (older convention) — check first, most specific
+  if (/finding-icon[^"]*(?:danger|critical)/i.test(html)) return 'critical';
+  if (/finding-icon[^"]*warning/i.test(html))             return 'warning';
+  if (/finding-icon[^"]*success/i.test(html))             return 'good';
+  // Icon-based (literal Unicode, decimal entities, hex entities)
+  if (html.indexOf('\u274c') !== -1 || html.indexOf('\ud83d\udd34') !== -1) return 'critical';
+  if (/&#(?:10060|128308);/.test(html))                                     return 'critical';
+  if (/&#x(?:274c|1f534);/i.test(html))                                     return 'critical';
+  if (html.indexOf('\u26a0') !== -1)                                        return 'warning';
+  if (/&#9888;/.test(html))                                                 return 'warning';
+  if (/&#x26a0;/i.test(html))                                               return 'warning';
+  if (html.indexOf('\u2705') !== -1 || html.indexOf('\u2714') !== -1 || html.indexOf('\u2713') !== -1) return 'good';
+  if (/&#(?:9989|10004|10003);/.test(html))                                 return 'good';
+  if (/&#x(?:2705|2714|2713);/i.test(html))                                 return 'good';
+  return 'warning';
+}
+
+function formatFindingsBlob(blob) {
+  if (!blob || typeof blob !== 'string') return null;
+  var parts = blob.split(/(?=<div class="finding"[^>]*>)/);
+  var classified = [];
+  for (var i = 0; i < parts.length; i++) {
+    if (!parts[i].trim()) continue;
+    var text = stripHtmlToText(parts[i]);
+    if (!text) continue;
+    classified.push({ sev: classifyFindingSeverity(parts[i]), text: text });
+  }
+  if (!classified.length) return null;
+  var order = { critical: 0, warning: 1, good: 2 };
+  classified.sort(function(a, b) { return order[a.sev] - order[b.sev]; });
+  var counts = { critical: 0, warning: 0, good: 0 };
+  var lines = classified.map(function(f) {
+    counts[f.sev]++;
+    return '  [' + f.sev + '] ' + f.text;
+  });
+  var summary = counts.critical + ' critical / ' + counts.warning + ' warning / ' + counts.good + ' good';
+  return { summary: summary, lines: lines.join('\n') };
+}
+
+function buildProposalContentContext(versionContent) {
+  if (!versionContent || typeof versionContent !== 'object') return '';
+
+  var out = [];
+
+  if (versionContent.hero_headline) {
+    out.push('HERO HEADLINE: ' + String(versionContent.hero_headline));
+  }
+  if (versionContent.hero_subtitle) {
+    out.push('HERO SUBTITLE: ' + String(versionContent.hero_subtitle));
+  }
+
+  if (versionContent.exec_summary_paragraphs) {
+    var summary = stripHtmlToText(versionContent.exec_summary_paragraphs);
+    if (summary) out.push('\nEXECUTIVE SUMMARY:\n' + summary);
+  }
+
+  if (versionContent.scores && typeof versionContent.scores === 'object') {
+    var s = versionContent.scores;
+    var scoreParts = [];
+    if (s.c != null) scoreParts.push('Credibility ' + s.c + '/10');
+    if (s.o != null) scoreParts.push('Optimization ' + s.o + '/10');
+    if (s.r != null) scoreParts.push('Reputation ' + s.r + '/10');
+    if (s.e != null) scoreParts.push('Engagement ' + s.e + '/10');
+    if (scoreParts.length) out.push('\nCORE SCORES: ' + scoreParts.join(', '));
+  }
+
+  var pillars = [
+    ['credibility_findings',  'CREDIBILITY'],
+    ['optimization_findings', 'OPTIMIZATION'],
+    ['reputation_findings',   'REPUTATION'],
+    ['engagement_findings',   'ENGAGEMENT']
+  ];
+  for (var p = 0; p < pillars.length; p++) {
+    var key = pillars[p][0];
+    var label = pillars[p][1];
+    var formatted = formatFindingsBlob(versionContent[key]);
+    if (!formatted) continue;
+    out.push('\n' + label + ' FINDINGS (' + formatted.summary + '):');
+    if (formatted.lines) out.push(formatted.lines);
+  }
+
+  if (versionContent.strategy_intro) {
+    var si = stripHtmlToText(versionContent.strategy_intro);
+    if (si) out.push('\nSTRATEGY INTRO: ' + si);
+  }
+  if (versionContent.strategy_cards) {
+    var sc = stripHtmlToText(versionContent.strategy_cards);
+    if (sc) out.push('\nSTRATEGY DETAILS:\n' + sc);
+  }
+  if (versionContent.strategy_roi_callout) {
+    var roi = stripHtmlToText(versionContent.strategy_roi_callout);
+    if (roi) out.push('\nSTRATEGY ROI: ' + roi);
+  }
+  if (versionContent.timeline_items) {
+    var tl = stripHtmlToText(versionContent.timeline_items);
+    if (tl) out.push('\nTIMELINE:\n' + tl);
+  }
+  if (Array.isArray(versionContent.next_steps) && versionContent.next_steps.length) {
+    out.push('\nNEXT STEPS:');
+    for (var n = 0; n < versionContent.next_steps.length; n++) {
+      var step = versionContent.next_steps[n] || {};
+      var title = step.title || '';
+      var desc = step.desc || step.description || '';
+      out.push('  ' + (n + 1) + '. ' + title + (desc ? ' — ' + desc : ''));
+    }
+  }
+
+  return out.join('\n');
 }
 
 // ─── Build pricing context from structured data ────────────────
@@ -261,6 +428,7 @@ function buildPricingContext(proposalData) {
 function buildSystemPrompt(context, proposalData, contactData) {
   var pageContent = context.page_content || '';
   var pricingContext = buildPricingContext(proposalData);
+  var proposalContentContext = buildProposalContentContext(proposalData && proposalData._versionContent);
 
   // Build prospect name for personalization
   var prospectName = '';
@@ -296,6 +464,9 @@ CRITICAL RULES:
 
 ===== PRICING DATA (STRUCTURED, AUTHORITATIVE) =====
 ${pricingContext}
+
+===== THIS PROSPECT'S PROPOSAL CONTENT (STRUCTURED, AUTHORITATIVE) =====
+${proposalContentContext || '(Structured proposal content unavailable. Use PROPOSAL PAGE CONTENT below if helpful, otherwise answer from general Moonraker context.)'}
 
 ===== PROPOSAL PAGE CONTENT (for additional context) =====
 ${pageContent.substring(0, 6000)}
