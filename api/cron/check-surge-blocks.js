@@ -33,6 +33,29 @@ var cronRuns = require('../_lib/cron-runs');
 
 var HEALABLE_CODES = ['surge_maintenance', 'credits_exhausted'];
 
+// Overall handler budget. Vercel's maxDuration for this route is 120s; we
+// cap at 90s so that the withTracking finally block has 30s of headroom to
+// PATCH cron_runs before Vercel SIGKILLs the process. Prior behavior left
+// cron_runs rows stuck in status='running' for an hour (until
+// cleanup-stale-runs auto-expired them) because the kill-at-120s happened
+// before any return statement fired.
+var HANDLER_BUDGET_MS = 90000;
+// Agent probe timeout: 30s is enough for a Playwright login + networkidle
+// in practice; the previous 90s ate almost the entire function budget on
+// any agent-slow event, guaranteeing a Vercel SIGKILL.
+var AGENT_PROBE_TIMEOUT_MS = 30000;
+// Per-row PATCH timeout — keeps the healing loop bounded even if PostgREST
+// slows down. 10 rows × 5s = 50s absolute worst case.
+var HEAL_PATCH_TIMEOUT_MS = 5000;
+
+function budgetTimeout(ms, label) {
+  return new Promise(function(_, reject) {
+    setTimeout(function() {
+      reject(new Error('Handler budget exceeded (' + ms + 'ms) at: ' + label));
+    }, ms);
+  });
+}
+
 var CODE_LABELS = {
   surge_maintenance: 'Surge maintenance mode',
   credits_exhausted: 'Surge credits exhausted',
@@ -56,16 +79,23 @@ async function handler(req, res) {
     return res.status(500).json({ error: 'Agent service not configured' });
   }
 
+  // Global handler watchdog — guarantees we reject (and therefore run the
+  // withTracking finally block) before Vercel's maxDuration SIGKILL lands.
+  var watchdog = budgetTimeout(HANDLER_BUDGET_MS, 'handler-global');
+
   try {
     // ── Step 1: Find healable blocked audits ──────────────────────
     // Heavy columns (surge_raw_data, tasks, email_body) intentionally
     // omitted. `contacts!contact_id(...)` disambiguates the two FKs.
-    var blocked = await sb.query(
-      'entity_audits?status=eq.agent_error&agent_error_retriable=eq.false' +
-      '&last_agent_error_code=in.(' + HEALABLE_CODES.join(',') + ')' +
-      '&select=id,client_slug,last_agent_error_code,contact_id,' +
-      'contacts!contact_id(practice_name)'
-    );
+    var blocked = await Promise.race([
+      sb.query(
+        'entity_audits?status=eq.agent_error&agent_error_retriable=eq.false' +
+        '&last_agent_error_code=in.(' + HEALABLE_CODES.join(',') + ')' +
+        '&select=id,client_slug,last_agent_error_code,contact_id,' +
+        'contacts!contact_id(practice_name)'
+      ),
+      watchdog
+    ]);
 
     if (!Array.isArray(blocked)) blocked = [];
 
@@ -93,16 +123,19 @@ async function handler(req, res) {
     var statusError = null;
 
     try {
-      var probeResp = await fetchT(
-        AGENT_URL + '/ops/surge-status',
-        { headers: { 'Authorization': 'Bearer ' + AGENT_KEY } },
-        90000
-      );
+      var probeResp = await Promise.race([
+        fetchT(
+          AGENT_URL + '/ops/surge-status',
+          { headers: { 'Authorization': 'Bearer ' + AGENT_KEY } },
+          AGENT_PROBE_TIMEOUT_MS
+        ),
+        watchdog
+      ]);
 
       if (!probeResp.ok) {
         statusError = 'Agent /ops/surge-status returned HTTP ' + probeResp.status;
       } else {
-        status = await probeResp.json();
+        status = await Promise.race([probeResp.json(), watchdog]);
       }
     } catch (e) {
       statusError = 'Agent /ops/surge-status failed: ' + e.message;
@@ -151,16 +184,20 @@ async function handler(req, res) {
       if (!shouldHeal) continue;
 
       try {
-        await sb.mutate(
-          'entity_audits?id=eq.' + row.id,
-          'PATCH',
-          {
-            status: 'queued',
-            agent_error_retriable: true,
-            agent_task_id: null
-          },
-          'return=minimal'
-        );
+        await Promise.race([
+          sb.mutate(
+            'entity_audits?id=eq.' + row.id,
+            'PATCH',
+            {
+              status: 'queued',
+              agent_error_retriable: true,
+              agent_task_id: null
+            },
+            'return=minimal',
+            HEAL_PATCH_TIMEOUT_MS
+          ),
+          watchdog
+        ]);
 
         if (code === 'surge_maintenance') healedMaintenance++;
         else if (code === 'credits_exhausted') healedCredits++;
@@ -183,7 +220,10 @@ async function handler(req, res) {
     // ── Step 4: Digest email (only if something was healed) ───────
     if (totalHealed > 0) {
       try {
-        await sendDigestEmail(healedRows, maintenanceActive, credits);
+        await Promise.race([
+          sendDigestEmail(healedRows, maintenanceActive, credits),
+          watchdog
+        ]);
       } catch (mailErr) {
         monitor.logError('cron/check-surge-blocks', mailErr, {
           detail: { stage: 'digest_email', healed: totalHealed }
