@@ -294,13 +294,28 @@ function classifyFinding(html) {
   if (/finding-icon[^"]*(?:danger|critical)/i.test(html)) return 'critical';
   if (/finding-icon[^"]*warning/i.test(html))             return 'warning';
   if (/finding-icon[^"]*success/i.test(html))             return 'good';
-  // Emoji-based (current conventions).
-  //   \u274c ❌  |  \ud83d\udd34 🔴   → critical
-  //   \u26a0  ⚠   (with or without \ufe0f variation selector) → warning
-  //   \u2705 ✅  |  \u2714 ✔  |  \u2713 ✓   → good
+  // Icon-based (two in-the-wild formats for the same character):
+  //   Literal Unicode          — observed on Steve (baked HTML preserved chars)
+  //   HTML numeric entities    — observed on Rebecca (fresh AI output)
+  // The AI may choose either format; we treat them as equivalent. The
+  // entity branches cover decimal (&#NNNN;) and hex (&#xHHHH;) forms and
+  // pad-optional variants (&#x1F534; vs &#x1f534;).
+  // Mapping:
+  //   \u274c ❌ / \ud83d\udd34 🔴 / &#10060; / &#128308; / &#xX             → critical
+  //   \u26a0  ⚠  (optionally + \ufe0f) / &#9888; / &#xX                    → warning
+  //   \u2705 ✅ / \u2714 ✔ / \u2713 ✓ / &#9989; / &#10004; / &#10003; / &#xX → good
+  // Critical
   if (html.indexOf('\u274c') !== -1 || html.indexOf('\ud83d\udd34') !== -1) return 'critical';
-  if (html.indexOf('\u26a0') !== -1)                                         return 'warning';
+  if (/&#(?:10060|128308);/.test(html))                                     return 'critical';
+  if (/&#x(?:274c|1f534);/i.test(html))                                     return 'critical';
+  // Warning
+  if (html.indexOf('\u26a0') !== -1)                                        return 'warning';
+  if (/&#9888;/.test(html))                                                 return 'warning';
+  if (/&#x26a0;/i.test(html))                                               return 'warning';
+  // Good
   if (html.indexOf('\u2705') !== -1 || html.indexOf('\u2714') !== -1 || html.indexOf('\u2713') !== -1) return 'good';
+  if (/&#(?:9989|10004|10003);/.test(html))                                 return 'good';
+  if (/&#x(?:2705|2714|2713);/i.test(html))                                 return 'good';
   return 'warning';
 }
 
