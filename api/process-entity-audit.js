@@ -201,6 +201,13 @@ ${surgeData}`;
     var claudeErr;
     var claudeResp;
     try {
+      // 4-min ceiling: Claude Opus on a 150KB Surge payload routinely takes
+      // 2-3 minutes. Old 60s value was a silent killer -- the handler aborted
+      // the Anthropic fetch at T+60s, the row stayed pending, and the agent
+      // had already been told 200-OK by the time this fired (observed in
+      // audit 6268e8ee-7e1e-4b75-a66e-80641cc481b6, Anna Sky demo). 240s
+      // leaves 60s headroom under the 300s Vercel maxDuration so we can
+      // still flush the NDJSON `error` event on timeout.
       claudeResp = await fetchT('https://api.anthropic.com/v1/messages', {
         method: 'POST',
         headers: {
@@ -213,7 +220,7 @@ ${surgeData}`;
           max_tokens: 16000,
           messages: [{ role: 'user', content: claudePrompt }]
         })
-      }, 60000);
+      }, 240000);
     } finally {
       clearInterval(heartbeat);
     }
