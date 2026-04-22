@@ -4485,24 +4485,27 @@
             clearInterval(_agentPollTimer);
             _agentPollTimer = null;
             toast('Automated audit complete! Refreshing data...', 'success');
-            // Reload entity audit data from Supabase
-            var cid = state.contact ? state.contact.id : '';
-            fetch(SB + '/rest/v1/entity_audits?contact_id=eq.' + cid + '&order=created_at.desc&limit=1', { headers: { 'apikey': SK, 'Authorization': 'Bearer ' + SK } })
-              .then(function(r) { return r.json(); })
-              .then(function(audits) {
-                if (audits && audits[0]) {
-                  state.entityAudit = audits[0];
-                  rescopeTasks();
-                  renderAudit();
-                  setTabCount('audit', 0);
-                }
-              });
+            // Invalidate the audit tab cache and refetch via the canonical
+            // ensureTabData path. This replaces a direct anon PostgREST read
+            // that only refreshed state.entityAudit and missed state.allChecklistItems
+            // — the result was rescopeTasks() filtering a stale checklist array
+            // by the new audit_id, showing 0 tasks for the just-completed audit
+            // until the user manually switched tabs. ensureTabData refetches
+            // everything the 'audit' case populates.
+            state.tabLoaded['audit'] = false;
+            ensureTabData('audit').then(function() {
+              setTabCount('audit', 0);
+            });
           } else if (data.status === 'error' || data.status === 'credits_exhausted') {
             clearInterval(_agentPollTimer);
             _agentPollTimer = null;
-            if (state.entityAudit) state.entityAudit.status = 'agent_error';
-            renderEntityAudit();
-            toast('Agent error: ' + (data.error || data.message || 'Unknown'), 'error');
+            // Same refetch invalidation as the complete branch — surfacing an
+            // agent error might include new last_agent_error_code / retriable /
+            // dispatch_attempts fields that the admin UI wants to show fresh.
+            state.tabLoaded['audit'] = false;
+            ensureTabData('audit').then(function() {
+              toast('Agent error: ' + (data.error || data.message || 'Unknown'), 'error');
+            });
           }
         })
         .catch(function() {
