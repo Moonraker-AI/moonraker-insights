@@ -1856,8 +1856,12 @@ body.contact-locked .autosave-status { display: none !important; }
   function loadGuaranteeData() {
     if (!contact) return;
 
-    // Three states based on plan_type
-    if (!contact.plan_type) {
+    // Teaser only applies pre-checkout (lead/prospect with no plan_type).
+    // SPP-migrated and referral-sourced clients reach onboarding/active with
+    // plan_type still null; they should see the configurator, not the teaser.
+    var isPreCheckout = !contact.plan_type && (contact.status === 'lead' || contact.status === 'prospect');
+
+    if (isPreCheckout) {
       // Pre-checkout: show teaser, hide configurator
       document.getElementById('pgTeaser').style.display = 'block';
       document.getElementById('pgConfigurator').style.display = 'none';
@@ -1867,7 +1871,10 @@ body.contact-locked .autosave-status { display: none !important; }
       return;
     }
 
-    if (contact.plan_type !== 'annual') {
+    // Quarterly/monthly plans: guarantee is annual-only. Null plan_type on
+    // an onboarding/active contact falls through to the configurator below
+    // (intro call is where Scott confirms the plan length).
+    if (contact.plan_type && contact.plan_type !== 'annual') {
       // Quarterly/monthly: show lockout
       document.getElementById('pgConfigurator').style.display = 'none';
       document.getElementById('pgTeaser').style.display = 'none';
