@@ -2236,19 +2236,25 @@ body.contact-locked .autosave-status { display: none !important; }
   function init() {
     applyTextareaGuards();
     // /api/public-onboarding-data replaces the old /api/public-contact +
-    // six direct-REST reads with a single page-token-gated call. We use
-    // mrPageToken.fetch so a mid-session cookie expiry gets a one-shot
-    // refresh-and-retry for free. The response is reshaped into the same
-    // array layout the downstream `.then(allData)` handler already expects.
+    // six direct-REST reads with a single page-token-gated call. The response
+    // is reshaped into the same array layout the downstream `.then(allData)`
+    // handler already expects.
     //
     // page-token.js loads with `defer`, so on a cold load window.mrPageToken
-    // may not exist yet when init() runs. Gate on ready() the same way
-    // endorsements / progress / campaign-summary do. Fall back to Promise.resolve
-    // so a missing helper surfaces downstream as a clean fetch error rather
-    // than a blank "Loading..." screen from a TypeError here.
+    // may not exist yet when init() runs. The previous fix here gated on
+    // ready() but then still called window.mrPageToken.fetch() in the next
+    // .then -- which crashes whenever the helper hasn't loaded yet (real-world
+    // repro: Brave mobile incognito, where inline scripts consistently execute
+    // before the deferred external). Use native fetch with credentials so the
+    // page-token cookie rides along automatically, matching the canonical
+    // pattern in endorsements / progress / campaign-summary. The only thing
+    // we give up is mrPageToken.fetch's one-shot 401-retry-on-cookie-expiry,
+    // which was a defense against long-lived sessions; onboarding pages are
+    // short-lived enough that this is a fair trade for crash-proof init.
     (window.mrPageToken && window.mrPageToken.ready ? window.mrPageToken.ready() : Promise.resolve())
+      .catch(function() { /* surface as HTTP error below if cookie missing */ })
       .then(function() {
-        return window.mrPageToken.fetch('/api/public-onboarding-data?slug=' + encodeURIComponent(CLIENT_SLUG));
+        return fetch('/api/public-onboarding-data?slug=' + encodeURIComponent(CLIENT_SLUG), { credentials: 'same-origin' });
       })
       .then(function(r) {
         if (r.status === 404) return null;
