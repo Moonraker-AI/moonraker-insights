@@ -28,11 +28,11 @@ module.exports = async function handler(req, res) {
 
   if (!event || !slug) return res.status(400).json({ error: 'Missing event or slug' });
 
-  var validEvents = ['payment_received', 'intro_call_complete', 'onboarding_complete', 'referral_partner', 'addon_purchased', 'strategy_call_purchased'];
+  var validEvents = ['payment_received', 'intro_call_complete', 'onboarding_complete', 'referral_partner', 'addon_purchased', 'strategy_call_purchased', 'strategy_call_lead_purchased'];
   if (validEvents.indexOf(event) === -1) return res.status(400).json({ error: 'Invalid event type' });
 
   try {
-    var contact = await sb.one('contacts?slug=eq.' + slug + '&select=id,first_name,last_name,practice_name,email,status,plan_type,plan_amount_cents,city,state_province&limit=1');
+    var contact = await sb.one('contacts?slug=eq.' + slug + '&select=id,first_name,last_name,practice_name,email,phone,website_url,status,plan_type,plan_amount_cents,city,state_province,source&limit=1');
     if (!contact) return res.status(404).json({ error: 'Contact not found' });
 
     var clientName = (contact.first_name || '') + ' ' + (contact.last_name || '');
@@ -77,6 +77,17 @@ module.exports = async function handler(req, res) {
       subject = 'Strategy Call Purchased: ' + clientName.trim();
       headerLabel = 'Strategy Call Purchased';
       content = buildAddonContent(contact, clientName, deepDiveUrl, 'paid_strategy_call', 'Paid Strategy Call');
+
+    } else if (event === 'strategy_call_lead_purchased') {
+      // New flow from /strategy-call landing page. This fires for a lead
+      // who just paid $150 for a 1-hour call with Scott. They've already
+      // been redirected to /strategy-call/success where Scott's calendar
+      // is embedded, so the ideal path is: they book within minutes.
+      // If they don't, Scott reaches out within 24h.
+      var practice = (contact.practice_name || '').trim();
+      subject = 'New Strategy Call Lead: ' + clientName.trim() + (practice ? ' \u2014 ' + practice : '');
+      headerLabel = 'Strategy Call Lead';
+      content = buildStrategyCallLeadContent(contact, clientName, deepDiveUrl);
     }
 
     var htmlBody = email.wrap({
@@ -84,9 +95,17 @@ module.exports = async function handler(req, res) {
       footerNote: 'This is an internal notification for the Moonraker team.'
     });
 
-    var recipients = event === 'referral_partner'
-      ? ['chris@moonraker.ai']
-      : ['support@moonraker.ai', 'scott@moonraker.ai', 'chris@moonraker.ai'];
+    var recipients;
+    if (event === 'referral_partner') {
+      recipients = ['chris@moonraker.ai'];
+    } else if (event === 'strategy_call_lead_purchased') {
+      // Pre-CRM lead: support@ (Karen) handles onboarded clients; for a
+      // lead that just paid for a first call, Scott is the primary owner
+      // with Chris looped in.
+      recipients = ['scott@moonraker.ai', 'chris@moonraker.ai'];
+    } else {
+      recipients = ['support@moonraker.ai', 'scott@moonraker.ai', 'chris@moonraker.ai'];
+    }
 
     var emailResp = await fetch('https://api.resend.com/emails', {
       method: 'POST',
@@ -246,3 +265,30 @@ function buildAddonContent(contact, clientName, deepDiveUrl, tierKey, prettyName
     email.pRaw('<span style="color:#D97706;font-weight:600">Action needed:</span> Coordinate delivery of this add-on outside the CORE campaign pipeline. The payment is already logged in the client record.') +
     email.cta(deepDiveUrl, 'View Client');
 }
+
+// Brand-new lead from /strategy-call landing page. They just paid $150 and
+// have already been redirected to /strategy-call/success where Scott's
+// calendar is embedded — most people will book in minutes. If they don't,
+// Scott reaches out within 24h using the intake details in this email.
+function buildStrategyCallLeadContent(contact, clientName, deepDiveUrl) {
+  var location = [contact.city, contact.state_province].filter(Boolean).join(', ');
+  var currentStatus = (contact.status || 'lead').replace(/\b\w/g, function(c) { return c.toUpperCase(); });
+
+  var rows = [
+    ['Name',      clientName.trim()],
+    ['Practice',  contact.practice_name || ''],
+    ['Email',     contact.email || ''],
+    ['Phone',     contact.phone || ''],
+    ['Website',   contact.website_url || ''],
+    ['Location',  location],
+    ['Source',    contact.source || 'strategy_call'],
+    ['Status',    currentStatus]
+  ];
+
+  return clientHeader(contact, clientName) +
+    email.pRaw('A new lead just paid <strong>$150</strong> for a 1-hour strategy call with Scott. They\'ve been redirected to the success page with the calendar embedded, so most leads book within a few minutes of paying.') +
+    detailTable(rows) +
+    email.pRaw('<span style="color:#D97706;font-weight:600">If no booking within 24 hours:</span> reach out directly using the phone or email above. The $150 momentum fades fast.') +
+    email.cta(deepDiveUrl, 'View Lead in Admin');
+}
+
