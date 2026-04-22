@@ -21,7 +21,7 @@
 // signed_agreements.document_html, so the prices a client agreed to remain
 // visible even after admins edit pricing_tiers.
 //
-// Version: 2026-04-20 (pricing pulled from pricing_tiers + pricing_config)
+// Version: 2026-04-22 (plan rename + 9-point CSA refresh; quarterly_monthly retired)
 
 // Dollar amounts in cents. These mirror the values that were literally hardcoded
 // in this file before 2026-04-20; if /api/pricing is unreachable, the CSA still
@@ -31,7 +31,6 @@ var PRICE_DEFAULTS = {
   annual_quarterly_ach:       500000,
   annual_monthly_ach:         166700,
   quarterly_upfront_ach:      500000,
-  quarterly_monthly_ach:      166700,
   monthly_ach:                200000,
   additional_service_page_ach:     30000,
   additional_service_page_cc:      31050,
@@ -106,8 +105,8 @@ window.buildCSAHtml = function(contactParam, pricingParam) {
     var addr = [contact.practice_address_line1, contact.city, contact.state_province, contact.postal_code, contact.country].filter(Boolean).join(', ');
     var planLabel = 'Per-location CORE Marketing Campaign';
     if (contact.plan_type === 'annual') planLabel = '12-Month CORE Marketing Campaign';
-    else if (contact.plan_type === 'quarterly') planLabel = '3-Month CORE Marketing Campaign';
-    else if (contact.plan_type === 'monthly') planLabel = 'Month-to-Month CORE Marketing Campaign';
+    else if (contact.plan_type === 'quarterly') planLabel = 'Flexible Quarterly CORE Marketing Campaign';
+    else if (contact.plan_type === 'monthly') planLabel = 'Flexible Monthly CORE Marketing Campaign';
 
     var html = '<div class="csa-header">' +
       '<h3>Moonraker Client Service Agreement</h3>' +
@@ -129,7 +128,7 @@ window.buildCSAHtml = function(contactParam, pricingParam) {
       '<p>The complete scope of your specific project is outlined in the Statement of Work section of this Agreement.</p>';
 
     html += '<h4>What Moonraker Does NOT Provide</h4>' +
-      '<p><strong>Website Infrastructure and Hosting:</strong> Website hosting services or server management, ongoing security monitoring, patches, or updates, SSL certificate management, website backups, DNS or domain management, ongoing website maintenance beyond SEO-related updates, or installation and management of website plugins that fall outside our immediate SEO work.</p>' +
+      '<p><strong>Website Infrastructure and Hosting:</strong> Website hosting services or server management, ongoing security monitoring, patches, or updates, SSL certificate management, website backups, DNS or domain management, ongoing website maintenance beyond SEO-related updates, or installation and management of website plugins that fall outside our immediate SEO work. <em>Exception:</em> If Moonraker has built and hosts the Client\'s website on our infrastructure as part of the Annual Upfront plan, Moonraker provides the hosting environment for that site. Hosting of any Client-owned, pre-existing, or externally-built website remains outside our scope.</p>' +
       '<p><strong>Third-Party Platform Management:</strong> Ongoing management, technical support, or troubleshooting for third-party platforms, including: Electronic Health Records (EHR) systems, booking and scheduling platforms, CRM systems, email marketing platforms, payment processing systems, communication tools, practice management software, and any other third-party applications or services.</p>' +
       '<p><em>Important Clarification:</em> When we perform initial setup or configuration of platforms like your booking calendar and communication tools as part of your Statement of Work, this is a one-time implementation. Ongoing management, updates, troubleshooting, or monitoring of these platforms is not included unless explicitly stated in your monthly deliverables.</p>' +
       '<p><strong>HIPAA Compliance and Regulatory Consulting:</strong> Moonraker does not provide legal, compliance, or regulatory consulting services of any kind, including HIPAA compliance guidance or auditing, healthcare regulatory compliance advice, data privacy regulation guidance (GDPR, CCPA, etc.), professional licensing requirements, industry-specific compliance standards, or Business Associate Agreement (BAA) consulting beyond marketing services.</p>';
@@ -162,20 +161,25 @@ window.buildCSAHtml = function(contactParam, pricingParam) {
       '<p>The Client represents and warrants to Moonraker that the Client owns and/or has a legitimate legal license to use for business purposes, all photos, text, artwork, graphics, designs, trademarks, and other materials provided by the Client for Moonraker\'s use, including on the Website, and that the Client has obtained all waivers, authorizations, and other documentation that may be appropriate to evidence such Ownership. The Client shall indemnify and hold Moonraker harmless from all losses and claims, including attorney fees and legal expenses, that may result by reason of claims by third parties related to such materials.</p>';
 
     html += '<h4>Alteration</h4>' +
-      '<p>Terms of this agreement are renegotiable after 90 days. After 12 months, Moonraker rates are subject to change for all services. In the event that the scope of work is required to change due to any of the agreed upon terms in this contract before or after the end of this agreement, Moonraker reserves the right to cancel or renegotiate this Agreement and the Client reserves the right to accept or reject the new terms provided. Any alteration that takes place prior will be agreed upon by both Moonraker and the Client, and new paperwork will be issued for handling in addition to the new rates applied after the alteration.</p>';
+      '<p><strong>Within the committed term.</strong> Clients on annual plans (Annual Upfront, Annual Quarterly, Annual Monthly) are locked into the terms of this Agreement for the full 12-month commitment. No alterations to scope, pricing, or plan structure will be made during that window. Clients on flexible plans (Flexible Quarterly, Flexible Monthly) may request to revisit scope, pricing, or plan structure after 90 days of active service; Moonraker may likewise propose changes after that point.</p>' +
+      '<p><strong>After the committed term.</strong> After 12 months on an annual plan, Moonraker\'s rates and scope are subject to change for all Services. The Client will be notified in writing before any new terms take effect and may accept the new terms, continue on the current plan if still offered, or end the engagement per the Commitment & Cancellation section below.</p>' +
+      '<p><strong>Mutual agreement.</strong> Any alteration permitted above requires written agreement from both parties and a new signed amendment documenting the revised terms. End-of-term non-renewal and early cancellation are governed by Commitment & Cancellation, not this section.</p>';
 
     html += '<h4>Intellectual Property</h4>' +
       '<p><strong>Client Ownership of Deliverables:</strong> Upon completion of the Services and receipt of full payment, the Client shall own all tangible work product and deliverables created specifically for the Client, including but not limited to: the Client\'s website, Google Business Profile, content created for the Client, and data/analytics reports provided to the Client. The Client may continue to use, modify, and maintain these deliverables without additional consent or compensation from Moonraker.</p>' +
       '<p><strong>Moonraker\'s Proprietary Methods:</strong> Moonraker retains all ownership and intellectual property rights to its proprietary processes, methodologies, tools, software, frameworks, and strategic approaches used in delivering the Services. These proprietary methods represent Moonraker\'s competitive advantage and trade secrets.</p>';
 
     html += '<h4>Mutual Confidentiality</h4>' +
-      '<p>Moonraker will not directly share or divulge any type of proprietary or private information of the Client\'s in any form. Moonraker will protect such information and treat it as strictly confidential. This provision shall continue to be effective until the end of the Agreement. The Client shall not at any time or in any manner, either directly or indirectly, use for the personal benefit of the Client, or divulge, or otherwise communicate in any manner any information that is proprietary to Moonraker as it relates to Moonraker\'s proprietary strategy and structure of the Services. Both parties shall continue to hold each other in good faith after the termination of the Agreement.</p>';
+      '<p>Both parties agree to treat the other\'s confidential information with care.</p>' +
+      '<p><strong>Moonraker\'s obligation.</strong> Client information shared with us, including practice details, client lists, financial information, and operational materials, will not be shared with outside parties or used for anything other than delivering the Services.</p>' +
+      '<p><strong>The Client\'s obligation.</strong> Moonraker\'s proprietary methods, strategies, tools, and the internal structure of the Services will not be shared outside the Client\'s organization, used for the Client\'s benefit outside this engagement, or disclosed to third parties.</p>' +
+      '<p>These obligations remain in effect after the Agreement ends.</p>';
 
     html += '<h4>Independent Contractor</h4>' +
       '<p>Moonraker is an independent contractor with respect to its relationship to the Client. Moonraker shall not be deemed, for any purpose, an employee of the Client.</p>';
 
     html += '<h4>Warranty</h4>' +
-      '<p>Moonraker represents and warrants that it has the unencumbered right and power to enter into and perform the Agreement and that Moonraker is not aware of any claims or basis for claims of infringement of any patent, trademark, copyright, trade secret, or contractual or other proprietary rights of third parties in or to any materials included by Moonraker in the Services or trade names related to the Services.</p>';
+      '<p>Moonraker confirms that we have the legal authority to enter into this Agreement and deliver the Services, and that any content, tools, templates, or materials we use in delivering the Services are ours to use. We are not aware of any third-party claims (patent, trademark, copyright, trade secret, or otherwise) that would challenge the Client\'s right to use what we deliver as part of this engagement.</p>';
 
     html += '<h4>Limitation of Liability</h4>' +
       '<p>Under no circumstances shall either party be liable to the other party or any third party for indirect incidental, consequential, special, or exemplary damages (even if that party has been advised of the possibility of such damages), arising from any provision of the Agreement. This includes, but is not limited to, loss of revenue or anticipated profit or lost business, costs of delay or failure of delivery, or liabilities to third parties arising from any source. Interruptions to the Services such as acts of God, war, fire, law, restrictions, and other causes are not at the fault of either the Client or Moonraker at any time.</p>';
@@ -187,8 +191,8 @@ window.buildCSAHtml = function(contactParam, pricingParam) {
       '<p>Neither Moonraker nor any of its employees or agents warrants that the functions contained in the Services will be uninterrupted or error-free. The entire risk as to the quality and performance is with the Client. In no event will Moonraker be liable to the Client or any third party for any claimed damages, including those resulting from service interruptions caused by Acts of God, the Hosting Service or any other circumstances beyond Moonraker\'s reasonable control; any lost profits, lost savings or other incidental, consequential, punitive, or special damages arising out of the operation of or inability to operate the Services; or failure of any service provider, telecommunications carrier, Internet backbone, Internet servers, or the Client\'s site visitor\'s computer or Internet software.</p>';
 
     html += '<h4>Account Access</h4>' +
-      '<p><strong>Client Ownership:</strong> The Client retains primary ownership and control of all accounts, profiles, and digital assets. The Client agrees to grant Moonraker administrator-level access necessary to perform the Services as outlined in this Agreement.</p>' +
-      '<p><strong>Access Requirements:</strong> The Client shall provide and maintain administrator-level access for Moonraker to all relevant accounts and platforms required to deliver the Services. This access must remain active and uninterrupted throughout the duration of the contract.</p>' +
+      '<p><strong>Client Ownership:</strong> The Client retains primary ownership and control of all accounts, profiles, and digital assets. The Client agrees to grant Moonraker administrator-level access (or equivalent ownership or manager-level access where the platform does not offer an administrator role) necessary to perform the Services as outlined in this Agreement.</p>' +
+      '<p><strong>Access Requirements:</strong> The Client shall provide and maintain administrator-level access, or equivalent, for Moonraker to all relevant accounts and platforms required to deliver the Services. This access must remain active and uninterrupted throughout the duration of the contract.</p>' +
       '<p><strong>Access Stability:</strong> Both parties agree not to modify login credentials, revoke access, or change account permissions without prior written notice to the other party. If a password change or access modification is required for security or operational reasons, the initiating party shall provide written notice at least 48 hours in advance when feasible.</p>' +
       '<p><strong>Third-Party Access:</strong> The Client agrees to notify Moonraker in writing before granting account access to any third parties, including other agencies, contractors, consultants, employees, or vendors who will have access to accounts where Moonraker is actively providing Services.</p>' +
       '<p><strong>Service Interference:</strong> If the Client or any third party granted access by the Client takes actions that interfere with Moonraker\'s ability to perform the Services (including but not limited to: modifying code, changing configurations, altering strategies, or revoking necessary permissions), the Client assumes full responsibility for any resulting issues. Moonraker shall not be held liable for outcomes resulting from such interference.</p>';
@@ -218,27 +222,26 @@ window.buildCSAHtml = function(contactParam, pricingParam) {
       '<p>All fees for the Services must be paid in full at the start of the scheduled payment term, known as the Effective Date. The Effective Date of the Services is the date when payment is processed. Fees are determined by the campaign scope and payment term chosen by the Client. The Client\'s chosen plan and payment term are recorded in Moonraker\'s client management system. If payment is not received by the Effective Date, Moonraker reserves the right to withhold any Services for which payment is due.</p>';
 
     html += '<h4>Pricing & Plans</h4>' +
-      '<p>Moonraker offers six pricing options for the CORE Marketing Campaign, grouped by whether a 12-month commitment is included. Annual commitment plans unlock the Performance Guarantee described in the next section; non-commitment plans do not.</p>' +
+      '<p>Moonraker offers five pricing options for the CORE Marketing Campaign, grouped by whether a 12-month commitment is included. Annual plans unlock the Performance Guarantee described in the next section; flexible plans do not.</p>' +
       '<p><strong>Annual Commitment (12 months, Performance Guarantee included):</strong></p>' +
       '<ul>' +
-      '<li><strong>Annual Paid Upfront:</strong> ' + P.price('annual_upfront_ach') + ' one-time. Also includes a custom website built on Moonraker\'s hosting infrastructure.</li>' +
-      '<li><strong>Annual Paid Quarterly:</strong> ' + P.price('annual_quarterly_ach') + ' per quarter, four payments over 12 months.</li>' +
-      '<li><strong>Annual Paid Monthly:</strong> ' + P.price('annual_monthly_ach') + ' per month for 12 months.</li>' +
+      '<li><strong>Annual Upfront:</strong> ' + P.price('annual_upfront_ach') + ' one-time. Also includes a custom website built on Moonraker\'s hosting infrastructure.</li>' +
+      '<li><strong>Annual Quarterly:</strong> ' + P.price('annual_quarterly_ach') + ' per quarter, four payments over 12 months.</li>' +
+      '<li><strong>Annual Monthly:</strong> ' + P.price('annual_monthly_ach') + ' per month for 12 months.</li>' +
       '</ul>' +
-      '<p><strong>No Commitment (Performance Guarantee not included):</strong></p>' +
+      '<p><strong>Flexible (no commitment, Performance Guarantee not included):</strong></p>' +
       '<ul>' +
-      '<li><strong>Quarterly Upfront:</strong> ' + P.price('quarterly_upfront_ach') + ' one-time for three months of service.</li>' +
-      '<li><strong>Quarterly Paid Monthly:</strong> ' + P.price('quarterly_monthly_ach') + ' per month for three months.</li>' +
-      '<li><strong>Month-to-Month:</strong> ' + P.price('monthly_ach') + ' per month, continues until cancelled.</li>' +
+      '<li><strong>Flexible Quarterly:</strong> ' + P.price('quarterly_upfront_ach') + ' one-time for three months of service.</li>' +
+      '<li><strong>Flexible Monthly:</strong> ' + P.price('monthly_ach') + ' per month, continues until cancelled.</li>' +
       '</ul>' +
       '<p>Credit card payments add a ' + P.ccSurchargePct + '% processing fee. ACH and bank transfer payments have no added fee. All prices are in US dollars. The Client\'s chosen plan is recorded in Moonraker\'s client management system at the time of signing.</p>';
 
     html += '<h4>Performance Guarantee</h4>' +
-      '<p>The Performance Guarantee is available exclusively to Clients on an annual commitment plan (Annual Paid Upfront, Annual Paid Quarterly, or Annual Paid Monthly). It is not available on quarterly or month-to-month plans. A sample Signed Performance Guarantee document is available for reference at <a href="https://clients.moonraker.ai/guarantee" target="_blank" rel="noopener">clients.moonraker.ai/guarantee</a>.</p>' +
+      '<p>The Performance Guarantee is available exclusively to Clients on an annual commitment plan (Annual Upfront, Annual Quarterly, or Annual Monthly). It is not available on flexible plans. A sample Signed Performance Guarantee document is available for reference at <a href="https://clients.moonraker.ai/guarantee" target="_blank" rel="noopener">clients.moonraker.ai/guarantee</a>.</p>' +
       '<p><strong>How it works.</strong> After the intro call, the specific benchmark is determined collaboratively between the Client and Moonraker using the Client\'s practice metrics: average client lifetime value, consultation-to-client conversion rate, call-to-consultation rate, and consultation target. Once agreed, the benchmark is captured in a separate <strong>Signed Performance Guarantee</strong> document which both parties sign. That signed document is the controlling instrument for the guarantee terms.</p>' +
       '<p><strong>The guarantee.</strong> If Moonraker does not achieve the agreed benchmark within 12 months from the signing date of the Signed Performance Guarantee, Moonraker will continue delivering the Services at no additional cost until the benchmark is achieved.</p>' +
       '<p><strong>Scope.</strong> The Performance Guarantee counts only consultations originating from organic channels: Google Search, Google Maps, and AI Search. Consultations from paid advertising, referrals, or other sources do not count toward the benchmark. The Client agrees to grant Moonraker access to relevant systems (website analytics and booking platforms) so performance can be tracked accurately.</p>' +
-      '<p>If the Client upgrades from a non-commitment plan to an annual plan mid-engagement, the guarantee becomes available from that point forward and a new Signed Performance Guarantee is issued with the new 12-month window.</p>';
+      '<p>If the Client upgrades from a flexible plan to an annual plan mid-engagement, the guarantee becomes available from that point forward and a new Signed Performance Guarantee is issued with the new 12-month window.</p>';
 
     html += '<h4>Additional Services & Add-ons</h4>' +
       '<p>The following add-on services are available outside the base CORE Marketing Campaign and are billed separately. Availability notes indicate which are restricted to active Clients versus available to anyone.</p>' +
@@ -247,12 +250,13 @@ window.buildCSAHtml = function(contactParam, pricingParam) {
       '<li><strong>Additional Press Release:</strong> ' + P.price('additional_press_release_ach') + ' per release.</li>' +
       '<li><strong>NAP Update (Name, Address, or Phone change with citation rebuild):</strong> ' + P.price('nap_update_ach') + ' per change. Update your practice contact info across your website, local directories, and citation data aggregators.</li>' +
       '</ul>' +
-      '<p>Add-ons purchased by active Clients do not alter the Client\'s plan, commitment terms, or Performance Guarantee. Additional pages purchased as add-ons are built to completion but are not added to the Client\'s tracked keyword set or ongoing reporting scope unless explicitly agreed in writing. Excessive revision requests or work orders outside the Agreement may incur additional fees.</p>';
+      '<p><strong>Availability.</strong> Add-on services are available only to active Clients engaged in a CORE Marketing Campaign under any plan.</p>' +
+      '<p>Add-ons do not alter the Client\'s plan, commitment terms, or Performance Guarantee scope. Additional Service Pages purchased as add-ons are built to completion and deployed live on the Client\'s site, but are not added to the Client\'s tracked keyword set, monthly reporting, or supporting systems such as NEO image distribution, LiveDrive local signal deployment, citation refreshes, or press release syndication. Those remain scoped to the pages included in the base campaign. Excessive revision requests or work orders outside the Agreement may incur additional fees.</p>';
 
     html += '<h4>Commitment & Cancellation</h4>' +
-      '<p><strong>Annual commitment plans.</strong> Clients on annual plans (Annual Paid Upfront, Annual Paid Quarterly, Annual Paid Monthly) agree to a 12-month commitment. The Client may cancel in writing at any time, subject to the early termination fee below. Moonraker will complete all deliverables for the current billing cycle before offboarding.</p>' +
-      '<p><strong>Early termination fee (annual commitments).</strong> If the Client cancels an annual plan before the 12-month commitment is complete, the Client agrees to pay 50% of the remaining unbilled balance on the original plan. Example: a Client on the Annual Paid Quarterly plan who cancels after the first quarterly payment has ' + P.priceExpr('annual_quarterly_ach', 3) + ' in unbilled balance and owes a ' + P.priceExpr('annual_quarterly_ach', 1.5) + ' early termination fee. The Annual Paid Upfront plan has no unbilled balance and therefore no early termination fee; however, amounts already paid under the upfront plan are non-refundable regardless of when cancellation occurs, consistent with the Refund Policy below.</p>' +
-      '<p><strong>Non-commitment plans.</strong> The Quarterly Upfront, Quarterly Paid Monthly, and Month-to-Month plans may be cancelled at any time in writing with no early termination fee. Cancellation takes effect at the end of the current billing period, and Moonraker completes deliverables for that period before offboarding.</p>' +
+      '<p><strong>Annual commitment plans.</strong> Clients on annual plans (Annual Upfront, Annual Quarterly, Annual Monthly) agree to a 12-month commitment. The Client may cancel in writing at any time, subject to the early termination fee below. Moonraker will complete all deliverables for the current billing cycle before offboarding.</p>' +
+      '<p><strong>Early termination fee (annual commitments).</strong> If the Client cancels an annual plan before the 12-month commitment is complete, the Client agrees to pay 50% of the remaining unbilled balance on the original plan. Example: a Client on the Annual Quarterly plan who cancels after the first quarterly payment has ' + P.priceExpr('annual_quarterly_ach', 3) + ' in unbilled balance and owes a ' + P.priceExpr('annual_quarterly_ach', 1.5) + ' early termination fee. The Annual Upfront plan has no unbilled balance and therefore no early termination fee; however, amounts already paid under the upfront plan are non-refundable regardless of when cancellation occurs, consistent with the Refund Policy below.</p>' +
+      '<p><strong>Flexible plans.</strong> Flexible Quarterly and Flexible Monthly plans may be cancelled at any time in writing with no early termination fee. Cancellation takes effect at the end of the current billing period, and Moonraker completes deliverables for that period before offboarding.</p>' +
       '<p><strong>Cancellation process.</strong> Submit a written cancellation request to support@moonraker.ai. For annual commitment cancellations, Moonraker will issue a termination invoice for the early termination fee; the Client\'s recurring subscription (if any) is cancelled once that invoice is paid. All Client-owned assets (website content, copy, images, analytics access, and Google Business Profile ownership) remain with the Client after offboarding.</p>';
 
     html += '<h4>Refund Policy</h4>' +
@@ -280,7 +284,7 @@ window.buildCSAHtml = function(contactParam, pricingParam) {
       '<li>2 posts per month across 4 platforms: Google Business Profile, Facebook, LinkedIn, and Quora</li>' +
       '<li>NEO image creation and distribution across high-authority platforms</li>' +
       '<li>YouTube channel creation and optimization with a curated playlist for your primary specialty</li>' +
-      '<li>Professional endorsement collection and publication on clinician bio pages</li>' +
+      '<li>Professional endorsement system: template, per-clinician collection page, and publication on clinician bio pages. The Client is responsible for requesting endorsements from colleagues on an ongoing basis; Moonraker publishes them as they are submitted.</li>' +
       '<li>Monthly campaign reporting with AI-powered insights</li>' +
       '</ul>';
 
