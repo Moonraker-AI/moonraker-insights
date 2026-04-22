@@ -151,18 +151,16 @@ section { padding: 5rem 0; }
 .pm-btn .pm-title { font-family: 'Outfit', sans-serif; font-weight: 700; font-size: 1rem; margin-bottom: .15rem; }
 .pm-btn .pm-amount { font-size: .875rem; color: rgba(232,245,239,.7); }
 
-/* Intake "saved" state: form stays visible but inputs are dimmed + locked,
-   and a small green "Details saved" banner appears at the top so the user
-   understands why they can't edit it any more. */
-.intake-saved-banner { display: none; align-items: center; justify-content: space-between; gap: 1rem; padding: .75rem 1rem; background: rgba(0,212,126,.1); border: 1px solid rgba(0,212,126,.3); border-radius: 10px; margin-bottom: 1.25rem; color: #E8F5EF; font-size: .875rem; }
-.intake-saved-banner.visible { display: flex; }
-.intake-saved-banner .saved-label { display: flex; align-items: center; gap: .5rem; }
-.intake-saved-banner .saved-label::before { content: '\2713'; color: var(--color-primary); font-weight: 700; font-size: 1rem; }
-.intake-saved-banner .change-link { background: none; border: none; color: var(--color-primary); font-weight: 600; font-size: .8125rem; cursor: pointer; text-decoration: underline; padding: 0; font-family: inherit; }
-.intake-saved-banner .change-link:hover { color: var(--color-primary-hover); }
+/* Intake "locked" state: once submitted, inputs dim + lock so the user can
+   see what they entered but understands this step is done. A tiny inline
+   "Change" link appears at the bottom as the escape hatch. */
 #intakeStep.locked .form-row input { opacity: .55; cursor: not-allowed; pointer-events: none; }
 #intakeStep.locked .form-btn,
 #intakeStep.locked .form-note { display: none; }
+.change-link-wrap { display: none; text-align: center; margin-top: 1rem; }
+#intakeStep.locked .change-link-wrap { display: block; }
+.change-link { background: none; border: none; color: rgba(232,245,239,.5); font-size: .8125rem; cursor: pointer; padding: 0; font-family: inherit; text-decoration: underline; }
+.change-link:hover { color: rgba(232,245,239,.9); }
 
 /* FAQ */
 .faq-list { max-width: 700px; margin: 0 auto; }
@@ -289,10 +287,6 @@ section { padding: 5rem 0; }
 
       <!-- STEP 1: intake -->
       <div id="intakeStep">
-        <div class="intake-saved-banner" id="savedBanner">
-          <span class="saved-label">Details saved</span>
-          <button type="button" class="change-link" onclick="backToIntake()">Change</button>
-        </div>
         <h2>Book Your Strategy Call</h2>
         <p class="form-subtitle">A couple of details before checkout. You&rsquo;ll pick your time with Scott right after payment.</p>
         <div class="form-row form-row-grid">
@@ -328,6 +322,9 @@ section { padding: 5rem 0; }
         <button class="form-btn" id="continueBtn" onclick="submitIntake()">Continue to Payment &rarr;</button>
         <div class="form-error" id="formError"></div>
         <p class="form-note">By continuing, you agree to be contacted about your booking. We never sell your information.</p>
+        <div class="change-link-wrap">
+          <button type="button" class="change-link" onclick="backToIntake()">Change my details</button>
+        </div>
       </div>
 
       <!-- STEP 2: payment picker (slides in below intake after step 1 succeeds) -->
@@ -506,9 +503,9 @@ section { padding: 5rem 0; }
       // that manifests as a twitch toward the top of the form.
       if (typeof continueBtn.blur === 'function') continueBtn.blur();
 
-      // Apply lock + banner + pay-step reveal together so the browser does
-      // one layout/paint pass instead of three. Order matters: pay-step
-      // transition listener is attached first so we don't miss the event.
+      // Apply lock + pay-step reveal together so the browser does one
+      // layout/paint pass instead of two. Order matters: pay-step transition
+      // listener is attached first so we don't miss the event.
       var scrolled = false;
       function scrollToPayOnce() {
         if (scrolled) return;
@@ -524,7 +521,6 @@ section { padding: 5rem 0; }
       payStep.addEventListener('transitionend', onMaxHeightEnd);
 
       intakeStep.classList.add('locked');
-      document.getElementById('savedBanner').classList.add('visible');
       payStep.classList.add('visible');
 
       // Safety net: if transitionend never fires (prefers-reduced-motion
@@ -590,12 +586,11 @@ section { padding: 5rem 0; }
   };
 
   window.backToIntake = function() {
-    // Collapse the pay step, unlock the form, hide the saved banner, and
-    // reset the payment-method selection so the user has a clean slate.
+    // Collapse the pay step, unlock the form, and reset the payment-method
+    // selection so the user has a clean slate.
     document.getElementById('payStep').classList.remove('visible');
     var intakeStep = document.getElementById('intakeStep');
     intakeStep.classList.remove('locked');
-    document.getElementById('savedBanner').classList.remove('visible');
     document.getElementById('continueBtn').disabled = false;
     document.getElementById('continueBtn').textContent = 'Continue to Payment \u2192';
     hideError('formError');
