@@ -466,17 +466,80 @@ module.exports = async function handler(req, res) {
         }
       }
     } else if (metadataProduct === 'strategy_call') {
-      // ── 1-Hour Strategy Call payment (legacy payment-link flow) ──
-      // Log and notify only. Do NOT flip contact.status (a strategy-call
-      // purchaser might be a lead, prospect, or returning active client;
-      // the purchase itself carries no lifecycle signal). Do NOT schedule
-      // an audit. The payments row insert below is the canonical record.
+      // ── 1-Hour Strategy Call payment ──
+      // The contact was created by /api/strategy-call/create-lead BEFORE
+      // Stripe was opened, so `contact` is always a real row by the time
+      // we get here. Do NOT flip contact.status based on this payment alone
+      // (a returning active/onboarding client might mis-click the Buy
+      // button; we'd rather log+alert than regress their status). Do NOT
+      // schedule an audit. The payments row insert below captures the
+      // canonical record of the purchase.
       results.action = 'strategy_call_logged';
+
+      // Upsert the few fields Stripe may have collected that we didn't ask
+      // for on the intake form (email casing, a confirmed phone, billing
+      // city). Only overwrite non-empty values so we don't blank out data
+      // the prospect typed into our own form.
+      try {
+        var cd = session.customer_details || {};
+        var cdPatch = { updated_at: new Date().toISOString() };
+        if (cd.email) {
+          var cdEmail = sanitizer.sanitizeText(cd.email, 200).trim().toLowerCase();
+          if (cdEmail) cdPatch.email = cdEmail;
+        }
+        if (cd.phone) {
+          var cdPhone = sanitizer.sanitizeText(cd.phone, 40);
+          if (cdPhone) cdPatch.phone = cdPhone;
+        }
+        if (cd.address && cd.address.city) {
+          var cdCity = sanitizer.sanitizeText(cd.address.city, 120);
+          if (cdCity) cdPatch.city = cdCity;
+        }
+        // Only PATCH if we have at least one real change beyond updated_at.
+        if (Object.keys(cdPatch).length > 1) {
+          await sb.mutate('contacts?id=eq.' + contact.id, 'PATCH', cdPatch, 'return=minimal');
+        }
+      } catch (upsertErr) {
+        // Non-fatal: we already have the lead, and the Stripe session itself
+        // has the customer data if we ever need to reconcile manually.
+        try {
+          await monitor.logError('stripe-webhook', upsertErr, {
+            client_slug: slug,
+            detail: { stage: 'strategy_call_contact_upsert', session_id: session.id }
+          });
+        } catch (_) { /* don't mask the 200 */ }
+      }
+
+      // Red-flag path: if the buyer is an active or onboarding client, this
+      // is almost certainly a mis-click (they already pay us monthly). Raise
+      // a distinct-subject critical so Chris/Scott can reach out and either
+      // refund or fold the $150 into their next invoice. Automated refund is
+      // intentionally out of scope for session 1.
+      if (contact.status === 'active' || contact.status === 'onboarding') {
+        try {
+          await monitor.critical('stripe-webhook', new Error('Active/onboarding client purchased strategy call'), {
+            client_slug: slug,
+            detail: {
+              stage: 'strategy_call_duplicate_buyer',
+              contact_status: contact.status,
+              session_id: session.id,
+              amount_cents: amountTotal,
+              subject_override: 'DUPLICATE BUYER: active client paid for strategy call (' + slug + ')'
+            }
+          });
+        } catch (_) { /* don't mask the 200 */ }
+        results.duplicate_buyer = true;
+      }
+
+      // Notify the team. New event name (strategy_call_lead_purchased) has
+      // its own builder in notify-team.js tailored to a brand-new lead —
+      // the legacy strategy_call_purchased event still exists as a
+      // pass-through for any in-flight test traffic.
       try {
         var scNotifyResp = await fetchT('https://clients.moonraker.ai/api/notify-team', {
           method: 'POST',
           headers: { 'Content-Type': 'application/json', 'Authorization': 'Bearer ' + (process.env.CRON_SECRET || '') },
-          body: JSON.stringify({ event: 'strategy_call_purchased', slug: slug })
+          body: JSON.stringify({ event: 'strategy_call_lead_purchased', slug: slug })
         }, 15000);
         if (!scNotifyResp.ok) {
           var scNotifyErrBody = '';
@@ -598,4 +661,5 @@ module.exports = async function handler(req, res) {
 // NOTE: This must be assigned AFTER `module.exports = handler` above,
 // otherwise the handler reassignment wipes it out.
 module.exports.config = { api: { bodyParser: false } };
+
 
