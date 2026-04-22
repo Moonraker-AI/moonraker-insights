@@ -104,7 +104,13 @@ window.buildCSAHtml = function(contactParam, pricingParam) {
     var practiceName = contact.practice_name || 'the Client';
     var addr = [contact.practice_address_line1, contact.city, contact.state_province, contact.postal_code, contact.country].filter(Boolean).join(', ');
     var planLabel = 'Per-location CORE Marketing Campaign';
-    if (contact.plan_type === 'annual') planLabel = '12-Month CORE Marketing Campaign';
+    // Prefer the 2D plan schema (plan_tier + billing_cadence) over the legacy
+    // plan_type field. As of 2026-04-22, plan_type is still populated in sync
+    // with the 2D fields, but plan_tier/billing_cadence are the canonical source.
+    if (contact.plan_tier === 'annual') planLabel = '12-Month CORE Marketing Campaign';
+    else if (contact.plan_tier === 'flexible' && contact.billing_cadence === 'quarterly') planLabel = 'Flexible Quarterly CORE Marketing Campaign';
+    else if (contact.plan_tier === 'flexible' && contact.billing_cadence === 'monthly') planLabel = 'Flexible Monthly CORE Marketing Campaign';
+    else if (contact.plan_type === 'annual') planLabel = '12-Month CORE Marketing Campaign';
     else if (contact.plan_type === 'quarterly') planLabel = 'Flexible Quarterly CORE Marketing Campaign';
     else if (contact.plan_type === 'monthly') planLabel = 'Flexible Monthly CORE Marketing Campaign';
 
