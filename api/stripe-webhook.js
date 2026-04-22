@@ -17,6 +17,7 @@ var sb = require('./_lib/supabase');
 var monitor = require('./_lib/monitor');
 var fetchT = require('./_lib/fetch-with-timeout');
 var sanitizer = require('./_lib/html-sanitizer');
+var entityAuditTrigger = require('./_lib/entity-audit-trigger');
 
 function readRawBody(req) {
   return new Promise(function(resolve, reject) {
@@ -508,6 +509,55 @@ module.exports = async function handler(req, res) {
             detail: { stage: 'strategy_call_contact_upsert', session_id: session.id }
           });
         } catch (_) { /* don't mask the 200 */ }
+      }
+
+      // ── Auto-trigger entity audit (2026-04-22) ──
+      // Strategy-call buyers get a free entity audit kicked off immediately
+      // so Scott has visibility data before the call. The agent call inside
+      // createAndTriggerAudit has its own 30s timeout; we don't await on
+      // that timing being fast — Stripe's webhook window is tight but not
+      // that tight, and any transient agent failure lands in
+      // entity_audits.status='agent_error' for cron/process-audit-queue.js
+      // to retry. An audit-trigger exception must never cause the webhook
+      // to return non-2xx: Stripe would retry the webhook and we'd duplicate
+      // the payment-side work. Capture outcome into `results` for logging.
+      try {
+        // Re-fetch the contact so we see the upsert's writes (city/phone from
+        // Stripe) and the create-lead writes (website_url, state_province,
+        // gbp_share_link) that predate this payment.
+        var freshContact = await sb.one(
+          'contacts?id=eq.' + contact.id +
+          '&select=id,slug,first_name,last_name,practice_name,website_url,city,state_province,gbp_share_link&limit=1'
+        );
+        if (freshContact && freshContact.website_url) {
+          var auditResult = await entityAuditTrigger.createAndTriggerAudit({
+            contact: freshContact,
+            website_url: freshContact.website_url,
+            city: freshContact.city,
+            state: freshContact.state_province,
+            gbp_link: freshContact.gbp_share_link,
+            audit_tier: 'free'
+          });
+          results.audit_id = auditResult.audit_id;
+          results.audit_triggered = auditResult.agent_triggered;
+          if (auditResult.agent_error) {
+            results.audit_error = String(auditResult.agent_error).substring(0, 200);
+          }
+        } else {
+          // website_url is required on /strategy-call as of 2026-04-22, so
+          // this path should only fire for pre-expansion leads (before the
+          // form collected a required website). Flag in results so the
+          // payments-log row has a breadcrumb.
+          results.audit_skipped = 'missing_website_url';
+        }
+      } catch (auditErr) {
+        try {
+          await monitor.logError('stripe-webhook', auditErr, {
+            client_slug: slug,
+            detail: { stage: 'strategy_call_audit_trigger', session_id: session.id }
+          });
+        } catch (_) { /* don't mask the 200 */ }
+        results.audit_skipped = 'trigger_threw';
       }
 
       // Red-flag path: if the buyer is an active or onboarding client, this
