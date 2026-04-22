@@ -142,8 +142,10 @@ h1{font-family:'Outfit',sans-serif;font-weight:700;color:var(--color-heading)}
         if (!contacts || contacts.length === 0) return;
         var contact = contacts[0];
 
-        // Flip audit_tier to premium
-        sbPatch('contacts', 'slug=eq.' + slug, { audit_tier: 'premium' });
+        // contacts.audit_tier is flipped server-side by the Stripe webhook
+        // on checkout.session.completed (api/stripe-webhook.js isEntityAudit
+        // branch). The previous client-side sbPatch was silently failing —
+        // anon has the table UPDATE grant but no RLS policy permits it.
 
         // Check for existing entity_audits row (upgrade vs new)
         sbGet('entity_audits?contact_id=eq.' + contact.id + '&order=audit_date.desc&limit=1')
