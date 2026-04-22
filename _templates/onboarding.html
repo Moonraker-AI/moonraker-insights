@@ -915,6 +915,16 @@ body.contact-locked .autosave-status { display: none !important; }
 
       <!-- Annual configurator (shown by default) -->
       <div id="pgConfigurator">
+
+        <!-- Reference-mode banner (shown when commitment_months is 0 / flexible plan) -->
+        <div id="pgReferenceBanner" style="display:none;">
+          <div style="background:rgba(59,130,246,.08);border:1px solid rgba(59,130,246,.25);border-radius:12px;padding:1.5rem;margin-bottom:1.5rem;">
+            <h3 style="margin:0 0 .5rem;color:#3b82f6;font-size:1rem;">This is a reference projection, not a binding guarantee</h3>
+            <p style="color:var(--color-body);margin:0 0 .5rem;font-size:.9375rem;line-height:1.7;">Your current plan is month-to-month or quarterly, so the Performance Guarantee does not apply. Use this section to model what your guarantee would look like if you upgraded to a 12-Month Campaign.</p>
+            <p style="color:var(--color-muted);margin:0;font-size:.875rem;">Want to lock in a binding goal? Reach out to Scott about upgrading.</p>
+          </div>
+        </div>
+
         <p style="color:var(--color-muted);margin-bottom:1.5rem;">Each booked consultation call represents real value based on your practice metrics. Fill in the numbers below and we will calculate your performance benchmark together. These numbers will be finalized on your intro call with Scott.</p>
 
         <div class="form-section">
@@ -997,6 +1007,10 @@ body.contact-locked .autosave-status { display: none !important; }
         <div style="margin-top:1.5rem;">
           <button class="btn btn-primary" id="pgSaveBtn" onclick="saveGuaranteeDraft()" disabled>Save Draft</button>
           <span id="pgSaveStatus" style="margin-left:.75rem;font-size:.8125rem;color:var(--color-muted);"></span>
+          <div id="pgReferenceActions" style="display:none;">
+            <a href="mailto:scott@moonraker.ai?subject=Upgrade%20to%2012-Month%20Campaign" class="btn btn-primary" style="background:var(--color-primary);color:#fff;border:none;padding:.6rem 1.25rem;border-radius:8px;font-weight:600;cursor:pointer;font-size:.875rem;text-decoration:none;display:inline-block;">Ask Scott about upgrading</a>
+            <span style="margin-left:.75rem;font-size:.8125rem;color:var(--color-muted);">This calculator is for reference only, no save needed.</span>
+          </div>
         </div>
       </div>
 
@@ -1853,40 +1867,90 @@ body.contact-locked .autosave-status { display: none !important; }
   // ============================================================
   var guaranteeData = null;
 
+  // Three modes, driven by commitment_months (the single source of truth
+  // after the 2026-04-22 plan restructure). See docs/plan-terminology.md.
+  //   - 'pre':       lead/prospect with no commitment yet -> teaser
+  //                  (also catches null/null unknown data; safe default)
+  //   - 'binding':   commitment_months >= 12 OR legacy plan_type='annual'
+  //                  with null commitment (pre-backfill fallback) -> full
+  //                  configurator with Save Draft + lock-in flow
+  //   - 'reference': explicit 0-month commitment (flexible plan) or legacy
+  //                  plan_type in ('monthly','quarterly') -> non-binding
+  //                  reference calculator with upsell CTA, auto-skip the
+  //                  PG onboarding step so it doesn't block promotion.
+  function pgMode(c) {
+    if (!c) return 'pre';
+    var m = c.commitment_months;
+    var pt = c.plan_type;
+    if (m === 12) return 'binding';
+    // Legacy annual fallback: plan_type='annual' but commitment not backfilled
+    if ((m === null || m === undefined) && pt === 'annual') return 'binding';
+    if (m === 0) return 'reference';
+    if (pt === 'quarterly' || pt === 'monthly') return 'reference';
+    return 'pre';
+  }
+
+  // Idempotent auto-skip: only fires if the step is currently 'pending'.
+  // After the first skip, stepData flips to 'skipped' and this is a no-op.
+  var _autoSkipFired = false;
+  function autoSkipGuaranteeStep() {
+    if (_autoSkipFired) return;
+    if (stepData['performance_guarantee'] !== 'pending') return;
+    _autoSkipFired = true;
+    apiAction('update_record', 'onboarding_steps',
+      [
+        { column: 'contact_id', op: 'eq', value: contact.id },
+        { column: 'step_key',   op: 'eq', value: 'performance_guarantee' }
+      ],
+      { status: 'skipped', completed_at: new Date().toISOString(), notes: 'N/A - flexible plan (no 12-month commitment)' }
+    ).then(function() {
+      stepData['performance_guarantee'] = 'skipped';
+      // Phase 1 trigger will have counted this toward auto-promotion if all
+      // other steps are done. Update nav to reflect new status.
+      buildNav();
+    }).catch(function(err) {
+      console.error('Auto-skip guarantee step failed:', err);
+      _autoSkipFired = false; // allow retry on next render
+    });
+  }
+
   function loadGuaranteeData() {
     if (!contact) return;
 
-    // Teaser only applies pre-checkout (lead/prospect with no plan_type).
-    // SPP-migrated and referral-sourced clients reach onboarding/active with
-    // plan_type still null; they should see the configurator, not the teaser.
-    var isPreCheckout = !contact.plan_type && (contact.status === 'lead' || contact.status === 'prospect');
+    var mode = pgMode(contact);
 
-    if (isPreCheckout) {
-      // Pre-checkout: show teaser, hide configurator
+    if (mode === 'pre') {
+      // Pre-checkout / unknown: show teaser, hide everything else
       document.getElementById('pgTeaser').style.display = 'block';
       document.getElementById('pgConfigurator').style.display = 'none';
       document.getElementById('pgNotAnnual').style.display = 'none';
+      document.getElementById('pgReferenceBanner').style.display = 'none';
       document.getElementById('pgLockedUnsigned').style.display = 'none';
       document.getElementById('pgSigned').style.display = 'none';
       return;
     }
 
-    // Quarterly/monthly plans: guarantee is annual-only. Null plan_type on
-    // an onboarding/active contact falls through to the configurator below
-    // (intro call is where Scott confirms the plan length).
-    if (contact.plan_type && contact.plan_type !== 'annual') {
-      // Quarterly/monthly: show lockout
-      document.getElementById('pgConfigurator').style.display = 'none';
-      document.getElementById('pgTeaser').style.display = 'none';
-      document.getElementById('pgNotAnnual').style.display = 'block';
-      document.getElementById('pgLockedUnsigned').style.display = 'none';
-      document.getElementById('pgSigned').style.display = 'none';
-      return;
-    }
-
-    // Annual: show full configurator
+    // binding + reference: both show the configurator
     document.getElementById('pgTeaser').style.display = 'none';
     document.getElementById('pgNotAnnual').style.display = 'none';
+    document.getElementById('pgConfigurator').style.display = 'block';
+
+    if (mode === 'reference') {
+      // Non-binding reference mode
+      document.getElementById('pgReferenceBanner').style.display = 'block';
+      var saveBtn = document.getElementById('pgSaveBtn');
+      if (saveBtn) saveBtn.style.display = 'none';
+      var refActions = document.getElementById('pgReferenceActions');
+      if (refActions) refActions.style.display = 'block';
+      autoSkipGuaranteeStep();
+    } else {
+      // Binding mode (the original flow)
+      document.getElementById('pgReferenceBanner').style.display = 'none';
+      var saveBtn2 = document.getElementById('pgSaveBtn');
+      if (saveBtn2) saveBtn2.style.display = '';
+      var refActions2 = document.getElementById('pgReferenceActions');
+      if (refActions2) refActions2.style.display = 'none';
+    }
 
     // Pre-fill investment if we know plan_amount_cents
     if (contact.plan_amount_cents) {
