@@ -1,63 +1,55 @@
 // /api/deploy-endorsement-page.js
-// Deploys the endorsement collection page for a client.
+// "Activates" the endorsement collection page for a client.
 //
-// Phase 4 Session 7: now mints an endorsement-scoped page_token for the
-// client and substitutes it into the template's {{PAGE_TOKEN}} placeholder
-// before pushing. The deployed HTML carries the token in a <script> constant
-// which the page's JS reads when POSTing to /api/submit-endorsement.
+// 2026-04-23: This route used to push a per-client copy of
+// _templates/endorsements.html to /<slug>/endorsements/index.html. The
+// template has hydrated from /api/public-contact + the cookie-based
+// page-token flow since C6, so the per-client copy was a byte-for-byte
+// shadow of the live template — which beat the Vercel rewrite for
+// /:slug/endorsements -> /_templates/endorsements and silently masked
+// future template edits.
 //
-// The token binds the page to a specific contact_id for 180 days (per-scope
-// default in _lib/page-token.js). After expiry, redeploy to re-mint.
+// Now: the page is always live at /<slug>/endorsements via the rewrite.
+// This route stays as the admin "activate" button surface (admin/clients/
+// index.html L6044) — it validates the contact exists and returns the
+// public URL. No file write.
+//
+// Response shape unchanged: { success, url, path, contact_id }.
 
-var gh        = require('./_lib/github');
-var auth      = require('./_lib/auth');
-var sb        = require('./_lib/supabase');
-var monitor   = require('./_lib/monitor');
-var pageToken = require('./_lib/page-token');
+var auth    = require('./_lib/auth');
+var sb      = require('./_lib/supabase');
+var monitor = require('./_lib/monitor');
 
 module.exports = async function handler(req, res) {
   if (req.method !== 'POST') return res.status(405).json({ error: 'Method not allowed' });
 
-  // Require authenticated admin
   var user = await auth.requireAdmin(req, res);
   if (!user) return;
-  if (!gh.isConfigured())        return res.status(500).json({ error: 'GITHUB_PAT not configured' });
-  if (!sb.isConfigured())        return res.status(500).json({ error: 'Supabase not configured' });
-  if (!pageToken.isConfigured()) return res.status(500).json({ error: 'PAGE_TOKEN_SECRET not configured' });
+  if (!sb.isConfigured()) return res.status(500).json({ error: 'Supabase not configured' });
 
   var slug = req.body && req.body.slug;
   if (!slug) return res.status(400).json({ error: 'slug required' });
 
   try {
-    // 1. Resolve contact by slug — the token binds to contact_id, not slug,
-    //    so even if a client slug ever changes the token keeps working.
-    var contactRows = await sb.query(
+    var contact = await sb.one(
       'contacts?slug=eq.' + encodeURIComponent(slug) +
       '&select=id,slug&limit=1'
     );
-    if (!contactRows || contactRows.length === 0) {
+    if (!contact) {
       return res.status(404).json({ error: 'Contact not found for slug ' + slug });
     }
-    var contact = contactRows[0];
-
-    // Post-C6: endorsement pages no longer carry baked-in tokens. The deployed
-    // template calls /api/page-token/request on load to mint a cookie. Deploy
-    // the template byte-for-byte.
-    var html = await gh.readTemplate('endorsements.html');
-    var destPath = slug + '/endorsements/index.html';
-    await gh.pushFile(destPath, html, 'Deploy endorsement page for ' + slug);
 
     return res.status(200).json({
       success: true,
       url:  'https://clients.moonraker.ai/' + slug + '/endorsements/',
-      path: destPath,
+      path: slug + '/endorsements/index.html',
       contact_id: contact.id
     });
   } catch (err) {
     monitor.logError('deploy-endorsement-page', err, {
       client_slug: slug,
-      detail: { stage: 'deploy_endorsement' }
+      detail: { stage: 'activate_endorsement' }
     });
-    return res.status(500).json({ error: 'Failed to deploy endorsement page' });
+    return res.status(500).json({ error: 'Failed to activate endorsement page' });
   }
 };
