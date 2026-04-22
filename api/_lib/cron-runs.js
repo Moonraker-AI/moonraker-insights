@@ -90,6 +90,29 @@ async function finish(runId, status, opts) {
 // Auth-failure invocations (401) are logged as 'error' runs. In practice
 // Vercel's signed CRON_SECRET header means that only occurs for an
 // adversary, which is data worth having anyway.
+//
+// 2026-04-22: rewritten to commit the cron_runs completion PATCH BEFORE
+// sending the HTTP response, not after. Vercel halts all processing as
+// soon as a response is sent (confirmed behavior of Vercel Node Functions
+// and Fluid compute — see vercel/vercel#4314 and the waitUntil changelog),
+// so any work in a post-return finally block is not guaranteed to run.
+// The prior design relied on `finally { await finish(runId, ...) }` firing
+// after `return res.status(X).json(...)`, which lost the race on every
+// successful check-surge-blocks run (28/28 silent-fail window on 04-21/22),
+// ~12% of cleanup-stale-runs, and all observed cleanup-rate-limits runs.
+//
+// The new design intercepts res.json so the handler's `return res.status(X)
+// .json(body)` stores body + statusCode instead of flushing. After the
+// handler returns, the wrapper PATCHes cron_runs synchronously, THEN flushes
+// the real response with the captured body. Handlers that use the standard
+// `return res.status(X).json({...})` shape — all 12 withTracking callers at
+// time of writing — continue to work unchanged because our stubbed json()
+// still returns `res`, preserving chaining.
+//
+// Non-intercepted methods (res.send, res.end, res.write) are NOT supported
+// here: if a withTracking'd handler ever uses one of those, the response
+// flushes immediately and we're back in the race. Audited 2026-04-22:
+// zero such usages across the 12 cron handlers.
 function withTracking(name, innerHandler) {
   return async function wrapped(req, res) {
     var runId = await start(name);
@@ -97,50 +120,75 @@ function withTracking(name, innerHandler) {
     // cronRuns.snapshot(req._cronRunId, { queue_depth, oldest_item_age_sec }).
     if (req) req._cronRunId = runId;
 
-    // Capture response body on >=400 so that handlers which catch their own
-    // exceptions and return 500 still propagate a useful error string into
-    // cron_runs.error (previously this column was null whenever the inner
-    // handler swallowed its exception — the common case). The wrapper only
-    // intercepts res.json() since every cron's 4xx/5xx path uses it.
+    // Capture-and-defer shim on res.json. Handler-side semantics are
+    // unchanged: statusCode is set by res.status() before json() is called,
+    // so we just record body + read statusCode at capture time.
     var capturedBody = null;
+    var captured = false;
+    var origJson = null;
     if (res && typeof res.json === 'function') {
-      var origJson = res.json.bind(res);
+      origJson = res.json.bind(res);
       res.json = function(body) {
-        try {
-          if (res.statusCode >= 400) capturedBody = body;
-        } catch (e) { /* never block the response */ }
-        return origJson(body);
+        capturedBody = body;
+        captured = true;
+        return res;
       };
     }
 
     var capturedErr = null;
     try {
-      return await innerHandler(req, res);
+      await innerHandler(req, res);
     } catch (e) {
       capturedErr = e;
-      throw e;
-    } finally {
-      if (runId) {
-        var isError = !!capturedErr || (res && res.statusCode >= 400);
-        var status = isError ? 'error' : 'success';
-        var errForFinish = capturedErr;
-        // No thrown exception but handler responded with >=400 — synthesize
-        // a diagnostic string from the response body so cron_runs.error is
-        // populated (matches the prior behavior's intent, fixes null-error
-        // rows observed for process-audit-queue on 2026-04-21).
-        if (!errForFinish && isError) {
-          var summary = 'HTTP ' + (res.statusCode || '?');
-          if (capturedBody && typeof capturedBody === 'object') {
-            if (capturedBody.error) summary += ': ' + String(capturedBody.error).substring(0, 300);
-            else if (capturedBody.message) summary += ': ' + String(capturedBody.message).substring(0, 300);
-          } else if (typeof capturedBody === 'string') {
-            summary += ': ' + capturedBody.substring(0, 300);
-          }
-          errForFinish = new Error(summary);
-        }
-        await finish(runId, status, { error: errForFinish });
-      }
     }
+
+    // Determine terminal status. Handler-thrown exceptions always count as
+    // error. Handler-returned >=400 statusCodes also count as error (matches
+    // the prior wrapper's intent of catching handlers that swallow their
+    // own exceptions and respond 500).
+    var effectiveStatus = res && res.statusCode ? res.statusCode : (captured ? 200 : 500);
+    var isError = !!capturedErr || effectiveStatus >= 400;
+    var status = isError ? 'error' : 'success';
+
+    // Synthesize an error string for cron_runs.error when none is available
+    // from a thrown exception. Matches the prior behavior for handlers that
+    // catch and respond with 500 — we want cron_runs.error populated with a
+    // useful diagnostic, not left null.
+    var errForFinish = capturedErr;
+    if (!errForFinish && isError) {
+      var summary = 'HTTP ' + effectiveStatus;
+      if (capturedBody && typeof capturedBody === 'object') {
+        if (capturedBody.error) summary += ': ' + String(capturedBody.error).substring(0, 300);
+        else if (capturedBody.message) summary += ': ' + String(capturedBody.message).substring(0, 300);
+      } else if (typeof capturedBody === 'string') {
+        summary += ': ' + capturedBody.substring(0, 300);
+      }
+      errForFinish = new Error(summary);
+    }
+
+    // Commit cron_runs completion FIRST, while Vercel still considers the
+    // function in-flight. finish() is already fault-tolerant — a Supabase
+    // outage logs to stdout but doesn't throw — so this is safe to await
+    // inline on the critical path.
+    if (runId) {
+      await finish(runId, status, { error: errForFinish });
+    }
+
+    // Now flush the actual response.
+    if (captured && origJson) {
+      return origJson(capturedBody);
+    }
+    if (capturedErr) {
+      // Handler threw without sending a response (no res.json intercept
+      // fired). Send a generic 500 so the client sees something.
+      try {
+        if (res && typeof res.status === 'function') res.status(500);
+        if (origJson) return origJson({ error: 'Internal error' });
+      } catch (e) { /* swallow — cron_runs already recorded the failure */ }
+    }
+    // Neither captured nor errored: handler responded via a non-intercepted
+    // path (res.end, res.send, stream, etc.). Nothing to flush. cron_runs
+    // is at least in the correct terminal state.
   };
 }
 
