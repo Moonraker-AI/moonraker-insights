@@ -2240,7 +2240,16 @@ body.contact-locked .autosave-status { display: none !important; }
     // mrPageToken.fetch so a mid-session cookie expiry gets a one-shot
     // refresh-and-retry for free. The response is reshaped into the same
     // array layout the downstream `.then(allData)` handler already expects.
-    window.mrPageToken.fetch('/api/public-onboarding-data?slug=' + encodeURIComponent(CLIENT_SLUG))
+    //
+    // page-token.js loads with `defer`, so on a cold load window.mrPageToken
+    // may not exist yet when init() runs. Gate on ready() the same way
+    // endorsements / progress / campaign-summary do. Fall back to Promise.resolve
+    // so a missing helper surfaces downstream as a clean fetch error rather
+    // than a blank "Loading..." screen from a TypeError here.
+    (window.mrPageToken && window.mrPageToken.ready ? window.mrPageToken.ready() : Promise.resolve())
+      .then(function() {
+        return window.mrPageToken.fetch('/api/public-onboarding-data?slug=' + encodeURIComponent(CLIENT_SLUG));
+      })
       .then(function(r) {
         if (r.status === 404) return null;
         if (!r.ok) throw new Error('public-onboarding-data ' + r.status);
