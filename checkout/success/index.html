@@ -44,8 +44,10 @@ h1{font-family:'Outfit',sans-serif;font-weight:700;color:var(--color-heading)}
 
 <script>
 (function() {
-  var SB_URL = 'https://ofmmwcjhdrhvxxkhcuww.supabase.co';
-  var SB_ANON = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6Im9mbW13Y2poZHJodnh4a2hjdXd3Iiwicm9sZSI6ImFub24iLCJpYXQiOjE3NzQzMjM1NTcsImV4cCI6MjA4OTg5OTU1N30.zMMHW0Fk9ixWjORngyxJTIoPOfx7GFsD4wBV4Foqqms';
+  // This page is landing-only. All database work for both core checkout
+  // and entity-audit checkout is handled server-side by the Stripe
+  // webhook on checkout.session.completed (api/stripe-webhook.js). No
+  // anon-key writes or reads are performed from this page.
 
   var slug = '';
   var checkoutType = '';
@@ -58,20 +60,6 @@ h1{font-family:'Outfit',sans-serif;font-weight:700;color:var(--color-heading)}
   if (!slug) {
     var params = new URLSearchParams(window.location.search);
     slug = params.get('slug') || params.get('client_reference_id') || '';
-  }
-
-  function sbPatch(table, filter, body) {
-    return fetch(SB_URL + '/rest/v1/' + table + '?' + filter, {
-      method: 'PATCH',
-      headers: { 'apikey': SB_ANON, 'Authorization': 'Bearer ' + SB_ANON, 'Content-Type': 'application/json', 'Prefer': 'return=minimal' },
-      body: JSON.stringify(body)
-    });
-  }
-
-  function sbGet(path) {
-    return fetch(SB_URL + '/rest/v1/' + path, {
-      headers: { 'apikey': SB_ANON, 'Authorization': 'Bearer ' + SB_ANON }
-    }).then(function(r) { return r.json(); });
   }
 
   if (!slug) {
