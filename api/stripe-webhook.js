@@ -241,39 +241,44 @@ module.exports = async function handler(req, res) {
         }
       }
 
-      if (contact.status === 'prospect') {
-        // Enriched status flip: set commitment fields in the same PATCH so
-        // Phase 3's PG gate (commitment_months >= 12) works correctly from
-        // the first onboarding page load. Derived from tier_key:
-        //   annual_*           -> annual tier, commit=12
-        //   quarterly_upfront* -> flexible (one-quarter prepay, no commit)
-        //   quarterly_monthly* -> flexible monthly (3 monthly charges, no commit)
-        //   monthly_*          -> flexible monthly (indefinite, no commit)
-        var enrichedPatch = { status: 'onboarding' };
+      // Race-resilient status flip: scope the PATCH by status=prospect at the
+      // PostgREST filter level so concurrent webhook deliveries for the same
+      // session can't each fire the trigger chain. First delivery wins; any
+      // later delivery patches 0 rows and takes the no-op branch below.
+      //
+      // This replaces the older read-then-write gate (`if (contact.status ===
+      // 'prospect')`) which was vulnerable to a TOCTOU race between the
+      // SELECT and the PATCH.
+      var enrichedPatch = { status: 'onboarding' };
 
-        if (tierRowEarly) {
-          var isAnnual = tierRowEarly.billing_term === 'annual';
-          // Normalize billing_cadence for contacts: quarterly_upfront becomes
-          // 'quarterly' (matches canonical Flexible Quarterly), everything
-          // else uses the tier's billing_cadence directly.
-          var normalizedCadence = tierRowEarly.billing_cadence;
-          if (tierKeyEarly.toLowerCase().indexOf('quarterly_upfront') === 0) {
-            normalizedCadence = 'quarterly';
-          }
-          enrichedPatch.plan_tier = isAnnual ? 'annual' : 'flexible';
-          enrichedPatch.billing_cadence = normalizedCadence;
-          enrichedPatch.commitment_months = isAnnual ? 12 : 0;
-          enrichedPatch.commitment_start_at = new Date().toISOString();
-          enrichedPatch.plan_amount_cents = tierRowEarly.amount_cents;
-          enrichedPatch.payment_method = tierRowEarly.payment_method;
-          // Legacy plan_type for backward-compat reads during transition
-          enrichedPatch.plan_type = isAnnual ? 'annual' : (normalizedCadence === 'quarterly' ? 'quarterly' : 'monthly');
+      if (tierRowEarly) {
+        var isAnnual = tierRowEarly.billing_term === 'annual';
+        // Normalize billing_cadence for contacts: quarterly_upfront becomes
+        // 'quarterly' (matches canonical Flexible Quarterly), everything
+        // else uses the tier's billing_cadence directly.
+        var normalizedCadence = tierRowEarly.billing_cadence;
+        if (tierKeyEarly.toLowerCase().indexOf('quarterly_upfront') === 0) {
+          normalizedCadence = 'quarterly';
         }
+        enrichedPatch.plan_tier = isAnnual ? 'annual' : 'flexible';
+        enrichedPatch.billing_cadence = normalizedCadence;
+        enrichedPatch.commitment_months = isAnnual ? 12 : 0;
+        enrichedPatch.commitment_start_at = new Date().toISOString();
+        enrichedPatch.plan_amount_cents = tierRowEarly.amount_cents;
+        enrichedPatch.payment_method = tierRowEarly.payment_method;
+        // Legacy plan_type for backward-compat reads during transition
+        enrichedPatch.plan_type = isAnnual ? 'annual' : (normalizedCadence === 'quarterly' ? 'quarterly' : 'monthly');
+      }
 
-        var flipResult = await sb.mutate('contacts?slug=eq.' + slug, 'PATCH', enrichedPatch);
-        if (!flipResult || flipResult.length === 0) {
-          console.error('stripe-webhook: CRITICAL — status flip to onboarding failed for ' + slug + ', payment ' + (session.payment_intent || session.id));
-        }
+      var flipResult = await sb.mutate(
+        'contacts?slug=eq.' + slug + '&status=eq.prospect',
+        'PATCH',
+        enrichedPatch,
+        'return=representation'
+      );
+      var flipped = Array.isArray(flipResult) && flipResult.length > 0;
+
+      if (flipped) {
         results.action = 'status_flipped_to_onboarding';
         results.previous_status = 'prospect';
         if (tierRowEarly) {
@@ -354,8 +359,11 @@ module.exports = async function handler(req, res) {
           results.setup_audit_schedule_failed = true;
         }
       } else {
+        // Either the contact was never in 'prospect' (already active,
+        // already onboarding, lead, etc.) or a concurrent webhook delivery
+        // won the race and already flipped them. Both are expected.
         results.action = 'no_status_change';
-        results.reason = 'Contact status is ' + contact.status + ', not prospect';
+        results.reason = 'Contact not in prospect at PATCH time (pre-read was: ' + contact.status + ')';
       }
 
       // ── Set cancel_at on committed subscription plans ──
