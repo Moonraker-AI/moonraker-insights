@@ -213,11 +213,21 @@ async function handler(req, res) {
     // well below the cron interval so no real throttling happens in practice.
     // Do NOT clear last_agent_error / last_agent_error_at when flipping —
     // admins want to see "this row errored N minutes ago, now retrying."
+    //
+    // 2026-04-22: filter now includes rows where last_agent_error_at IS NULL.
+    // Previously the filter was a plain `last_agent_error_at=lt.<cutoff>`,
+    // which PostgREST excludes NULL from (NULL comparisons return NULL, not
+    // TRUE). Legacy rows that errored before per-row timestamp instrumentation
+    // (or any row that lands in agent_error without setting last_agent_error_at)
+    // could never match and sat stranded. The `or=(...)` clause below matches
+    // both NULL timestamps and timestamps older than the backoff cutoff.
+    // Angela Gwak (5e56c0c7) was the first caught case; backfilled inline
+    // alongside this deploy so she picks up on the next cron tick.
     var errorBackoffCutoff = new Date(Date.now() - 5 * 60 * 1000).toISOString();
     var errorRows = await sb.query(
       'entity_audits?status=eq.agent_error' +
       '&agent_error_retriable=eq.true' +
-      '&last_agent_error_at=lt.' + encodeURIComponent(errorBackoffCutoff) +
+      '&or=(last_agent_error_at.is.null,last_agent_error_at.lt.' + encodeURIComponent(errorBackoffCutoff) + ')' +
       '&select=id'
     );
     var agentErrorRequeued = 0;
