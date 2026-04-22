@@ -28,15 +28,16 @@ strong{font-weight:600;color:var(--color-heading)}
 
 .header{background:var(--color-navy);padding:2rem 0;position:relative;overflow:hidden}
 .header::before{content:'';position:absolute;top:-60%;right:-10%;width:500px;height:500px;background:radial-gradient(circle,rgba(0,212,126,.08) 0%,transparent 70%);pointer-events:none}
-.header-inner{max-width:860px;margin:0 auto;padding:0 2rem;display:flex;justify-content:space-between;align-items:center}
+.header-inner{max-width:1060px;margin:0 auto;padding:0 3rem;display:flex;justify-content:space-between;align-items:center}
 .header img{height:36px}
 .header-meta p{margin:0;font-size:.8125rem;color:rgba(232,245,239,.45)}
 .header-meta .name{color:#E8F5EF;font-weight:600;font-size:.9375rem}
 
-.container{max-width:860px;margin:0 auto;padding:0 2rem}
+.container{max-width:1060px;margin:0 auto;padding:0 3rem}
+@media (max-width:768px){.container{padding:0 1.5rem}}
 .hero{padding:3rem 0 1.5rem;text-align:center}
 .badge{display:inline-block;background:var(--color-primary-subtle);color:var(--color-primary);font-weight:600;font-size:.7rem;padding:.3rem .75rem;border-radius:100px;letter-spacing:.04em;text-transform:uppercase;margin-bottom:.75rem}
-.hero h1{font-size:2rem;margin-bottom:.5rem;letter-spacing:-0.02em}
+.hero h1{font-size:2.25rem;margin-bottom:.5rem;letter-spacing:-0.02em}
 .hero .subtitle{color:var(--color-muted);font-size:1rem;max-width:620px;margin:0 auto}
 
 .example-notice{background:var(--color-primary-subtle);border-radius:12px;padding:1.5rem;text-align:center;margin:1.5rem 0 2rem}
