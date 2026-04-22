@@ -17,8 +17,12 @@ var sb = require('./_lib/supabase');
 var monitor = require('./_lib/monitor');
 
 // Everything client-facing templates currently read. No internal-only fields:
-// no drive_folder_id, no stripe_customer_id, no lost reason, no raw JSONB
-// internal fields, no server timestamps beyond campaign_start.
+// no drive_folder_id, no stripe_customer_id, no lost_reason or lost_at, no
+// raw JSONB internal fields, no server timestamps beyond campaign_start.
+// `lost` (boolean) IS included: templates gate rendering on status + lost
+// together, and omitting it here caused every client-facing template other
+// than onboarding to silently evaluate `!!contact.lost` as false (latent
+// bug resolved 2026-04-22).
 var SAFE_COLUMNS = [
   'id',
   'slug',
@@ -48,6 +52,7 @@ var SAFE_COLUMNS = [
   'billing_cadence',
   'plan_amount_cents',
   'status',
+  'lost',
   'audit_tier',
   'agreement_signed',
   'agreement_signed_at',
