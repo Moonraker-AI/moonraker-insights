@@ -136,10 +136,12 @@ section { padding: 5rem 0; }
 .form-note { text-align: center; color: rgba(232,245,239,.4); font-size: .8125rem; margin-top: 1rem; }
 .form-error { background: rgba(239,68,68,.15); color: #FF6B6B; font-size: .8125rem; padding: .75rem 1rem; border-radius: 8px; margin-top: 1rem; display: none; }
 
-/* Payment picker (step 2) */
-.pay-step { display: none; }
-.pay-step.visible { display: block; }
-.pay-step h2 { color: #E8F5EF; text-align: center; margin-bottom: .5rem; }
+/* Payment picker (step 2) — slides in below the intake form after step 1
+   succeeds. max-height animation + opacity fade = smooth, no page jump. */
+.pay-step { max-height: 0; opacity: 0; overflow: hidden; transition: max-height .5s ease, opacity .35s ease, margin-top .35s ease; margin-top: 0; }
+.pay-step.visible { max-height: 700px; opacity: 1; margin-top: 2rem; }
+.pay-step-inner { padding-top: 2rem; border-top: 1px solid rgba(255,255,255,.12); }
+.pay-step h2 { color: #E8F5EF; text-align: center; margin-bottom: .5rem; font-size: 1.5rem; }
 .pay-step .step-subtitle { color: rgba(232,245,239,.6); text-align: center; font-size: 1rem; margin-bottom: 2rem; }
 .pm-grid { display: grid; grid-template-columns: 1fr 1fr; gap: .75rem; margin-bottom: 1.25rem; }
 @media (max-width: 480px) { .pm-grid { grid-template-columns: 1fr; } }
@@ -148,8 +150,19 @@ section { padding: 5rem 0; }
 .pm-btn .pm-icon { font-size: 1.75rem; margin-bottom: .4rem; }
 .pm-btn .pm-title { font-family: 'Outfit', sans-serif; font-weight: 700; font-size: 1rem; margin-bottom: .15rem; }
 .pm-btn .pm-amount { font-size: .875rem; color: rgba(232,245,239,.7); }
-.pm-back { display: block; text-align: center; color: rgba(232,245,239,.5); font-size: .8125rem; margin-top: 1rem; background: none; border: none; cursor: pointer; width: 100%; }
-.pm-back:hover { color: rgba(232,245,239,.9); }
+
+/* Intake "saved" state: form stays visible but inputs are dimmed + locked,
+   and a small green "Details saved" banner appears at the top so the user
+   understands why they can't edit it any more. */
+.intake-saved-banner { display: none; align-items: center; justify-content: space-between; gap: 1rem; padding: .75rem 1rem; background: rgba(0,212,126,.1); border: 1px solid rgba(0,212,126,.3); border-radius: 10px; margin-bottom: 1.25rem; color: #E8F5EF; font-size: .875rem; }
+.intake-saved-banner.visible { display: flex; }
+.intake-saved-banner .saved-label { display: flex; align-items: center; gap: .5rem; }
+.intake-saved-banner .saved-label::before { content: '\2713'; color: var(--color-primary); font-weight: 700; font-size: 1rem; }
+.intake-saved-banner .change-link { background: none; border: none; color: var(--color-primary); font-weight: 600; font-size: .8125rem; cursor: pointer; text-decoration: underline; padding: 0; font-family: inherit; }
+.intake-saved-banner .change-link:hover { color: var(--color-primary-hover); }
+#intakeStep.locked .form-row input { opacity: .55; cursor: not-allowed; pointer-events: none; }
+#intakeStep.locked .form-btn,
+#intakeStep.locked .form-note { display: none; }
 
 /* FAQ */
 .faq-list { max-width: 700px; margin: 0 auto; }
@@ -276,6 +289,10 @@ section { padding: 5rem 0; }
 
       <!-- STEP 1: intake -->
       <div id="intakeStep">
+        <div class="intake-saved-banner" id="savedBanner">
+          <span class="saved-label">Details saved</span>
+          <button type="button" class="change-link" onclick="backToIntake()">Change</button>
+        </div>
         <h2>Book Your Strategy Call</h2>
         <p class="form-subtitle">A couple of details before checkout. You&rsquo;ll pick your time with Scott right after payment.</p>
         <div class="form-row form-row-grid">
@@ -313,25 +330,26 @@ section { padding: 5rem 0; }
         <p class="form-note">By continuing, you agree to be contacted about your booking. We never sell your information.</p>
       </div>
 
-      <!-- STEP 2: payment picker -->
+      <!-- STEP 2: payment picker (slides in below intake after step 1 succeeds) -->
       <div class="pay-step" id="payStep">
-        <h2>Choose Your Payment Method</h2>
-        <p class="step-subtitle">One-time $150 payment. You&rsquo;ll book your time with Scott right after.</p>
-        <div class="pm-grid">
-          <div class="pm-btn" id="pmAch" onclick="selectMethod('ach')">
-            <div class="pm-icon">&#127970;</div>
-            <div class="pm-title">Bank Transfer</div>
-            <div class="pm-amount">$150.00 &middot; no fee</div>
+        <div class="pay-step-inner">
+          <h2>Choose Your Payment Method</h2>
+          <p class="step-subtitle">One-time $150 payment. You&rsquo;ll book your time with Scott right after.</p>
+          <div class="pm-grid">
+            <div class="pm-btn" id="pmAch" onclick="selectMethod('ach')">
+              <div class="pm-icon">&#127970;</div>
+              <div class="pm-title">Bank Transfer</div>
+              <div class="pm-amount">$150.00 &middot; no fee</div>
+            </div>
+            <div class="pm-btn" id="pmCc" onclick="selectMethod('cc')">
+              <div class="pm-icon">&#128179;</div>
+              <div class="pm-title">Credit Card</div>
+              <div class="pm-amount">$155.25 &middot; +3.5%</div>
+            </div>
           </div>
-          <div class="pm-btn" id="pmCc" onclick="selectMethod('cc')">
-            <div class="pm-icon">&#128179;</div>
-            <div class="pm-title">Credit Card</div>
-            <div class="pm-amount">$155.25 &middot; +3.5%</div>
-          </div>
+          <button class="form-btn" id="checkoutBtn" onclick="goToCheckout()" disabled>Proceed to Secure Checkout &rarr;</button>
+          <div class="form-error" id="payError"></div>
         </div>
-        <button class="form-btn" id="checkoutBtn" onclick="goToCheckout()" disabled>Proceed to Secure Checkout &rarr;</button>
-        <button class="pm-back" onclick="backToIntake()">&larr; Edit my details</button>
-        <div class="form-error" id="payError"></div>
       </div>
 
     </div>
@@ -477,13 +495,24 @@ section { padding: 5rem 0; }
     .then(function(data) {
       if (!data.slug) throw new Error('Server did not return a slug.');
       leadSlug = data.slug;
-      document.getElementById('intakeStep').style.display = 'none';
+
+      // Lock the intake form in-place (don't hide — the jump was disorienting).
+      // The saved-state banner appears at the top of the form and offers a
+      // "Change" affordance if they need to edit.
+      var intakeStep = document.getElementById('intakeStep');
+      intakeStep.classList.add('locked');
+      document.getElementById('savedBanner').classList.add('visible');
+
+      // Slide the payment panel in below the (now dimmed) intake form.
       var payStep = document.getElementById('payStep');
       payStep.classList.add('visible');
-      // Scroll up a touch so the step-2 header is visible on mobile.
+
+      // Smooth-scroll the pay step into view. Wait a tick so the max-height
+      // transition has a sensible start point to animate from; otherwise the
+      // scroll fires before the element has any height and ends up off-target.
       setTimeout(function() {
-        payStep.scrollIntoView({ behavior: 'smooth', block: 'start' });
-      }, 50);
+        payStep.scrollIntoView({ behavior: 'smooth', block: 'center' });
+      }, 120);
     })
     .catch(function(err) {
       console.error('Intake error:', err);
@@ -543,8 +572,12 @@ section { padding: 5rem 0; }
   };
 
   window.backToIntake = function() {
+    // Collapse the pay step, unlock the form, hide the saved banner, and
+    // reset the payment-method selection so the user has a clean slate.
     document.getElementById('payStep').classList.remove('visible');
-    document.getElementById('intakeStep').style.display = 'block';
+    var intakeStep = document.getElementById('intakeStep');
+    intakeStep.classList.remove('locked');
+    document.getElementById('savedBanner').classList.remove('visible');
     document.getElementById('continueBtn').disabled = false;
     document.getElementById('continueBtn').textContent = 'Continue to Payment \u2192';
     hideError('formError');
@@ -553,6 +586,10 @@ section { padding: 5rem 0; }
     document.getElementById('pmAch').classList.remove('selected');
     document.getElementById('pmCc').classList.remove('selected');
     document.getElementById('checkoutBtn').disabled = true;
+    // Scroll the form title back into view so they don't have to hunt for it.
+    setTimeout(function() {
+      intakeStep.scrollIntoView({ behavior: 'smooth', block: 'start' });
+    }, 60);
   };
 
   // ── ?canceled=1 banner (user came back from Stripe without paying) ──
