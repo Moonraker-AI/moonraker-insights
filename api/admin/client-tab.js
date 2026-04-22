@@ -105,7 +105,7 @@ module.exports = async function(req, res) {
 
       case 'audit': {
         var results = await Promise.all([
-          sb.query('entity_audits?select=id,contact_id,client_slug,status,audit_tier,audit_date,audit_period,audit_scope,score_credibility,score_optimization,score_reputation,score_engagement,variance_score,variance_label,cres_score&contact_id=eq.' + cid + '&order=audit_date.desc'),
+          sb.query('entity_audits?select=id,contact_id,client_slug,status,audit_tier,audit_date,audit_period,audit_scope,score_credibility,score_optimization,score_reputation,score_engagement,variance_score,variance_label,cres_score,created_at,updated_at,loom_url,homepage_url,brand_query,geo_target,agent_task_id,agent_error_retriable,last_agent_error_code,last_agent_error_at&contact_id=eq.' + cid + '&order=audit_date.desc'),
           sb.query('checklist_items?select=*&client_slug=eq.' + s + '&order=sort_order&limit=' + limit + '&offset=' + offset)
         ]);
         data.audits = results[0] || [];
