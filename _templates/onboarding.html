@@ -1145,19 +1145,11 @@ body.contact-locked .autosave-status { display: none !important; }
       .then(function(r) { if (!r.ok) throw new Error(r.status); return r.json(); });
   }
 
-  function sbPatch(table, query, body) {
-    var h = sbHeaders();
-    h['Prefer'] = 'return=representation';
-    return fetch(SB_URL + '/rest/v1/' + table + '?' + query, { method: 'PATCH', headers: h, body: JSON.stringify(body) })
-      .then(function(r) { if (!r.ok) throw new Error(r.status); return r.json(); });
-  }
-
-  function sbPost(table, body) {
-    var h = sbHeaders();
-    h['Prefer'] = 'return=representation';
-    return fetch(SB_URL + '/rest/v1/' + table, { method: 'POST', headers: h, body: JSON.stringify(body) })
-      .then(function(r) { if (!r.ok) throw new Error(r.status); return r.json(); });
-  }
+  // sbPatch + sbPost removed 2026-04-22: all direct anon PostgREST writes on
+  // this surface migrated to /api/onboarding-action (page-token gated, forced
+  // contact_id, field allowlist per table). sbFetch remains for the PG block's
+  // anon reads on performance_guarantees + signed_performance_guarantees,
+  // which go through scoped RLS policies.
 
   // Route through /api/onboarding-action (uses service role key, bypasses RLS).
   // page_token is required — the server verifies it and uses the token's
@@ -1223,7 +1215,8 @@ body.contact-locked .autosave-status { display: none !important; }
     buildNav();
 
     // Update Supabase
-    sbPatch('onboarding_steps', 'contact_id=eq.' + contact.id + '&step_key=eq.' + stepKey,
+    apiAction('update_record', 'onboarding_steps',
+      { contact_id: contact.id, step_key: stepKey },
       { status: 'complete', completed_at: new Date().toISOString() }
     ).then(function() {
       /* step saved */
@@ -1277,7 +1270,8 @@ body.contact-locked .autosave-status { display: none !important; }
     var notes = document.getElementById('access_issue_notes').value.trim();
     if (!notes) { alert('Please describe the issue so we can help on your call.'); return; }
     // Save notes to onboarding_steps for connect_accounts
-    sbPatch('onboarding_steps', 'contact_id=eq.' + contact.id + '&step_key=eq.connect_accounts',
+    apiAction('update_record', 'onboarding_steps',
+      { contact_id: contact.id, step_key: 'connect_accounts' },
       { status: 'in_progress', notes: notes }
     ).then(function() {
       stepData['connect_accounts'] = 'in_progress';
@@ -1488,7 +1482,8 @@ body.contact-locked .autosave-status { display: none !important; }
       buildNav();
 
       // Update onboarding_steps
-      sbPatch('onboarding_steps', 'contact_id=eq.' + contact.id + '&step_key=eq.sign_agreement',
+      apiAction('update_record', 'onboarding_steps',
+        { contact_id: contact.id, step_key: 'sign_agreement' },
         { status: 'complete', completed_at: signedAt });
 
       // Update contact record
@@ -1898,10 +1893,7 @@ body.contact-locked .autosave-status { display: none !important; }
     if (stepData['performance_guarantee'] !== 'pending') return;
     _autoSkipFired = true;
     apiAction('update_record', 'onboarding_steps',
-      [
-        { column: 'contact_id', op: 'eq', value: contact.id },
-        { column: 'step_key',   op: 'eq', value: 'performance_guarantee' }
-      ],
+      { contact_id: contact.id, step_key: 'performance_guarantee' },
       { status: 'skipped', completed_at: new Date().toISOString(), notes: 'N/A - flexible plan (no 12-month commitment)' }
     ).then(function() {
       stepData['performance_guarantee'] = 'skipped';
