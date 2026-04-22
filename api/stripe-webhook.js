@@ -220,13 +220,72 @@ module.exports = async function handler(req, res) {
       }
     } else if (metadataProduct === 'core_marketing_system') {
       // ── CORE Marketing System payment ──
+
+      // Look up tier details ONCE so we can use for both the contact PATCH
+      // (plan_tier/billing_cadence/commitment_months) and the cancel_at logic
+      // below. tier_key comes in as metadata.tier_key e.g. 'annual_monthly_ach'.
+      var tierKeyEarly = (session.metadata && session.metadata.tier_key) || '';
+      var tierRowEarly = null;
+      if (tierKeyEarly) {
+        try {
+          tierRowEarly = await sb.one(
+            'pricing_tiers?product_key=eq.core_marketing&tier_key=eq.' +
+            encodeURIComponent(tierKeyEarly) +
+            '&select=tier_key,amount_cents,payment_method,billing_term,billing_cadence&limit=1'
+          );
+        } catch (tierLookupErr) {
+          await monitor.logError('stripe-webhook', tierLookupErr, {
+            client_slug: slug,
+            detail: { stage: 'tier_lookup_early', tier_key: tierKeyEarly, session_id: session.id }
+          });
+        }
+      }
+
       if (contact.status === 'prospect') {
-        var flipResult = await sb.mutate('contacts?slug=eq.' + slug, 'PATCH', { status: 'onboarding' });
+        // Enriched status flip: set commitment fields in the same PATCH so
+        // Phase 3's PG gate (commitment_months >= 12) works correctly from
+        // the first onboarding page load. Derived from tier_key:
+        //   annual_*           -> annual tier, commit=12
+        //   quarterly_upfront* -> flexible (one-quarter prepay, no commit)
+        //   quarterly_monthly* -> flexible monthly (3 monthly charges, no commit)
+        //   monthly_*          -> flexible monthly (indefinite, no commit)
+        var enrichedPatch = { status: 'onboarding' };
+
+        if (tierRowEarly) {
+          var isAnnual = tierRowEarly.billing_term === 'annual';
+          // Normalize billing_cadence for contacts: quarterly_upfront becomes
+          // 'quarterly' (matches canonical Flexible Quarterly), everything
+          // else uses the tier's billing_cadence directly.
+          var normalizedCadence = tierRowEarly.billing_cadence;
+          if (tierKeyEarly.toLowerCase().indexOf('quarterly_upfront') === 0) {
+            normalizedCadence = 'quarterly';
+          }
+          enrichedPatch.plan_tier = isAnnual ? 'annual' : 'flexible';
+          enrichedPatch.billing_cadence = normalizedCadence;
+          enrichedPatch.commitment_months = isAnnual ? 12 : 0;
+          enrichedPatch.commitment_start_at = new Date().toISOString();
+          enrichedPatch.plan_amount_cents = tierRowEarly.amount_cents;
+          enrichedPatch.payment_method = tierRowEarly.payment_method;
+          // Legacy plan_type for backward-compat reads during transition
+          enrichedPatch.plan_type = isAnnual ? 'annual' : (normalizedCadence === 'quarterly' ? 'quarterly' : 'monthly');
+        }
+
+        var flipResult = await sb.mutate('contacts?slug=eq.' + slug, 'PATCH', enrichedPatch);
         if (!flipResult || flipResult.length === 0) {
           console.error('stripe-webhook: CRITICAL — status flip to onboarding failed for ' + slug + ', payment ' + (session.payment_intent || session.id));
         }
         results.action = 'status_flipped_to_onboarding';
         results.previous_status = 'prospect';
+        if (tierRowEarly) {
+          results.commitment_fields_set = {
+            plan_tier: enrichedPatch.plan_tier,
+            billing_cadence: enrichedPatch.billing_cadence,
+            commitment_months: enrichedPatch.commitment_months
+          };
+        } else {
+          results.commitment_fields_set = null;
+          results.tier_lookup_missed = tierKeyEarly || null;
+        }
 
         // Fire team notification (awaited; monitor.critical on failure).
         // We still return 200 to Stripe even if this fails — Stripe must not
@@ -315,13 +374,19 @@ module.exports = async function handler(req, res) {
       // are logged but do not block the 200 — operators can reapply by
       // rerunning or patching the subscription manually.
       if (session.mode === 'subscription' && session.subscription) {
-        var tierKey = (session.metadata && session.metadata.tier_key) || '';
+        var tierKey = tierKeyEarly;
         if (tierKey) {
           try {
-            var tierRow = await sb.one(
-              'pricing_tiers?product_key=eq.core_marketing&tier_key=eq.' +
-              encodeURIComponent(tierKey) + '&select=billing_term&limit=1'
-            );
+            // Reuse tierRowEarly (loaded at top of core_marketing_system
+            // branch) rather than re-fetching. Falls back to a fresh fetch
+            // only if the early lookup failed.
+            var tierRow = tierRowEarly;
+            if (!tierRow) {
+              tierRow = await sb.one(
+                'pricing_tiers?product_key=eq.core_marketing&tier_key=eq.' +
+                encodeURIComponent(tierKey) + '&select=billing_term&limit=1'
+              );
+            }
             var billingTerm = tierRow && tierRow.billing_term;
             var cancelAt = null;
             if (billingTerm === 'annual')    cancelAt = Math.floor(Date.now()/1000) + 365 * 86400;
