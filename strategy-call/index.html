@@ -128,6 +128,19 @@ section { padding: 5rem 0; }
 .form-row input { width: 100%; background: rgba(255,255,255,.08); border: 1px solid rgba(255,255,255,.12); border-radius: 10px; padding: .75rem 1rem; font-family: 'Inter', sans-serif; font-size: .9375rem; color: #E8F5EF; transition: border-color .2s; }
 .form-row input::placeholder { color: rgba(232,245,239,.3); }
 .form-row input:focus { outline: none; border-color: var(--color-primary); box-shadow: 0 0 0 3px rgba(0,212,126,.15); }
+/* Select field — matches input styling. Custom chevron via background SVG so the native dropdown arrow
+   doesn't clash with the dark theme. appearance:none strips the platform default. */
+.form-row select { width: 100%; background: rgba(255,255,255,.08); border: 1px solid rgba(255,255,255,.12); border-radius: 10px; padding: .75rem 2.5rem .75rem 1rem; font-family: 'Inter', sans-serif; font-size: .9375rem; color: #E8F5EF; transition: border-color .2s; -webkit-appearance: none; -moz-appearance: none; appearance: none; background-image: url("data:image/svg+xml;charset=UTF-8,%3Csvg xmlns='http://www.w3.org/2000/svg' width='12' height='8' viewBox='0 0 12 8'%3E%3Cpath fill='%23E8F5EF' d='M6 8 0 0h12z'/%3E%3C/svg%3E"); background-repeat: no-repeat; background-position: right 1rem center; cursor: pointer; }
+.form-row select:focus { outline: none; border-color: var(--color-primary); box-shadow: 0 0 0 3px rgba(0,212,126,.15); }
+.form-row select option { background: #0A1F3D; color: #E8F5EF; }
+/* Conditional GBP-link row — hidden until "Yes" is selected, no animation to keep layout predictable. */
+.form-row-conditional { display: none; }
+.form-row-conditional.visible { display: block; }
+/* Marketing-consent checkbox — small row at the bottom of the form. Inline label, dim copy, reasonable
+   tap target. Matches the entity-audit styling. */
+.form-consent { display: flex; align-items: flex-start; gap: .625rem; margin-top: 1rem; margin-bottom: .25rem; font-size: .8125rem; color: rgba(232,245,239,.6); line-height: 1.5; cursor: pointer; }
+.form-consent input[type="checkbox"] { margin-top: .2rem; flex-shrink: 0; width: 1rem; height: 1rem; accent-color: var(--color-primary); cursor: pointer; }
+.form-consent span { cursor: pointer; }
 .form-row-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 1rem; }
 @media (max-width: 480px) { .form-row-grid { grid-template-columns: 1fr; } }
 .form-btn { width: 100%; background: var(--color-primary); color: #fff; font-family: 'Outfit', sans-serif; font-weight: 700; font-size: 1.0625rem; padding: .875rem; border-radius: 10px; border: none; cursor: pointer; transition: all .25s; margin-top: .5rem; }
@@ -154,9 +167,11 @@ section { padding: 5rem 0; }
 /* Intake "locked" state: once submitted, inputs dim + lock so the user can
    see what they entered but understands this step is done. A tiny inline
    "Change" link appears at the bottom as the escape hatch. */
-#intakeStep.locked .form-row input { opacity: .55; cursor: not-allowed; pointer-events: none; }
+#intakeStep.locked .form-row input,
+#intakeStep.locked .form-row select { opacity: .55; cursor: not-allowed; pointer-events: none; }
 #intakeStep.locked .form-btn,
-#intakeStep.locked .form-note { display: none; }
+#intakeStep.locked .form-note,
+#intakeStep.locked .form-consent { display: none; }
 .change-link-wrap { display: none; text-align: center; margin-top: 1rem; }
 #intakeStep.locked .change-link-wrap { display: block; }
 .change-link { background: none; border: none; color: rgba(232,245,239,.5); font-size: .8125rem; cursor: pointer; padding: 0; font-family: inherit; text-decoration: underline; }
@@ -313,12 +328,34 @@ section { padding: 5rem 0; }
         </div>
         <div class="form-row">
           <label for="website">Website</label>
-          <input type="url" id="website" placeholder="https://yourpractice.com" autocomplete="url">
+          <input type="url" id="website" placeholder="https://yourpractice.com" autocomplete="url" required>
+        </div>
+        <div class="form-row form-row-grid">
+          <div>
+            <label for="city">City</label>
+            <input type="text" id="city" placeholder="Austin" autocomplete="address-level2">
+          </div>
+          <div>
+            <label for="stateInput">State / Province</label>
+            <input type="text" id="stateInput" placeholder="TX" autocomplete="address-level1">
+          </div>
         </div>
         <div class="form-row">
-          <label for="city">City</label>
-          <input type="text" id="city" placeholder="Austin" autocomplete="address-level2">
+          <label for="hasGbp">Do you have a Google Business Profile?</label>
+          <select id="hasGbp" onchange="toggleGbpLink()" required>
+            <option value="">Select one</option>
+            <option value="yes">Yes</option>
+            <option value="no">No</option>
+          </select>
         </div>
+        <div class="form-row form-row-conditional" id="gbpLinkRow">
+          <label for="gbpLink">Google Business Profile Share Link</label>
+          <input type="url" id="gbpLink" placeholder="https://g.page/...">
+        </div>
+        <label class="form-consent">
+          <input type="checkbox" id="marketingConsent" checked>
+          <span>I agree to receive occasional emails with tips and insights on growing my practice&rsquo;s visibility. You can unsubscribe at any time.</span>
+        </label>
         <button class="form-btn" id="continueBtn" onclick="submitIntake()">Continue to Payment &rarr;</button>
         <div class="form-error" id="formError"></div>
         <p class="form-note">By continuing, you agree to be contacted about your booking. We never sell your information.</p>
@@ -442,6 +479,23 @@ section { padding: 5rem 0; }
     if (el) el.style.display = 'none';
   }
 
+  // ── GBP conditional: show/hide the share-link row when the select flips.
+  // Called from the <select>'s inline onchange — must live on window so the
+  // inline handler can resolve it. Clears the link value on hide so we don't
+  // ship a stale value up with has_gbp='no'.
+  window.toggleGbpLink = function() {
+    var sel = document.getElementById('hasGbp');
+    var row = document.getElementById('gbpLinkRow');
+    var link = document.getElementById('gbpLink');
+    if (!sel || !row) return;
+    if (sel.value === 'yes') {
+      row.classList.add('visible');
+    } else {
+      row.classList.remove('visible');
+      if (link) link.value = '';
+    }
+  };
+
   // ── Step 1: intake submission ──
   window.submitIntake = function() {
     hideError('formError');
@@ -452,18 +506,41 @@ section { padding: 5rem 0; }
     var practice  = document.getElementById('practiceName').value.trim();
     var website   = document.getElementById('website').value.trim();
     var city      = document.getElementById('city').value.trim();
+    var state     = document.getElementById('stateInput').value.trim();
+    var hasGbp    = document.getElementById('hasGbp').value;
+    var gbpLink   = document.getElementById('gbpLink').value.trim();
+    var mcEl      = document.getElementById('marketingConsent');
+    var marketingConsent = !!(mcEl && mcEl.checked);
 
-    if (!firstName || !lastName || !email || !phone) {
-      showError('formError', 'First name, last name, email, and phone are all required.');
+    // Validation mirrors /api/strategy-call/create-lead server-side rules so
+    // the UI catches errors before the round trip. Kept in the same order
+    // as the form fields so error messages point the user's eye to the
+    // first blank/invalid row.
+    if (!firstName || !lastName || !email || !phone || !website) {
+      showError('formError', 'First name, last name, email, phone, and website are all required.');
       return;
     }
     if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email)) {
       showError('formError', 'Please enter a valid email address.');
       return;
     }
-    if (website && !/^https?:\/\/.+\..+/.test(website)) {
+    if (!/^https?:\/\/.+\..+/.test(website)) {
       showError('formError', 'Website URL must start with http:// or https://');
       return;
+    }
+    if (!hasGbp) {
+      showError('formError', 'Please indicate whether you have a Google Business Profile.');
+      return;
+    }
+    if (hasGbp === 'yes') {
+      if (!gbpLink) {
+        showError('formError', 'Please share your Google Business Profile link.');
+        return;
+      }
+      if (!/^https?:\/\/.+\..+/.test(gbpLink)) {
+        showError('formError', 'Google Business Profile link must start with http:// or https://');
+        return;
+      }
     }
 
     var btn = document.getElementById('continueBtn');
@@ -474,13 +551,17 @@ section { padding: 5rem 0; }
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({
-        first_name:    firstName,
-        last_name:     lastName,
-        email:         email,
-        phone:         phone,
-        practice_name: practice,
-        website:       website,
-        city:          city
+        first_name:        firstName,
+        last_name:         lastName,
+        email:             email,
+        phone:             phone,
+        practice_name:     practice,
+        website:           website,
+        city:              city,
+        state:             state,
+        has_gbp:           hasGbp,
+        gbp_link:          gbpLink,
+        marketing_consent: marketingConsent
       })
     })
     .then(function(r) {
