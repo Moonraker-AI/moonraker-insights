@@ -1,0 +1,33 @@
+name: lint
+
+on:
+  pull_request:
+    branches: [main]
+  push:
+    branches: [main]
+
+jobs:
+  client-page-helpers:
+    name: client-page-helpers
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      # Node 20 is Vercel's current runtime for this project. No deps to
+      # install; the lint is a single-file pure-Node script with zero imports
+      # beyond the stdlib.
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+
+      - name: Run client-page-helper lint
+        run: node scripts/lint-client-page-helpers.js
+
+      # If the lint fails, print the protocol so the PR author sees the fix
+      # directly in the log instead of having to click away to docs/.
+      - name: On failure, print protocol
+        if: failure()
+        run: |
+          echo ''
+          echo '--- docs/client-page-helper-protocol.md ---'
+          cat docs/client-page-helper-protocol.md
