@@ -186,6 +186,11 @@ section { padding: 4.5rem 0; }
 .attr-dd-summary li { margin: .2rem 0; }
 .attr-dd-summary strong { color: var(--color-heading); }
 .attr-dd-summary a { color: var(--color-primary); text-decoration: underline; }
+.attr-dd-summary .md-table { width: 100%; border-collapse: collapse; margin: 1rem 0; font-size: .85rem; }
+.attr-dd-summary .md-table th, .attr-dd-summary .md-table td { padding: .55rem .75rem; border-bottom: 1px solid var(--color-border); text-align: left; }
+.attr-dd-summary .md-table th { color: var(--color-muted); font-weight: 600; font-size: .75rem; text-transform: uppercase; letter-spacing: .04em; background: var(--color-bg); }
+.attr-dd-summary .md-table tr:last-child td { border-bottom: none; }
+.attr-dd-summary .md-table td { font-variant-numeric: tabular-nums; }
 .attr-dd-chart { background: var(--color-surface); border: 1px solid var(--color-border); border-radius: 12px; padding: 1.25rem 1.5rem; margin: 1rem 0; }
 .attr-dd-chart.hidden { display: none; }
 .attr-dd-chart h4 { font-size: .875rem; color: var(--color-muted); font-weight: 500; margin: 0 0 .85rem; text-transform: uppercase; letter-spacing: .04em; }
@@ -205,6 +210,9 @@ section { padding: 4.5rem 0; }
 .attr-dd-commentary-body p { margin: .4rem 0; }
 .attr-dd-commentary-body p:first-child { margin-top: 0; }
 .attr-dd-commentary-body p:last-child { margin-bottom: 0; }
+.attr-dd-commentary-body .md-table { width: 100%; border-collapse: collapse; margin: .75rem 0; font-size: .85rem; }
+.attr-dd-commentary-body .md-table th, .attr-dd-commentary-body .md-table td { padding: .5rem .65rem; border-bottom: 1px solid rgba(0,0,0,.08); text-align: left; }
+.attr-dd-commentary-body .md-table th { font-weight: 600; font-size: .75rem; text-transform: uppercase; letter-spacing: .04em; }
 
 /* Striking distance section */
 .striking-intro { display: grid; grid-template-columns: 1fr; gap: 1rem; margin-bottom: 1rem; }
@@ -614,6 +622,39 @@ section { padding: 4.5rem 0; }
           i++;
         }
         out.push('<ol>' + olitems.join('') + '</ol>');
+        continue;
+      }
+      // GFM-style table: header row | divider row | data rows
+      // Header:  | col | col |
+      // Divider: | --- | ---: | (optional :--- left, ---: right, :---: center)
+      if (/^\s*\|.*\|\s*$/.test(line) && i + 1 < lines.length && /^\s*\|[\s:|-]+\|\s*$/.test(lines[i + 1])) {
+        var splitRow = function(r) {
+          return r.replace(/^\s*\|/, '').replace(/\|\s*$/, '').split('|').map(function(c) { return c.trim(); });
+        };
+        var headers = splitRow(lines[i]);
+        var aligns = splitRow(lines[i + 1]).map(function(d) {
+          if (/^:-+:$/.test(d)) return 'center';
+          if (/-+:$/.test(d)) return 'right';
+          if (/^:-+/.test(d)) return 'left';
+          return null;
+        });
+        i += 2;
+        var bodyRows = [];
+        while (i < lines.length && /^\s*\|.*\|\s*$/.test(lines[i])) {
+          bodyRows.push(splitRow(lines[i]));
+          i++;
+        }
+        var thead = '<thead><tr>' + headers.map(function(h, idx) {
+          var a = aligns[idx] ? ' style="text-align:' + aligns[idx] + '"' : '';
+          return '<th' + a + '>' + inline(h) + '</th>';
+        }).join('') + '</tr></thead>';
+        var tbody = '<tbody>' + bodyRows.map(function(r) {
+          return '<tr>' + r.map(function(c, idx) {
+            var a = aligns[idx] ? ' style="text-align:' + aligns[idx] + '"' : '';
+            return '<td' + a + '>' + inline(c) + '</td>';
+          }).join('') + '</tr>';
+        }).join('') + '</tbody>';
+        out.push('<table class="md-table">' + thead + tbody + '</table>');
         continue;
       }
       var para = [line];
