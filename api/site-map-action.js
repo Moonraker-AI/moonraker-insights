@@ -150,12 +150,21 @@ async function actionRenamePage(body, siteMap) {
   var page = await sb.one(
     'site_map_pages?id=eq.' + body.page_id
     + '&site_map_id=eq.' + siteMap.id
-    + '&select=id'
+    + '&select=id,category,url'
   );
   if (!page) return { error: 'Page not found', status: 404 };
 
   var patch = { title: title };
   if (body.notes !== undefined) patch.notes = sanitizeText(body.notes, 2000) || null;
+  // Optional URL update — admin/client can propose a new URL for the page
+  // (e.g. rewrite the slug to match the new SEO target). Empty string clears
+  // it; omitted means "leave as-is".
+  if (body.url !== undefined) {
+    var newUrl = sanitizeText(body.url, 500);
+    // If the value is just a slug (starts with /), or a full URL, accept it.
+    // Empty or null => clear.
+    patch.url = newUrl || null;
+  }
 
   await sb.mutate(
     'site_map_pages?id=eq.' + body.page_id,
