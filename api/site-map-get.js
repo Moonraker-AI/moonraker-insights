@@ -47,11 +47,25 @@ module.exports = async function(req, res) {
   if (!user) return;
 
   var siteMapId = req.query && req.query.site_map_id;
-  if (!isUuid(siteMapId)) {
-    return res.status(400).json({ error: 'site_map_id query param required (uuid)' });
-  }
+  var slug = req.query && req.query.slug;
 
   try {
+    // Resolve site_map_id from slug when provided. Returns the most recent
+    // non-abandoned site_map for that contact.
+    if (!siteMapId && slug && /^[a-z0-9-]+$/.test(slug)) {
+      var contact = await sb.one('contacts?slug=eq.' + encodeURIComponent(slug) + '&select=id&limit=1');
+      if (!contact) return res.status(404).json({ error: 'Contact not found for slug' });
+      var sm = await sb.one(
+        'site_maps?contact_id=eq.' + contact.id
+        + '&status=neq.abandoned&select=id&order=created_at.desc&limit=1'
+      );
+      if (!sm) return res.status(404).json({ error: 'No site_map for this client yet', code: 'no_site_map' });
+      siteMapId = sm.id;
+    }
+
+    if (!isUuid(siteMapId)) {
+      return res.status(400).json({ error: 'site_map_id or slug query param required' });
+    }
     var siteMap = await sb.one(
       'site_maps?id=eq.' + siteMapId
       + '&select=id,contact_id,anonymous_session_id,source_type,status,root_url,'
