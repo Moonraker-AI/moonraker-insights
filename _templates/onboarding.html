@@ -1093,7 +1093,7 @@ body.contact-locked .autosave-status { display: none !important; }
 
 <script src="https://msg.moonraker.ai/js/form_embed.js" type="text/javascript"></script>
 <script>window.__MR_PAGE_SCOPE__ = 'onboarding';</script>
-<script src="/shared/page-token.js" defer></script>
+<script src="/shared/page-token.js"></script>
 <script>
 (function() {
   'use strict';
@@ -2240,18 +2240,15 @@ body.contact-locked .autosave-status { display: none !important; }
     // is reshaped into the same array layout the downstream `.then(allData)`
     // handler already expects.
     //
-    // page-token.js loads with `defer`, so on a cold load window.mrPageToken
-    // may not exist yet when init() runs. The previous fix here gated on
-    // ready() but then still called window.mrPageToken.fetch() in the next
-    // .then -- which crashes whenever the helper hasn't loaded yet (real-world
-    // repro: Brave mobile incognito, where inline scripts consistently execute
-    // before the deferred external). Use native fetch with credentials so the
-    // page-token cookie rides along automatically, matching the canonical
-    // pattern in endorsements / progress / campaign-summary. The only thing
-    // we give up is mrPageToken.fetch's one-shot 401-retry-on-cookie-expiry,
-    // which was a defense against long-lived sessions; onboarding pages are
-    // short-lived enough that this is a fair trade for crash-proof init.
-    (window.mrPageToken && window.mrPageToken.ready ? window.mrPageToken.ready() : Promise.resolve())
+    // page-token.js is loaded synchronously (no defer) so window.mrPageToken
+    // and the in-flight mint POST both exist by the time this inline script
+    // runs. Awaiting .ready() guarantees the mr_pt_onboarding cookie has been
+    // set before the first read fires, avoiding the 401/403-then-refresh-works
+    // race we shipped twice in April 2026 (see client-page-helper-protocol.md
+    // history). Native fetch + credentials:'same-origin' sends the cookie;
+    // we do NOT use window.mrPageToken.fetch because its 401 retry loop would
+    // mask auth regressions.
+    window.mrPageToken.ready()
       .catch(function() { /* surface as HTTP error below if cookie missing */ })
       .then(function() {
         return fetch('/api/public-onboarding-data?slug=' + encodeURIComponent(CLIENT_SLUG), { credentials: 'same-origin' });
