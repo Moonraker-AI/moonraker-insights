@@ -157,7 +157,7 @@ async function handler(req, res) {
     var dispatchingRequeued = 0;
     if (staleDispatching && staleDispatching.length > 0) {
       for (var di = 0; di < staleDispatching.length; di++) {
-        await sb.mutate('entity_audits?id=eq.' + staleDispatching[di].id, 'PATCH', {
+        await sb.mutate('entity_audits?id=eq.' + staleDispatching[di].id + '&status=eq.dispatching', 'PATCH', {
           status: 'queued',
           agent_task_id: null
         }, 'return=minimal');
@@ -180,7 +180,7 @@ async function handler(req, res) {
         // Container restart wiped all in-flight work. Requeue everything immediately.
         requeueReason = 'agent_idle_with_running_audits';
         for (var i = 0; i < runningAudits.length; i++) {
-          await sb.mutate('entity_audits?id=eq.' + runningAudits[i].id, 'PATCH', {
+          await sb.mutate('entity_audits?id=eq.' + runningAudits[i].id + '&status=eq.agent_running', 'PATCH', {
             status: 'queued',
             agent_task_id: null
           }, 'return=minimal');
@@ -190,7 +190,7 @@ async function handler(req, res) {
         // Agent unreachable. Requeue all so they retry once it comes back.
         requeueReason = 'agent_unreachable';
         for (var i = 0; i < runningAudits.length; i++) {
-          await sb.mutate('entity_audits?id=eq.' + runningAudits[i].id, 'PATCH', {
+          await sb.mutate('entity_audits?id=eq.' + runningAudits[i].id + '&status=eq.agent_running', 'PATCH', {
             status: 'queued',
             agent_task_id: null
           }, 'return=minimal');
@@ -384,7 +384,8 @@ async function handler(req, res) {
         geo_target: audit.geo_target || '',
         gbp_link: audit.gbp_share_link || '',
         client_slug: audit.client_slug
-      })
+      }),
+      signal: AbortSignal.timeout(30000)
     });
 
     if (!agentResp.ok) {

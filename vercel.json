@@ -199,6 +199,9 @@
       "maxDuration": 120,
       "memory": 1024
     },
+    "api/cron/process-audit-queue.js": {
+      "maxDuration": 60
+    },
     "api/campaign-summary.js": {
       "maxDuration": 300,
       "memory": 1024

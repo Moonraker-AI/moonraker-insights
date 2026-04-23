@@ -13,6 +13,7 @@ var auth = require('../_lib/auth');
 var sb = require('../_lib/supabase');
 var monitor = require('../_lib/monitor');
 var cronRuns = require('../_lib/cron-runs');
+var fetchT = require('../_lib/fetch-with-timeout');
 
 async function handler(req, res) {
   // Auth: admin JWT, CRON_SECRET, or AGENT_API_KEY (timing-safe)
@@ -118,7 +119,7 @@ async function handler(req, res) {
       }).join('');
 
       try {
-        var emailResp = await fetch('https://api.resend.com/emails', {
+        var emailResp = await fetchT('https://api.resend.com/emails', {
           method: 'POST',
           headers: { 'Authorization': 'Bearer ' + resendKey, 'Content-Type': 'application/json' },
           body: JSON.stringify({
@@ -140,7 +141,7 @@ async function handler(req, res) {
               '<p style="margin-top:16px;"><a href="https://clients.moonraker.ai/admin/audits" style="color:#00D47E;">View in Admin</a></p>' +
               '</div>'
           })
-        });
+        }, 15000);
         if (!emailResp.ok) {
           var errBody = '';
           try { errBody = await emailResp.text(); } catch (e) {}

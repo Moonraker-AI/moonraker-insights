@@ -8,6 +8,7 @@ var email = require('../_lib/email-template');
 var sb = require('../_lib/supabase');
 var monitor = require('../_lib/monitor');
 var cronRuns = require('../_lib/cron-runs');
+var fetchT = require('../_lib/fetch-with-timeout');
 
 async function handler(req, res) {
   if (req.method !== 'POST' && req.method !== 'GET') {
@@ -116,7 +117,7 @@ module.exports = cronRuns.withTracking('process-followups', handler);
 
 async function sendFollowupEmail(resendKey, contact, followup, fromAddress) {
   try {
-    var emailResp = await fetch('https://api.resend.com/emails', {
+    var emailResp = await fetchT('https://api.resend.com/emails', {
       method: 'POST',
       headers: { 'Authorization': 'Bearer ' + resendKey, 'Content-Type': 'application/json' },
       body: JSON.stringify({
@@ -127,7 +128,7 @@ async function sendFollowupEmail(resendKey, contact, followup, fromAddress) {
         subject: followup.subject,
         html: followup.body_html
       })
-    });
+    }, 15000);
     var emailData = null;
     try { emailData = await emailResp.json(); } catch (e) {}
     if (!emailResp.ok || !emailData || !emailData.id) {

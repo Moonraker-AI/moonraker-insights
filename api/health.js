@@ -5,6 +5,11 @@ var sb = require('./_lib/supabase');
 var auth = require('./_lib/auth');
 
 module.exports = async function handler(req, res) {
+  if (req.method !== 'GET' && req.method !== 'HEAD') {
+    res.setHeader('Allow', 'GET, HEAD');
+    return res.status(405).json({ error: 'Method not allowed' });
+  }
+
   // Require admin or internal auth to prevent info disclosure
   var user = await auth.requireAdminOrInternal(req, res);
   if (!user) return;

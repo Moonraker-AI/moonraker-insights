@@ -5,7 +5,7 @@
 // grow unbounded at ~1 row per unique (ip, route) pair that hits any limited
 // endpoint.
 //
-// Scheduled in vercel.json: "0 6 * * *" (06:00 UTC daily).
+// Scheduled in vercel.json: "30 6 * * *" (06:30 UTC daily).
 // Auth: CRON_SECRET / admin JWT / AGENT_API_KEY via requireAdminOrInternal.
 
 var auth = require('../_lib/auth');

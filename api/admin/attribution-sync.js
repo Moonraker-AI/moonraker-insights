@@ -30,14 +30,10 @@ module.exports = async function handler(req, res) {
   }
 
   // CRON_SECRET path OR admin JWT path — the cron calls sync_now directly.
-  var isCron = false;
-  var authHeader = req.headers.authorization || '';
-  if (process.env.CRON_SECRET && authHeader === 'Bearer ' + process.env.CRON_SECRET) {
-    isCron = true;
-  } else {
-    var user = await auth.requireAdmin(req, res);
-    if (!user) return;
-  }
+  // requireAdminOrInternal handles both via constant-time comparison.
+  var user = await auth.requireAdminOrInternal(req, res);
+  if (!user) return;
+  var isCron = user.role === 'internal' || user.role === 'agent';
 
   var body = req.body || {};
   var action = body.action;
