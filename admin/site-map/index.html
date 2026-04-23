@@ -13,7 +13,16 @@
 <style>
   body { margin: 0; background: var(--color-bg); color: var(--color-body); font-family: Inter, -apple-system, sans-serif; }
 
-  .topbar { position: sticky; top: 0; z-index: 100; background: var(--color-surface); border-bottom: 1px solid var(--color-border); padding: 0 2rem; height: 56px; display: flex; align-items: center; gap: 1rem; }
+  /* Navy header — mirrors client-facing template */
+  .navy-header { background: var(--color-navy); padding: 1.1rem 0; position: relative; overflow: hidden; }
+  .navy-header::before { content: ''; position: absolute; top: -60%; right: -10%; width: 500px; height: 500px; background: radial-gradient(circle, rgba(0,212,126,.08) 0%, transparent 70%); pointer-events: none; }
+  .navy-inner { max-width: 1400px; margin: 0 auto; padding: 0 2rem; display: flex; justify-content: space-between; align-items: center; gap: 1rem; }
+  .navy-inner img { height: 28px; }
+  .navy-meta { text-align: right; }
+  .navy-meta .label { color: #E8F5EF; font-weight: 600; font-size: .9rem; font-family: 'Outfit', sans-serif; margin: 0; }
+  .navy-meta .sub { font-size: .72rem; color: rgba(232,245,239,.55); margin: .15rem 0 0; }
+
+  .topbar { position: sticky; top: 0; z-index: 100; background: var(--color-surface); border-bottom: 1px solid var(--color-border); padding: 0 2rem; height: 52px; display: flex; align-items: center; gap: 1rem; }
   .topbar-title { font-family: 'Outfit', sans-serif; font-weight: 600; font-size: 1rem; color: var(--color-heading); }
   .topbar-meta { font-size: .78rem; color: var(--color-muted); }
   .topbar-right { display: flex; align-items: center; gap: .75rem; margin-left: auto; }
@@ -46,10 +55,10 @@
 
   /* ── Tree view ─────────────────────────────────────────────── */
   .tree-card {
-    background: var(--color-surface);
-    border: 1px solid var(--color-border);
-    border-radius: 14px;
-    padding: 1.5rem 1.25rem;
+    background: transparent;
+    border: none;
+    border-radius: 0;
+    padding: 1.25rem .25rem;
     overflow-x: auto;
     overflow-y: hidden;
     margin-bottom: 1.25rem;
@@ -325,12 +334,19 @@
 </head>
 <body>
 
+<div class="navy-header">
+  <div class="navy-inner">
+    <a href="/admin"><img src="/assets/logo.png" alt="Moonraker"></a>
+    <div class="navy-meta">
+      <p class="label">Site Map Configurator</p>
+      <p class="sub" id="navy-sub">Loading…</p>
+    </div>
+  </div>
+</div>
+
 <div class="topbar">
   <a id="backLink" href="/admin/clients/" class="btn btn-ghost btn-sm">← Clients</a>
-  <div>
-    <div class="topbar-title" id="tb-title">Site Map Configurator</div>
-    <div class="topbar-meta" id="tb-meta">Loading…</div>
-  </div>
+  <div class="topbar-meta" id="tb-meta" style="font-size:.78rem;color:var(--color-muted);"></div>
   <div class="topbar-right">
     <label class="toggle-noise">
       <input type="checkbox" id="showAllToggle"> Show all categories
@@ -371,8 +387,8 @@
         <div class="url-preview">
           <span class="preview-label">Preview:</span><span class="preview-path" id="add-url-preview">/your-page</span>
         </div>
-        <input type="text" class="form-input" id="add-url" placeholder="(auto-generated from title)" style="margin-top:.5rem">
-        <div class="field-help">Leave blank to auto-generate from the title above.</div>
+        <input type="text" class="form-input" id="add-url" placeholder="Override the auto-generated path here (optional)" style="margin-top:.5rem">
+        <div class="field-help">By default the URL comes from the title above. Type here to override.</div>
       </div>
       <div class="field-group">
         <label class="field-label">Notes (optional)</label>
@@ -429,6 +445,14 @@
   };
   // Pages with these statuses count toward the highlight target.
   var HIGHLIGHTED_STATUSES = ['existing_keep', 'existing_update', 'new', 'drafting'];
+
+  // Friendly labels for site_maps.source_type. The DB enum values stay as
+  // core_existing / core_new / standalone but the UI uses these names.
+  var SOURCE_TYPE_LABELS = {
+    core_existing: 'CORE Tune-up',
+    core_new:      'CORE Build',
+    standalone:    'Site Build'
+  };
 
   // Placeholder copy for the "Add page" modal — category-aware so the
   // suggested keyword pattern matches the page type.
@@ -614,8 +638,10 @@
 
   function render() {
     var sm = state.site_map;
-    document.getElementById('tb-title').textContent = 'Site Map Configurator';
-    document.getElementById('tb-meta').textContent = sm.source_type.replace('_', ' ') + ' • ' + sm.status;
+    var sourceLabel = SOURCE_TYPE_LABELS[sm.source_type] || sm.source_type.replace('_', ' ');
+    var statusLabel = sm.status.replace('_', ' ');
+    document.getElementById('tb-meta').textContent = (SLUG ? SLUG + ' • ' : '') + sourceLabel + ' • ' + statusLabel;
+    document.getElementById('navy-sub').textContent = (SLUG || sm.id.slice(0, 8)) + ' • ' + sourceLabel;
     if (SLUG) {
       document.getElementById('backLink').href = '/admin/clients?slug=' + encodeURIComponent(SLUG);
       document.getElementById('backLink').textContent = '← ' + SLUG;
@@ -623,14 +649,13 @@
     var content = document.getElementById('content');
     content.innerHTML = '';
 
-    // Header card
+    // Header card — root URL + status chip + source tag (no internal site-map ID)
     var hdr = el('div', { class: 'header-card' }, [
-      el('div', {}, [
-        el('h1', {}, sm.root_url || '(no root URL set)'),
-        el('div', { class: 'root-url' }, 'Site map ' + sm.id.slice(0, 8) + '…')
+      el('div', { style: 'flex:1;min-width:0' }, [
+        el('h1', {}, sm.root_url || '(no root URL set)')
       ]),
-      el('span', { class: 'status-chip status-' + sm.status }, sm.status.replace('_', ' ')),
-      el('span', { class: 'source-tag' }, sm.source_type.replace('_', ' '))
+      el('span', { class: 'status-chip status-' + sm.status }, statusLabel),
+      el('span', { class: 'source-tag' }, sourceLabel)
     ]);
     content.appendChild(hdr);
 
@@ -897,12 +922,12 @@
       ]),
       el('input', {
         type: 'text', class: 'form-input', id: 'detail-url-input',
-        placeholder: '(leave blank to auto-generate from title above)',
+        placeholder: 'Override the auto-generated path here (optional)',
         value: initialProposed,
         style: 'margin-top:.5rem',
         oninput: function() { updateProposedUrlPreview(p); }
       }),
-      el('div', { class: 'field-help' }, 'Only the URL path is editable here (e.g. /couples-therapy). Used when relaunching the page on the new site.')
+      el('div', { class: 'field-help' }, 'By default the URL comes from the title above. Type here to override. Used when relaunching on the new site.')
     ]));
 
     // Notes
@@ -1109,7 +1134,7 @@
     titleEl.value = '';
     titleEl.setAttribute('placeholder', ph.title);
     urlEl.value = '';
-    urlEl.setAttribute('placeholder', '(auto from title, e.g. ' + ph.url + ')');
+    urlEl.setAttribute('placeholder', 'Override the auto-generated path here (optional)');
     document.getElementById('add-notes').value = '';
     document.getElementById('add-cat-label').textContent = 'Add ' + (CATEGORY_LABELS[cat] || cat).toLowerCase();
     document.getElementById('add-modal-title').textContent = 'New ' + (CATEGORY_LABELS[cat] || cat).toLowerCase().replace(/s$/, '');
