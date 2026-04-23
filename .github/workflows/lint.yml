@@ -44,3 +44,21 @@ jobs:
       - name: Run no-shadowing-deploys lint
         run: node scripts/lint-no-shadowing-deploys.js
 
+  api-cache-vs-auth:
+    name: api-cache-vs-auth
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+
+      # Catches Vercel-edge-cache vs auth mismatches: any api/*.js that calls
+      # pageToken.verify / requireAdmin / etc AND sets a cacheable
+      # Cache-Control header on its success path. Vercel's edge does not
+      # Vary on Cookie, so `public, s-maxage=3600` on an auth-gated route
+      # leaks one user's response to subsequent unauthenticated callers.
+      # Found in production on /api/campaign-summary on 2026-04-23.
+      - name: Run api-cache-vs-auth lint
+        run: node scripts/lint-api-cache-vs-auth.js
