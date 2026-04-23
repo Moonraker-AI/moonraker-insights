@@ -337,10 +337,21 @@
   .empty-msg, .loading-msg { text-align: center; padding: 2.5rem 1rem; color: var(--color-muted); font-size: .88rem; }
   .empty-msg h3 { font-family: 'Outfit', sans-serif; font-size: 1rem; color: var(--color-heading); margin: 0 0 .5rem; }
 
-  .toast { position: fixed; top: 1rem; right: 1rem; background: var(--color-surface); border: 1px solid var(--color-border); border-radius: 10px; padding: .75rem 1rem; box-shadow: 0 8px 24px rgba(0,0,0,.1); font-size: .82rem; z-index: 2000; opacity: 0; transform: translateX(110%); transition: all .2s; max-width: 380px; }
-  .toast.show { opacity: 1; transform: translateX(0); }
-  .toast.err { border-color: rgba(239,68,68,.3); color: var(--color-danger); }
-  .toast.ok { border-color: rgba(0,212,126,.3); color: var(--color-success); }
+  /* Toast — canonical design-system pattern: top-center, solid fill, white text */
+  .toast {
+    position: fixed; top: 1.25rem; left: 50%; transform: translateX(-50%);
+    padding: .65rem 1.25rem; border-radius: 10px;
+    font-size: .82rem; font-weight: 500;
+    box-shadow: 0 4px 16px rgba(0,0,0,.15);
+    opacity: 0; pointer-events: none;
+    transition: opacity .3s;
+    max-width: min(520px, 90vw); width: max-content;
+    text-align: center; line-height: 1.4;
+    z-index: 10000;
+  }
+  .toast.show { opacity: 1; pointer-events: auto; }
+  .toast.ok  { background: var(--color-primary); color: #fff; }
+  .toast.err { background: var(--color-danger);  color: #fff; }
 </style>
 </head>
 <body>
