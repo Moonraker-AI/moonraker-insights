@@ -703,6 +703,7 @@ async function pullAttributionInsights(contactId) {
       summary_markdown: row.summary_markdown || null,
       client_commentary_markdown: row.client_commentary_markdown || null,
       source_mix: Array.isArray(row.source_mix_json) ? row.source_mix_json : null,
+      monthly_by_source: Array.isArray(row.monthly_by_source_json) ? row.monthly_by_source_json : null,
       data_period_start: row.data_period_start || null,
       data_period_end: row.data_period_end || null,
       data_source_note: row.data_source_note || null,
