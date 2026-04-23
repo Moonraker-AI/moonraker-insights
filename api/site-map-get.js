@@ -36,6 +36,10 @@ var PLAN_LIMITS = {
 };
 
 var REMOVED_STATUSES = ['existing_remove'];
+// Pages that count toward the plan cap. Discovered pages are inventory awaiting
+// triage and don't count; once the admin/client commits to keep/update/draft/new
+// they enter the highlighted set.
+var HIGHLIGHTED_STATUSES = ['existing_keep', 'existing_update', 'new', 'drafting'];
 
 function isUuid(s) {
   return typeof s === 'string' && /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(s);
@@ -128,9 +132,11 @@ module.exports = async function(req, res) {
       }
       pagesByCategory[cat].push(enriched);
 
-      if (!counts[cat]) counts[cat] = { active: 0, removed: 0, cap: null };
+      if (!counts[cat]) counts[cat] = { active: 0, removed: 0, highlighted: 0, discovered: 0, cap: null };
       if (REMOVED_STATUSES.indexOf(p.status) !== -1) counts[cat].removed += 1;
       else counts[cat].active += 1;
+      if (HIGHLIGHTED_STATUSES.indexOf(p.status) !== -1) counts[cat].highlighted += 1;
+      if (p.status === 'discovered') counts[cat].discovered += 1;
     }
 
     // Decorate counts with the plan cap
