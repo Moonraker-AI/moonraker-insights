@@ -30,6 +30,20 @@ var auth = require('./_lib/auth');
 // user-navigable).
 var EXCLUDED_CATEGORIES_FROM_CONFIGURATOR = ['thank_you'];
 
+function deriveNameFromUrl(u) {
+  try {
+    var pathname = new URL(u).pathname || '';
+    var segs = pathname.split('/').filter(Boolean);
+    if (!segs.length) return null;
+    var last = segs[segs.length - 1];
+    var spaced = last.replace(/[-_]+/g, ' ').trim();
+    if (!spaced) return null;
+    return spaced.split(/\s+/).map(function(w) {
+      return w.charAt(0).toUpperCase() + w.slice(1);
+    }).join(' ').slice(0, 200);
+  } catch (_) { return null; }
+}
+
 module.exports = async function(req, res) {
   if (req.method !== 'POST') return res.status(405).json({ error: 'Method not allowed' });
   var user = await auth.requireAdminOrInternal(req, res);
@@ -165,6 +179,7 @@ module.exports = async function(req, res) {
       var bioRows = newBioUrls.map(function(u, idx) {
         return {
           contact_id: contact.id,
+          therapist_name: deriveNameFromUrl(u) || 'New Therapist',
           // Primary flag: only if no existing bio is already primary AND this
           // is the first newly-created row.
           is_primary: (existingBios.length === 0 && idx === 0),
