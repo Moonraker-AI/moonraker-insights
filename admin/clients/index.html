@@ -1274,6 +1274,56 @@
             <p style="margin:.35rem 0 0;font-size:.78rem;">Click <strong>+ Add period</strong> to record the first baseline or campaign period.</p>
           </div>
         </div>
+
+        <!-- Attribution deep-dive card -->
+        <div class="card" style="margin-top:1rem;">
+          <div class="card-header" style="display:flex;justify-content:space-between;align-items:flex-start;gap:1rem;">
+            <div>
+              <h3>Attribution deep dive</h3>
+              <p style="font-size:.78rem;color:var(--color-muted);margin:.25rem 0 0;max-width:60ch;line-height:1.5;">Narrative block that renders under the YoY table on the client's campaign summary. Use for synthesis of client-provided lead data, plus optional client commentary. Markdown supported. Nothing renders until <strong>Published</strong> is on.</p>
+            </div>
+            <div style="display:flex;gap:.5rem;align-items:center;">
+              <label style="font-size:.75rem;display:flex;align-items:center;gap:.4rem;white-space:nowrap;">
+                <input type="checkbox" id="attrDdPublished"> Published
+              </label>
+              <button class="btn-sm" onclick="saveAttributionDeepDive()" id="attrDdSaveBtn" style="padding:.35rem .85rem;font-size:.75rem;font-weight:600;border:none;background:var(--color-primary);color:#fff;border-radius:6px;cursor:pointer;font-family:inherit;">Save</button>
+            </div>
+          </div>
+          <div style="padding:0 1rem 1rem;display:grid;gap:.85rem;">
+            <div>
+              <label style="font-size:.72rem;font-weight:600;color:var(--color-muted);text-transform:uppercase;letter-spacing:.04em;">Headline</label>
+              <input type="text" id="attrDdHeadlineInput" maxlength="200" placeholder="e.g. AI search now drives 10% of known-source leads" style="width:100%;padding:.5rem .65rem;border:1px solid var(--color-border);border-radius:6px;font-family:inherit;font-size:.85rem;margin-top:.25rem;background:var(--color-surface);color:var(--color-heading);">
+            </div>
+            <div style="display:grid;grid-template-columns:1fr 1fr 1fr;gap:.65rem;">
+              <div>
+                <label style="font-size:.72rem;font-weight:600;color:var(--color-muted);text-transform:uppercase;letter-spacing:.04em;">Period start</label>
+                <input type="date" id="attrDdPeriodStart" style="width:100%;padding:.5rem .65rem;border:1px solid var(--color-border);border-radius:6px;font-family:inherit;font-size:.85rem;margin-top:.25rem;background:var(--color-surface);color:var(--color-heading);">
+              </div>
+              <div>
+                <label style="font-size:.72rem;font-weight:600;color:var(--color-muted);text-transform:uppercase;letter-spacing:.04em;">Period end</label>
+                <input type="date" id="attrDdPeriodEnd" style="width:100%;padding:.5rem .65rem;border:1px solid var(--color-border);border-radius:6px;font-family:inherit;font-size:.85rem;margin-top:.25rem;background:var(--color-surface);color:var(--color-heading);">
+              </div>
+              <div>
+                <label style="font-size:.72rem;font-weight:600;color:var(--color-muted);text-transform:uppercase;letter-spacing:.04em;">Data source note</label>
+                <input type="text" id="attrDdDataSourceNote" maxlength="200" placeholder="e.g. 1,723 intake forms" style="width:100%;padding:.5rem .65rem;border:1px solid var(--color-border);border-radius:6px;font-family:inherit;font-size:.85rem;margin-top:.25rem;background:var(--color-surface);color:var(--color-heading);">
+              </div>
+            </div>
+            <div>
+              <label style="font-size:.72rem;font-weight:600;color:var(--color-muted);text-transform:uppercase;letter-spacing:.04em;">Synthesis (markdown)</label>
+              <textarea id="attrDdSummary" rows="10" placeholder="Our analytical synthesis. Supports markdown: **bold**, *italic*, ## heading, - bullets, 1. numbered, [links](https://...)" style="width:100%;padding:.6rem .75rem;border:1px solid var(--color-border);border-radius:6px;font-family:ui-monospace,monospace;font-size:.8rem;margin-top:.25rem;line-height:1.5;background:var(--color-surface);color:var(--color-heading);resize:vertical;"></textarea>
+            </div>
+            <div>
+              <label style="font-size:.72rem;font-weight:600;color:var(--color-muted);text-transform:uppercase;letter-spacing:.04em;">Client commentary (markdown, optional)</label>
+              <textarea id="attrDdCommentary" rows="5" placeholder="Client's own words, verbatim or lightly edited. Renders in a callout block." style="width:100%;padding:.6rem .75rem;border:1px solid var(--color-border);border-radius:6px;font-family:ui-monospace,monospace;font-size:.8rem;margin-top:.25rem;line-height:1.5;background:var(--color-surface);color:var(--color-heading);resize:vertical;"></textarea>
+            </div>
+            <div>
+              <label style="font-size:.72rem;font-weight:600;color:var(--color-muted);text-transform:uppercase;letter-spacing:.04em;">Source mix JSON (optional, renders bar chart)</label>
+              <textarea id="attrDdSourceMix" rows="6" placeholder='[{"source":"Google Search","current_pct":63.2,"prior_pct":71.7,"count":194}, {"source":"AI Search","current_pct":10.4,"prior_pct":0,"count":32}]' style="width:100%;padding:.6rem .75rem;border:1px solid var(--color-border);border-radius:6px;font-family:ui-monospace,monospace;font-size:.78rem;margin-top:.25rem;line-height:1.5;background:var(--color-surface);color:var(--color-heading);resize:vertical;"></textarea>
+              <p id="attrDdSourceMixError" style="font-size:.72rem;color:var(--color-danger);margin:.25rem 0 0;display:none;"></p>
+            </div>
+            <div style="font-size:.72rem;color:var(--color-muted);" id="attrDdMeta"></div>
+          </div>
+        </div>
       </div>
 
       <!-- TAB: Billing -->
@@ -7790,7 +7840,111 @@
     }).join('');
 
     list.innerHTML = html;
+
+    // Load deep-dive row on render
+    loadAttributionDeepDive();
   }
+
+  // ── Attribution deep dive (narrative + commentary) ────────────────
+
+  function loadAttributionDeepDive() {
+    var c = state.contact;
+    if (!c) return;
+    fetch('/api/action', {
+      method: 'POST', headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ action: 'read_records', table: 'client_attribution_insights', filters: { contact_id: c.id }, limit: 1 })
+    }).then(function(r) { return r.json(); }).then(function(res) {
+      var row = (res && res.records && res.records[0]) || null;
+      state.attributionDeepDive = row || null;
+      fillAttributionDeepDiveForm(row);
+    }).catch(function() {});
+  }
+
+  function fillAttributionDeepDiveForm(row) {
+    function v(id, val) { var el = document.getElementById(id); if (el) el.value = val == null ? '' : val; }
+    v('attrDdHeadlineInput', row && row.headline);
+    v('attrDdPeriodStart',   row && row.data_period_start);
+    v('attrDdPeriodEnd',     row && row.data_period_end);
+    v('attrDdDataSourceNote', row && row.data_source_note);
+    v('attrDdSummary',       row && row.summary_markdown);
+    v('attrDdCommentary',    row && row.client_commentary_markdown);
+    v('attrDdSourceMix',     row && row.source_mix_json ? JSON.stringify(row.source_mix_json, null, 2) : '');
+    var pub = document.getElementById('attrDdPublished');
+    if (pub) pub.checked = !!(row && row.published);
+    var meta = document.getElementById('attrDdMeta');
+    if (meta) {
+      if (row && row.updated_at) {
+        meta.textContent = 'Last updated ' + new Date(row.updated_at).toLocaleString() + (row.updated_by ? ' by ' + row.updated_by : '');
+      } else {
+        meta.textContent = 'Not yet created. Fill in, toggle Published, and save.';
+      }
+    }
+    var err = document.getElementById('attrDdSourceMixError');
+    if (err) { err.style.display = 'none'; err.textContent = ''; }
+  }
+
+  function saveAttributionDeepDive() {
+    var c = state.contact;
+    if (!c) return;
+    var btn = document.getElementById('attrDdSaveBtn');
+    var errEl = document.getElementById('attrDdSourceMixError');
+    errEl.style.display = 'none';
+
+    var rawMix = (document.getElementById('attrDdSourceMix').value || '').trim();
+    var mixJson = null;
+    if (rawMix) {
+      try {
+        mixJson = JSON.parse(rawMix);
+        if (!Array.isArray(mixJson)) throw new Error('Must be an array');
+        mixJson.forEach(function(s, i) {
+          if (typeof s !== 'object' || s == null) throw new Error('Item ' + i + ' is not an object');
+          if (!s.source || typeof s.source !== 'string') throw new Error('Item ' + i + ' missing source');
+          if (s.current_pct == null || isNaN(Number(s.current_pct))) throw new Error('Item ' + i + ' missing numeric current_pct');
+        });
+      } catch (e) {
+        errEl.textContent = 'Source mix JSON invalid: ' + e.message;
+        errEl.style.display = '';
+        return;
+      }
+    }
+
+    var payload = {
+      contact_id: c.id,
+      headline: (document.getElementById('attrDdHeadlineInput').value || '').trim() || null,
+      summary_markdown: document.getElementById('attrDdSummary').value || null,
+      client_commentary_markdown: (document.getElementById('attrDdCommentary').value || '').trim() || null,
+      source_mix_json: mixJson,
+      data_period_start: document.getElementById('attrDdPeriodStart').value || null,
+      data_period_end: document.getElementById('attrDdPeriodEnd').value || null,
+      data_source_note: (document.getElementById('attrDdDataSourceNote').value || '').trim() || null,
+      published: !!document.getElementById('attrDdPublished').checked,
+      updated_by: (state.session && state.session.email) || 'admin'
+    };
+
+    btn.disabled = true; btn.textContent = 'Saving…';
+    var existing = state.attributionDeepDive;
+    var req = existing && existing.id
+      ? { action: 'update_record', table: 'client_attribution_insights', filters: { id: existing.id }, data: payload }
+      : { action: 'create_record', table: 'client_attribution_insights', data: payload };
+
+    fetch('/api/action', {
+      method: 'POST', headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify(req)
+    }).then(function(r) { return r.json(); }).then(function(res) {
+      btn.disabled = false; btn.textContent = 'Save';
+      if (res && res.success) {
+        loadAttributionDeepDive();
+      } else {
+        errEl.textContent = (res && res.error) || 'Save failed';
+        errEl.style.display = '';
+      }
+    }).catch(function(e) {
+      btn.disabled = false; btn.textContent = 'Save';
+      errEl.textContent = 'Save failed: ' + (e && e.message || e);
+      errEl.style.display = '';
+    });
+  }
+  window.saveAttributionDeepDive = saveAttributionDeepDive;
 
   // ── Period modal (create / edit) ──────────────────────────────────
   function openCreatePeriodModal() { _openPeriodModal(null); }
