@@ -72,7 +72,22 @@ Repo-side:
 - migrations/2026-04-23-vps-admin-audit-log.sql: public.vps_admin_audit_log table + RLS (service-role full, admin SELECT via is_admin()).
 - 1 migration file.
 
-Deferred: Batch 6b AGENT_API_KEY rotation.
+Deferred: Batch 6b AGENT_API_KEY rotation (shipped separately below).
+
+### Batch 6b — AGENT_API_KEY rotation (Option A coordinated swap)
+- Generated new 32-byte hex token (never printed to chat, shredded post-rotation).
+- Saved old value from `vercel env pull` to `/tmp/agent_api_key.old` (600) for rollback.
+- VPS: `sed -i` on `/opt/moonraker-agent/.env` + `/opt/moonraker-admin/.env` with new value. Backups at `.env.bak-rotate-<ts>`. Services NOT restarted yet (still holding old in memory).
+- Vercel: `env rm AGENT_API_KEY production` + `env add AGENT_API_KEY production` with new value. Note: initial pipe preserved trailing newline as literal `\n`; fixed via `tr -d '\n'` re-pipe.
+- Empty commit + push to trigger redeploy. Vercel Ready 14s.
+- VPS: `systemctl restart moonraker-admin` + initially `docker restart moonraker-agent` (insufficient — `docker restart` keeps old env). Re-did with `docker compose up -d --force-recreate agent` to reload `.env`.
+- Verification:
+  - `curl -H "Authorization: Bearer <OLD>" /health` → 401
+  - `curl -H "Authorization: Bearer <NEW>" /health` → 200
+  - Same pair on `/admin/health` → 401 / 200
+- Blackout window: ~2 minutes (extended by the `docker restart` vs `--force-recreate` gotcha). Retry logic from Batches 1B + 5 absorbs any cron misses during the window.
+- Secrets shredded: `/tmp/new_agent_key`, `/tmp/agent_api_key.old`, `/tmp/agent_api_key.vercel_check`, `/tmp/vercel_env.production`, `/tmp/vercel_env.verify`.
+- VPS backup `.env.bak-rotate-<ts>` files retained (600) as rollback artifact; clean up in a follow-up if rotation holds.
 
 ### Batch 7 — `649b8b3a` — minimal cleanup
 - trigger-agent: audit.contact_id === body.contact_id mismatch guard (M3).
@@ -127,10 +142,10 @@ Deferred: Batch 6b AGENT_API_KEY rotation.
 - 25 unused indexes — revisit after stats accumulate (too new to decide safely).
 
 ### VPS
-- **Batch 6b** — AGENT_API_KEY rotation. Requires coordinated window: rotate Vercel env + /opt/moonraker-agent/.env + /opt/moonraker-admin/.env + recreate container. Rollback tested mentally but not exercised.
 - moonraker-agent repo sync — patched admin_service.py v1.1.0 on the VPS has NOT been committed back to Moonraker-AI/moonraker-agent. Next VPS rebuild from repo would revert the rate-limit + audit tee. Fix: sync separately in that repo.
 - VPS-H2 option B — replace /admin/exec with named RPCs (docker-restart, logs-tail, deploy). Larger effort; separate design.
 - SSH move off port 22 (optional; 14,000+ brute-force probes vs 0 successful).
+- VPS `.env.bak-rotate-<ts>` backups from Batch 6b — retain for rollback window, delete after ~1 week of stable operation.
 
 ### Decisions still open
 - Decision 7 revisit when hiring a 3rd admin.
@@ -148,7 +163,8 @@ Deferred: Batch 6b AGENT_API_KEY rotation.
 - report_queue silent permanent loss on compile failure: **eliminated**.
 - process-audit-queue Step 0.5 race vs Step 1 claim: **eliminated** (RPC w/ SKIP LOCKED).
 - /admin/exec anon floodable: **eliminated** (10 req/60s + widened fail2ban).
-- /admin/exec local log forgery: **mitigated** (off-host Supabase audit tee, pending 6b token rotation for full posture).
+- /admin/exec local log forgery: **mitigated** (off-host Supabase audit tee).
+- AGENT_API_KEY stale (pre-rotation): **rotated** in Batch 6b. Old key revoked (401), new key accepted end-to-end on both /health and /admin/health.
 - tracked_keywords DELETE: **blocked** at app + schema layer.
 - JSONB shape drift on renderer-critical fields: **blocked** at schema layer.
 - contacts.status + lost drift: **blocked** at schema layer.
