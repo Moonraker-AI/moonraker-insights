@@ -37,6 +37,13 @@
  *
  *       Comments are ignored.
  *
+ *   R2  No literal `buy.stripe.com/` URL anywhere in shipped code (.js or
+ *       .html). Hardcoded payment links bypass /api/checkout/create-session,
+ *       which means they don't carry slug or product metadata and the
+ *       Stripe webhook can't route them — the buyer pays and we silently
+ *       no-op. See 2026-04-23 entity-audit migration. Comments are ignored.
+ *       Scope: entire repo, excluding node_modules, .git, and docs/.
+ *
  * Exit code: 0 = clean, 1 = violations found (prints each with file:line).
  *
  * Runs on plain Node >=14 with zero dependencies.
@@ -186,6 +193,79 @@ function lint(filePath) {
   return violations;
 }
 
+// ── R2: hardcoded buy.stripe.com URL scan ──────────────────────────────────
+//
+// Walks .js and .html files repo-wide (minus node_modules, .git, docs/).
+// Strips comments (JS and HTML) so commentary is allowed; flags only
+// active-code mentions. The substring `buy.stripe.com/` is distinctive
+// enough that there are zero legitimate uses in shipped code.
+
+const R2_FORBIDDEN = 'buy.stripe.com/';
+const R2_EXCLUDE_DIRS = new Set(['node_modules', '.git', 'docs', '.vercel']);
+const R2_EXCLUDE_FILES = new Set([
+  // The lint script itself contains the forbidden literal in docs +
+  // detection logic; can't ban it from itself.
+  path.basename(__filename)
+]);
+
+function collectR2Targets() {
+  const out = [];
+  function walk(dir) {
+    for (const name of fs.readdirSync(dir)) {
+      if (R2_EXCLUDE_DIRS.has(name)) continue;
+      if (R2_EXCLUDE_FILES.has(name)) continue;
+      const full = path.join(dir, name);
+      let stat;
+      try { stat = fs.statSync(full); } catch (_) { continue; }
+      if (stat.isDirectory()) walk(full);
+      else if (name.endsWith('.js') || name.endsWith('.html')) out.push(full);
+    }
+  }
+  walk(ROOT);
+  return out;
+}
+
+// Strip <!-- ... --> blocks. Preserve newlines so line numbers stay accurate.
+function stripHtmlComments(src) {
+  let out = '';
+  let i = 0;
+  const n = src.length;
+  while (i < n) {
+    if (src[i] === '<' && src.slice(i, i + 4) === '<!--') {
+      i += 4;
+      while (i < n) {
+        if (src[i] === '-' && src.slice(i, i + 3) === '-->') {
+          i += 3;
+          break;
+        }
+        if (src[i] === '\n') out += '\n';
+        i++;
+      }
+      continue;
+    }
+    out += src[i];
+    i++;
+  }
+  return out;
+}
+
+function lintR2(filePath) {
+  const raw = fs.readFileSync(filePath, 'utf8');
+  // Strip both kinds of comments — JS files have only // and /* */, HTML
+  // has <!-- --> plus inline <script> JS. Running both strippers is safe
+  // because each is a no-op on the other's syntax.
+  const stripped = stripHtmlComments(stripComments(raw));
+  const violations = [];
+  let idx = 0;
+  while (true) {
+    const found = stripped.indexOf(R2_FORBIDDEN, idx);
+    if (found === -1) break;
+    violations.push({ line: lineOf(stripped, found) });
+    idx = found + R2_FORBIDDEN.length;
+  }
+  return violations;
+}
+
 function main() {
   const targets = collectTargets();
   let total = 0;
@@ -195,21 +275,41 @@ function main() {
     const vs = lint(f);
     for (const v of vs) {
       console.error(
-        `${rel}:${v.line}  gh.pushFile to shadowed path "${v.path}"`
+        `${rel}:${v.line}  R1 gh.pushFile to shadowed path "${v.path}"`
       );
       console.error(`  ${v.snippet}`);
       total++;
     }
   }
 
+  // R2: hardcoded buy.stripe.com/ scan, repo-wide.
+  const r2Targets = collectR2Targets();
+  let r2Total = 0;
+  for (const f of r2Targets) {
+    const rel = path.relative(ROOT, f);
+    const vs = lintR2(f);
+    for (const v of vs) {
+      console.error(
+        `${rel}:${v.line}  R2 hardcoded "${R2_FORBIDDEN}" — use /api/checkout/create-session`
+      );
+      r2Total++;
+    }
+  }
+  total += r2Total;
+
   if (total > 0) {
     console.error('');
     console.error(`lint-no-shadowing-deploys: ${total} violation(s).`);
     console.error('');
-    console.error('Per-client copies of client-facing templates are banned.');
+    console.error('R1: Per-client copies of client-facing templates are banned.');
     console.error('These pages are served by /:slug/<page> -> /_templates/<page>');
     console.error('rewrites in vercel.json. Templates hydrate per-client data');
     console.error('at request time via /api/public-* endpoints.');
+    console.error('');
+    console.error('R2: Hardcoded Stripe payment links bypass create-session, so');
+    console.error('the webhook can\'t route them (no slug/product metadata) and');
+    console.error('the buyer\'s payment silently no-ops on our side. Build the');
+    console.error('checkout via POST /api/checkout/create-session instead.');
     console.error('');
     console.error('If you need runtime substitution that the rewrite can\'t');
     console.error('provide, raise it as a design discussion before adding a');
@@ -217,7 +317,7 @@ function main() {
     process.exit(1);
   }
 
-  console.log(`lint-no-shadowing-deploys: clean (${targets.length} files scanned).`);
+  console.log(`lint-no-shadowing-deploys: clean (R1 ${targets.length} files, R2 ${r2Targets.length} files scanned).`);
 }
 
 main();
