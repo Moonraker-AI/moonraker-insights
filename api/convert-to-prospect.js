@@ -59,7 +59,7 @@ module.exports = async function handler(req, res) {
     results.supabase.status = 'prospect';
 
     // ============================================================
-    // STEP 2: Seed 9 onboarding steps (idempotent: delete first)
+    // STEP 2: Seed 10 onboarding steps (idempotent: delete first)
     // ============================================================
     var steps = [
       { contact_id: contactId, step_key: 'confirm_info', label: 'Confirm Info', status: 'pending', sort_order: 1 },
@@ -67,10 +67,11 @@ module.exports = async function handler(req, res) {
       { contact_id: contactId, step_key: 'book_intro_call', label: 'Book Intro Call', status: 'pending', sort_order: 3 },
       { contact_id: contactId, step_key: 'connect_accounts', label: 'Connect Accounts', status: 'pending', sort_order: 4 },
       { contact_id: contactId, step_key: 'practice_details', label: 'Practice Details', status: 'pending', sort_order: 5 },
-      { contact_id: contactId, step_key: 'bio_materials', label: 'Bio Materials', status: 'pending', sort_order: 6 },
-      { contact_id: contactId, step_key: 'social_profiles', label: 'Social Profiles', status: 'pending', sort_order: 7 },
-      { contact_id: contactId, step_key: 'checkins_and_drive', label: 'Google Drive', status: 'pending', sort_order: 8 },
-      { contact_id: contactId, step_key: 'performance_guarantee', label: 'Performance Guarantee', status: 'pending', sort_order: 9 }
+      { contact_id: contactId, step_key: 'site_map', label: 'Site Map', status: 'pending', sort_order: 6 },
+      { contact_id: contactId, step_key: 'bio_materials', label: 'Bio Materials', status: 'pending', sort_order: 7 },
+      { contact_id: contactId, step_key: 'social_profiles', label: 'Social Profiles', status: 'pending', sort_order: 8 },
+      { contact_id: contactId, step_key: 'checkins_and_drive', label: 'Google Drive', status: 'pending', sort_order: 9 },
+      { contact_id: contactId, step_key: 'performance_guarantee', label: 'Performance Guarantee', status: 'pending', sort_order: 10 }
     ];
 
     try {
@@ -81,7 +82,7 @@ module.exports = async function handler(req, res) {
 
     try {
       await sb.mutate('onboarding_steps', 'POST', steps, 'return=minimal');
-      results.supabase.onboarding_steps = 9;
+      results.supabase.onboarding_steps = 10;
     } catch (e) {
       results.supabase.onboarding_steps = 'failed';
     }
