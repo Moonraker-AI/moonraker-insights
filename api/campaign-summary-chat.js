@@ -243,6 +243,43 @@ function buildSystemPrompt(context) {
     }
   }
 
+  // Attribution deep-dive (narrative synthesis + source mix + monthly trend)
+  // Populated manually from client intake exports. Authoritative for "where
+  // are leads coming from" questions — the YoY block above is revenue-weighted
+  // and less granular; this block is lead-count per source per month.
+  var deepDiveText = '';
+  var dd = data.attribution_deep_dive || {};
+  if (dd.available) {
+    deepDiveText = '\n\nATTRIBUTION DEEP-DIVE (authoritative for source-mix and lead-volume questions):\n';
+    if (dd.headline)            deepDiveText += '- Headline: ' + dd.headline + '\n';
+    if (dd.data_period_start && dd.data_period_end) {
+      deepDiveText += '- Analysis window: ' + dd.data_period_start + ' to ' + dd.data_period_end + '\n';
+    }
+    if (dd.data_source_note)    deepDiveText += '- Data source: ' + dd.data_source_note + '\n';
+    if (dd.summary_markdown)    deepDiveText += '\nSummary:\n' + dd.summary_markdown + '\n';
+    if (dd.client_commentary_markdown) {
+      deepDiveText += '\nClient commentary:\n' + dd.client_commentary_markdown + '\n';
+    }
+    if (Array.isArray(dd.source_mix) && dd.source_mix.length > 0) {
+      deepDiveText += '\nSource mix (current window vs prior):\n';
+      dd.source_mix.forEach(function(s) {
+        var parts = ['  - ' + (s.source || 'unknown')];
+        if (typeof s.count === 'number')       parts.push(s.count + ' leads');
+        if (typeof s.current_pct === 'number') parts.push(s.current_pct + '% current');
+        if (typeof s.prior_pct === 'number')   parts.push(s.prior_pct + '% prior');
+        deepDiveText += parts.join(', ') + '\n';
+      });
+    }
+    if (Array.isArray(dd.monthly_by_source) && dd.monthly_by_source.length > 0) {
+      deepDiveText += '\nMonthly lead count by source (most recent last):\n';
+      dd.monthly_by_source.slice(-12).forEach(function(m) {
+        var srcs = m.sources || {};
+        var parts = Object.keys(srcs).map(function(k) { return k + ' ' + srcs[k]; });
+        deepDiveText += '  - ' + (m.month || '?') + ': ' + parts.join(', ') + '\n';
+      });
+    }
+  }
+
   // Measured performance (bookings + GSC + conversion + CPC)
   var performanceText = '';
   var bookings = data.bookings || {};
@@ -361,7 +398,7 @@ IDENTITY & TONE:
 PRACTICE: ${practiceName}
 CLIENT: ${name}
 LOCATION: ${location}
-${windowText}${costText}${guaranteeText}${attributionText}${performanceText}${gbpText}${strikingText}${deliverablesText}${nextText}
+${windowText}${costText}${guaranteeText}${attributionText}${deepDiveText}${performanceText}${gbpText}${strikingText}${deliverablesText}${nextText}
 
 METRIC DEFINITIONS (use these to explain the data in plain language):
 - Attributed revenue: dollars the practice's own admin team tagged to a specific source (Google, ChatGPT, referral, etc.) based on patient self-report at intake. Typically undercounts.
@@ -404,6 +441,7 @@ Moonraker uses the CORE system, which has four pillars:
 RESPONSE GUIDELINES:
 - For performance-guarantee questions, be precise about which revenue figure meets the threshold and which does not. Attribution is typically an undercount because it depends on patient self-report.
 - For year-over-year questions, lead with the headline (total revenue growth, appointment growth), then break down by source.
+- For "where are leads coming from" or source-mix questions, answer from the ATTRIBUTION DEEP-DIVE block when present. It reflects lead counts per source per month from the client's intake data, which is more granular than the revenue-weighted YoY block. If only YoY is available, use that and note the limitation.
 - For "what did you deliver" questions, organize by CORE pillar and give concrete counts from the shipped-work section.
 - For "what is next" questions, lead with the next-period plan if present, then point at striking-distance queries as specific near-term wins.
 - Be honest about attribution limits. Revenue figures come from the practice's own admin tracking and typically miss cases where patients do not self-report the channel.
