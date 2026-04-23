@@ -8,6 +8,8 @@
 <link rel="icon" type="image/png" href="/assets/logo.png">
 <title>Site Map Configurator - Moonraker Admin</title>
 <link rel="stylesheet" href="/assets/admin-base.css">
+<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2.49.4/dist/umd/supabase.min.js"></script>
+<script src="/shared/admin-auth.js"></script>
 <style>
   body { margin: 0; background: var(--color-bg); color: var(--color-body); font-family: Inter, -apple-system, sans-serif; }
 
@@ -111,7 +113,7 @@
     <div class="topbar-meta" id="tb-meta">Loading…</div>
   </div>
   <div class="topbar-right">
-    <button class="btn btn-ghost" onclick="toggleTheme()" title="Toggle theme">🌓</button>
+    <button class="theme-toggle" id="themeBtn" aria-label="Toggle theme"><span class="theme-icon">&#x1F319;</span></button>
   </div>
 </div>
 
@@ -238,15 +240,30 @@
   function closeModal(id) { document.getElementById(id).classList.remove('open'); }
   window.closeModal = closeModal;
 
-  window.toggleTheme = function() {
-    var now = document.documentElement.getAttribute('data-theme') === 'dark' ? 'light' : 'dark';
-    var applyTheme = function() {
-      document.documentElement.setAttribute('data-theme', now);
-      try { localStorage.setItem('moonraker-theme', now); } catch (_) {}
-    };
-    if (document.startViewTransition) document.startViewTransition(applyTheme);
-    else applyTheme();
-  };
+  // Theme toggle (canonical pattern — matches admin/index.html)
+  (function() {
+    var themeBtn = document.getElementById('themeBtn');
+    if (!themeBtn) return;
+    var _curTheme = document.documentElement.getAttribute('data-theme');
+    var _ti = themeBtn.querySelector('.theme-icon');
+    if (_ti) _ti.innerHTML = _curTheme === 'dark' ? '&#9728;&#65039;' : '&#x1F319;';
+    themeBtn.addEventListener('click', function() {
+      var h = document.documentElement;
+      function apply() {
+        if (h.getAttribute('data-theme') === 'light') {
+          h.setAttribute('data-theme', 'dark');
+          var _ti2 = themeBtn.querySelector('.theme-icon'); if(_ti2) _ti2.innerHTML = '&#9728;&#65039;';
+          try { localStorage.setItem('moonraker-theme', 'dark'); } catch(e) {}
+        } else {
+          h.setAttribute('data-theme', 'light');
+          var _ti3 = themeBtn.querySelector('.theme-icon'); if(_ti3) _ti3.innerHTML = '&#x1F319;';
+          try { localStorage.setItem('moonraker-theme', 'light'); } catch(e) {}
+        }
+      }
+      if (document.startViewTransition) document.startViewTransition(apply);
+      else apply();
+    });
+  })();
 
   // ── Fetch helpers ─────────────────────────────────────────────────
   function apiGet(path) {
