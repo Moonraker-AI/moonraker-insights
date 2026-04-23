@@ -44,7 +44,7 @@ var TABLES = {
   report_highlights:       { read: true, write: true, delete: true },
   report_configs:          { read: true, write: true, delete: true },
   report_queue:            { read: true, write: true, delete: true },
-  tracked_keywords:        { read: true, write: true, delete: true },
+  tracked_keywords:        { read: true, write: true, delete: false }, // retire-only (retired_at + retired_reason); DB trigger blocks DELETE
   client_attribution_insights: { read: true, write: true, delete: true },
 
   // Audits

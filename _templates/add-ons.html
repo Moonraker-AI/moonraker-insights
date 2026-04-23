@@ -245,7 +245,7 @@ main{flex:1 0 auto;padding-bottom:3rem}
   async function loadAddons() {
     var contact = null, tiers = [];
     try {
-      var cr = await fetch('/api/public-contact?slug=' + encodeURIComponent(SLUG));
+      var cr = await fetch('/api/public-contact?slug=' + encodeURIComponent(SLUG), { credentials: 'same-origin' });
       if (cr.status === 404) {
         showError('No account found', 'We couldn\'t find an account for this link. Please double-check the URL or email <a href="mailto:support@moonraker.ai">support@moonraker.ai</a>.');
         return;
@@ -259,7 +259,7 @@ main{flex:1 0 auto;padding-bottom:3rem}
     }
 
     try {
-      var pr = await fetch('/api/pricing?product=addons');
+      var pr = await fetch('/api/pricing?product=addons', { credentials: 'same-origin' });
       if (!pr.ok) throw new Error('HTTP ' + pr.status);
       var pb = await pr.json();
       tiers = (pb && pb.tiers) || [];
@@ -394,6 +394,7 @@ main{flex:1 0 auto;padding-bottom:3rem}
     try {
       var resp = await fetch('/api/checkout/create-session', {
         method: 'POST',
+        credentials: 'same-origin',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ slug: SLUG, product: 'addons', tier_key: tierKey })
       });
@@ -412,5 +413,6 @@ main{flex:1 0 auto;padding-bottom:3rem}
   loadAddons();
 })();
 </script>
+<script src="/shared/offline-banner.js" defer></script>
 </body>
 </html>

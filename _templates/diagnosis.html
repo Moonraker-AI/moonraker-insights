@@ -274,7 +274,7 @@ section{padding:3.5rem 0}
 
   if(!SLUG){document.getElementById('loadingState').innerHTML='<div style="text-align:center;padding:6rem 2rem;"><p style="color:var(--color-danger)">No client found. Check URL.</p></div>';return}
 
-  fetch('/api/public-contact?slug='+encodeURIComponent(SLUG)).then(function(r){return r.json()}).then(function(body){var contacts=body&&body.contact?[body.contact]:[];
+  fetch('/api/public-contact?slug='+encodeURIComponent(SLUG), { credentials: 'same-origin' }).then(function(r){return r.json()}).then(function(body){var contacts=body&&body.contact?[body.contact]:[];
     if(!contacts||contacts.length===0)throw new Error('Not found');
     var c=contacts[0];
     return Promise.all([

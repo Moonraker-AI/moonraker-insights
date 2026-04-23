@@ -247,6 +247,7 @@
 
     fetch('/api/action', {
       method: 'POST',
+      credentials: 'same-origin',
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({
         action: 'update_record',

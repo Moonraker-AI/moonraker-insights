@@ -45,6 +45,15 @@ module.exports = async function(req, res) {
     var audit = await sb.one('entity_audits?id=eq.' + encodeURIComponent(body.audit_id) + '&select=*&limit=1');
     if (!audit) return res.status(404).json({ error: 'Entity audit not found' });
 
+    // API-M3: verify audit/contact pair matches before dispatching to the VPS.
+    // Without this guard a mismatched pair runs a Surge audit for the wrong client.
+    if (audit.contact_id !== body.contact_id) {
+      monitor.logError('trigger-agent', new Error('audit/contact mismatch'), {
+        detail: { audit_id: body.audit_id, body_contact_id: body.contact_id, actual_contact_id: audit.contact_id }
+      });
+      return res.status(400).json({ error: 'audit/contact mismatch' });
+    }
+
     // 3. Assemble fields: prefer audit row, fall back to contact
     var websiteUrl = audit.homepage_url || contact.website_url || '';
     var practiceName = audit.brand_query || contact.practice_name || (contact.first_name + ' ' + contact.last_name);

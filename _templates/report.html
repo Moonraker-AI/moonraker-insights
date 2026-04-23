@@ -1112,7 +1112,7 @@ section { padding: 4.5rem 0; }
     if (!CLIENT_SLUG) return;
 
     // Load client details first
-    fetch('/api/public-contact?slug=' + encodeURIComponent(CLIENT_SLUG)).then(function(r){return r.json()}).then(function(b){return b&&b.contact?[b.contact]:[]})
+    fetch('/api/public-contact?slug=' + encodeURIComponent(CLIENT_SLUG), { credentials: 'same-origin' }).then(function(r){return r.json()}).then(function(b){return b&&b.contact?[b.contact]:[]})
       .then(function(contacts) {
         if (contacts && contacts.length > 0) {
           var c = contacts[0];
@@ -1260,6 +1260,7 @@ section { padding: 4.5rem 0; }
     var published = false;
     fetch('/api/action', {
       method: 'POST',
+      credentials: 'same-origin',
       headers: { 'Content-Type': 'application/json', 'Authorization': 'Bearer ' + authToken },
       body: JSON.stringify({ action: 'update_record', table: 'report_snapshots', filters: { id: currentSnap.id }, data: { report_status: 'published', updated_at: new Date().toISOString() } })
     }).then(function(r) { return r.json(); }).then(function(res) {

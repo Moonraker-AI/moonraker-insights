@@ -144,6 +144,7 @@ strong{font-weight:600;color:var(--color-heading)}
       <div class="price-fee" id="priceFee"></div>
     </div>
     <button class="checkout-cta" id="checkoutBtn" onclick="goToCheckout()">Proceed to Secure Payment &#8594;</button>
+    <div id="checkoutError" role="alert" style="display:none;background:rgba(239,68,68,.08);color:var(--color-danger);border:1px solid rgba(239,68,68,.25);padding:.85rem 1rem;border-radius:8px;margin-top:1rem;font-size:.9rem;line-height:1.5"></div>
   </div>
 
   <a href="/agreement" target="_blank" class="csa-banner">
@@ -221,10 +222,10 @@ strong{font-weight:600;color:var(--color-heading)}
     if (!CLIENT_SLUG) { document.getElementById('loadingState').innerHTML = '<p style="color:var(--color-danger)">No client specified.</p>'; return; }
     // Parallel-fetch contact + pricing so the page doesn't serialize two round-trips.
     Promise.all([
-      fetch('/api/public-contact?slug=' + encodeURIComponent(CLIENT_SLUG))
+      fetch('/api/public-contact?slug=' + encodeURIComponent(CLIENT_SLUG), { credentials: 'same-origin' })
         .then(function(r) { return r.json(); })
         .then(function(body) { return body && body.contact ? [body.contact] : []; }),
-      fetch('/api/pricing?product=core_marketing').then(function(r) { return r.json(); })
+      fetch('/api/pricing?product=core_marketing', { credentials: 'same-origin' }).then(function(r) { return r.json(); })
     ]).then(function(results) {
       var contacts = results[0];
       var pricing = results[1];
@@ -374,6 +375,7 @@ strong{font-weight:600;color:var(--color-heading)}
     try {
       var resp = await fetch('/api/checkout/create-session', {
         method: 'POST',
+        credentials: 'same-origin',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ slug: CLIENT_SLUG, product: 'core_marketing', tier_key: tierKey })
       });
@@ -383,7 +385,12 @@ strong{font-weight:600;color:var(--color-heading)}
       window.location.href = data.url;
     } catch (err) {
       console.error('[checkout] create-session failed:', err);
-      alert('Could not start checkout: ' + (err.message || err) + '\n\nPlease try again or email support@moonraker.ai.');
+      var errEl = document.getElementById('checkoutError');
+      if (errEl) {
+        errEl.textContent = 'Could not start checkout. Please try again or email support@moonraker.ai.';
+        errEl.style.display = 'block';
+        try { errEl.scrollIntoView({ behavior: 'smooth', block: 'center' }); } catch(_) {}
+      }
       restoreCheckoutBtn();
     }
   };

@@ -707,7 +707,7 @@ section { padding: 4.5rem 0; }
     // role reads with column allowlists per table — replaces the prior five
     // direct anon Supabase REST fetches (and drops an unused practice_details
     // fetch in the process).
-    fetch('/api/public-client-hq-summary?slug=' + encodeURIComponent(CLIENT_SLUG))
+    fetch('/api/public-client-hq-summary?slug=' + encodeURIComponent(CLIENT_SLUG), { credentials: 'same-origin' })
       .then(function(r) {
         if (r.status === 404) return null; // signal: contact not found
         if (!r.ok) throw new Error('summary fetch ' + r.status);
