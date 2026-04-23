@@ -88,6 +88,14 @@ module.exports = async function handler(req, res) {
       subject = 'New Strategy Call Lead: ' + clientName.trim() + (practice ? ' \u2014 ' + practice : '');
       headerLabel = 'Strategy Call Lead';
       content = buildStrategyCallLeadContent(contact, clientName, deepDiveUrl);
+
+    } else if (event === 'site_map_submitted') {
+      // Client finished the onboarding site-map step and submitted for review.
+      // Admin reviews at /admin/clients/<slug>/site-map and hits "Approve"
+      // which flips the onboarding step to complete.
+      subject = 'Site Map Submitted: ' + clientName.trim();
+      headerLabel = 'Site Map Ready for Review';
+      content = buildSiteMapSubmittedContent(contact, clientName, deepDiveUrl);
     }
 
     var htmlBody = email.wrap({
@@ -210,6 +218,15 @@ function buildOnboardingContent(contact, clientName, deepDiveUrl) {
     email.pRaw('All onboarding steps are complete. Status promoted to <strong style="color:#00D47E">Active</strong>. The client is now ready for ongoing campaign work, reporting, and deliverables.') +
     email.pRaw('<span style="color:#6B7599;font-size:13px">Monthly report scheduling can now be configured in the Reports tab.</span>') +
     email.cta(deepDiveUrl, 'View Client');
+}
+
+function buildSiteMapSubmittedContent(contact, clientName, deepDiveUrl) {
+  var configuratorUrl = 'https://clients.moonraker.ai/admin/clients/' + encodeURIComponent(contact.slug) + '/site-map';
+  return clientHeader(contact, clientName) +
+    email.pRaw('The client has finished reviewing their site map and submitted it for approval. The onboarding wizard is paused on this step until a team member approves it.') +
+    email.pRaw('<span style="color:#6B7599;font-size:13px">Review highlighted services and locations, propose URL rewrites if needed, then click <strong>Approve</strong> to mark the step complete and advance onboarding.</span>') +
+    email.cta(configuratorUrl, 'Review Site Map') +
+    email.pRaw('<div style="text-align:center;margin-top:12px"><a href="' + deepDiveUrl + '" style="font-size:13px;color:#6B7599">Open full client deep-dive \u2192</a></div>');
 }
 
 function buildReferralContent(contact, clientName, deepDiveUrl, partner, partnerEmail) {
