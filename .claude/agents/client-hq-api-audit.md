@@ -403,3 +403,78 @@ Every session produces three artifacts:
 3. **Status doc update** — if the session completes a group, update `docs/post-phase-4-status.md` with the new state + recommended next session. If the session only partially closes a group, leave the status doc alone; the coordinator (or operator) will reconcile.
 
 The audit terminates when every finding has a Resolution or Decision block, running tallies sum correctly, and zero findings remain open.
+
+---
+
+## Lessons from the 2026-04-23 full audit
+
+Source: `docs/audit-2026-04-23/api.md`, batches 0/2/7 + Phase A/B + follow-ups. Commits `02a07022`, `a7e31ce4`, `649b8b3a`, `0c91ea5d`, `831b7d11`, `ee04b3fa`.
+
+### `sb.query` / `sb.mutate` / `sb.one` take a PostgREST path string, not a config object
+Canonical shape (from `api/_lib/supabase.js` jsdoc):
+```js
+var rows = await sb.query('contacts?slug=eq.' + encodeURIComponent(slug) + '&select=id,practice_name&limit=1');
+await sb.mutate('contacts?id=eq.' + encodeURIComponent(id), 'PATCH', { status: 'active' });
+await sb.mutate('deliverables', 'POST', { contact_id: id, title: 'Setup' }, 'return=representation');
+```
+Multiple agents this audit tried to pass `{ select, filter, limit }` config objects as second arg; failed quietly. Exports: `query, mutate, one, isConfigured, url, key, headers`.
+
+### err.message sweep is systemic, not per-file
+H1 of this audit was ~25 handlers leaking `err.message` into 5xx response bodies. Treat it as a cross-cutting invariant: generic domain string in user-facing 5xx bodies, full detail via `monitor.logError('route-name', err, { detail })`. 4xx validation messages keep specifics (caller-actionable). 200 observability-breadcrumb arrays (compile-report warnings, provision-drive-folder results) keep specifics (returned in success payload).
+
+Preserved exceptions worth noting:
+- `api/checkout/create-session.js` Stripe 502 surfaces upstream `data.error.message` ("card declined") — customer-actionable, kept.
+- `api/compile-report.js` lines 89, 680+ push `e.message` into `warnings`/`errors` arrays returned in 200s, not 5xx — observability breadcrumb, kept.
+
+### encodeURIComponent at every interpolation site, always
+Even admin-gated routes. PostgREST escapes its own filter values but the SESSION_INSTRUCTIONS defense-in-depth is to wrap at every concat site. Admin-supplied body values that hit a PostgREST filter (body.id, body.contact_id, body.slug) must wrap. Array joins (`body.keyword_ids.join(',')`) must first validate each element against a UUID regex, then `.map(encodeURIComponent).join(',')`.
+
+### Rate limit pattern + failClosed:false on user-facing endpoints
+```js
+var ip = req.headers['x-forwarded-for']?.split(',')[0]?.trim() || req.socket.remoteAddress;
+var rl = await rateLimit.check('ip:' + ip + ':<route>', 20, 60, { failClosed: false });
+if (!rl.allowed) return res.status(429).json({ error: 'Too many requests' });
+```
+`failClosed: false` = a rate-limit store outage does NOT lock users out. For admin routes, key on user.id not IP: `rateLimit.check('admin:' + user.id + ':<route>', 60, 60, { failClosed: false })`. Admin ceilings are higher (60/60 for `admin/chat`, 30/60 for profile lookups) than client-facing (20/60 typical).
+
+### Method guard with Allow header
+```js
+if (req.method !== 'GET') { res.setHeader('Allow', 'GET'); return res.status(405).json({ error: 'Method not allowed' }); }
+```
+Always pair the 405 with the `Allow` header. Allow `HEAD` alongside `GET` for health-probe routes.
+
+### Auth — always through `api/_lib/auth.js` helpers
+`auth.requireAdmin(req, res)` returns a user or undefined (and sends the 401 itself). `auth.requireAdminOrInternal(req, res)` is the strict superset that accepts admin JWT cookie + `AGENT_API_KEY` Bearer + `CRON_SECRET` Bearer (all constant-time via `nodeCrypto.timingSafeEqual`). Never hand-roll `=== 'Bearer ' + ENV_VAR` — Batch 0 converted `admin/attribution-sync.js` away from exactly that anti-pattern.
+
+Post-Batch-0 a fresh handler with `requireAdminOrInternal` behaves as a strict superset of whatever old auth did, which is usually correct. Validate `user.role` downstream if internal-only logic shouldn't run for admin JWTs.
+
+### New endpoint scaffolding checklist
+Every new `api/admin/*.js` or `api/auth/*.js` route follows the same ~15-line skeleton:
+1. `var auth = require('../_lib/auth');`
+2. `var sb = require('../_lib/supabase');`
+3. `var rateLimit = require('../_lib/rate-limit');`
+4. `var monitor = require('../_lib/monitor');`
+5. `module.exports = async function handler(req, res) {`
+6. Method guard (405 + Allow).
+7. `auth.requireAdmin(req, res)` (or `requireAdminOrInternal`). Early-return if falsy.
+8. Query-param validation (regex-strict, length-capped).
+9. Rate limit check (per-user for admin, per-IP for anon).
+10. `try { sb.query(...); res.status(200).json(...) } catch (err) { monitor.logError('<route>', err, {detail}); res.status(500).json({ error: 'Generic domain string' }); }`
+11. Add route to `vercel.json.functions` ONLY if non-default config needed (>60s timeout, >1024MB mem). Count entries — 50 is a hard cap.
+
+### Admin directory + deep-dive endpoint pattern
+Consolidate admin HTML pages that do ~10+ anon PostgREST fetches into one admin-gated endpoint returning a named-object response: `{ contacts, onboarding_steps, ... }`. Never build a write-capable admin aggregator — only reads.
+
+Naming gotcha: `api/admin/client-detail.js` already existed in the repo as a narrow overview endpoint. The consolidated 14-table read was named `api/admin/client-deep-dive.js` to avoid clobbering the older route. Always `ls api/admin/` + `grep -l` for existing routes before claiming a filename.
+
+### `vercel env add` preserves trailing newline as `\n`
+When rotating secrets, `cat file | vercel env add` stores the trailing newline as a literal `\n` in the env value. Strip first: `tr -d '\n' < file | vercel env add ...`. Verify via `vercel env pull` + diff before trusting. This bit Batch 6b rotation.
+
+### `action.js` table allowlist is a silent-failure surface
+New tables need explicit entries in `api/_lib/action-schema.js` or frontend `apiAction` writes silently fail. Whenever a new table is added via a migration, grep `action-schema.js` for the table name and add a `{ read: true, write: true, delete: true }` entry (tightening per tier). `tracked_keywords` went `delete: true → false` in Batch 7 per the retire-only protocol; schema trigger is the belt + suspenders.
+
+### MCP from the API subagent session
+Supabase MCP was available to the API agent in this audit but not guaranteed. When present, use it for spot-check SELECTs + advisor re-runs; when absent, flag migrations as written-but-not-applied and the parent will apply.
+
+### Stall risk on large sweep prompts
+The Batch 2 API sweep (~30 files) ran 10+ minutes and completed cleanly because the prompt was mechanical per-file ("at line N, replace pattern X with pattern Y") with zero open-ended investigation. Prompts that say "audit these files and fix what you find" stall. Prompts that say "apply finding H1 across the 22 enumerated sites, grep for the same pattern elsewhere, and stop" do not.

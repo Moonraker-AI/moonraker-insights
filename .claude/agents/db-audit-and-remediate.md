@@ -167,3 +167,45 @@ For page-token-gated endpoints, run end-to-end tests: scrape token from deployed
 When the user asks "run the audit," default to the full end-to-end sweep + remediation plan. When they ask a targeted question ("is this policy safe?"), scope down and skip the full inventory. Never produce a remediation commit without first having produced or referenced the audit report that motivates it.
 
 When the user says "continue" or "proceed" mid-remediation, resume from the last unverified batch. Re-read MEMORY.md first to pick up decisions made in prior sessions.
+
+---
+
+## Lessons from the 2026-04-23 full audit
+
+Source: `docs/audit-2026-04-23/*`, commits `02a07022` → `ee04b3fa`.
+
+### MCP exposure is not guaranteed
+The DB subagent session in the first pass did not have MCP Supabase tools registered even though the agent definition lists them. Detect this at session start (try `list_tables` and catch an "unknown function" / InputValidationError). If MCP is unavailable, still produce the audit deliverable — static analysis of `migrations/` + code — and flag every finding with an explicit verification query so the next MCP-enabled session (often the parent) can confirm in one pass. Never pretend a finding is verified when MCP was unavailable.
+
+### Idempotency traps worth memorizing
+- `CREATE POLICY` has NO `IF NOT EXISTS`. Always pair with `DROP POLICY IF EXISTS <name> ON <table>` immediately before. Same rule for `CREATE TRIGGER`.
+- `ALTER TABLE ADD CONSTRAINT` errors on duplicate constraint name. Pair with `DROP CONSTRAINT IF EXISTS` before `ADD CONSTRAINT` for CHECKs.
+- `ADD COLUMN IF NOT EXISTS` and `CREATE INDEX IF NOT EXISTS` are safe.
+- `ALTER FUNCTION ... SET search_path = public, pg_catalog` is idempotent.
+
+### REVOKE EXECUTE needs the full signature
+`REVOKE EXECUTE ON FUNCTION public.claim_next_content_page(uuid) FROM anon, authenticated, PUBLIC;` — dropping the arg or using the wrong type errors with `function X does not exist`. Before revoking, run `SELECT proname, pg_get_function_identity_arguments(oid) FROM pg_proc WHERE pronamespace='public'::regnamespace AND proname LIKE '<prefix>%'`.
+
+### Verify data satisfies a new CHECK before adding
+Always SELECT the shape-summary before applying a tightening CHECK. The 2026-04-23 audit hit a `report_snapshots.ga4_detail` row stored as `jsonb_typeof='string'` (double-encoded). Migrating without a pre-check would have failed mid-batch and rolled back the whole thing. The repair pattern for double-encoded JSON: `UPDATE ... SET col = (col #>> '{}')::jsonb WHERE jsonb_typeof(col) = 'string';` — then apply the CHECK.
+
+### Nullable-tolerant shape checks
+`CHECK (col IS NULL OR jsonb_typeof(col) = 'object')`. Same pattern for `'array'`. Don't force NOT NULL via the CHECK; that's a separate schema decision.
+
+### Admin self-mutation guard pattern
+When a user-facing RLS policy permits UPDATEs to a table with sensitive columns (e.g. `admin_profiles.role`), RLS cannot restrict by column. Add a `BEFORE UPDATE` trigger that rejects `NEW.<col> IS DISTINCT FROM OLD.<col>` unless `current_user = 'service_role'`. The 2026-04-23 admin-profiles trigger covers `role`, `email`, `id`.
+
+### Retire-only enforcement pattern
+`BEFORE DELETE` trigger raising `RAISE EXCEPTION 'rows cannot be deleted; set retired_at instead'` codifies the protocol at schema layer so app-layer allowlists (e.g. `action-schema.js delete:false`) aren't the only backstop.
+
+### Duplicate indexes — keep the constraint, drop the manual one
+When `_unique` (UNIQUE constraint's implicit index) and `_idx` (manual CREATE INDEX) cover the same column set, drop the manual `_idx` — the constraint needs its index and PG won't let you drop that one.
+
+### Advisor INFO `rls_enabled_no_policy`
+Not a non-event. Add an explicit `service_role` full policy: `CREATE POLICY service_full_<table> ON public.<table> FOR ALL TO service_role USING (true) WITH CHECK (true);`. Intentional posture beats silent deny.
+
+### Unused-index advisor noise
+New tables accumulate indexes before stats. Don't act on `unused_index` advisor INFOs until the table has been live for at least a sprint. In the 2026-04-23 sweep, ~25 unused indexes were flagged; all were on new feature tables and were deferred.
+
+### Session communication
+Laymen-terms decision framing matters. When an architectural decision blocks a batch (e.g. `contacts.status` vs `contacts.lost` semantics), present A/B/C with a recommendation + one-sentence laymen explanation; Chris resolves via single-letter reply. 8 of 9 decisions this audit flowed through that shape.

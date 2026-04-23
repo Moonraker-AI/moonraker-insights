@@ -260,3 +260,44 @@ Then append two single-line entries to `MEMORY.md` so future sessions discover t
 - Don't auto-retry every cron invocation on 500. Some crons must return 200 on handled errors so Vercel doesn't duplicate-fire side effects.
 - Don't propose a DLQ table before confirming the team size + on-call structure warrants it. Small teams get better ROI from `status='failed'` + an admin tab.
 - Don't touch the sidebar nav in every admin page mid-audit. Defer to a single closeout commit or punt to a follow-up.
+
+---
+
+## Lessons from the 2026-04-23 full audit
+
+Source: `docs/audit-2026-04-23/cron.md`, batches 0/1/5 (commits `02a07022`, `5839d162`, `5d80a0a1`).
+
+### Retry-state is the single biggest cron-reliability lever
+Every queue that calls an unreliable external (Resend, Stripe, Anthropic, the Surge agent) must carry four columns: `<task>_attempt_count`, `<task>_retriable`, `<task>_next_attempt_at`, `last_<task>_error`. The canonical template is `migrations/2026-04-19-newsletter-send-retry.sql`. Batches 1B, 5 cloned it onto `proposal_followups`, `audit_followups`, `report_queue`. Pattern for each queue:
+- Partial index on `(next_attempt_at) WHERE status='failed' AND retriable=true` — stays tiny.
+- HTTP classification: 4xx except 408/429 = permanent; 408/429/5xx/network/timeout = transient.
+- Backoff: 5/15/60 min for user-visible email sends; 15/60/240 min for compile-heavy (report_queue).
+- `MAX_ATTEMPTS=3`; `monitor.critical` fires ONCE at exhaustion (permanent classification or attempt≥MAX), not on every retryable failure.
+- Extend the SELECT via PostgREST `or=(and(status.eq.pending,scheduled.lte.now),and(status.eq.failed,retriable.eq.true,attempt.lt.3,next_attempt.lte.now))`.
+
+### Concurrency: fold sequential PATCH loops into atomic RPCs
+Any cron handler that SELECTs rows + PATCHes each one back to a different status is racing its own next invocation. Canonical fix: a SECURITY DEFINER RPC with `UPDATE ... RETURNING` + `FOR UPDATE SKIP LOCKED` on an inner SELECT. Examples shipped: `requeue_retriable_agent_errors(timestamptz, int)`, `claim_next_report_queue()` (v2). Always REVOKE EXECUTE from `anon, authenticated, PUBLIC` post-create.
+
+### PATCH URL status guards are 3-character fixes with high return
+Every cron PATCH that flips state MUST constrain on the expected current status: `&status=eq.<expected>` in the PostgREST URL. Prevents a concurrent actor (another cron invocation, the agent's own callback) from having its terminal state overwritten. Shipped: 3 sites in `process-audit-queue.js`.
+
+### `fetch` → `fetchT` is the tax you never regret paying
+Naked `fetch()` has Node's default 5-minute socket timeout. `api/_lib/fetch-with-timeout.js` wraps it with an abort. Two sites still used naked fetch on Resend at audit start; one 429 spray could have stalled the whole cron past Vercel's maxDuration. `fetchT('https://api.resend.com/emails', {...}, 15000)` is the canonical replacement.
+
+### Outer-catch returns 200, not 500
+When per-row error state is authoritative (retry columns captured the failure), the outer cron handler should return 200 with `{ success: false, error, processed }`. Returning 500 triggers Vercel's cron retry, which can double-send rows that already processed successfully before the crash. Observed risk in `process-followups` + `process-scheduled-sends`; both flipped to 200-on-outer-catch in Batch 5.
+
+### Telemetry snapshot on the critical path blocks the cron
+`sb.query(... limit=1000)` awaited before the atomic claim eats maxDuration when Supabase is degraded. Pattern: wrap in fire-and-forget async IIFE that PATCHes `cron_runs` when it resolves. Don't `await` telemetry on the hot path. `withTracking.finish()` already records queue depth in a separate snapshot.
+
+### `vercel.json` maxDuration must be explicit for non-default routes
+`process-audit-queue.js` was implicitly on Pro's 60s default while its code comments assumed 120s. Always add `"api/cron/<route>.js": { "maxDuration": <seconds> }` when the cron runs external calls that can each take >10s. Count entries: hard limit 50.
+
+### Agent-dispatch fetch gets its own AbortSignal
+The CHQ → Moonraker Agent dispatch fetch is the highest-stakes external call in the cron layer. `signal: AbortSignal.timeout(30000)` — not ambient fetch timeout, not the 10s used for `/health` probes. Agent ACK is typically sub-second; 30s is generous and still bounded.
+
+### When MCP is unavailable in the subagent session
+Write migrations to `migrations/2026-04-23-<slug>.sql` and return file paths + canonical MCP migration names in the report. The parent will apply. Don't block the whole batch on MCP availability — the code changes in `api/cron/*.js` ship fine and the migrations land next turn.
+
+### Agent instruction hygiene
+Long open-ended prompts stall watchdogs after ~10 minutes of investigation. For remediation tasks: pre-resolve decisions in the prompt, give exact file:line pointers, state "apply, verify, report" explicitly, time-box to ~60 min, forbid scope expansion.

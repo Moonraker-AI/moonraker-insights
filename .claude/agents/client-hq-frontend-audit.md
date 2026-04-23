@@ -219,3 +219,69 @@ Produce an end-of-session summary:
 - Anything deferred (with reason)
 - Deploy status (last Vercel URL + status)
 - Any new memory to save (user preferences, architectural decisions, incident learnings)
+
+---
+
+## Lessons from the 2026-04-23 full audit
+
+Source: `docs/audit-2026-04-23/frontend.md`, batches 1/3/3a/7 + FE-M7 full sweep + admin/clients cache-invalidation. Commits `5839d162`, `65fc95ee`, `649b8b3a`, `0c91ea5d`, `831b7d11`, `3c1d22bb`, `ee04b3fa`.
+
+### Admin XSS via `iframe.contentDocument.write(raw_html)` was our biggest surprise
+Four live sites at audit start (admin/clients email-preview paths + admin/audits srcdoc popup). The handler pattern was:
+```js
+iframe.contentDocument.open(); iframe.contentDocument.write(res.html); iframe.contentDocument.close();
+```
+No sandbox, same-origin execution, admin cookie accessible to whatever JS the DB-controlled body emitted. Any admin could be session-takeover'd via a poisoned row. Fix decision matrix:
+- Preview needs to RENDER HTML (almost always yes for email preview): `sandbox="allow-same-origin"` + `srcdoc = <fully-escaped-text>`. Height auto-measure keeps working.
+- Preview does NOT need user JS (newsletter-preview is a good example): `sandbox=""` (full lockdown) + server-side `sanitizeHtml()` from `api/_lib/html-sanitizer.js`.
+- **Full escape chain**: `&`, `<`, `>`, `"`, `'`. The audit found 2 sites escaping only `&` + `"` — quote-jump vector via `'`. Don't partial-escape.
+
+### Regex backref hazard in injection-style templating
+`html.replace(bioRegex, '$1' + endorsementsHtml + '$3')` — if `endorsementsHtml` contains `$1/$2/$3` literals (or `$&`), JS regex replace interprets them as backrefs. Fix via function replacer: `function(_, p1, _p2, p3) { return p1 + endorsementsHtml + p3; }`. Shipped in `_templates/content-preview.html`.
+
+### Misleading variable names are first-class XSS landmines
+`const SB_SVC = '<jwt>'` where the JWT is actually anon role. A future developer sees "SB_SVC", assumes admin authority is already validated, removes the `requireAdmin` wrapper on a new endpoint. Rename at sight: `SB_ANON` + header comment clarifying RLS is the actual gate.
+
+### CSP vendoring sweep must be total or not at all
+Narrowing `script-src` from `'self' https://cdn.jsdelivr.net ...` to `'self' ...` requires vendoring EVERY file loaded from the dropped origin AND updating the `<script src>` tag on EVERY page referencing it. The 2026-04-23 first sweep missed 12 admin pages + `_templates/campaign-summary.html` (chart.js). Blocker caught only because the agent grep'd repo-wide before dropping the CSP origin. Process: (1) locate all references, (2) vendor all versions, (3) swap all tags, (4) re-grep to confirm zero runtime references, (5) narrow CSP.
+
+SRI pinning on every vendored `<script>`:
+```
+integrity="sha384-<openssl dgst -sha384 -binary file | openssl base64 -A>"
+crossorigin="anonymous"
+```
+
+### Directory-endpoint pattern beats direct anon PostgREST reads
+Admin pages that read `contacts`, `onboarding_steps`, `entity_audits`, `deliverables`, `report_snapshots` etc. directly via the anon Supabase key rely on RLS as the only gate. Any loosening of RLS (for a future client-facing feature) silently exposes the admin directory. Canonical replacements: `/api/admin/<thing>-directory.js` (admin-gated consolidator) + for deep-dives `/api/admin/client-deep-dive.js` (one call returns the whole per-client aggregate). Tradeoff: loses per-fetch sort/limit/filter semantics; apply them client-side post-response.
+
+### Cache-invalidation for post-mutation refreshes
+Once a page loads via a deep-dive aggregate, post-mutation refreshes can't just re-read the aggregate blindly — the user may have switched clients mid-mutation. Helper pattern:
+```js
+async function refreshDeepDive(slug) {
+  const res = await fetch('/api/admin/client-deep-dive?slug=' + encodeURIComponent(slug), { credentials: 'same-origin' });
+  if (!res.ok) throw new Error('deep-dive refresh failed');
+  if (state.contact.slug === slug) state.deepDive = await res.json(); // stale-client-race guard
+}
+```
+Expose on `window` for inline-onclick consumers.
+
+### Admin JWT cookie flow — never add manual Bearer headers
+`shared/admin-auth.js` installs a fetch interceptor that attaches the admin cookie automatically. Admin-gated endpoints see the session via `requireAdmin(req, res)`. Migrating a page from anon PostgREST to `/api/admin/*` = drop the `apikey` + `Authorization: Bearer <anon>` headers entirely; don't replace with admin JWT header.
+
+### `credentials: 'same-origin'` explicit everywhere
+Chrome defaults to same-origin for same-origin fetches, but explicit is safer: survives spec drift, survives `keepalive: true` combos, survives bfcache restoration. Every client-template fetch AND admin-page fetch to `/api/*` should carry it.
+
+### `sandbox="allow-same-origin"` is required for height auto-measure
+`iframe.contentDocument.body.scrollHeight` needs same-origin access. Dropping `allow-same-origin` breaks height-auto-measure. Either keep it (with full srcdoc escape + server-side sanitize as defense in depth), OR replace the measurement with fixed height + internal scroll OR a postMessage beacon injected by the parent (not user content).
+
+### Admin pages use inline scripts + `window.` assignments
+Preserve the `window.functionName = ...` pattern (CLAUDE.md rule). Don't refactor to ES modules mid-audit — the static-HTML deploy has no build step. Inline onclick handlers depend on function-on-window.
+
+### Stall risk on open-ended frontend prompts
+The Batch 3 first frontend agent stalled after ~10 minutes of investigation (password-change endpoint discovery, directory-endpoint inventory). Rule: pre-resolve the "which option" decisions in the prompt, pre-identify which files/lines to touch, pre-identify which fallbacks to flag vs migrate, and explicitly state "apply, verify, report — no open-ended investigation." Time-box to 60 min in the prompt.
+
+### New-client form slug-uniqueness is cross-contact
+The one REST fetch that can't migrate to `client-deep-dive` is the slug-uniqueness probe in the New Client form — no slug exists yet. Build a dedicated `/api/admin/check-slug` endpoint with legacy-compatible `[{id, practice_name}]` response shape so the frontend swap is one-line.
+
+### offline-banner.js belongs on every admin page too
+Not just client templates. 15 admin pages (including `admin/system/index.html` discovered during the sweep) now import `/shared/offline-banner.js` — mobile admin use during client calls benefits from the visual cue.

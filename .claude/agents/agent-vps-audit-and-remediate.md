@@ -359,3 +359,64 @@ After each batch, re-query Supabase for audit pipeline health + run an external 
 - `api/admin/requeue-audit.js` — manual retry entry point
 
 Treat drift between these two repos as a first-class finding: changes to agent error codes, auth protocol, or callback contract must land on both sides in one session.
+
+---
+
+## Lessons from the 2026-04-23 full audit
+
+Source: `docs/audit-2026-04-23/vps.md`, batches 6a + 6b. Commits `2f6ba698` (VPS-side log via `vps_admin_audit_log` migration), `e6c6c2d5` (rotation log), and PR [Moonraker-AI/moonraker-agent#5] (merged as `c8fd25d4`).
+
+### `docker restart` does NOT reload `.env` — this almost broke rotation
+`docker restart moonraker-agent` preserves the env vars injected at container creation. For an `.env` change to propagate, use `docker compose up -d --force-recreate <service>`. **Service name ≠ container name**: the service in `/opt/moonraker-agent/docker-compose.yml` is `agent`, container is `moonraker-agent`. Always confirm via `docker compose config --services` before issuing the recreate.
+
+Batch 6b blackout was ~2 minutes instead of ~30s because the first attempt used `docker restart`; new key on disk, old key still in memory, all CHQ→agent calls 401'd until the recreate went through.
+
+### Token-rotation Option A (coordinated swap) canonical sequence
+1. Generate new 32-byte hex token, chmod 600, NEVER echo to stdout: `openssl rand -hex 32 > /tmp/new_agent_key && chmod 600 /tmp/new_agent_key`.
+2. Save old value for rollback: `vercel env pull --environment=production /tmp/vercel_env.production --token $VERCEL_TOKEN --yes` → extract AGENT_API_KEY → chmod 600 → `/tmp/agent_api_key.old`.
+3. Write new token to VPS `.env` files FIRST (no restart — services still validate old key from memory). Backups: `cp .env .env.bak-rotate-<ts>` at both `/opt/moonraker-agent/.env` and `/opt/moonraker-admin/.env`.
+4. Update Vercel: `vercel env rm AGENT_API_KEY production --yes` + `tr -d '\n' < /tmp/new_agent_key | vercel env add AGENT_API_KEY production`. **The `tr -d '\n'` is mandatory** — `vercel env add` with raw file pipe preserves trailing newline as literal `\n` in the stored value; the deployed function sees a key that doesn't match the VPS. Verify post-add with a diff of `vercel env pull` vs `/tmp/new_agent_key` (both `tr -d '\n'`).
+5. Trigger Vercel redeploy (empty commit + push) so functions read the new env. Wait Ready.
+6. Recreate VPS container: `cd /opt/moonraker-agent && docker compose up -d --force-recreate agent`. Admin service (`systemctl restart moonraker-admin`) reloads its env from `EnvironmentFile=` on restart — no recreate needed there.
+7. Verify: external `curl -H "Authorization: Bearer <NEW>" https://agent.moonraker.ai/health` → 200; external with OLD → 401. Same pair on `/admin/health`.
+8. `shred -u /tmp/new_agent_key /tmp/agent_api_key.old /tmp/vercel_env.production /tmp/vercel_env.verify` — clean up local secret files.
+9. VPS `.env.bak-rotate-<ts>` retained ~1 week for rollback, then manual `rm` via SSH.
+
+### Permission hook will block prod-secret-handling commands without explicit consent
+`vercel env pull` was blocked on ambiguous consent ("a" is too terse). For production-secret operations, use a full sentence: "yes execute full <batch> sequence" so the hook has unambiguous authorization.
+
+### `fail2ban` regex must cover all auth-failure shapes
+The initial `caddy-admin-401` filter only matched `"status":401`. Real auth failures on FastAPI `/admin/exec` also emit 422 (pydantic body rejection pre-auth) and 500 (no AGENT_API_KEY configured path). Widen to `(401|403|422|500)`. Run `fail2ban-regex` against the live log BEFORE reloading to confirm new hits. Batch 6a found 2 historical hits that the narrow filter missed.
+
+### Admin service per-IP rate limit goes BEFORE auth
+`_rate_check` using a `deque[float]` keyed on `_client_ip(request)` (X-Forwarded-For aware, falls back to `request.client.host`) — runs before `verify_key`. Timing-safe response: 429 + `Retry-After: 60`. Logged as `rate_limit.exceeded ip=...`. Blocks bearer-token-brute-force floods before the constant-time compare even runs.
+
+### Off-host admin audit log via Supabase fire-and-forget
+`/admin/exec` handler `BackgroundTasks.add_task(_audit_tee, ...)` posts `{client_ip, command_truncated, exit_code, duration_ms}` to `public.vps_admin_audit_log` using `SUPABASE_SERVICE_ROLE_KEY` already in `.env`. Local `/var/log/moonraker-admin/app.log` is writable by `mradmin` (same user a successful exec lands as) — Supabase copy can't be forged post-hoc.
+
+### docker-compose hardening — drop every cap, disable privilege escalation
+```yaml
+security_opt:
+  - no-new-privileges:true
+cap_drop:
+  - ALL
+```
+Moonraker-agent container listens on 8000 (non-privileged), runs as uid 1000, needs zero Linux caps. Always confirm `/health` comes back 200 post-recreate before declaring success.
+
+### systemd sandboxing for the admin service
+Override file at `/etc/systemd/system/moonraker-admin.service.d/override.conf`:
+```
+[Service]
+NoNewPrivileges=true
+PrivateTmp=true
+ProtectSystem=strict
+ProtectHome=read-only
+ReadWritePaths=/var/log/moonraker-admin /opt/moonraker-admin
+```
+Docker group membership stays — that's the whole point of the service. These directives cut incidental blast surface.
+
+### Repo-sync discipline — VPS patches are ephemeral without a PR
+When `admin_service.py` gets patched in place on the VPS, the change is GONE on next rebuild from the `moonraker-agent` repo. Rule: any in-place VPS patch MUST close with a PR to `Moonraker-AI/moonraker-agent` on a branch `audit-<date>-<slug>`. Agent repo has a canonical `host_admin/admin_service.py` that vendors whatever ships to `/opt/moonraker-admin/`. Version-string bumps (`AGENT_VERSION`, `admin_service.py` title + `/admin/health`) signal the drift.
+
+### MCP Supabase from the VPS audit prompt
+Agent session has `mcp__supabase__*` in its tool list but it was not registered as callable in the initial audit session. Detect + fall back: when a Supabase table/migration is needed, propose schema + migration text in the report for the parent to apply. Don't create schema from the VPS itself.
