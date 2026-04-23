@@ -1195,6 +1195,16 @@ section { padding: 4.5rem 0; }
         plugins: {
           legend: { display: false },
           tooltip: {
+            // Sort by source category priority (organic first, then AI, then
+            // referral, paid directory, social, other) to match the legend
+            // and the agency's strategic focus. Within a category, higher
+            // value first.
+            itemSort: function(a, b) {
+              var pa = sourcePriority(classifySource(a.dataset.label));
+              var pb = sourcePriority(classifySource(b.dataset.label));
+              if (pa !== pb) return pa - pb;
+              return (b.parsed.y || 0) - (a.parsed.y || 0);
+            },
             callbacks: {
               label: function(c) { return c.dataset.label + ': ' + Math.round(c.parsed.y); }
             }
