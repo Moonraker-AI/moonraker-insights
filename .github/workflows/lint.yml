@@ -31,3 +31,16 @@ jobs:
           echo ''
           echo '--- docs/client-page-helper-protocol.md ---'
           cat docs/client-page-helper-protocol.md
+  no-shadowing-deploys:
+    name: no-shadowing-deploys
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+
+      - name: Run no-shadowing-deploys lint
+        run: node scripts/lint-no-shadowing-deploys.js
+
