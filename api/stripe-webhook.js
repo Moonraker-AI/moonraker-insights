@@ -461,6 +461,41 @@ module.exports = async function handler(req, res) {
           } catch (_) { /* don't let alert failure mask the 200 */ }
           results.setup_audit_schedule_failed = true;
         }
+
+        // Kick off sitemap scout for the configurator (awaited; monitor.critical
+        // on failure). This only queues the task on the agent and creates the
+        // sitemap_scouts row — the actual scout runs async in the background
+        // and calls back via /api/ingest-sitemap-scout. Fast.
+        try {
+          var smResp = await fetchT('https://clients.moonraker.ai/api/trigger-sitemap-scout', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json', 'Authorization': 'Bearer ' + (process.env.CRON_SECRET || '') },
+            body: JSON.stringify({ contact_id: contact.id })
+          }, 15000);
+          if (!smResp.ok) {
+            var smErrBody = '';
+            try { smErrBody = await smResp.text(); } catch (_) {}
+            await monitor.critical('stripe-webhook', new Error('trigger-sitemap-scout returned ' + smResp.status), {
+              client_slug: slug,
+              detail: {
+                stage: 'trigger_sitemap_scout',
+                status: smResp.status,
+                body_preview: smErrBody.substring(0, 500),
+                session_id: session.id,
+                contact_id: contact.id
+              }
+            });
+            results.trigger_sitemap_scout_failed = true;
+          }
+        } catch (smErr) {
+          try {
+            await monitor.critical('stripe-webhook', smErr, {
+              client_slug: slug,
+              detail: { stage: 'trigger_sitemap_scout', session_id: session.id, contact_id: contact.id }
+            });
+          } catch (_) { /* don't let alert failure mask the 200 */ }
+          results.trigger_sitemap_scout_failed = true;
+        }
       } else {
         // Either the contact was never in 'prospect' (already active,
         // already onboarding, lead, etc.) or a concurrent webhook delivery
