@@ -8,6 +8,7 @@
 // ENV VARS: ANTHROPIC_API_KEY
 
 var rateLimit = require('./_lib/rate-limit');
+var sb = require('./_lib/supabase');
 
 module.exports = async function handler(req, res) {
   if (req.method === 'OPTIONS') {
@@ -48,7 +49,7 @@ module.exports = async function handler(req, res) {
     return res.status(400).json({ error: 'messages array required' });
   }
 
-  var systemBlocks = buildSystemPrompt(context);
+  var systemBlocks = await buildSystemPrompt(context);
 
   // Call Anthropic with stream: true
   var aiResp;
@@ -97,17 +98,19 @@ module.exports = async function handler(req, res) {
   res.end();
 };
 
-function buildSystemPrompt(context) {
+async function buildSystemPrompt(context) {
   var pageContent = context.page_content || '';
+  var pricingContext = await buildPricingContext();
 
   // Returns an array of 2 system prompt content blocks with an Anthropic
   // prompt-caching breakpoint on the second (static CSA + response
   // guidelines) block. The concatenation of block 1 + block 2 is
   // byte-identical to the original single-string prompt, so model
   // behavior is preserved. Block 1 varies per conversation
-  // (page_content is interpolated); block 2 is fully static. On turn 2+
-  // of the same conversation, the full prefix should hit cache,
-  // dropping cost on the cached prefix to ~10% of uncached tokens.
+  // (page_content + pricing_tiers are interpolated); block 2 is fully
+  // static. On turn 2+ of the same conversation, the full prefix should
+  // hit cache, dropping cost on the cached prefix to ~10% of uncached
+  // tokens.
   return [
     { type: 'text', text: `You are the Moonraker Agreement Assistant, a warm and knowledgeable AI that helps prospective clients understand the Client Service Agreement and feel confident about moving forward.
 
@@ -138,7 +141,8 @@ WHAT YOU KNOW:
 3. Whatever pricing and plan details appear on this prospect's page
 
 PAGE CONTENT (from this prospect's agreement page):
-${pageContent.substring(0, 8000)}` },
+${pageContent.substring(0, 8000)}
+${pricingContext}` },
     { type: 'text', text: `
 
 ===== CLIENT SERVICE AGREEMENT (FULL TEXT) =====
@@ -299,6 +303,79 @@ Months 3-12: Activation of Rising Tide, NEO, LiveDrive, and ongoing content dist
 - When explaining what Moonraker does NOT do, always end positively with what we DO provide
 - End responses on an encouraging, forward-moving note when natural`, cache_control: { type: 'ephemeral' } }
   ];
+}
+
+
+// ─── Pricing context from pricing_tiers ────────────────────────────
+//
+// Returns a plain-text authoritative block listing all active pricing
+// tiers, grouped by product. This gives the assistant ground truth to
+// cross-check against the per-prospect page content (which is what
+// the assistant is still told to quote from in RULE 1). If the DB is
+// unavailable, returns empty string — the prompt degrades gracefully.
+//
+// Grouping collapses ACH/CC pairs: ACH is the headline amount, CC is
+// rendered as "+3.5% fee" since every CC tier is exactly 1.035x its
+// ACH counterpart by policy.
+async function buildPricingContext() {
+  if (!sb.isConfigured()) return '';
+  try {
+    var rows = await sb.query('pricing_tiers?active=eq.true&order=product_key,sort_order');
+    if (!rows || rows.length === 0) return '';
+
+    // Group by product_key, then by a stable display key that ignores
+    // the _ach / _cc suffix so the ACH/CC pair collapses.
+    var products = {};
+    rows.forEach(function(r) {
+      var pk = r.product_key;
+      products[pk] = products[pk] || {};
+      var displayKey = (r.tier_key || '').replace(/_(ach|cc)$/, '')
+        + '|' + (r.billing_term || '') + '|' + (r.billing_cadence || '') + '|' + (r.display_name || '');
+      products[pk][displayKey] = products[pk][displayKey] || { ach: null, cc: null, row: r };
+      if (r.payment_method === 'card')      products[pk][displayKey].cc  = r;
+      else                                  products[pk][displayKey].ach = r;
+    });
+
+    var productLabels = {
+      core_marketing:       'CORE Marketing Campaign',
+      entity_audit_premium: 'Entity Audit (Premium)',
+      strategy_call:        'Paid Strategy Call',
+      addons:               'Add-ons (available to active clients)'
+    };
+
+    var fmt = function(cents) {
+      return '$' + Math.round(cents / 100).toLocaleString();
+    };
+
+    var out = '\n\n===== AUTHORITATIVE PRICING (from pricing_tiers, active rows only) =====\n';
+    out += 'This is the source of truth for Moonraker\'s current pricing. Do NOT volunteer pricing to the prospect that is not on their page. Use this block to verify that any number you cite is current before citing it.\n';
+
+    Object.keys(products).forEach(function(pk) {
+      out += '\n' + (productLabels[pk] || pk) + ':\n';
+      Object.keys(products[pk]).forEach(function(dk) {
+        var pair = products[pk][dk];
+        var primary = pair.ach || pair.cc;
+        if (!primary) return;
+        var label = primary.display_name || dk;
+        // Strip trailing "(ACH)" / "(CC)" from display_name since we render both.
+        label = label.replace(/\s*\((ACH|CC)\)\s*$/i, '').trim();
+
+        var bits = [label + ': ' + fmt(primary.amount_cents)];
+        if (primary.period)   bits.push(primary.period);
+        if (pair.ach && pair.cc) bits.push('CC +3.5% fee');
+        else if (primary.payment_method === 'card') bits.push('CC only');
+        else                                        bits.push('ACH only');
+
+        out += '- ' + bits.join(' ') + '\n';
+        if (primary.detail)   out += '    ' + primary.detail + '\n';
+      });
+    });
+
+    return out;
+  } catch (e) {
+    console.error('[agreement-chat] buildPricingContext error:', e && e.message);
+    return '';
+  }
 }
 
 
