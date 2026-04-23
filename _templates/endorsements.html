@@ -302,7 +302,7 @@ select.form-input { cursor: pointer; }
   }
 
   // Load contact and existing endorsements
-  fetch('/api/public-contact?slug=' + encodeURIComponent(CLIENT_SLUG))
+  fetch('/api/public-contact?slug=' + encodeURIComponent(CLIENT_SLUG), { credentials: 'same-origin' })
     .then(function(r) { return r.json(); })
     .then(function(body) {
       if (!body || !body.contact) {

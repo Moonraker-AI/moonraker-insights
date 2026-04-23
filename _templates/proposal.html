@@ -698,7 +698,8 @@ section { padding: 4.5rem 0; }
             method: 'POST',
             headers: { 'Content-Type': 'application/json' },
             body: JSON.stringify({ slug: slug }),
-            keepalive: true
+            keepalive: true,
+            credentials: 'same-origin'
           }).catch(function() {});
         } catch (_) {}
       }

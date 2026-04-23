@@ -198,7 +198,7 @@ section{padding:3.5rem 0}
   function fmtDate(d){if(!d)return '';try{return new Date(d).toLocaleDateString('en-US',{year:'numeric',month:'long',day:'numeric'})}catch(e){return d}}
   if(!SLUG){document.getElementById('loadingState').innerHTML='<div style="text-align:center;padding:6rem 2rem;"><p style="color:var(--color-danger)">No client found. Check URL.</p></div>';return}
   Promise.all([
-    fetch('/api/public-contact?slug='+encodeURIComponent(SLUG)).then(function(r){return r.json()}).then(function(b){return b&&b.contact?[b.contact]:[]}),
+    fetch('/api/public-contact?slug='+encodeURIComponent(SLUG),{credentials:'same-origin'}).then(function(r){return r.json()}).then(function(b){return b&&b.contact?[b.contact]:[]}),
     sb('entity_audits?client_slug=eq.'+SLUG+'&order=audit_date.desc&limit=1'),
     sb('checklist_items?client_slug=eq.'+SLUG+'&web_visible=eq.true&order=sort_order')
   ]).then(function(res){

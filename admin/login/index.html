@@ -125,6 +125,7 @@ h1, h2 { font-family: 'Outfit', sans-serif; font-weight: 700; color: var(--color
 .theme-toggle:hover { border-color: var(--color-primary); }
 ::view-transition-old(root), ::view-transition-new(root) { animation-duration: .25s; }
 </style>
+<script src="/shared/offline-banner.js" defer></script>
 </head>
 <body>
 
@@ -193,12 +194,27 @@ sb.auth.getSession().then(function(result) {
 
 async function checkProfileAndRoute(session) {
   try {
-    var resp = await fetch(SB_URL + '/rest/v1/admin_profiles?id=eq.' + session.user.id + '&select=id,must_change_password&limit=1', {
-      headers: { 'apikey': SB_ANON, 'Authorization': 'Bearer ' + session.access_token }
+    // Ensure the HttpOnly mr_admin_sess cookie is in the jar before we
+    // call a server endpoint that requires it. If the user lands here
+    // with a live Supabase JS session (e.g. cached after a browser
+    // restart) the cookie may be absent or expired — sync it first so
+    // /api/auth/check-must-change can authenticate the request.
+    try {
+      await fetch('/api/auth/session', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        credentials: 'same-origin',
+        body: JSON.stringify({ access_token: session.access_token })
+      });
+    } catch (e) { /* cookie sync best-effort; endpoint call below will 401 if it truly failed */ }
+
+    var resp = await fetch('/api/auth/check-must-change', {
+      method: 'GET',
+      credentials: 'same-origin'
     });
-    var rows = await resp.json();
-    if (!Array.isArray(rows) || rows.length === 0) return;
-    if (rows[0].must_change_password) {
+    if (!resp.ok) return;
+    var data = await resp.json();
+    if (data && data.must_change_password) {
       showPasswordView();
     } else {
       window.location.href = '/admin';
@@ -243,23 +259,9 @@ async function handleLogin() {
 
     var session = result.data.session;
 
-    // Verify admin profile
-    var resp = await fetch(SB_URL + '/rest/v1/admin_profiles?id=eq.' + session.user.id + '&select=id,role,must_change_password&limit=1', {
-      headers: { 'apikey': SB_ANON, 'Authorization': 'Bearer ' + session.access_token }
-    });
-    var profiles = await resp.json();
-
-    if (!Array.isArray(profiles) || profiles.length === 0) {
-      await sb.auth.signOut();
-      errEl.textContent = 'Your account does not have admin access.';
-      errEl.className = 'error-msg visible';
-      btn.disabled = false;
-      btn.textContent = 'Sign in';
-      return;
-    }
-
-    // Sync session cookie (C3: HttpOnly mr_admin_sess) before leaving the
-    // page so /admin lands with the cookie already in the jar.
+    // Sync session cookie (C3: HttpOnly mr_admin_sess) FIRST so the admin
+    // profile lookup below (which now routes through /api/auth/*) has the
+    // cookie in the jar to authenticate with.
     try {
       await fetch('/api/auth/session', {
         method: 'POST',
@@ -269,8 +271,33 @@ async function handleLogin() {
       });
     } catch (e) { console.error('[login] session cookie sync failed:', e && e.message); }
 
+    // Verify admin profile via the server (no direct RLS-gated GET here)
+    var resp = await fetch('/api/auth/check-must-change', {
+      method: 'GET',
+      credentials: 'same-origin'
+    });
+
+    if (resp.status === 401 || resp.status === 403 || resp.status === 404) {
+      await sb.auth.signOut();
+      errEl.textContent = 'Your account does not have admin access.';
+      errEl.className = 'error-msg visible';
+      btn.disabled = false;
+      btn.textContent = 'Sign in';
+      return;
+    }
+
+    if (!resp.ok) {
+      errEl.textContent = 'Something went wrong. Please try again.';
+      errEl.className = 'error-msg visible';
+      btn.disabled = false;
+      btn.textContent = 'Sign in';
+      return;
+    }
+
+    var profile = await resp.json();
+
     // Check if password change required
-    if (profiles[0].must_change_password) {
+    if (profile && profile.must_change_password) {
       showPasswordView();
     } else {
       window.location.href = '/admin';
