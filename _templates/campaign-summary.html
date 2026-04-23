@@ -372,11 +372,11 @@ section { padding: 4.5rem 0; }
 
   <section id="bookings">
     <div class="container reveal">
-      <div class="section-eyebrow">Booking pipeline</div>
+      <div class="section-eyebrow" id="bookingsEyebrow">Booking pipeline</div>
       <h2 id="bookingsTitle">Booked consultations through your scheduling pipeline</h2>
       <p class="section-intro" id="bookingsIntro">Counted from new-appointment notifications sent to <strong>calls@moonraker.ai</strong>, net of cancellations. This is your full pipeline volume across all sources, including organic, referral, paid, and repeat bookings, not just SEO-attributed.</p>
 
-      <div class="chart-card">
+      <div class="chart-card" id="bookingsGmailCard">
         <div class="chart-card-header">
           <h3>Bookings vs. organic clicks, by month</h3>
           <span class="subtle" id="bookingsChartSubtle"></span>
@@ -387,6 +387,17 @@ section { padding: 4.5rem 0; }
         </div>
         <div class="chart-canvas-wrap">
           <canvas id="bookingsChart" role="img" aria-label="Monthly bookings, cancellations, and organic clicks across the engagement window"></canvas>
+        </div>
+      </div>
+
+      <div class="chart-card hidden" id="leadVolumeCard">
+        <div class="chart-card-header">
+          <h3>Leads by source, by month</h3>
+          <span class="subtle" id="leadVolumeSubtle"></span>
+        </div>
+        <div class="chart-legend" id="leadVolumeLegend"></div>
+        <div class="chart-canvas-wrap">
+          <canvas id="leadVolumeChart" role="img" aria-label="Monthly lead volume by self-reported referral source"></canvas>
         </div>
       </div>
     </div>
@@ -935,27 +946,50 @@ section { padding: 4.5rem 0; }
   function renderHeadlineKpis(data) {
     var grid = document.getElementById('kpiGrid');
     var cards = [];
+    var dd = data.attribution_deep_dive;
+    var hasManualLeads = dd && dd.available && Array.isArray(dd.monthly_by_source) && dd.monthly_by_source.length > 0;
 
-    if (data.bookings && data.bookings.available) {
+    if (hasManualLeads) {
+      // Sum total leads across all months/sources
+      var totalLeads = 0;
+      dd.monthly_by_source.forEach(function(row) {
+        var s = row.sources || {};
+        Object.keys(s).forEach(function(k) { totalLeads += Number(s[k]) || 0; });
+      });
+      var months = dd.monthly_by_source.length;
+      cards.push({
+        label: 'Total leads',
+        value: fmtNum(totalLeads),
+        context: 'Across ' + months + ' month' + (months === 1 ? '' : 's') + ' of intake-form data'
+      });
+      // Cost per lead, if cost data is available
+      if (data.cost && data.cost.available && totalLeads > 0) {
+        cards.push({
+          label: 'Cost per lead',
+          value: '$' + Math.round(data.cost.total_dollars / totalLeads).toLocaleString(),
+          context: '$' + Math.round(data.cost.total_dollars).toLocaleString() + ' invested \u00b7 ' + fmtNum(totalLeads) + ' leads'
+        });
+      }
+    } else if (data.bookings && data.bookings.available) {
       cards.push({
         label: 'Net consultations',
         value: fmtNum(data.bookings.net),
         context: 'Booked through your scheduling pipeline'
       });
-    }
-    if (data.cost_per_consultation && data.cost_per_consultation.available) {
-      cards.push({
-        label: 'Cost per consultation',
-        value: '$' + Math.round(data.cost_per_consultation.dollars).toLocaleString(),
-        context: '$' + Math.round(data.cost_per_consultation.total_invested_dollars).toLocaleString() + ' invested · pipeline volume'
-      });
-    }
-    if (data.conversion && data.conversion.available) {
-      cards.push({
-        label: 'Click-to-booking',
-        value: '1 in ' + fmtNum(data.conversion.clicks_per_booking),
-        context: 'Of every ' + fmtNum(data.conversion.clicks_per_booking) + ' organic visitors books a consultation'
-      });
+      if (data.cost_per_consultation && data.cost_per_consultation.available) {
+        cards.push({
+          label: 'Cost per consultation',
+          value: '$' + Math.round(data.cost_per_consultation.dollars).toLocaleString(),
+          context: '$' + Math.round(data.cost_per_consultation.total_invested_dollars).toLocaleString() + ' invested \u00b7 pipeline volume'
+        });
+      }
+      if (data.conversion && data.conversion.available) {
+        cards.push({
+          label: 'Click-to-booking',
+          value: '1 in ' + fmtNum(data.conversion.clicks_per_booking),
+          context: 'Of every ' + fmtNum(data.conversion.clicks_per_booking) + ' organic visitors books a consultation'
+        });
+      }
     }
     if (data.gsc && data.gsc.available) {
       if (data.gsc.position_first && data.gsc.position_last) {
@@ -1000,18 +1034,141 @@ section { padding: 4.5rem 0; }
   }
 
   // ── Bookings + combined chart ────────────────────────────────────
+  // The Bookings section has two mutually exclusive modes:
+  //   1. Lead-volume mode (preferred) — driven by attribution_deep_dive
+  //      .monthly_by_source supplied by the admin team. Title/intro reframe
+  //      to "Lead volume by source." This is the path forward for all new
+  //      clients reporting attribution via spreadsheet.
+  //   2. Bookings-pipeline mode (legacy) — driven by Gmail notifications
+  //      to calls@moonraker.ai. Retained for clients still on that pipeline
+  //      (Erika / Bridges of the Mind).
+  //
+  // If neither has data, the section is hidden entirely.
   var bookingsChart = null;
+  var leadVolumeChart = null;
+
   function renderBookings(data) {
-    var b = data.bookings;
     var section = document.getElementById('bookings');
-    if (!b || !b.available) {
+    var dd = data.attribution_deep_dive;
+    var hasManual = dd && dd.available && Array.isArray(dd.monthly_by_source) && dd.monthly_by_source.length > 0;
+    var b = data.bookings;
+    var hasBookings = b && b.available;
+
+    if (!hasManual && !hasBookings) {
       section.classList.add('hidden');
-      var d = section.previousElementSibling;
-      if (d && d.classList.contains('divider')) d.classList.add('hidden');
-      var nav = document.getElementById('navBookings');
-      if (nav) nav.classList.add('hidden');
+      var d0 = section.previousElementSibling;
+      if (d0 && d0.classList.contains('divider')) d0.classList.add('hidden');
+      var nav0 = document.getElementById('navBookings');
+      if (nav0) nav0.classList.add('hidden');
       return;
     }
+
+    if (hasManual) {
+      renderLeadVolume(data, dd);
+    } else {
+      renderBookingsGmail(data, b);
+    }
+  }
+
+  function renderLeadVolume(data, dd) {
+    document.getElementById('bookingsGmailCard').classList.add('hidden');
+    document.getElementById('leadVolumeCard').classList.remove('hidden');
+    document.getElementById('bookingsEyebrow').textContent = 'Lead volume by source';
+
+    // Aggregate totals + range for headline
+    var totalLeads = 0;
+    var sourceTotals = {};
+    dd.monthly_by_source.forEach(function(row) {
+      var s = row.sources || {};
+      Object.keys(s).forEach(function(k) {
+        var v = Number(s[k]) || 0;
+        sourceTotals[k] = (sourceTotals[k] || 0) + v;
+        totalLeads += v;
+      });
+    });
+
+    var months = dd.monthly_by_source.map(function(r) { return r.month; }).sort();
+    var firstM = months[0], lastM = months[months.length - 1];
+    var rangeText = firstM && lastM ? ymLabel(firstM) + ' \u2013 ' + ymLabel(lastM) : '';
+
+    document.getElementById('bookingsTitle').textContent =
+      fmtNum(totalLeads) + ' leads through your intake forms' + (rangeText ? ', ' + rangeText : '');
+    document.getElementById('bookingsIntro').innerHTML =
+      'Self-reported lead source from your intake form, by month. This is full-pipeline volume across all sources, not just SEO-attributed.';
+    document.getElementById('leadVolumeSubtle').textContent = fmtNum(totalLeads) + ' total';
+
+    // Order sources by total volume desc, take top 8
+    var orderedSources = Object.keys(sourceTotals)
+      .filter(function(k) { return sourceTotals[k] > 0; })
+      .sort(function(a, b) { return sourceTotals[b] - sourceTotals[a]; })
+      .slice(0, 8);
+
+    // Color palette — primary green for top source, then a controlled spectrum
+    var palette = ['#00D47E', '#5b21b6', '#3b82f6', '#f59e0b', '#ef4444', '#0ea5e9', '#84cc16', '#94a3b8'];
+
+    var labels = months.map(ymLabel);
+    var datasets = orderedSources.map(function(src, idx) {
+      var color = palette[idx] || '#94a3b8';
+      var rowMap = {};
+      dd.monthly_by_source.forEach(function(r) { rowMap[r.month] = r.sources || {}; });
+      var seriesData = months.map(function(m) { return Number((rowMap[m] || {})[src]) || 0; });
+      return {
+        type: 'line',
+        label: src,
+        data: seriesData,
+        borderColor: color,
+        backgroundColor: color,
+        pointBackgroundColor: color,
+        pointBorderColor: color,
+        borderWidth: 2.5,
+        pointRadius: 3.5,
+        pointHoverRadius: 5,
+        tension: 0.25,
+        yAxisID: 'y',
+        order: 10 - idx
+      };
+    });
+
+    // Build legend
+    var legendEl = document.getElementById('leadVolumeLegend');
+    legendEl.innerHTML = orderedSources.map(function(src, idx) {
+      var color = palette[idx] || '#94a3b8';
+      return '<span><span class="swatch line line-swatch" style="color:' + color + '"></span>' + escapeHtml(src) + '</span>';
+    }).join('');
+
+    var ctx = document.getElementById('leadVolumeChart').getContext('2d');
+    if (leadVolumeChart) leadVolumeChart.destroy();
+    leadVolumeChart = new Chart(ctx, {
+      data: { labels: labels, datasets: datasets },
+      options: {
+        responsive: true,
+        maintainAspectRatio: false,
+        interaction: { mode: 'index', intersect: false },
+        plugins: {
+          legend: { display: false },
+          tooltip: {
+            callbacks: {
+              label: function(c) { return c.dataset.label + ': ' + Math.round(c.parsed.y); }
+            }
+          }
+        },
+        scales: {
+          x: { ticks: { autoSkip: false, maxRotation: 0, font: { size: 11 } }, grid: { display: false } },
+          y: {
+            position: 'left', beginAtZero: true,
+            title: { display: true, text: 'Leads', font: { size: 11 } },
+            ticks: { font: { size: 11 }, precision: 0 },
+            grid: { color: 'rgba(128,128,128,0.1)' }
+          }
+        }
+      }
+    });
+  }
+
+  function renderBookingsGmail(data, b) {
+    document.getElementById('leadVolumeCard').classList.add('hidden');
+    document.getElementById('bookingsGmailCard').classList.remove('hidden');
+    document.getElementById('bookingsEyebrow').textContent = 'Booking pipeline';
 
     document.getElementById('bookingsTitle').textContent =
       fmtNum(b.net) + ' consultations booked through the engagement';
@@ -1035,7 +1192,6 @@ section { padding: 4.5rem 0; }
       }
     ];
 
-    // Overlay GSC clicks if available
     if (data.gsc && data.gsc.available) {
       var clicksByMonth = {};
       data.gsc.by_month.forEach(function(r) { clicksByMonth[r.ym] = r.clicks; });
@@ -1055,8 +1211,6 @@ section { padding: 4.5rem 0; }
         pointStyle: 'rect',
         tension: 0.25,
         yAxisID: 'y1',
-        // Higher order = drawn earlier = appears BEHIND the bars.
-        // Matches the GSC chart's natural stacking.
         order: 10
       });
       document.getElementById('clicksLegend').classList.remove('hidden');
@@ -1392,7 +1546,23 @@ section { padding: 4.5rem 0; }
     if (status === 'pending') {
       note.textContent = 'Attribution data hasn\u2019t been recorded yet. Once we have year-one source numbers from your admin team, this section will show whether the guarantee was met.';
     } else if (status === 'short') {
-      note.textContent = 'Note: tracked attribution captures only patients who self-reported their referral source at intake. Your booking pipeline shows ' + (data.bookings && data.bookings.available ? fmtNum(data.bookings.net) + ' net consultations' : 'meaningful volume') + ' over the same window, suggesting the actual organic-attributed revenue is materially higher than what surfaces in your current tracking.';
+      // Prefer total leads from manual deep-dive data; fall back to gmail-derived bookings
+      var ddNote = data.attribution_deep_dive;
+      var hasManualNote = ddNote && ddNote.available && Array.isArray(ddNote.monthly_by_source) && ddNote.monthly_by_source.length > 0;
+      var pipelinePhrase;
+      if (hasManualNote) {
+        var totalLeadsNote = 0;
+        ddNote.monthly_by_source.forEach(function(row) {
+          var s = row.sources || {};
+          Object.keys(s).forEach(function(k) { totalLeadsNote += Number(s[k]) || 0; });
+        });
+        pipelinePhrase = fmtNum(totalLeadsNote) + ' inquiries through your intake forms';
+      } else if (data.bookings && data.bookings.available && data.bookings.net > 0) {
+        pipelinePhrase = fmtNum(data.bookings.net) + ' net consultations';
+      } else {
+        pipelinePhrase = 'meaningful volume';
+      }
+      note.textContent = 'Note: tracked attribution captures only patients who self-reported their referral source at intake. Your full pipeline shows ' + pipelinePhrase + ' over the same window, suggesting the actual organic-attributed revenue is materially higher than what surfaces in your current tracking.';
     } else {
       note.textContent = 'This result reflects your admin team\u2019s tagged attribution data, including patients who self-reported the channel at intake. Actual organic-driven revenue is likely higher; we\u2019ll close that gap going forward.';
     }
