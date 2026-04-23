@@ -4812,13 +4812,12 @@
             '<span><strong style="color:var(--color-heading);">CC:</strong> ' + esc(data.cc) + '</span>' +
             '<span><strong style="color:var(--color-heading);">Subject:</strong> ' + esc(data.subject) + '</span>';
           var iframe = document.createElement('iframe');
+          iframe.setAttribute('sandbox', 'allow-same-origin');
           iframe.style.cssText = 'width:100%;min-height:500px;border:none;display:block;';
-          iframe.onload = function() { iframe.style.height = iframe.contentDocument.body.scrollHeight + 20 + 'px'; };
+          iframe.onload = function() { try { iframe.style.height = iframe.contentDocument.body.scrollHeight + 20 + 'px'; } catch(_) {} };
+          iframe.srcdoc = String(data.body_html || '');
           document.getElementById('eaEmailBody').innerHTML = '';
           document.getElementById('eaEmailBody').appendChild(iframe);
-          iframe.contentDocument.open();
-          iframe.contentDocument.write(data.body_html);
-          iframe.contentDocument.close();
           panel.setAttribute('data-loaded', '1');
         } else {
           document.getElementById('eaEmailMeta').innerHTML = '<span style="color:var(--color-danger);">Error: ' + esc(data.error || 'Unknown') + '</span>';
@@ -7598,12 +7597,11 @@
           '<strong>Subject:</strong> ' + esc(res.subject) + '<br>' +
           '<strong>From:</strong> Moonraker Reports &lt;reports@clients.moonraker.ai&gt;';
         var iframe = document.createElement('iframe');
+        iframe.setAttribute('sandbox', 'allow-same-origin');
         iframe.style.cssText = 'width:100%;height:100%;border:none;min-height:500px;';
+        iframe.srcdoc = String(res.html || '');
         document.getElementById('emailPreviewFrame').innerHTML = '';
         document.getElementById('emailPreviewFrame').appendChild(iframe);
-        iframe.contentDocument.open();
-        iframe.contentDocument.write(res.html);
-        iframe.contentDocument.close();
       } else {
         document.getElementById('emailMeta').textContent = 'Error: ' + (res.error || 'Unknown error');
         document.getElementById('emailPreviewFrame').innerHTML = '<div style="padding:2rem;text-align:center;color:var(--color-danger);">' + esc(res.error || JSON.stringify(res)) + '</div>';

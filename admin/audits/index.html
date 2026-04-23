@@ -765,7 +765,7 @@
         w.document.write('<strong>CC:</strong> ' + esc(data.cc) + '<br>');
         w.document.write('<strong>Subject:</strong> ' + esc(data.subject));
         w.document.write('</div>');
-        w.document.write('<iframe sandbox="allow-same-origin" style="width:100%;height:80vh;border:1px solid #ddd;" srcdoc="' + String(data.body_html || '').replace(/&/g,'&amp;').replace(/"/g,'&quot;') + '"></iframe>');
+        w.document.write('<iframe sandbox="allow-same-origin" style="width:100%;height:80vh;border:1px solid #ddd;" srcdoc="' + String(data.body_html || '').replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;').replace(/'/g,'&#39;') + '"></iframe>');
         w.document.write('</body></html>');
         w.document.close();
       } else {
