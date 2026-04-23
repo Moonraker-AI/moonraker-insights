@@ -116,7 +116,19 @@ module.exports = async function handler(req, res) {
   var session = event.data && event.data.object;
   if (!session) return res.status(200).json({ received: true, error: 'No session object' });
 
-  var slug = session.client_reference_id || (session.metadata && session.metadata.slug) || '';
+  // Resolve contact by UUID first (preferred since /api/checkout/create-session.js
+  // sets client_reference_id = contact.id and metadata.contact_id = contact.id).
+  // Fall back to metadata.slug for any pre-existing buy.stripe.com links that
+  // predate the inline-session flow and were tagged with slug only.
+  //
+  // History (2026-04-23): this block previously treated client_reference_id
+  // as if it were the slug. Since create-session.js writes the UUID there, the
+  // contacts?slug=eq.<uuid> lookup always returned zero rows — every Checkout
+  // Session run through create-session.js hit "contact not found" and never
+  // flipped status. Caught when Athena McCullough paid via ACH and stayed in
+  // prospect status; root cause investigation revealed the mismatch.
+  var contactId = session.client_reference_id || (session.metadata && session.metadata.contact_id) || '';
+  var slug = (session.metadata && session.metadata.slug) || '';
   var amountTotal = session.amount_total || 0;
   var paymentStatus = session.payment_status || '';
   // Populated by /api/checkout/create-session. Accept both the historical
@@ -127,17 +139,27 @@ module.exports = async function handler(req, res) {
   var metadataProduct = (session.metadata && session.metadata.product) || '';
   if (metadataProduct === 'core_marketing') metadataProduct = 'core_marketing_system';
 
-  if (!slug) {
-    console.log('Stripe webhook: no slug found in session', session.id);
-    return res.status(200).json({ received: true, warning: 'No client_reference_id or slug metadata' });
+  if (!contactId && !slug) {
+    console.log('Stripe webhook: no contact_id or slug found in session', session.id);
+    return res.status(200).json({ received: true, warning: 'No client_reference_id, metadata.contact_id, or metadata.slug' });
   }
 
   try {
-    var contact = await sb.one('contacts?slug=eq.' + slug + '&select=id,status,email,audit_tier,practice_name,first_name,last_name&limit=1');
+    // Prefer UUID lookup; fall back to slug for legacy buy.stripe.com links.
+    // Select `slug` too so downstream code paths that still reference `slug`
+    // (status-flip filter, notify-team, audit trigger) keep working.
+    var contactQuery = contactId
+      ? 'contacts?id=eq.' + encodeURIComponent(contactId) + '&select=id,slug,status,email,audit_tier,practice_name,first_name,last_name&limit=1'
+      : 'contacts?slug=eq.' + encodeURIComponent(slug) + '&select=id,slug,status,email,audit_tier,practice_name,first_name,last_name&limit=1';
+    var contact = await sb.one(contactQuery);
     if (!contact) {
-      console.log('Stripe webhook: contact not found for slug', slug);
-      return res.status(200).json({ received: true, warning: 'Contact not found: ' + slug });
+      console.log('Stripe webhook: contact not found (contact_id=' + contactId + ', slug=' + slug + ')');
+      return res.status(200).json({ received: true, warning: 'Contact not found (contact_id=' + contactId + ', slug=' + slug + ')' });
     }
+    // Canonicalize slug from the DB row so every downstream reference uses
+    // the authoritative value (not whatever was in metadata, which might be
+    // stale if a slug ever got renamed).
+    slug = contact.slug;
 
     var results = { slug: slug, session_id: session.id };
 
@@ -352,6 +374,10 @@ module.exports = async function handler(req, res) {
       // This replaces the older read-then-write gate (`if (contact.status ===
       // 'prospect')`) which was vulnerable to a TOCTOU race between the
       // SELECT and the PATCH.
+      //
+      // Filter by id=eq.<uuid> not slug. UUID is unambiguous, URL-safe, and
+      // guaranteed present; slug was a stale carry-over from when the top-of-
+      // handler lookup was also slug-based.
       var enrichedPatch = { status: 'onboarding' };
 
       if (tierRowEarly) {
@@ -374,7 +400,7 @@ module.exports = async function handler(req, res) {
       }
 
       var flipResult = await sb.mutate(
-        'contacts?slug=eq.' + slug + '&status=eq.prospect',
+        'contacts?id=eq.' + contact.id + '&status=eq.prospect',
         'PATCH',
         enrichedPatch,
         'return=representation'
@@ -460,41 +486,6 @@ module.exports = async function handler(req, res) {
             });
           } catch (_) { /* don't let alert failure mask the 200 */ }
           results.setup_audit_schedule_failed = true;
-        }
-
-        // Kick off sitemap scout for the configurator (awaited; monitor.critical
-        // on failure). This only queues the task on the agent and creates the
-        // sitemap_scouts row — the actual scout runs async in the background
-        // and calls back via /api/ingest-sitemap-scout. Fast.
-        try {
-          var smResp = await fetchT('https://clients.moonraker.ai/api/trigger-sitemap-scout', {
-            method: 'POST',
-            headers: { 'Content-Type': 'application/json', 'Authorization': 'Bearer ' + (process.env.CRON_SECRET || '') },
-            body: JSON.stringify({ contact_id: contact.id })
-          }, 15000);
-          if (!smResp.ok) {
-            var smErrBody = '';
-            try { smErrBody = await smResp.text(); } catch (_) {}
-            await monitor.critical('stripe-webhook', new Error('trigger-sitemap-scout returned ' + smResp.status), {
-              client_slug: slug,
-              detail: {
-                stage: 'trigger_sitemap_scout',
-                status: smResp.status,
-                body_preview: smErrBody.substring(0, 500),
-                session_id: session.id,
-                contact_id: contact.id
-              }
-            });
-            results.trigger_sitemap_scout_failed = true;
-          }
-        } catch (smErr) {
-          try {
-            await monitor.critical('stripe-webhook', smErr, {
-              client_slug: slug,
-              detail: { stage: 'trigger_sitemap_scout', session_id: session.id, contact_id: contact.id }
-            });
-          } catch (_) { /* don't let alert failure mask the 200 */ }
-          results.trigger_sitemap_scout_failed = true;
         }
       } else {
         // Either the contact was never in 'prospect' (already active,
@@ -814,6 +805,21 @@ module.exports = async function handler(req, res) {
       }, 'return=minimal');
     } catch (logErr) {
       console.log('Failed to log payment:', logErr.message);
+    }
+
+    // Mark the dedup row consumed so a fresh session can be created if the
+    // contact later needs one (e.g. for an add-on purchase). No-op if the
+    // row doesn't exist (e.g. legacy buy.stripe.com flow that predates
+    // pending_checkout_sessions).
+    try {
+      await sb.mutate(
+        'pending_checkout_sessions?stripe_session_id=eq.' + encodeURIComponent(session.id) + '&consumed_at=is.null',
+        'PATCH',
+        { consumed_at: new Date().toISOString() },
+        'return=minimal'
+      );
+    } catch (consumeErr) {
+      console.log('Failed to mark pending_checkout_session consumed:', consumeErr.message);
     }
 
     return res.status(200).json({ received: true, results: results });
