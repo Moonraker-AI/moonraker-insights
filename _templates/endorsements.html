@@ -275,12 +275,10 @@ select.form-input { cursor: pointer; }
   // PAGE_TOKEN (body field) is no longer used — endorsement submissions now
   // ride on the HttpOnly cookie set by /api/page-token/request (see
   // shared/page-token.js). The constant below is retained as an empty string
-  // for any straggler callers; remove once the legacy deployed copies are
-  // regenerated via scripts/regenerate-client-pages.js.
-  // It's an endorsement-scoped HMAC signed token that binds this page to the
-  // client's contact_id and authorizes submission to /api/submit-endorsement.
-  // If you see the literal placeholder string below, this page was not
-  // deployed through the proper route — redeploy via the admin panel.
+  // for any straggler callers; safe to remove once we're certain no field
+  // code references window.__PAGE_TOKEN__.
+  // (The page itself is served by /:slug/endorsements -> /_templates/endorsements
+  // rewrite, so there are no per-client copies that need updating.)
   var PAGE_TOKEN = '';
   window.__MR_PAGE_SCOPE__ = 'endorsement';
 
