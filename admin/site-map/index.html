@@ -13,60 +13,159 @@
 <style>
   body { margin: 0; background: var(--color-bg); color: var(--color-body); font-family: Inter, -apple-system, sans-serif; }
 
-  /* Top bar */
   .topbar { position: sticky; top: 0; z-index: 100; background: var(--color-surface); border-bottom: 1px solid var(--color-border); padding: 0 2rem; height: 56px; display: flex; align-items: center; gap: 1rem; }
   .topbar-title { font-family: 'Outfit', sans-serif; font-weight: 600; font-size: 1rem; color: var(--color-heading); }
   .topbar-meta { font-size: .78rem; color: var(--color-muted); }
-  .topbar-right { display: flex; align-items: center; gap: .5rem; margin-left: auto; }
+  .topbar-right { display: flex; align-items: center; gap: .75rem; margin-left: auto; }
 
-  /* Content */
-  .content { max-width: 1100px; margin: 0 auto; padding: 1.75rem 2rem 6rem; }
+  .content { max-width: 1400px; margin: 0 auto; padding: 1.5rem 2rem 6rem; }
   @media (max-width: 1024px) { .content { padding: 1.25rem; } }
 
-  /* Header card */
-  .header-card { background: var(--color-surface); border: 1px solid var(--color-border); border-radius: 14px; padding: 1.25rem 1.5rem; margin-bottom: 1.5rem; display: flex; align-items: center; gap: 1rem; flex-wrap: wrap; }
-  .header-card h1 { font-family: 'Outfit', sans-serif; font-size: 1.3rem; margin: 0; color: var(--color-heading); }
-  .header-card .root-url { font-size: .82rem; color: var(--color-muted); margin: .15rem 0 0; }
+  .header-card { background: var(--color-surface); border: 1px solid var(--color-border); border-radius: 14px; padding: 1.1rem 1.5rem; margin-bottom: 1.25rem; display: flex; align-items: center; gap: 1rem; flex-wrap: wrap; }
+  .header-card h1 { font-family: 'Outfit', sans-serif; font-size: 1.25rem; margin: 0; color: var(--color-heading); }
+  .header-card .root-url { font-size: .8rem; color: var(--color-muted); margin: .15rem 0 0; }
   .status-chip { display: inline-flex; align-items: center; padding: .25rem .65rem; border-radius: 6px; font-size: .7rem; font-weight: 600; text-transform: uppercase; letter-spacing: .04em; }
   .status-draft { background: rgba(245,158,11,.1); color: var(--color-warning); }
   .status-mvp_locked, .status-fully_locked { background: rgba(59,130,246,.08); color: var(--color-info); }
   .status-launched { background: rgba(0,212,126,.1); color: var(--color-success); }
   .source-tag { font-size: .7rem; font-weight: 500; color: var(--color-muted); background: var(--color-bg); border: 1px solid var(--color-border); padding: .15rem .5rem; border-radius: 6px; }
-  .hdr-actions { margin-left: auto; display: flex; gap: .5rem; }
 
-  /* Category sections */
-  .cat-section { background: var(--color-surface); border: 1px solid var(--color-border); border-radius: 14px; margin-bottom: 1rem; overflow: hidden; }
-  .cat-head { display: flex; align-items: center; justify-content: space-between; gap: .75rem; padding: .9rem 1.25rem; border-bottom: 1px solid var(--color-border); cursor: pointer; user-select: none; }
-  .cat-head:hover { background: var(--sidebar-hover); }
-  .cat-head h2 { font-family: 'Outfit', sans-serif; font-size: 1rem; font-weight: 600; color: var(--color-heading); margin: 0; display: flex; align-items: center; gap: .6rem; }
-  .cat-count-badge { font-size: .72rem; font-weight: 500; color: var(--color-muted); background: var(--color-bg); padding: .1rem .5rem; border-radius: 5px; border: 1px solid var(--color-border); }
-  .cat-count-badge.over { color: var(--color-danger); background: rgba(239,68,68,.05); border-color: rgba(239,68,68,.2); }
-  .cat-add { font-size: .75rem; font-weight: 500; color: var(--color-primary); background: var(--color-primary-subtle); border: 1px solid rgba(0,212,126,.2); padding: .3rem .65rem; border-radius: 6px; cursor: pointer; font-family: inherit; }
-  .cat-add:hover { background: var(--color-primary); color: #fff; }
-  .cat-add[disabled] { opacity: .45; cursor: not-allowed; }
-  .cat-toggle { color: var(--color-muted); transition: transform .2s; font-size: .85rem; }
-  .cat-section.collapsed .cat-toggle { transform: rotate(-90deg); }
-  .cat-section.collapsed .cat-body { display: none; }
-  .cat-body { padding: .25rem 0; }
+  .toggle-noise { font-size: .78rem; color: var(--color-muted); display: inline-flex; align-items: center; gap: .4rem; cursor: pointer; user-select: none; }
+  .toggle-noise input { cursor: pointer; }
 
-  /* Page row */
-  .page-row { display: flex; align-items: center; gap: .75rem; padding: .75rem 1.25rem; border-top: 1px solid var(--color-border); }
-  .page-row:first-child { border-top: none; }
-  .page-row.removed { opacity: .45; }
-  .page-main { flex: 1; min-width: 0; }
-  .page-title { font-size: .88rem; font-weight: 500; color: var(--color-heading); margin: 0 0 .15rem; word-break: break-word; }
-  .page-title.empty { color: var(--color-muted); font-style: italic; }
-  .page-url { font-size: .72rem; color: var(--color-muted); word-break: break-all; }
-  .page-url a { color: var(--color-muted); text-decoration: none; }
-  .page-url a:hover { color: var(--color-primary); text-decoration: underline; }
-  .page-notes { font-size: .75rem; color: var(--color-body); margin: .2rem 0 0; line-height: 1.4; }
-  .page-bio-chip { display: inline-flex; align-items: center; gap: .25rem; font-size: .68rem; padding: .1rem .4rem; border-radius: 4px; margin-left: .5rem; font-weight: 500; }
-  .page-bio-chip.complete { background: rgba(0,212,126,.1); color: var(--color-success); }
-  .page-bio-chip.pending { background: rgba(245,158,11,.1); color: var(--color-warning); }
-  .page-bio-chip.primary { background: rgba(139,92,246,.1); color: #8B5CF6; }
+  /* ── Tree view ─────────────────────────────────────────────── */
+  .tree-card {
+    background: var(--color-surface);
+    border: 1px solid var(--color-border);
+    border-radius: 14px;
+    padding: 1.5rem 1rem;
+    overflow-x: auto;
+    overflow-y: hidden;
+    margin-bottom: 1.25rem;
+    min-height: 240px;
+  }
+  .tree { display: flex; align-items: flex-start; gap: 0; min-height: 200px; font-size: .82rem; }
 
-  /* Status selector */
-  .status-select { font-family: inherit; font-size: .72rem; font-weight: 600; padding: .3rem .55rem; border-radius: 6px; border: 1px solid transparent; cursor: pointer; min-width: 140px; background: var(--color-bg); color: var(--color-body); }
+  .tree-root {
+    flex-shrink: 0; align-self: center;
+    padding: .75rem 1rem;
+    background: linear-gradient(135deg, rgba(0,212,126,.08), rgba(0,212,126,.02));
+    border: 1px solid rgba(0,212,126,.3);
+    border-radius: 12px;
+    min-width: 160px; max-width: 200px;
+    box-shadow: 0 2px 8px rgba(0,0,0,.04);
+    word-break: break-word;
+  }
+  .tree-root .domain { font-size: .82rem; color: var(--color-heading); line-height: 1.35; font-weight: 600; }
+  .tree-root .root-label { font-size: .65rem; color: var(--color-primary); text-transform: uppercase; letter-spacing: .08em; margin-bottom: .25rem; font-weight: 700; }
+
+  .tree-trunk { flex-shrink: 0; width: 2.25rem; align-self: stretch; position: relative; }
+  .tree-trunk::before { content: ''; position: absolute; left: 0; top: 50%; width: 100%; border-top: 2px solid var(--color-border); }
+
+  .tree-categories { display: flex; flex-direction: column; gap: .85rem; position: relative; padding: .5rem 0; }
+  .tree-categories::before { content: ''; position: absolute; left: -2.25rem; top: 0; bottom: 0; border-left: 2px solid var(--color-border); }
+
+  .tree-category { display: flex; align-items: flex-start; gap: 0; position: relative; }
+  .tree-category::before { content: ''; position: absolute; left: -2.25rem; top: 1.15rem; width: 2.25rem; border-top: 2px solid var(--color-border); }
+
+  .cat-node {
+    flex-shrink: 0;
+    padding: .5rem .75rem;
+    background: var(--color-bg);
+    border: 1px solid var(--color-border);
+    border-radius: 10px;
+    min-width: 170px; max-width: 200px;
+    cursor: pointer; user-select: none;
+    transition: all .15s;
+    font-size: .8rem;
+  }
+  .cat-node:hover { border-color: var(--color-primary); background: var(--color-surface); }
+  .cat-node .cat-title { font-weight: 600; color: var(--color-heading); display: flex; align-items: center; justify-content: space-between; gap: .5rem; }
+  .cat-node .cat-count { font-size: .7rem; color: var(--color-muted); font-weight: 500; background: var(--color-surface); padding: .05rem .4rem; border-radius: 4px; border: 1px solid var(--color-border); }
+  .cat-node .cat-count.over { color: var(--color-danger); border-color: rgba(239,68,68,.3); background: rgba(239,68,68,.05); }
+  .cat-node .cat-cap { font-size: .68rem; color: var(--color-muted); margin-top: .2rem; }
+  .cat-node.expanded { border-color: var(--color-primary); background: var(--color-surface); box-shadow: 0 0 0 3px rgba(0,212,126,.08); }
+
+  .cat-branch { flex-shrink: 0; width: 1.75rem; align-self: stretch; position: relative; }
+  .cat-branch::before { content: ''; position: absolute; left: 0; top: 1.15rem; width: 100%; border-top: 2px solid var(--color-border); }
+
+  .page-list { display: flex; flex-direction: column; gap: .35rem; position: relative; padding: .15rem 0; }
+  .page-list::before { content: ''; position: absolute; left: -1.75rem; top: .4rem; bottom: .4rem; border-left: 2px solid var(--color-border); }
+
+  .page-node {
+    display: flex; align-items: center; gap: .4rem;
+    position: relative;
+    padding: .4rem .7rem;
+    background: var(--color-surface);
+    border: 1px solid var(--color-border);
+    border-radius: 8px;
+    cursor: pointer; user-select: none;
+    min-width: 200px; max-width: 340px;
+    transition: all .12s;
+  }
+  .page-node::before { content: ''; position: absolute; left: -1.75rem; top: 50%; width: 1.75rem; border-top: 2px solid var(--color-border); }
+  .page-node:hover { border-color: var(--color-primary); transform: translateX(2px); }
+  .page-node.selected { border-color: var(--color-primary); background: var(--color-primary-subtle); box-shadow: 0 0 0 3px rgba(0,212,126,.08); }
+  .page-node.removed { opacity: .55; text-decoration: line-through; text-decoration-color: var(--color-danger); text-decoration-thickness: 1.5px; }
+  .page-node.new { border-left: 3px solid #8B5CF6; }
+  .page-node .page-label { font-size: .8rem; color: var(--color-heading); flex: 1; word-break: break-word; line-height: 1.3; font-weight: 500; }
+  .page-node .status-dot { flex-shrink: 0; width: 8px; height: 8px; border-radius: 50%; }
+  .page-node .status-dot.st-discovered { background: #9CA3AF; }
+  .page-node .status-dot.st-existing_keep { background: var(--color-success); }
+  .page-node .status-dot.st-existing_update { background: var(--color-info); }
+  .page-node .status-dot.st-existing_remove { background: var(--color-danger); }
+  .page-node .status-dot.st-new { background: #8B5CF6; }
+  .page-node .status-dot.st-drafting { background: var(--color-warning); }
+
+  .page-rollup {
+    display: flex; align-items: center; gap: .5rem;
+    position: relative;
+    padding: .4rem .7rem;
+    background: var(--color-bg);
+    border: 1px dashed var(--color-border);
+    border-radius: 8px;
+    cursor: pointer; user-select: none;
+    font-size: .78rem; color: var(--color-muted);
+    min-width: 200px; max-width: 340px;
+    font-style: italic;
+  }
+  .page-rollup::before { content: ''; position: absolute; left: -1.75rem; top: 50%; width: 1.75rem; border-top: 2px solid var(--color-border); }
+  .page-rollup:hover { border-color: var(--color-primary); color: var(--color-heading); }
+
+  .cat-add-inline {
+    font-size: .72rem; font-weight: 500;
+    color: var(--color-primary);
+    background: transparent;
+    border: 1px dashed rgba(0,212,126,.4);
+    padding: .3rem .65rem;
+    border-radius: 6px;
+    cursor: pointer; font-family: inherit;
+    min-width: 200px; text-align: left;
+    position: relative;
+  }
+  .cat-add-inline::before { content: ''; position: absolute; left: -1.75rem; top: 50%; width: 1.75rem; border-top: 2px dashed var(--color-border); }
+  .cat-add-inline:hover { background: var(--color-primary-subtle); border-style: solid; }
+  .cat-add-inline[disabled] { opacity: .4; cursor: not-allowed; }
+
+  .mini-chip { display: inline-flex; align-items: center; font-size: .62rem; padding: .05rem .3rem; border-radius: 3px; margin-left: .3rem; font-weight: 600; vertical-align: middle; }
+  .mini-chip.primary { background: rgba(139,92,246,.12); color: #8B5CF6; }
+  .mini-chip.complete { background: rgba(0,212,126,.12); color: var(--color-success); }
+  .mini-chip.pending { background: rgba(245,158,11,.12); color: var(--color-warning); }
+
+  /* ── Detail panel ──────────────────────────────────────────── */
+  .detail-panel { background: var(--color-surface); border: 1px solid var(--color-border); border-radius: 14px; padding: 1.5rem; min-height: 180px; }
+  .detail-empty { color: var(--color-muted); text-align: center; padding: 2rem 1rem; font-size: .88rem; }
+  .detail-head { display: flex; align-items: flex-start; gap: 1rem; margin-bottom: 1rem; flex-wrap: wrap; }
+  .detail-title { font-family: 'Outfit', sans-serif; font-size: 1.05rem; font-weight: 600; color: var(--color-heading); margin: 0; flex: 1; min-width: 0; word-break: break-word; }
+  .detail-url { font-size: .78rem; color: var(--color-muted); margin: .2rem 0 0; word-break: break-all; }
+  .detail-url a { color: var(--color-muted); text-decoration: none; }
+  .detail-url a:hover { color: var(--color-primary); text-decoration: underline; }
+  .detail-notes { font-size: .82rem; color: var(--color-body); margin: .75rem 0 0; line-height: 1.5; padding: .5rem .75rem; background: var(--color-bg); border-radius: 8px; border: 1px solid var(--color-border); }
+  .detail-actions { display: flex; gap: .5rem; flex-wrap: wrap; align-items: center; }
+  .detail-section { margin-top: 1rem; padding-top: 1rem; border-top: 1px solid var(--color-border); }
+  .detail-section h3 { font-family: 'Outfit', sans-serif; font-size: .82rem; font-weight: 600; color: var(--color-heading); margin: 0 0 .5rem; text-transform: uppercase; letter-spacing: .05em; }
+
+  .status-select { font-family: inherit; font-size: .8rem; font-weight: 600; padding: .4rem .6rem; border-radius: 6px; border: 1px solid transparent; cursor: pointer; min-width: 160px; background: var(--color-bg); color: var(--color-body); }
   .status-select:focus { outline: none; border-color: var(--color-primary); }
   .status-select.st-discovered { background: rgba(107,117,153,.08); color: var(--color-muted); }
   .status-select.st-existing_keep { background: rgba(0,212,126,.1); color: var(--color-success); }
@@ -74,11 +173,6 @@
   .status-select.st-existing_remove { background: rgba(239,68,68,.08); color: var(--color-danger); }
   .status-select.st-new { background: rgba(139,92,246,.08); color: #8B5CF6; }
   .status-select.st-drafting { background: rgba(245,158,11,.08); color: var(--color-warning); }
-
-  .page-actions { display: flex; gap: .3rem; }
-  .icon-btn { background: none; border: 1px solid transparent; padding: .3rem .5rem; border-radius: 6px; font-size: .8rem; cursor: pointer; color: var(--color-muted); font-family: inherit; }
-  .icon-btn:hover { border-color: var(--color-border); color: var(--color-heading); background: var(--color-bg); }
-  .icon-btn.danger:hover { border-color: rgba(239,68,68,.3); color: var(--color-danger); }
 
   /* Modal */
   .modal-backdrop { position: fixed; inset: 0; background: rgba(0,0,0,.5); display: none; align-items: center; justify-content: center; z-index: 1000; padding: 1rem; }
@@ -93,11 +187,9 @@
   .modal .help-text { font-size: .72rem; color: var(--color-muted); margin-top: .25rem; }
   .modal .modal-actions { display: flex; justify-content: flex-end; gap: .5rem; margin-top: 1.25rem; }
 
-  /* Empty / loading states */
   .empty-msg, .loading-msg { text-align: center; padding: 2.5rem 1rem; color: var(--color-muted); font-size: .88rem; }
   .empty-msg h3 { font-family: 'Outfit', sans-serif; font-size: 1rem; color: var(--color-heading); margin: 0 0 .5rem; }
 
-  /* Toast */
   .toast { position: fixed; top: 1rem; right: 1rem; background: var(--color-surface); border: 1px solid var(--color-border); border-radius: 10px; padding: .75rem 1rem; box-shadow: 0 8px 24px rgba(0,0,0,.1); font-size: .82rem; z-index: 2000; opacity: 0; transform: translateX(110%); transition: all .2s; max-width: 380px; }
   .toast.show { opacity: 1; transform: translateX(0); }
   .toast.err { border-color: rgba(239,68,68,.3); color: var(--color-danger); }
@@ -107,12 +199,15 @@
 <body>
 
 <div class="topbar">
-  <a href="/admin/clients/" class="btn btn-ghost btn-sm">← Clients</a>
+  <a id="backLink" href="/admin/clients/" class="btn btn-ghost btn-sm">← Clients</a>
   <div>
     <div class="topbar-title" id="tb-title">Site Map Configurator</div>
     <div class="topbar-meta" id="tb-meta">Loading…</div>
   </div>
   <div class="topbar-right">
+    <label class="toggle-noise">
+      <input type="checkbox" id="showAllToggle"> Show all categories
+    </label>
     <button class="theme-toggle" id="themeBtn" aria-label="Toggle theme"><span class="theme-icon">&#x1F319;</span></button>
   </div>
 </div>
@@ -121,7 +216,6 @@
   <div class="loading-msg" id="loading">Loading site map…</div>
 </div>
 
-<!-- Modals -->
 <div class="modal-backdrop" id="rename-modal">
   <div class="modal">
     <h2 id="rename-modal-title">Rename page</h2>
@@ -171,15 +265,20 @@
 (function() {
   'use strict';
 
-  // ── Config / state ────────────────────────────────────────────────
   var qp = new URLSearchParams(window.location.search);
+  var pathMatch = window.location.pathname.match(/^\/admin\/clients\/([a-z0-9-]+)\/site-map\/?$/);
+  var SLUG = pathMatch ? pathMatch[1] : null;
   var SITE_MAP_ID = qp.get('site_map_id');
 
-  // Category display order + labels
+  var NOISE_CATEGORIES = ['blog_post', 'careers', 'legal_privacy', 'legal_terms', 'legal_other', 'store'];
+  var ROLLUP_CATEGORIES = ['blog_post'];
+
   var CATEGORY_ORDER = [
     'home', 'service', 'location', 'bio', 'faq', 'contact', 'about',
-    'testimonials', 'fees', 'services_index', 'careers', 'store',
-    'blog_index', 'blog_post', 'legal_privacy', 'legal_terms', 'legal_other', 'other'
+    'testimonials', 'fees', 'services_index',
+    'blog_index', 'blog_post',
+    'careers', 'store',
+    'legal_privacy', 'legal_terms', 'legal_other', 'other'
   ];
   var CATEGORY_LABELS = {
     home: 'Home', service: 'Services', location: 'Locations', bio: 'Bio Pages',
@@ -191,25 +290,18 @@
     legal_other: 'Other Legal', other: 'Other'
   };
   var STATUS_LABELS = {
-    discovered: 'Needs review',
-    existing_keep: 'Keep as-is',
-    existing_update: 'Needs update',
-    existing_remove: 'Remove',
-    new: 'New page',
-    drafting: 'Drafting'
+    discovered: 'Needs review', existing_keep: 'Keep as-is',
+    existing_update: 'Needs update', existing_remove: 'Remove',
+    new: 'New page', drafting: 'Drafting'
   };
 
   var state = {
-    site_map: null,
-    plan_limits: {},
-    pages_by_category: {},
-    counts: {},
-    collapsed: {},
-    editing_page: null,
-    adding_to_category: null
+    site_map: null, plan_limits: {}, pages_by_category: {}, counts: {},
+    showAll: false, expandedRollups: {}, expandedCategory: null,
+    selectedPageId: null, editing_page: null, adding_to_category: null,
+    pageById: {}
   };
 
-  // ── Helpers ───────────────────────────────────────────────────────
   function el(tag, attrs, children) {
     var e = document.createElement(tag);
     if (attrs) {
@@ -240,7 +332,7 @@
   function closeModal(id) { document.getElementById(id).classList.remove('open'); }
   window.closeModal = closeModal;
 
-  // Theme toggle (canonical pattern — matches admin/index.html)
+  // Theme toggle (canonical)
   (function() {
     var themeBtn = document.getElementById('themeBtn');
     if (!themeBtn) return;
@@ -265,51 +357,101 @@
     });
   })();
 
-  // ── Fetch helpers ─────────────────────────────────────────────────
+  document.getElementById('showAllToggle').addEventListener('change', function(e) {
+    state.showAll = e.target.checked;
+    render();
+  });
+
+  // Humanize: prefer author title, then bio name, then URL-last-segment
+  function labelFromPage(p) {
+    if (p.title && p.title.trim()) return p.title.trim();
+    if (p.bio_material && p.bio_material.therapist_name && p.bio_material.therapist_name !== 'New Therapist') {
+      return p.bio_material.therapist_name;
+    }
+    if (!p.url) return '(untitled)';
+    try {
+      var u = new URL(p.url);
+      var pathname = (u.pathname || '').replace(/\/+$/, '');
+      if (!pathname) return 'Home';
+      var segs = pathname.split('/').filter(Boolean);
+      var last = segs[segs.length - 1] || '';
+      last = last.replace(/\.(html|htm|php)$/i, '');
+      // Strip random hash-like suffixes (e.g. "-s8rr4")
+      last = last.replace(/-([a-z0-9]{5,8})$/i, function(m, suf) {
+        return /[0-9]/.test(suf) && /[a-z]/i.test(suf) ? '' : m;
+      });
+      var spaced = last.replace(/[-_]+/g, ' ').trim();
+      if (!spaced) return 'Home';
+      return spaced.split(/\s+/).map(function(w) {
+        if (w.length <= 2) return w.toUpperCase();
+        return w.charAt(0).toUpperCase() + w.slice(1).toLowerCase();
+      }).join(' ');
+    } catch (_) { return p.url; }
+  }
+
+  function domainFromUrl(u) {
+    try { return new URL(u).hostname.replace(/^www\./, ''); } catch(_) { return u || ''; }
+  }
+
   function apiGet(path) {
     return fetch(path, { credentials: 'same-origin' })
       .then(function(r) { return r.json().then(function(j) { return { ok: r.ok, status: r.status, body: j }; }); });
   }
   function apiPost(path, body) {
     return fetch(path, {
-      method: 'POST',
-      credentials: 'same-origin',
+      method: 'POST', credentials: 'same-origin',
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify(body)
     }).then(function(r) { return r.json().then(function(j) { return { ok: r.ok, status: r.status, body: j }; }); });
   }
 
-  // ── Load ───────────────────────────────────────────────────────────
   function load() {
-    if (!SITE_MAP_ID) {
-      document.getElementById('loading').innerHTML = '<strong>Missing site_map_id</strong><br>Add ?site_map_id=... to the URL.';
+    var q;
+    if (SLUG) q = '?slug=' + encodeURIComponent(SLUG);
+    else if (SITE_MAP_ID) q = '?site_map_id=' + encodeURIComponent(SITE_MAP_ID);
+    else {
+      document.getElementById('loading').innerHTML = '<strong>Missing slug or site_map_id</strong>';
       return;
     }
-    apiGet('/api/site-map-get?site_map_id=' + encodeURIComponent(SITE_MAP_ID)).then(function(r) {
+    apiGet('/api/site-map-get' + q).then(function(r) {
       if (!r.ok) {
-        document.getElementById('loading').textContent = 'Failed to load: ' + (r.body && r.body.error || r.status);
+        var body = r.body || {};
+        if (body.code === 'no_site_map') {
+          document.getElementById('loading').innerHTML =
+            '<strong>No site map yet for this client</strong><br><br>' +
+            '<span style="font-size:.82rem">Run the sitemap scout first or have the client complete onboarding.</span>';
+        } else {
+          document.getElementById('loading').textContent = 'Failed to load: ' + (body.error || r.status);
+        }
         return;
       }
       state.site_map = r.body.site_map;
       state.plan_limits = r.body.plan_limits || {};
       state.pages_by_category = r.body.pages_by_category || {};
       state.counts = r.body.counts || {};
+      state.pageById = {};
+      Object.keys(state.pages_by_category).forEach(function(c) {
+        (state.pages_by_category[c] || []).forEach(function(p) {
+          p.category = c;
+          state.pageById[p.id] = p;
+        });
+      });
       render();
     }).catch(function(e) {
       document.getElementById('loading').textContent = 'Error: ' + e.message;
     });
   }
 
-  // ── Render ────────────────────────────────────────────────────────
   function render() {
     var sm = state.site_map;
     document.getElementById('tb-title').textContent = 'Site Map Configurator';
     document.getElementById('tb-meta').textContent = sm.source_type.replace('_', ' ') + ' • ' + sm.status;
-
+    if (SLUG) {
+      document.getElementById('backLink').href = '/admin/clients?slug=' + encodeURIComponent(SLUG);
+      document.getElementById('backLink').textContent = '← ' + SLUG;
+    }
     var content = document.getElementById('content');
     content.innerHTML = '';
-
-    // Header card
     var hdr = el('div', { class: 'header-card' }, [
       el('div', {}, [
         el('h1', {}, sm.root_url || '(no root URL set)'),
@@ -319,108 +461,153 @@
       el('span', { class: 'source-tag' }, sm.source_type.replace('_', ' '))
     ]);
     content.appendChild(hdr);
-
-    // Collect categories present, in our preferred display order, with unknown
-    // categories appended at the end.
-    var allCats = Object.keys(state.pages_by_category);
-    var ordered = CATEGORY_ORDER.filter(function(c) { return allCats.indexOf(c) !== -1; });
-    allCats.forEach(function(c) { if (ordered.indexOf(c) === -1) ordered.push(c); });
-
-    // Also include empty categories that have a plan cap so the admin can
-    // add pages to them (e.g. location category is empty but cap=1 for
-    // core_new, we still want the "Add location" button visible).
-    Object.keys(state.plan_limits).forEach(function(c) {
-      if (ordered.indexOf(c) === -1) ordered.push(c);
-    });
-
-    if (ordered.length === 0) {
-      content.appendChild(el('div', { class: 'empty-msg' }, [
-        el('h3', {}, 'No pages yet'),
-        'Start by adding a home page or running a sitemap scout.'
-      ]));
-      return;
-    }
-
-    ordered.forEach(function(cat) { content.appendChild(renderCategory(cat)); });
+    var treeCard = el('div', { class: 'tree-card' });
+    treeCard.appendChild(buildTree());
+    content.appendChild(treeCard);
+    var detail = el('div', { class: 'detail-panel', id: 'detail-panel' });
+    detail.appendChild(buildDetail());
+    content.appendChild(detail);
   }
 
-  function renderCategory(cat) {
+  function visibleCategories() {
+    var catSet = {};
+    Object.keys(state.pages_by_category).forEach(function(c) { catSet[c] = true; });
+    Object.keys(state.plan_limits).forEach(function(c) { catSet[c] = true; });
+    var all = Object.keys(catSet);
+    var ordered = CATEGORY_ORDER.filter(function(c) { return all.indexOf(c) !== -1; });
+    all.forEach(function(c) { if (ordered.indexOf(c) === -1) ordered.push(c); });
+    if (!state.showAll) {
+      ordered = ordered.filter(function(c) { return NOISE_CATEGORIES.indexOf(c) === -1; });
+    }
+    return ordered;
+  }
+
+  function buildTree() {
+    var sm = state.site_map;
+    var tree = el('div', { class: 'tree' });
+    var rootDomain = domainFromUrl(sm.root_url);
+    tree.appendChild(el('div', { class: 'tree-root' }, [
+      el('div', { class: 'root-label' }, 'Site'),
+      el('div', { class: 'domain' }, rootDomain || '(root)')
+    ]));
+    tree.appendChild(el('div', { class: 'tree-trunk' }));
+    var catCol = el('div', { class: 'tree-categories' });
+    var cats = visibleCategories();
+    if (cats.length === 0) {
+      catCol.appendChild(el('div', { class: 'empty-msg', style: 'padding:1rem' }, 'No pages yet.'));
+    }
+    cats.forEach(function(cat) { catCol.appendChild(buildCategoryRow(cat)); });
+    tree.appendChild(catCol);
+    return tree;
+  }
+
+  function buildCategoryRow(cat) {
     var pages = state.pages_by_category[cat] || [];
     var count = state.counts[cat] || { active: 0, removed: 0, cap: state.plan_limits[cat] || null };
     var cap = count.cap;
     var over = cap && count.active > cap;
 
-    var sec = el('section', { class: 'cat-section' + (state.collapsed[cat] ? ' collapsed' : '') });
-    sec.setAttribute('data-cat', cat);
+    var row = el('div', { class: 'tree-category' });
 
-    var countText = count.active + (cap ? ' of ' + cap : '');
-    if (count.removed) countText += ' (' + count.removed + ' to remove)';
-
-    var addBtn = el('button', {
-      class: 'cat-add',
-      onclick: function(e) { e.stopPropagation(); openAddModal(cat); }
-    }, '+ Add');
-    if (cap && count.active >= cap) { addBtn.setAttribute('disabled', 'disabled'); addBtn.title = cap + ' is the cap for this plan'; }
-
-    var head = el('div', { class: 'cat-head', onclick: function() { toggleCat(cat); } }, [
-      el('h2', {}, [
-        el('span', { class: 'cat-toggle' }, '▾'),
+    var node = el('div', {
+      class: 'cat-node' + (state.expandedCategory === cat ? ' expanded' : ''),
+      onclick: function() {
+        state.expandedCategory = state.expandedCategory === cat ? null : cat;
+        render();
+      }
+    }, [
+      el('div', { class: 'cat-title' }, [
         CATEGORY_LABELS[cat] || cat,
-        el('span', { class: 'cat-count-badge' + (over ? ' over' : '') }, countText)
+        el('span', { class: 'cat-count' + (over ? ' over' : '') },
+          count.active + (cap ? '/' + cap : ''))
       ]),
-      addBtn
+      count.removed ? el('div', { class: 'cat-cap' }, count.removed + ' to remove') : null
     ]);
-    sec.appendChild(head);
+    row.appendChild(node);
+    row.appendChild(el('div', { class: 'cat-branch' }));
 
-    var body = el('div', { class: 'cat-body' });
-    if (pages.length === 0) {
-      body.appendChild(el('div', { class: 'empty-msg', style: 'padding:1.25rem 1.5rem;text-align:left' },
-        cap ? 'No ' + (CATEGORY_LABELS[cat] || cat).toLowerCase() + ' yet. Add up to ' + cap + '.' : 'No pages in this category.'));
+    var pageList = el('div', { class: 'page-list' });
+    var isRollup = ROLLUP_CATEGORIES.indexOf(cat) !== -1 && !state.expandedRollups[cat] && pages.length > 3;
+
+    if (isRollup) {
+      pageList.appendChild(el('div', {
+        class: 'page-rollup',
+        onclick: function() { state.expandedRollups[cat] = true; render(); }
+      }, [
+        el('span', { style: 'flex:1' }, pages.length + ' ' + (CATEGORY_LABELS[cat] || cat).toLowerCase()),
+        el('span', { style: 'font-size:.7rem' }, '▸ expand')
+      ]));
     } else {
-      pages.forEach(function(p) { body.appendChild(renderPage(cat, p)); });
+      pages.forEach(function(p) { pageList.appendChild(buildPageNode(p)); });
+      var addBtn = el('button', {
+        class: 'cat-add-inline',
+        onclick: function(e) { e.stopPropagation(); openAddModal(cat); }
+      }, '+ Add ' + (CATEGORY_LABELS[cat] || cat).toLowerCase());
+      if (cap && count.active >= cap) {
+        addBtn.setAttribute('disabled', 'disabled');
+        addBtn.title = cap + ' is the cap for this plan';
+      }
+      pageList.appendChild(addBtn);
     }
-    sec.appendChild(body);
-    return sec;
+    row.appendChild(pageList);
+    return row;
   }
 
-  function renderPage(cat, p) {
-    var row = el('div', { class: 'page-row' + (p.status === 'existing_remove' ? ' removed' : '') });
-    row.setAttribute('data-page-id', p.id);
-
-    var titleEl;
-    if (p.title) {
-      titleEl = el('div', { class: 'page-title' }, [p.title]);
-    } else if (p.bio_material && p.bio_material.therapist_name) {
-      titleEl = el('div', { class: 'page-title' }, [p.bio_material.therapist_name]);
-    } else {
-      titleEl = el('div', { class: 'page-title empty' }, p.url || '(untitled)');
+  function buildPageNode(p) {
+    var labelEl = el('span', { class: 'page-label' }, labelFromPage(p));
+    if (p.category === 'bio' && p.bio_material) {
+      if (p.bio_material.is_primary) {
+        labelEl.appendChild(el('span', { class: 'mini-chip primary' }, 'Primary'));
+      }
+      var intakeOk = p.intake_status === 'intake_complete' || p.bio_material.has_bio;
+      labelEl.appendChild(el('span', {
+        class: 'mini-chip ' + (intakeOk ? 'complete' : 'pending')
+      }, intakeOk ? '✓' : '…'));
     }
-    // Bio chips
-    if (cat === 'bio' && p.bio_material) {
-      if (p.bio_material.is_primary) titleEl.appendChild(el('span', { class: 'page-bio-chip primary' }, 'Primary'));
-      var intakeOk = p.intake_status === 'intake_complete' || (p.bio_material && p.bio_material.has_bio);
-      titleEl.appendChild(el('span', {
-        class: 'page-bio-chip ' + (intakeOk ? 'complete' : 'pending')
-      }, intakeOk ? '✓ Intake complete' : 'Intake pending'));
-    }
+    var classes = 'page-node st-' + p.status;
+    if (p.status === 'existing_remove') classes += ' removed';
+    if (p.status === 'new') classes += ' new';
+    if (state.selectedPageId === p.id) classes += ' selected';
 
-    var main = el('div', { class: 'page-main' });
-    main.appendChild(titleEl);
-    if (p.url) {
-      main.appendChild(el('div', { class: 'page-url' }, [
-        el('a', { href: p.url, target: '_blank', rel: 'noopener' }, p.url)
-      ]));
-    }
-    if (p.notes) main.appendChild(el('div', { class: 'page-notes' }, p.notes));
+    return el('div', {
+      class: classes,
+      onclick: function() {
+        state.selectedPageId = p.id;
+        var dp = document.getElementById('detail-panel');
+        if (dp) { dp.innerHTML = ''; dp.appendChild(buildDetail()); }
+        document.querySelectorAll('.page-node.selected').forEach(function(n) { n.classList.remove('selected'); });
+        this.classList.add('selected');
+        if (window.innerWidth < 900) dp.scrollIntoView({ behavior: 'smooth', block: 'nearest' });
+      }
+    }, [
+      el('span', { class: 'status-dot st-' + p.status }),
+      labelEl
+    ]);
+  }
 
-    // Status select
+  function buildDetail() {
+    var p = state.selectedPageId ? state.pageById[state.selectedPageId] : null;
+    if (!p) {
+      return el('div', { class: 'detail-empty' }, 'Tap a page in the tree to see details and change its status.');
+    }
+    var container = el('div', {});
+    container.appendChild(el('div', { class: 'detail-head' }, [
+      el('div', { style: 'flex:1;min-width:0' }, [
+        el('h2', { class: 'detail-title' }, labelFromPage(p)),
+        p.url ? el('div', { class: 'detail-url' }, [
+          el('a', { href: p.url, target: '_blank', rel: 'noopener' }, p.url)
+        ]) : null
+      ])
+    ]));
+    if (p.notes) container.appendChild(el('div', { class: 'detail-notes' }, p.notes));
+
+    var statusSection = el('div', { class: 'detail-section' }, [ el('h3', {}, 'Status & Actions') ]);
+    var actions = el('div', { class: 'detail-actions' });
     var select = el('select', {
       class: 'status-select st-' + p.status,
       onchange: function(e) { onStatusChange(p.id, e.target.value, e.target); }
     });
     Object.keys(STATUS_LABELS).forEach(function(s) {
-      // Limit relevant statuses: discovered pages shouldn't be able to jump to
-      // "drafting"; new pages shouldn't go to "existing_*"
       var allow = true;
       if (p.status === 'discovered' && s === 'drafting') allow = false;
       if (p.status === 'new' && s.indexOf('existing_') === 0) allow = false;
@@ -429,53 +616,54 @@
       if (s === p.status) opt.selected = true;
       select.appendChild(opt);
     });
-
-    var actions = el('div', { class: 'page-actions' }, [
-      el('button', {
-        class: 'icon-btn',
-        title: 'Rename',
-        onclick: function() { openRenameModal(p); }
-      }, '✎'),
-      el('button', {
-        class: 'icon-btn danger',
-        title: p.status === 'new' ? 'Delete page' : 'Delete only works for new pages; use Remove instead',
+    actions.appendChild(select);
+    actions.appendChild(el('button', {
+      class: 'btn btn-outline btn-sm',
+      onclick: function() { openRenameModal(p); }
+    }, 'Rename'));
+    if (p.status === 'new') {
+      actions.appendChild(el('button', {
+        class: 'btn btn-outline btn-sm',
+        style: 'color:var(--color-danger);border-color:rgba(239,68,68,.3)',
         onclick: function() { onDeleteClick(p); }
-      }, '✕')
-    ]);
+      }, 'Delete'));
+    }
+    statusSection.appendChild(actions);
+    container.appendChild(statusSection);
 
-    row.appendChild(main);
-    row.appendChild(select);
-    row.appendChild(actions);
-    return row;
-  }
-
-  // ── Interactions ──────────────────────────────────────────────────
-  function toggleCat(cat) {
-    state.collapsed[cat] = !state.collapsed[cat];
-    var sec = document.querySelector('.cat-section[data-cat="' + cat + '"]');
-    if (sec) sec.classList.toggle('collapsed');
+    if (p.category === 'bio' && p.bio_material) {
+      var bio = p.bio_material;
+      var bioSection = el('div', { class: 'detail-section' }, [ el('h3', {}, 'Bio Details') ]);
+      var parts = [];
+      if (bio.therapist_name) parts.push('Name: ' + bio.therapist_name);
+      if (bio.therapist_credentials) parts.push('Credentials: ' + bio.therapist_credentials);
+      if (bio.is_primary) parts.push('★ Primary bio');
+      parts.push(bio.has_bio ? 'Intake complete' : 'Intake pending — client needs to fill in step 6 of onboarding');
+      var ul = el('div', { style: 'font-size:.82rem;color:var(--color-body);line-height:1.7' });
+      parts.forEach(function(t) { ul.appendChild(el('div', {}, '• ' + t)); });
+      bioSection.appendChild(ul);
+      container.appendChild(bioSection);
+    }
+    return container;
   }
 
   function onStatusChange(pageId, newStatus, selectEl) {
     selectEl.disabled = true;
     apiPost('/api/site-map-action', {
       action: 'set_page_status',
-      site_map_id: SITE_MAP_ID,
+      site_map_id: state.site_map.id,
       page_id: pageId,
       status: newStatus
     }).then(function(r) {
       selectEl.disabled = false;
-      if (!r.ok) {
-        showToast(r.body.error || 'Failed to update', 'err');
-        return;
-      }
-      load(); // reload to refresh counts + visual state
+      if (!r.ok) { showToast(r.body.error || 'Failed to update', 'err'); return; }
+      load();
     });
   }
 
   function openRenameModal(page) {
     state.editing_page = page;
-    var t = page.title || (page.bio_material && page.bio_material.therapist_name) || '';
+    var t = page.title || (page.bio_material && page.bio_material.therapist_name) || labelFromPage(page);
     document.getElementById('rename-title').value = t;
     document.getElementById('rename-notes').value = page.notes || '';
     document.getElementById('rename-modal-title').textContent = 'Rename page';
@@ -490,10 +678,9 @@
     if (!title) { showToast('Title required', 'err'); return; }
     apiPost('/api/site-map-action', {
       action: 'rename_page',
-      site_map_id: SITE_MAP_ID,
+      site_map_id: state.site_map.id,
       page_id: p.id,
-      title: title,
-      notes: notes
+      title: title, notes: notes
     }).then(function(r) {
       if (!r.ok) { showToast(r.body.error || 'Failed', 'err'); return; }
       closeModal('rename-modal');
@@ -519,11 +706,9 @@
     if (!title) { showToast('Title required', 'err'); return; }
     apiPost('/api/site-map-action', {
       action: 'add_page',
-      site_map_id: SITE_MAP_ID,
-      category: cat,
-      title: title,
-      url: url || null,
-      notes: notes || null
+      site_map_id: state.site_map.id,
+      category: cat, title: title,
+      url: url || null, notes: notes || null
     }).then(function(r) {
       if (!r.ok) { showToast(r.body.error || 'Failed', 'err'); return; }
       closeModal('add-modal');
@@ -539,25 +724,23 @@
     if (!confirm('Delete "' + (page.title || page.url || 'this page') + '"? This cannot be undone.')) return;
     apiPost('/api/site-map-action', {
       action: 'delete_page',
-      site_map_id: SITE_MAP_ID,
+      site_map_id: state.site_map.id,
       page_id: page.id
     }).then(function(r) {
       if (!r.ok) { showToast(r.body.error || 'Failed', 'err'); return; }
       showToast('Deleted', 'ok');
+      state.selectedPageId = null;
       load();
     });
   }
 
-  // Click-outside-to-close on modals
   document.querySelectorAll('.modal-backdrop').forEach(function(b) {
     b.addEventListener('click', function(e) {
       if (e.target === b) b.classList.remove('open');
     });
   });
 
-  // Go
   load();
-
 })();
 </script>
 </body>
