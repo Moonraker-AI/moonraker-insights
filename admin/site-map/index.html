@@ -9,7 +9,17 @@
 <title>Site Map Configurator - Moonraker Admin</title>
 <link rel="stylesheet" href="/assets/admin-base.css">
 <script src="/vendor/supabase/supabase-2.49.4.min.js" integrity="sha384-2zrRDgDHSYB/GN3nFW3fsZXoxEhKIr3N2h63Tc6DEOB9JJdFIu8xMJT2Cph/gBil" crossorigin="anonymous"></script>
-<script src="/shared/admin-auth.js"></script>
+<script>
+  (function() {
+    try {
+      var sp = new URLSearchParams(window.location.search);
+      window.MR_CLIENT_MODE = (sp.get('mode') === 'client');
+    } catch (_) { window.MR_CLIENT_MODE = false; }
+    if (!window.MR_CLIENT_MODE) {
+      document.write('<script src="/shared/admin-auth.js"><\/script>');
+    }
+  })();
+</script>
 <script src="/shared/offline-banner.js" defer></script>
 <style>
   body { margin: 0; background: var(--color-bg); color: var(--color-body); font-family: Inter, -apple-system, sans-serif; }
@@ -222,6 +232,47 @@
     line-height: 1.3;
   }
   .cat-add-inline:hover { background: var(--color-primary-subtle); border-style: solid; }
+
+  /* ---- Client mode (iframe embed in onboarding wizard) ---- */
+  body.is-client-mode .topbar,
+  body.is-client-mode .navy-header,
+  body.is-client-mode .theme-toggle,
+  body.is-client-mode .legend,
+  body.is-client-mode .toggle-noise { display: none !important; }
+  body.is-client-mode .header-card h1 { font-size: 1.1rem; }
+  body.is-client-mode .header-card { margin-bottom: 1rem; }
+  body.is-client-mode #content { padding-top: 1rem; max-width: 1200px; }
+
+  .client-callout { background:var(--color-surface); border:1px solid var(--color-border); border-left:4px solid var(--color-primary); border-radius:10px; padding:1rem 1.25rem; margin-bottom:1.25rem; display:flex; align-items:center; gap:1rem; flex-wrap:wrap; }
+  .client-callout-text { flex:1; min-width:240px; font-size:.9rem; color:var(--color-heading); line-height:1.4; }
+  .client-callout-text strong { color:var(--color-primary); }
+  .client-callout-progress { display:flex; gap:.75rem; flex-wrap:wrap; }
+  .client-callout-metric { font-size:.78rem; color:var(--color-muted); }
+  .client-callout-metric b { color:var(--color-heading); font-weight:600; }
+
+  .client-submit-bar { background:var(--color-surface); border:1px solid var(--color-border); border-radius:12px; padding:1.25rem 1.5rem; margin-top:1.5rem; display:flex; justify-content:space-between; align-items:center; gap:1rem; flex-wrap:wrap; }
+  .client-submit-bar .hint { font-size:.82rem; color:var(--color-muted); flex:1; min-width:220px; }
+  .client-submit-bar .btn-primary-xl { background:var(--color-primary); color:#fff; border:none; padding:.7rem 1.5rem; border-radius:9px; font-size:.95rem; font-weight:600; cursor:pointer; font-family:inherit; transition:all .15s; }
+  .client-submit-bar .btn-primary-xl:hover:not(:disabled) { background:var(--color-primary-hover); }
+  .client-submit-bar .btn-primary-xl:disabled { opacity:.45; cursor:not-allowed; background:var(--color-muted); }
+
+  .client-submitted-banner { background:rgba(245,158,11,.08); border:1px solid rgba(245,158,11,.3); border-radius:12px; padding:1.25rem 1.5rem; margin-top:1.5rem; text-align:center; }
+  .client-submitted-banner h3 { font-family:'Outfit',sans-serif; font-size:1.05rem; font-weight:700; color:var(--color-amber-deep); margin:0 0 .35rem; }
+  .client-submitted-banner p { font-size:.85rem; color:var(--color-body); margin:0; line-height:1.5; }
+
+  .client-action-bar { display:flex; gap:.5rem; flex-wrap:wrap; margin-top:.5rem; }
+  .client-action-btn { padding:.55rem .95rem; border:1.5px solid var(--color-border); background:var(--color-surface); border-radius:8px; font-size:.84rem; font-weight:500; font-family:inherit; color:var(--color-heading); cursor:pointer; display:inline-flex; align-items:center; gap:.4rem; transition:all .12s; }
+  .client-action-btn:hover { transform:translateY(-1px); box-shadow:0 2px 8px rgba(0,0,0,.08); }
+  .client-action-btn.active { border-width:2px; padding:calc(.55rem - 1px) calc(.95rem - 1px); }
+  .client-action-btn[data-act="keep"].active   { border-color:var(--color-success); background:rgba(0,212,126,.08); color:#00b86c; }
+  .client-action-btn[data-act="update"].active { border-color:var(--color-info);    background:rgba(59,130,246,.08); color:var(--color-info); }
+  .client-action-btn[data-act="remove"].active { border-color:var(--color-danger);  background:rgba(239,68,68,.08); color:var(--color-danger); }
+
+  .admin-review-banner { background:rgba(139,92,246,.08); border:1px solid rgba(139,92,246,.3); border-radius:12px; padding:1rem 1.25rem; margin-bottom:1.25rem; display:flex; justify-content:space-between; align-items:center; gap:1rem; flex-wrap:wrap; }
+  .admin-review-banner .text { flex:1; font-size:.88rem; color:var(--color-heading); }
+  .admin-review-banner .text strong { color:var(--color-violet); font-weight:700; }
+  .admin-review-banner .btn-approve { background:var(--color-success); color:#fff; border:none; padding:.55rem 1.25rem; border-radius:8px; font-size:.85rem; font-weight:600; font-family:inherit; cursor:pointer; }
+  .admin-review-banner .btn-approve:hover { background:var(--color-primary-hover); }
 
   .mini-chip { display: inline-flex; align-items: center; font-size: .62rem; padding: .05rem .35rem; border-radius: 3px; margin-left: .35rem; font-weight: 600; vertical-align: middle; }
   .mini-chip.primary { background: rgba(139,92,246,.12); color: #8B5CF6; }
@@ -437,8 +488,10 @@
 
   var qp = new URLSearchParams(window.location.search);
   var pathMatch = window.location.pathname.match(/^\/admin\/clients\/([a-z0-9-]+)\/site-map\/?$/);
-  var SLUG = pathMatch ? pathMatch[1] : null;
+  var SLUG = pathMatch ? pathMatch[1] : qp.get('slug');
   var SITE_MAP_ID = qp.get('site_map_id');
+  var CLIENT_MODE = window.MR_CLIENT_MODE === true;
+  if (CLIENT_MODE) document.body.classList.add('is-client-mode');
 
   var NOISE_CATEGORIES = ['blog_post', 'careers', 'legal_privacy', 'legal_terms', 'legal_other', 'store'];
   var ROLLUP_CATEGORIES = ['blog_post'];
@@ -669,14 +722,49 @@
     var sm = state.site_map;
     var sourceLabel = SOURCE_TYPE_LABELS[sm.source_type] || sm.source_type.replace('_', ' ');
     var statusLabel = sm.status.replace('_', ' ');
-    document.getElementById('tb-meta').textContent = (SLUG ? SLUG + ' • ' : '') + sourceLabel + ' • ' + statusLabel;
-    document.getElementById('navy-sub').textContent = (SLUG || sm.id.slice(0, 8)) + ' • ' + sourceLabel;
-    if (SLUG) {
-      document.getElementById('backLink').href = '/admin/clients?slug=' + encodeURIComponent(SLUG);
-      document.getElementById('backLink').textContent = '← ' + SLUG;
+    if (!CLIENT_MODE) {
+      document.getElementById('tb-meta').textContent = (SLUG ? SLUG + ' • ' : '') + sourceLabel + ' • ' + statusLabel;
+      document.getElementById('navy-sub').textContent = (SLUG || sm.id.slice(0, 8)) + ' • ' + sourceLabel;
+      if (SLUG) {
+        document.getElementById('backLink').href = '/admin/clients?slug=' + encodeURIComponent(SLUG);
+        document.getElementById('backLink').textContent = '← ' + SLUG;
+      }
     }
     var content = document.getElementById('content');
     content.innerHTML = '';
+
+    // Admin-only: purple "awaiting review" banner when a client has submitted.
+    if (!CLIENT_MODE && sm.status === 'client_submitted') {
+      var reviewBanner = el('div', { class: 'admin-review-banner' }, [
+        el('div', { class: 'text' }, [
+          el('strong', {}, 'Awaiting admin review. '),
+          'The client submitted this site map. Review their picks and click Approve to mark the onboarding step complete. You can still edit pages while reviewing.'
+        ]),
+        el('button', { class: 'btn-approve', onclick: function() { approveSiteMap(); } }, 'Approve site map')
+      ]);
+      content.appendChild(reviewBanner);
+    }
+
+    // Client-only: intro callout + progress metrics
+    if (CLIENT_MODE) {
+      var svcHi = (state.counts.service && state.counts.service.highlighted) || 0;
+      var locHi = (state.counts.location && state.counts.location.highlighted) || 0;
+      var callout = el('div', { class: 'client-callout' }, [
+        el('div', { class: 'client-callout-text' }, [
+          el('strong', {}, 'Tell us what to keep. '),
+          'For each page, choose Keep, Update, or Remove — and add any new pages you want. Submit when you\'ve highlighted at least one service and one location.'
+        ]),
+        el('div', { class: 'client-callout-progress' }, [
+          el('span', { class: 'client-callout-metric' }, [
+            el('b', {}, String(svcHi)), ' service' + (svcHi === 1 ? '' : 's') + ' highlighted'
+          ]),
+          el('span', { class: 'client-callout-metric' }, [
+            el('b', {}, String(locHi)), ' location' + (locHi === 1 ? '' : 's') + ' highlighted'
+          ])
+        ])
+      ]);
+      content.appendChild(callout);
+    }
 
     // Header card — root URL + status chip + source tag (no internal site-map ID)
     var hdr = el('div', { class: 'header-card' }, [
@@ -688,16 +776,18 @@
     ]);
     content.appendChild(hdr);
 
-    // Legend
-    var legend = el('div', { class: 'legend' }, [
-      el('span', {}, 'Status:'),
-      el('span', { class: 'legend-item' }, [el('span', { class: 'legend-dot discovered' }), 'Needs review']),
-      el('span', { class: 'legend-item' }, [el('span', { class: 'legend-dot keep' }), 'Keep as-is']),
-      el('span', { class: 'legend-item' }, [el('span', { class: 'legend-dot update' }), 'Highlight & update']),
-      el('span', { class: 'legend-item' }, [el('span', { class: 'legend-dot remove' }), 'Remove']),
-      el('span', { class: 'legend-item' }, [el('span', { class: 'legend-dot new' }), 'New page'])
-    ]);
-    content.appendChild(legend);
+    // Legend (admin only — too noisy for clients)
+    if (!CLIENT_MODE) {
+      var legend = el('div', { class: 'legend' }, [
+        el('span', {}, 'Status:'),
+        el('span', { class: 'legend-item' }, [el('span', { class: 'legend-dot discovered' }), 'Needs review']),
+        el('span', { class: 'legend-item' }, [el('span', { class: 'legend-dot keep' }), 'Keep as-is']),
+        el('span', { class: 'legend-item' }, [el('span', { class: 'legend-dot update' }), 'Highlight & update']),
+        el('span', { class: 'legend-item' }, [el('span', { class: 'legend-dot remove' }), 'Remove']),
+        el('span', { class: 'legend-item' }, [el('span', { class: 'legend-dot new' }), 'New page'])
+      ]);
+      content.appendChild(legend);
+    }
 
     // Tree card with SVG layer
     var treeCard = el('div', { class: 'tree-card' });
@@ -709,6 +799,33 @@
     stage.appendChild(buildTree());
     treeCard.appendChild(stage);
     content.appendChild(treeCard);
+
+    // Client-only: submit bar (or submitted banner)
+    if (CLIENT_MODE) {
+      if (sm.status === 'client_submitted') {
+        var submitted = el('div', { class: 'client-submitted-banner' }, [
+          el('h3', {}, 'Submitted — thanks!'),
+          el('p', {}, 'Our team is reviewing your picks. Once we approve, this step will mark complete and you can move on. We\'ll email you if we have any questions.')
+        ]);
+        content.appendChild(submitted);
+      } else {
+        var svcHi2 = (state.counts.service && state.counts.service.highlighted) || 0;
+        var locHi2 = (state.counts.location && state.counts.location.highlighted) || 0;
+        var ready = svcHi2 >= 1 && locHi2 >= 1;
+        var hint = ready
+          ? 'You\'re good to go. Click Submit when you\'re happy with your picks.'
+          : 'Highlight at least one service and one location (Keep or Update), then submit for review.';
+        var submitBtn = el('button', {
+          class: 'btn-primary-xl', onclick: function() { submitForReview(); }
+        }, 'Submit for review');
+        if (!ready) submitBtn.disabled = true;
+        var bar = el('div', { class: 'client-submit-bar' }, [
+          el('div', { class: 'hint' }, hint),
+          submitBtn
+        ]);
+        content.appendChild(bar);
+      }
+    }
 
     // Draw connectors after layout settles
     requestAnimationFrame(drawConnectors);
@@ -945,21 +1062,23 @@
     // Proposed URL update — admin/client can rewrite the URL slug. Live preview
     // mirrors what the slug will look like if left blank.
     var initialProposed = (p.url && p.url.indexOf('http') === 0) ? '' : (p.url || '');
-    body.appendChild(el('div', { class: 'field-group' }, [
-      el('label', { class: 'field-label' }, 'Propose URL update'),
-      el('div', { class: 'url-preview' }, [
-        el('span', { class: 'preview-label' }, 'New URL:'),
-        el('span', { class: 'preview-path', id: 'detail-url-preview' }, initialProposed || '/' + (slugify(p.title || labelFromPage(p)) || 'page'))
-      ]),
-      el('input', {
-        type: 'text', class: 'form-input', id: 'detail-url-input',
-        placeholder: 'Override the auto-generated path here (optional)',
-        value: initialProposed,
-        style: 'margin-top:.5rem',
-        oninput: function() { updateProposedUrlPreview(p); }
-      }),
-      el('div', { class: 'field-help' }, 'By default the URL comes from the title above. Type here to override. Used when relaunching on the new site.')
-    ]));
+    if (!CLIENT_MODE) {
+      body.appendChild(el('div', { class: 'field-group' }, [
+        el('label', { class: 'field-label' }, 'Propose URL update'),
+        el('div', { class: 'url-preview' }, [
+          el('span', { class: 'preview-label' }, 'New URL:'),
+          el('span', { class: 'preview-path', id: 'detail-url-preview' }, initialProposed || '/' + (slugify(p.title || labelFromPage(p)) || 'page'))
+        ]),
+        el('input', {
+          type: 'text', class: 'form-input', id: 'detail-url-input',
+          placeholder: 'Override the auto-generated path here (optional)',
+          value: initialProposed,
+          style: 'margin-top:.5rem',
+          oninput: function() { updateProposedUrlPreview(p); }
+        }),
+        el('div', { class: 'field-help' }, 'By default the URL comes from the title above. Type here to override. Used when relaunching on the new site.')
+      ]));
+    }
 
     // Notes
     body.appendChild(el('div', { class: 'field-group' }, [
@@ -970,22 +1089,49 @@
       }, p.notes || '')
     ]));
 
-    // Status pills — show all options; server validates edge cases.
-    var pillRow = el('div', { class: 'status-pills' });
-    Object.keys(STATUS_LABELS).forEach(function(s) {
-      var pill = el('button', {
-        class: 'status-pill st-' + s + (p.status === s ? ' active' : ''),
-        onclick: function() { changeStatus(p.id, s); }
-      }, [
-        el('span', { class: 'pill-dot status-dot st-' + s }),
-        STATUS_LABELS[s]
-      ]);
-      pillRow.appendChild(pill);
-    });
-    body.appendChild(el('div', { class: 'field-group' }, [
-      el('label', { class: 'field-label' }, 'Status'),
-      pillRow
-    ]));
+    // Status controls. Admin sees all status pills; clients see a simplified
+    // Trello-style 3-button bar (Keep / Update as target / Remove). Brand-new
+    // pages the client added don't show this bar — Delete in the footer handles
+    // removal for those.
+    if (CLIENT_MODE) {
+      if (p.status !== 'new') {
+        var CLIENT_ACTIONS = [
+          { act: 'keep',   status: 'existing_keep',   label: 'Keep as-is' },
+          { act: 'update', status: 'existing_update', label: 'Update as target' },
+          { act: 'remove', status: 'existing_remove', label: 'Remove' }
+        ];
+        var barRow = el('div', { class: 'client-action-bar' });
+        CLIENT_ACTIONS.forEach(function(a) {
+          var isActive = (p.status === a.status);
+          var btn = el('button', {
+            class: 'client-action-btn' + (isActive ? ' active' : ''),
+            'data-act': a.act,
+            onclick: function() { changeStatus(p.id, a.status); }
+          }, a.label);
+          barRow.appendChild(btn);
+        });
+        body.appendChild(el('div', { class: 'field-group' }, [
+          el('label', { class: 'field-label' }, 'What should we do with this page?'),
+          barRow
+        ]));
+      }
+    } else {
+      var pillRow = el('div', { class: 'status-pills' });
+      Object.keys(STATUS_LABELS).forEach(function(s) {
+        var pill = el('button', {
+          class: 'status-pill st-' + s + (p.status === s ? ' active' : ''),
+          onclick: function() { changeStatus(p.id, s); }
+        }, [
+          el('span', { class: 'pill-dot status-dot st-' + s }),
+          STATUS_LABELS[s]
+        ]);
+        pillRow.appendChild(pill);
+      });
+      body.appendChild(el('div', { class: 'field-group' }, [
+        el('label', { class: 'field-label' }, 'Status'),
+        pillRow
+      ]));
+    }
 
     // Bio details
     if (p.category === 'bio' && p.bio_material) {
@@ -1225,6 +1371,32 @@
       document.querySelectorAll('.modal-backdrop.open').forEach(function(b) { closeModal(b.id); });
     }
   });
+
+  function submitForReview() {
+    if (!confirm('Submit your site map for review? You won\'t be able to edit it until our team approves it.')) return;
+    apiPost('/api/site-map-action', {
+      action: 'submit_for_review',
+      site_map_id: state.site_map.id
+    }).then(function(r) {
+      if (!r.ok) { showToast(r.body.error || 'Failed to submit', 'err'); return; }
+      showToast('Submitted for review', 'ok');
+      load();
+    });
+  }
+  window.submitForReview = submitForReview;
+
+  function approveSiteMap() {
+    if (!confirm('Approve this site map and mark the onboarding step complete?')) return;
+    apiPost('/api/site-map-action', {
+      action: 'approve_review',
+      site_map_id: state.site_map.id
+    }).then(function(r) {
+      if (!r.ok) { showToast(r.body.error || 'Failed to approve', 'err'); return; }
+      showToast('Approved — onboarding step marked complete', 'ok');
+      load();
+    });
+  }
+  window.approveSiteMap = approveSiteMap;
 
   load();
 })();
