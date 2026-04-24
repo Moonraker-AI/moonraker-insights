@@ -742,15 +742,15 @@
       grid.innerHTML = items.map(function (it) {
         var statusBadge =
           it.status === 'failed' ? '<span class="mr-up__badge mr-up__badge--failed">Failed</span>' :
-          it.status === 'pending' ? '<span class="mr-up__badge mr-up__badge--pending">Processing (up to 2 min)</span>' :
-          it.status === 'uploading' ? '<span class="mr-up__badge mr-up__badge--pending">Uploading</span>' :
+          it.status === 'pending' ? '<span class="mr-up__pill" title="Optimizing in the background. Safe to continue.">⟳ Optimizing</span>' :
+          it.status === 'uploading' ? '<span class="mr-up__pill" title="Uploading">⟳ Uploading</span>' :
           '';
         var imgHtml = it.hosted_url
           ? '<img src="' + escapeHtml(it.hosted_url) + '" alt="' + escapeHtml(it.alt_text || it.filename || '') + '">'
           : '<div class="mr-up__no-img">⏳</div>';
         var bytesLabel = it.bytes ? '<span class="mr-up__bytes">' + escapeHtml(fmtBytes(it.bytes)) + '</span>' : '';
         return [
-          '<div class="mr-up__tile' + (it.status === 'failed' ? ' is-failed' : '') + (it.status === 'pending' || it.status === 'uploading' ? ' is-loading' : '') + '" data-id="' + escapeHtml(it.id) + '">',
+          '<div class="mr-up__tile' + (it.status === 'failed' ? ' is-failed' : '') + '" data-id="' + escapeHtml(it.id) + '">',
           imgHtml,
           statusBadge,
           '<button class="mr-up__remove" type="button" aria-label="Remove" data-id="' + escapeHtml(it.id) + '">×</button>',
@@ -912,11 +912,14 @@
     '.mr-up__grid-empty { grid-column: 1 / -1; padding: 0.75rem 0; text-align: center; color: var(--color-muted, rgba(0,0,0,0.45)); font-size: 0.82rem; font-style: italic; }',
     '.mr-up__tile { position: relative; aspect-ratio: 1 / 1; border-radius: 10px; overflow: hidden; background: rgba(0,0,0,0.04); border: 1px solid rgba(0,0,0,0.06); }',
     '.mr-up__tile img { width: 100%; height: 100%; object-fit: cover; display: block; }',
-    '.mr-up__tile.is-loading img { opacity: 0.6; filter: blur(2px); }',
     '.mr-up__tile.is-failed { border-color: rgba(220, 38, 38, 0.3); }',
     '.mr-up__no-img { display: flex; align-items: center; justify-content: center; width: 100%; height: 100%; font-size: 2rem; opacity: 0.5; }',
     '.mr-up__badge { position: absolute; bottom: 0.5rem; left: 0.5rem; right: 0.5rem; text-align: center; padding: 0.25rem 0.5rem; border-radius: 6px; font-size: 0.7rem; font-weight: 600; background: rgba(0,0,0,0.7); color: #fff; }',
     '.mr-up__badge--failed { background: rgba(220, 38, 38, 0.9); }',
+    /* Subtle pending pill top-left — doesn\'t obscure the image */
+    '.mr-up__pill { position: absolute; top: 0.4rem; left: 0.4rem; padding: 0.2rem 0.55rem; border-radius: 999px; font-size: 0.68rem; font-weight: 600; background: rgba(0,0,0,0.62); color: #fff; display: inline-flex; align-items: center; gap: 0.25rem; backdrop-filter: blur(4px); letter-spacing: 0.01em; }',
+    '.mr-up__pill::before { content: ""; width: 8px; height: 8px; border-radius: 50%; border: 1.5px solid rgba(255,255,255,0.4); border-top-color: #fff; animation: mr-up-spin 0.8s linear infinite; display: inline-block; margin-right: 2px; }',
+    '@media (prefers-reduced-motion: reduce) { .mr-up__pill::before { animation: none; } }',
     '.mr-up__remove { position: absolute; top: 0.375rem; right: 0.375rem; width: 26px; height: 26px; border-radius: 50%; border: 0; background: rgba(0,0,0,0.7); color: #fff; cursor: pointer; font-size: 1.05rem; line-height: 1; display: flex; align-items: center; justify-content: center; opacity: 0.85; transition: opacity 0.18s ease, background 0.18s ease; }',
     '.mr-up__tile:hover .mr-up__remove { opacity: 1; background: rgba(220,38,38,0.9); }',
     '.mr-up__bytes { position: absolute; top: 0.5rem; left: 0.5rem; font-size: 0.7rem; color: #fff; background: rgba(0,0,0,0.55); padding: 0.125rem 0.375rem; border-radius: 4px; }',
