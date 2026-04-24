@@ -584,7 +584,7 @@ body.contact-locked .autosave-status { display: none !important; }
 
       <div class="form-section">
         <h3>Practice Photos</h3>
-        <p style="color:var(--color-muted);font-size:.875rem;margin-bottom:.75rem;">Upload photos of your practice — office, lobby, exterior, neighborhood, team candids. We pick from these for your service pages, About page, and location pages. You can also pick from our library or generate one. Add as many as you like, you can edit anytime.</p>
+        <p style="color:var(--color-muted);font-size:.875rem;margin-bottom:.75rem;">Upload photos of your practice (office, lobby, exterior, neighborhood, team candids). We pick from these for your service pages, About page, and location pages. You can also pick from our library or generate one. Add as many as you like, you can edit anytime. After picking, scroll down to see your selected photos below.</p>
         <div id="pd_photos_uploader" data-uploader-mount="practice"></div>
       </div>
 
@@ -689,7 +689,7 @@ body.contact-locked .autosave-status { display: none !important; }
         <div class="form-group"><label>Clinical Approach Keywords</label><input type="text" id="bio_clinical_approach" placeholder="e.g. trauma-informed, attachment-based, holistic, mind-body"><div class="help-text">How you describe your therapeutic style, separated with commas</div></div>
         <div class="form-group">
           <label>Booking Embed (optional)</label>
-          <textarea id="bio_booking_embed" style="min-height:80px;font-family:monospace;font-size:.8125rem;" placeholder="If you have a separate booking calendar for this clinician (different from the practice-wide one), paste the embed code from your EHR here. Otherwise leave blank — we'll use the practice-wide booking on this bio page."></textarea>
+          <textarea id="bio_booking_embed" style="min-height:80px;font-family:monospace;font-size:.8125rem;" placeholder="If you have a separate booking calendar for this clinician (different from the practice-wide one), paste the embed code from your EHR here. Otherwise leave blank, we'll use the practice-wide booking on this bio page."></textarea>
           <div class="help-text">Optional. Most practices use one booking method for everyone. Use this only if this clinician has their own EHR calendar widget.</div>
         </div>
       </div>
@@ -896,15 +896,15 @@ body.contact-locked .autosave-status { display: none !important; }
         </div>
 
         <div class="form-group" id="cs_booking_embed_group" style="display:none;">
-          <label>EHR Booking Calendar Embed Code</label>
+          <label>EHR Calendar Embed Code</label>
           <textarea id="cs_ehr_booking_embed" style="min-height:120px;font-family:monospace;font-size:.8125rem;" placeholder="Paste the embed code from your EHR (SimplePractice, Jane, TherapyNotes, Headway, etc.). Usually starts with &lt;iframe or &lt;script."></textarea>
           <div class="help-text">Most EHRs have a "share" or "embed" option that gives you a snippet to paste. We'll embed it on your contact page exactly as your EHR provides it.</div>
         </div>
 
         <div class="form-group" id="cs_intake_embed_group" style="display:none;">
-          <label>EHR Intake Form Embed Code</label>
-          <textarea id="cs_ehr_intake_embed" style="min-height:120px;font-family:monospace;font-size:.8125rem;" placeholder="Optional. Paste the embed code from your EHR's intake form."></textarea>
-          <div class="help-text">If you have a separate intake form embed (in addition to or instead of a calendar), paste it here.</div>
+          <label>EHR Contact Form Embed Code</label>
+          <textarea id="cs_ehr_intake_embed" style="min-height:120px;font-family:monospace;font-size:.8125rem;" placeholder="Optional. Paste the embed code from your EHR's contact form."></textarea>
+          <div class="help-text">If you have a separate contact form embed (in addition to or instead of a calendar), paste it here.</div>
         </div>
       </div>
 
@@ -913,7 +913,7 @@ body.contact-locked .autosave-status { display: none !important; }
         <p style="color:var(--color-muted);font-size:.875rem;margin-bottom:.75rem;">Plain text is fine. We'll structure these for your contact page and schema markup.</p>
         <div class="form-group">
           <label>Hours</label>
-          <textarea id="cs_hours_text" style="min-height:120px;" placeholder="e.g.&#10;Monday – Friday: 9am – 6pm&#10;Saturday: 10am – 2pm&#10;Sunday: closed&#10;&#10;If you have multiple locations with different hours, group them by location."></textarea>
+          <textarea id="cs_hours_text" style="min-height:120px;" placeholder="e.g.&#10;Monday to Friday: 9am to 6pm&#10;Saturday: 10am to 2pm&#10;Sunday: closed&#10;&#10;If you have multiple locations with different hours, group them by location."></textarea>
           <div class="help-text">If you have multiple locations, list each location's hours separately.</div>
         </div>
       </div>
@@ -2275,7 +2275,7 @@ body.contact-locked .autosave-status { display: none !important; }
       }
       // Plan-specific success copy
       if (d.plan_tier_effective === 'annual') {
-        statusEl.textContent = 'Your draft is saved \u2014 Scott will finalize on your intro call';
+        statusEl.textContent = 'Your draft is saved. Scott will finalize on your intro call.';
       } else {
         statusEl.textContent = 'Draft saved. The guarantee activates when you upgrade to an annual plan.';
       }
@@ -2468,7 +2468,7 @@ body.contact-locked .autosave-status { display: none !important; }
           document.body.classList.add('contact-locked');
           var msgEl = document.getElementById('accessLockedMessage');
           if (contact.status === 'prospect') {
-            msgEl.textContent = 'We\'ll unlock this page once your payment is processed. Until then, you can take a look around \u2014 nothing you enter will be saved.';
+            msgEl.textContent = 'We\'ll unlock this page once your payment is processed. Until then, you can take a look around. Nothing you enter will be saved.';
           } else if (contact.lost) {
             msgEl.textContent = 'This page is unavailable. Please reach out to support@moonraker.ai if you think this is a mistake.';
           } else if (contact.status === 'lead') {
