@@ -77,9 +77,24 @@
   padding: 0.5rem 0;
   text-decoration: none;
   position: relative;
+  transition: color 0.2s ease;
+}
+.nav-link::after, .nav-trigger::after {
+  content: '';
+  position: absolute;
+  left: 0;
+  bottom: -2px;
+  width: 100%;
+  height: 2px;
+  background: var(--color-accent, var(--color-primary));
+  transform: scaleX(0);
+  transform-origin: left center;
+  transition: transform 0.32s cubic-bezier(0.4, 0, 0.2, 1);
 }
 .nav-link:hover, .nav-trigger:hover { color: var(--color-accent, var(--color-primary)); }
-.nav-caret { font-size: 0.7em; margin-left: 0.25em; opacity: 0.6; }
+.nav-link:hover::after, .nav-trigger:hover::after { transform: scaleX(1); }
+.nav-caret { font-size: 0.7em; margin-left: 0.25em; opacity: 0.6; transition: transform 0.25s ease; }
+.nav-dropdown:hover .nav-caret, .nav-dropdown:focus-within .nav-caret { transform: rotate(180deg); }
 
 .nav-dropdown { position: relative; }
 .nav-menu {
@@ -88,14 +103,20 @@
   left: 0;
   background: var(--color-background, #fff);
   border-radius: 10px;
-  box-shadow: 0 8px 24px rgba(0,0,0,0.12);
+  box-shadow: 0 12px 32px rgba(0,0,0,0.14), 0 2px 4px rgba(0,0,0,0.06);
   padding: 0.5rem;
   min-width: 220px;
-  display: none;
+  opacity: 0;
+  visibility: hidden;
+  transform: translateY(-6px);
+  transition: opacity 0.22s ease, transform 0.22s cubic-bezier(0.2, 0.8, 0.2, 1), visibility 0s linear 0.22s;
   z-index: 100;
 }
 .nav-dropdown:hover .nav-menu, .nav-dropdown:focus-within .nav-menu {
-  display: block;
+  opacity: 1;
+  visibility: visible;
+  transform: translateY(0);
+  transition: opacity 0.22s ease, transform 0.22s cubic-bezier(0.2, 0.8, 0.2, 1), visibility 0s linear 0s;
 }
 .nav-menu-item {
   display: block;
@@ -103,10 +124,12 @@
   color: var(--color-body-text);
   border-radius: 6px;
   font-size: 0.95rem;
+  transition: background-color 0.18s ease, color 0.18s ease, transform 0.18s ease;
 }
 .nav-menu-item:hover {
   background: var(--color-surface, rgba(0,0,0,0.04));
   text-decoration: none;
+  transform: translateX(2px);
 }
 .nav-cta {
   margin-left: 0.75rem;
