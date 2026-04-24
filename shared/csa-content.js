@@ -252,7 +252,10 @@ window.buildCSAHtml = function(contactParam, pricingParam) {
     html += '<h4>Additional Services & Add-ons</h4>' +
       '<p>The following add-on services are available outside the base CORE Marketing Campaign and are billed separately. Availability notes indicate which are restricted to active Clients versus available to anyone.</p>' +
       '<ul>' +
-      '<li><strong>Additional Service Page:</strong> ' + P.price('additional_service_page_ach') + ' per page, beyond the 5 included in the CORE Marketing Campaign.</li>' +
+      '<li><strong>Additional Service Page:</strong> ' + P.price('additional_service_page_ach') + ' per page, beyond the service pages included in the CORE Marketing Campaign.</li>' +
+      '<li><strong>Additional Location Page:</strong> ' + P.price('additional_location_page_ach') + ' per page, beyond the 2 location pages included in the CORE Marketing Campaign.</li>' +
+      '<li><strong>Additional Bio Page:</strong> ' + P.price('additional_bio_page_ach') + ' per page, beyond the 10 bio pages included in the CORE Marketing Campaign.</li>' +
+      '<li><strong>Additional Custom Page (resources, articles, or other supporting content):</strong> ' + P.price('additional_custom_page_ach') + ' per page.</li>' +
       '<li><strong>Additional Press Release:</strong> ' + P.price('additional_press_release_ach') + ' per release.</li>' +
       '<li><strong>NAP Update (Name, Address, or Phone change with citation rebuild):</strong> ' + P.price('nap_update_ach') + ' per change. Update your practice contact info across your website, local directories, and citation data aggregators.</li>' +
       '</ul>' +
@@ -277,10 +280,13 @@ window.buildCSAHtml = function(contactParam, pricingParam) {
       '<li>Keyword and entities research</li>' +
       '<li>Website speed, security, and technical optimization</li>' +
       '<li>Conversion rate optimization (Hero section and calls to action)</li>' +
-      '<li>5 dedicated service pages with custom HTML, schema markup, and targeted FAQ sections</li>' +
-      '<li>Professional bio page creation for each therapist</li>' +
-      '<li>General FAQ page</li>' +
-      '<li>1 location page</li>' +
+      '<li>Service pages with custom HTML, schema markup, and targeted FAQ sections (one page per primary tracked keyword, included in your campaign)</li>' +
+      '<li>Professional bio page creation for up to 10 therapists at the practice (additional bios available as add-ons)</li>' +
+      '<li>General FAQ page covering practice-level policies, insurance, scheduling, and intake</li>' +
+      '<li>Up to 2 location pages (additional locations available as add-ons)</li>' +
+      '<li>About Us page for group practices (solo practices use the bio page as their About)</li>' +
+      '<li>Contact page with embedded EHR booking or intake form, contact info, and per-location hours and addresses</li>' +
+      '<li>Privacy Policy and Terms of Service pages, generated and maintained for the practice</li>' +
       '<li>Google Business Profile optimization</li>' +
       '<li>Citation audit and listings management via BrightLocal (15 citations + data aggregators)</li>' +
       '<li>Press release syndication across 500+ national and international news outlets (1 included, additional at ' + P.price('additional_press_release_ach') + ' each)</li>' +
