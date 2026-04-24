@@ -1,0 +1,168 @@
+<header class="site-nav">
+  <div class="container site-nav-inner">
+    <a href="/" class="site-nav-brand">
+      {{#if nav.logo_url}}
+        <img src="{{nav.logo_url}}" alt="{{nav.practice_name}}" class="site-nav-logo">
+      {{else}}
+        <span class="site-nav-name">{{nav.practice_name}}</span>
+      {{/if}}
+    </a>
+
+    <button class="site-nav-toggle" aria-label="Menu" onclick="document.body.classList.toggle('nav-open')">
+      <span></span><span></span><span></span>
+    </button>
+
+    <nav class="site-nav-items">
+      {{#each nav.items}}
+        {{#if children}}
+          <div class="nav-dropdown">
+            <button class="nav-trigger">{{label}}<span class="nav-caret">▾</span></button>
+            <div class="nav-menu">
+              {{#each children}}
+                <a href="{{href}}" class="nav-menu-item">{{label}}</a>
+              {{/each}}
+            </div>
+          </div>
+        {{else}}
+          <a href="{{href}}" class="nav-link">{{label}}</a>
+        {{/if}}
+      {{/each}}
+
+      {{#if nav.cta}}
+        <a href="{{nav.cta.href}}" class="btn btn-primary nav-cta">{{nav.cta.label}}</a>
+      {{/if}}
+    </nav>
+  </div>
+</header>
+
+<style>
+.site-nav {
+  background: var(--color-background, #fff);
+  border-bottom: 1px solid rgba(0,0,0,0.06);
+  position: sticky;
+  top: 0;
+  z-index: 50;
+}
+.site-nav-inner {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 1rem 1.5rem;
+  gap: 2rem;
+}
+.site-nav-brand {
+  display: flex;
+  align-items: center;
+  text-decoration: none;
+  color: var(--color-heading-text, var(--color-primary));
+}
+.site-nav-logo { max-height: 44px; width: auto; }
+.site-nav-name {
+  font-family: var(--font-heading, var(--font-body));
+  font-weight: 700;
+  font-size: 1.25rem;
+}
+.site-nav-items {
+  display: flex;
+  align-items: center;
+  gap: 1.75rem;
+}
+.nav-link, .nav-trigger {
+  background: none;
+  border: 0;
+  font: inherit;
+  font-weight: 500;
+  color: var(--color-body-text);
+  cursor: pointer;
+  padding: 0.5rem 0;
+  text-decoration: none;
+  position: relative;
+}
+.nav-link:hover, .nav-trigger:hover { color: var(--color-accent, var(--color-primary)); }
+.nav-caret { font-size: 0.7em; margin-left: 0.25em; opacity: 0.6; }
+
+.nav-dropdown { position: relative; }
+.nav-menu {
+  position: absolute;
+  top: 100%;
+  left: 0;
+  background: var(--color-background, #fff);
+  border-radius: 10px;
+  box-shadow: 0 8px 24px rgba(0,0,0,0.12);
+  padding: 0.5rem;
+  min-width: 220px;
+  display: none;
+  z-index: 100;
+}
+.nav-dropdown:hover .nav-menu, .nav-dropdown:focus-within .nav-menu {
+  display: block;
+}
+.nav-menu-item {
+  display: block;
+  padding: 0.625rem 0.875rem;
+  color: var(--color-body-text);
+  border-radius: 6px;
+  font-size: 0.95rem;
+}
+.nav-menu-item:hover {
+  background: var(--color-surface, rgba(0,0,0,0.04));
+  text-decoration: none;
+}
+.nav-cta {
+  margin-left: 0.75rem;
+  padding: 0.625rem 1.25rem !important;
+  font-size: 0.95rem;
+}
+
+.site-nav-toggle {
+  display: none;
+  background: none;
+  border: 0;
+  cursor: pointer;
+  flex-direction: column;
+  gap: 4px;
+  padding: 0.5rem;
+}
+.site-nav-toggle span {
+  display: block;
+  width: 24px;
+  height: 2px;
+  background: var(--color-heading-text);
+  border-radius: 2px;
+}
+
+@media (max-width: 860px) {
+  .site-nav-toggle { display: flex; }
+  .site-nav-items {
+    display: none;
+    position: absolute;
+    top: 100%;
+    left: 0;
+    right: 0;
+    background: var(--color-background, #fff);
+    flex-direction: column;
+    align-items: stretch;
+    padding: 1rem 1.5rem 1.5rem;
+    gap: 0;
+    box-shadow: 0 8px 24px rgba(0,0,0,0.08);
+    border-top: 1px solid rgba(0,0,0,0.06);
+  }
+  body.nav-open .site-nav-items { display: flex; }
+  .nav-link, .nav-trigger {
+    padding: 0.875rem 0;
+    text-align: left;
+    width: 100%;
+    border-bottom: 1px solid rgba(0,0,0,0.06);
+  }
+  .nav-dropdown { width: 100%; }
+  .nav-menu {
+    position: static;
+    box-shadow: none;
+    padding: 0 0 0.5rem;
+    display: block;
+    background: transparent;
+  }
+  .nav-menu-item { padding-left: 1.5rem; }
+  .nav-cta { margin: 0.75rem 0 0; text-align: center; }
+}
+</style>
