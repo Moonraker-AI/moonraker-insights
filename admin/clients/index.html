@@ -4558,6 +4558,7 @@
         action: 'create_record', table: 'entity_audits',
         data: {
           contact_id: c.id,
+          client_slug: c.slug,
           audit_tier: tier,
           homepage_url: url,
           brand_query: brand,
