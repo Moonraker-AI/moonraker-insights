@@ -463,11 +463,8 @@ var CLIENT_ALLOWED_ACTIONS = {
 };
 
 // Actions that remain available when the site_map is in client_submitted
-// status (awaiting admin review). Everything else requires admin intervention
-// — this is the "locked for review" window.
-var ACTIONS_ALLOWED_WHILE_SUBMITTED = {
-  approve_review: true
-};
+// status (awaiting admin review). Admin can do anything; client is fully
+// locked out. Kept as a documentation anchor only — gate logic lives below.
 
 module.exports = async function(req, res) {
   if (req.method !== 'POST') return res.status(405).json({ error: 'Method not allowed' });
@@ -522,19 +519,14 @@ module.exports = async function(req, res) {
     if (!isAdmin && body.url !== undefined) delete body.url;
 
     // Write-gate by site_map status:
-    //  - draft: fully editable
-    //  - client_submitted: only approve_review (admin)
-    //  - mvp_locked / fully_locked / launched / abandoned: read-only
+    //  - draft: fully editable (admin + client)
+    //  - client_submitted: admin can edit freely (review + tweak); client is locked out
+    //  - mvp_locked / fully_locked / launched / abandoned: read-only for everyone
     if (siteMap.status === 'client_submitted') {
-      if (!ACTIONS_ALLOWED_WHILE_SUBMITTED[body.action]) {
-        return res.status(409).json({
-          error: 'Site map is awaiting admin review. No edits until approved.',
-          hint: 'Admin can approve via approve_review action'
-        });
-      }
       if (!isAdmin) {
-        return res.status(403).json({ error: 'Client cannot modify a submitted site map' });
+        return res.status(403).json({ error: 'Site map is awaiting admin review. No edits until approved.' });
       }
+      // Admin: any action allowed, including regular edits while reviewing.
     } else if (siteMap.status !== 'draft') {
       return res.status(409).json({
         error: 'site_map is ' + siteMap.status + ' and cannot be edited',
