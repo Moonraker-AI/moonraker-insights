@@ -1,0 +1,298 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>{{seo.title}} | {{practice.name}}</title>
+  <meta name="description" content="{{seo.description}}">
+  {{#if seo.canonical}}<link rel="canonical" href="{{seo.canonical}}">{{/if}}
+
+  {{#if design.typography.heading_font}}
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family={{design.typography.heading_font}}:wght@400;500;600;700&display=swap" rel="stylesheet">
+  {{/if}}
+
+  <style>
+{{{design.css_variables}}}
+
+* { box-sizing: border-box; margin: 0; padding: 0; }
+
+html { scroll-behavior: smooth; }
+
+body {
+  font-family: var(--font-body, system-ui, sans-serif);
+  font-size: var(--font-body-size, 1rem);
+  line-height: var(--line-height, 1.65);
+  color: var(--color-body-text, #1a1a1a);
+  background: var(--color-background, #ffffff);
+  -webkit-font-smoothing: antialiased;
+}
+
+h1, h2, h3, h4 {
+  font-family: var(--font-heading, var(--font-body));
+  color: var(--color-heading-text, var(--color-primary, #1a1a1a));
+  font-weight: 700;
+  line-height: 1.2;
+}
+
+h1 { font-size: var(--font-h1, 2.75rem); }
+h2 { font-size: var(--font-h2, 2rem); }
+h3 { font-size: var(--font-h3, 1.5rem); }
+
+p { margin-bottom: 1rem; }
+a { color: var(--color-accent, var(--color-primary)); text-decoration: none; }
+a:hover { text-decoration: underline; }
+
+.container {
+  max-width: 1180px;
+  margin: 0 auto;
+  padding: 0 1.5rem;
+}
+
+/* Hero */
+.hero {
+  padding: 4.5rem 0 3.5rem;
+  background: var(--color-surface, #fafafa);
+}
+.hero h1 { margin-bottom: 1.25rem; max-width: 22ch; }
+.hero .subheading {
+  font-size: 1.25rem;
+  color: var(--color-muted-text, var(--color-secondary));
+  margin-bottom: 2rem;
+  max-width: 50ch;
+}
+.hero .meta {
+  display: inline-block;
+  font-size: 0.875rem;
+  text-transform: uppercase;
+  letter-spacing: 0.05em;
+  color: var(--color-accent, var(--color-secondary));
+  margin-bottom: 1rem;
+  font-weight: 600;
+}
+
+/* Buttons */
+.btn {
+  display: inline-block;
+  padding: var(--btn-padding, 0.875rem 1.75rem);
+  border-radius: var(--btn-radius, 8px);
+  font-weight: var(--btn-font-weight, 600);
+  font-size: 1rem;
+  text-decoration: none !important;
+  transition: filter 0.18s, transform 0.12s;
+  border: 0;
+  cursor: pointer;
+  font-family: inherit;
+}
+.btn-primary {
+  background: var(--color-cta-background, var(--color-primary));
+  color: var(--color-cta-text, #fff);
+}
+.btn-primary:hover { filter: brightness(0.92); transform: translateY(-1px); }
+.btn-outline {
+  background: transparent;
+  color: var(--color-primary);
+  border: 2px solid var(--color-primary);
+}
+.btn-outline:hover { background: var(--color-primary); color: var(--color-cta-text, #fff); }
+
+/* Body content */
+.body-content {
+  padding: 3.5rem 0;
+}
+.body-content .container { max-width: 760px; }
+.body-content h2 { margin: 2.75rem 0 1.25rem; }
+.body-content h3 { margin: 2.25rem 0 1rem; }
+.body-content p { font-size: 1.0625rem; }
+.body-content ul, .body-content ol { margin: 1rem 0 1.5rem 1.5rem; }
+.body-content li { margin-bottom: 0.5rem; }
+.body-content blockquote {
+  border-left: 3px solid var(--color-accent, var(--color-primary));
+  padding: 0.5rem 0 0.5rem 1.5rem;
+  margin: 2rem 0;
+  font-style: italic;
+  color: var(--color-muted-text);
+}
+
+/* CTA band */
+.cta-band {
+  background: var(--color-primary);
+  color: var(--color-cta-text, #fff);
+  padding: 3.5rem 0;
+  text-align: center;
+}
+.cta-band h2 { color: var(--color-cta-text, #fff); margin-bottom: 1rem; }
+.cta-band p { font-size: 1.125rem; margin-bottom: 2rem; opacity: 0.92; }
+.cta-band .btn-primary {
+  background: var(--color-cta-text, #fff);
+  color: var(--color-primary);
+}
+.cta-band .btn-primary:hover { filter: brightness(0.95); }
+
+/* FAQs */
+.faqs { padding: 4rem 0; background: var(--color-surface, #fafafa); }
+.faqs h2 { text-align: center; margin-bottom: 2.5rem; }
+.faq-list { max-width: 780px; margin: 0 auto; }
+.faq-item {
+  background: var(--color-background, #fff);
+  border-radius: 12px;
+  margin-bottom: 0.75rem;
+  overflow: hidden;
+  border: 1px solid rgba(0,0,0,0.06);
+}
+.faq-item summary {
+  padding: 1.25rem 1.5rem;
+  font-weight: 600;
+  cursor: pointer;
+  list-style: none;
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  font-size: 1.0625rem;
+  color: var(--color-heading-text);
+}
+.faq-item summary::-webkit-details-marker { display: none; }
+.faq-item summary::after {
+  content: '+';
+  font-size: 1.5rem;
+  font-weight: 400;
+  color: var(--color-accent, var(--color-primary));
+  transition: transform 0.2s;
+}
+.faq-item[open] summary::after { content: '−'; }
+.faq-item[open] summary { border-bottom: 1px solid rgba(0,0,0,0.06); }
+.faq-answer { padding: 1.25rem 1.5rem; color: var(--color-body-text); }
+
+/* NEO block (above footer, side-by-side) */
+.neo-block {
+  padding: 3.5rem 0;
+  background: var(--color-background);
+  border-top: 1px solid rgba(0,0,0,0.06);
+}
+.neo-grid {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 3rem;
+  align-items: center;
+}
+.neo-image {
+  border-radius: 12px;
+  overflow: hidden;
+  background: var(--color-surface);
+}
+.neo-image img { display: block; width: 100%; height: auto; }
+.neo-summary h3 { margin-bottom: 1rem; }
+.neo-summary p { color: var(--color-muted-text); }
+
+@media (max-width: 768px) {
+  h1 { font-size: 2.125rem; }
+  h2 { font-size: 1.625rem; }
+  .hero { padding: 3rem 0 2.5rem; }
+  .neo-grid { grid-template-columns: 1fr; gap: 1.5rem; }
+  .body-content { padding: 2.5rem 0; }
+}
+
+/* Crisis disclaimer */
+.crisis-banner {
+  background: rgba(0,0,0,0.04);
+  border-top: 1px solid rgba(0,0,0,0.06);
+  padding: 1.5rem 0;
+  font-size: 0.875rem;
+  color: var(--color-muted-text);
+  text-align: center;
+}
+.crisis-banner strong { color: var(--color-heading-text); }
+  </style>
+
+  {{#if schema_json}}
+  <script type="application/ld+json">
+{{{schema_json}}}
+  </script>
+  {{/if}}
+</head>
+<body>
+
+{{> nav}}
+
+<main>
+  <section class="hero">
+    <div class="container">
+      {{#if hero.eyebrow}}<span class="meta">{{hero.eyebrow}}</span>{{/if}}
+      <h1>{{hero.heading}}</h1>
+      {{#if hero.subheading}}<p class="subheading">{{hero.subheading}}</p>{{/if}}
+      {{#if cta.primary_label}}
+      <a href="{{cta.primary_href}}" class="btn btn-primary">{{cta.primary_label}}</a>
+      {{/if}}
+      {{#if cta.secondary_label}}
+      &nbsp;<a href="{{cta.secondary_href}}" class="btn btn-outline">{{cta.secondary_label}}</a>
+      {{/if}}
+    </div>
+  </section>
+
+  {{#if body_html}}
+  <section class="body-content">
+    <div class="container">
+      {{{body_html}}}
+    </div>
+  </section>
+  {{/if}}
+
+  {{#if cta.band_heading}}
+  <section class="cta-band">
+    <div class="container">
+      <h2>{{cta.band_heading}}</h2>
+      {{#if cta.band_subheading}}<p>{{cta.band_subheading}}</p>{{/if}}
+      <a href="{{cta.band_href}}" class="btn btn-primary">{{cta.band_label}}</a>
+    </div>
+  </section>
+  {{/if}}
+
+  {{#if faqs}}
+  <section class="faqs">
+    <div class="container">
+      <h2>Frequently Asked Questions</h2>
+      <div class="faq-list">
+        {{#each faqs}}
+        <details class="faq-item"{{#if @first}} open{{/if}}>
+          <summary>{{question}}</summary>
+          <div class="faq-answer">{{{answer}}}</div>
+        </details>
+        {{/each}}
+      </div>
+    </div>
+  </section>
+  {{/if}}
+
+  {{#if neo_image}}
+  <section class="neo-block">
+    <div class="container neo-grid">
+      <div class="neo-image">
+        <img src="{{neo_image.hosted_url}}" alt="{{neo_image.alt_text}}" loading="lazy">
+      </div>
+      <div class="neo-summary">
+        <h3>{{practice.name}}</h3>
+        {{#if content.neo_summary}}
+          <p>{{content.neo_summary}}</p>
+        {{else}}
+          <p>{{practice.name}} provides specialized care in {{practice.city}}{{#if practice.state}}, {{practice.state}}{{/if}}. Reach out to start the conversation.</p>
+        {{/if}}
+        {{#if practice.gbp_url}}
+        <p style="margin-top:1.5rem;"><a href="{{practice.gbp_url}}" class="btn btn-outline" target="_blank" rel="noopener">View on Google</a></p>
+        {{/if}}
+      </div>
+    </div>
+  </section>
+  {{/if}}
+</main>
+
+<div class="crisis-banner">
+  <div class="container">
+    <strong>In crisis?</strong> If you or someone you know is in immediate danger, call or text <a href="tel:988">988</a> for the Suicide &amp; Crisis Lifeline, or go to your nearest emergency room.
+  </div>
+</div>
+
+{{> footer}}
+
+</body>
+</html>
