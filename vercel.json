@@ -229,6 +229,14 @@
     "api/cron/sync-attribution-sheets.js": {
       "maxDuration": 300,
       "memory": 1024
+    },
+    "api/cron/process-image-pool.js": {
+      "maxDuration": 300,
+      "memory": 3008
+    },
+    "api/upload-image-init.js": {
+      "maxDuration": 30,
+      "memory": 512
     }
   },
   "crons": [
@@ -287,7 +295,10 @@
     {
       "schedule": "15 8 * * *",
       "path": "/api/cron/agent-error-alerter"
+    },
+    {
+      "path": "/api/cron/process-image-pool",
+      "schedule": "*/2 * * * *"
     }
   ]
 }
-
