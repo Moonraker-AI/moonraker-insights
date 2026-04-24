@@ -651,11 +651,6 @@ body.contact-locked .autosave-status { display: none !important; }
       <div class="site-map-iframe-wrap" style="border:1px solid var(--color-border); border-radius:12px; overflow:hidden; background:var(--color-surface); margin-top:1rem;">
         <iframe id="siteMapFrame" style="width:100%; min-height:800px; border:0;" loading="lazy" title="Site map configurator"></iframe>
       </div>
-
-      <div class="step-actions">
-        <button class="btn btn-outline" onclick="goToStep(4)">&#8592; Back</button>
-        <button class="btn btn-primary" onclick="goToStep(6)">Next: Bio Materials &#8594;</button>
-      </div>
     </div>
 
     <!-- STEP 7: Bio Materials -->
@@ -1225,7 +1220,7 @@ body.contact-locked .autosave-status { display: none !important; }
     if (STEPS[idx] && STEPS[idx].key === 'site_map' && CLIENT_SLUG) {
       var frame = document.getElementById('siteMapFrame');
       if (frame && !frame.getAttribute('src')) {
-        frame.setAttribute('src', '/admin/site-map/?slug=' + encodeURIComponent(CLIENT_SLUG) + '&mode=client');
+        frame.setAttribute('src', '/admin/site-map?slug=' + encodeURIComponent(CLIENT_SLUG) + '&mode=client');
       }
     }
     buildNav();
