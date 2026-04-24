@@ -661,7 +661,7 @@ body.contact-locked .autosave-status { display: none !important; }
       <h1>Review your site map</h1>
       <p style="color:var(--color-muted)">We've scanned your current site. Review each page and tell us which ones we should keep, update as a target, or remove. Then propose any new pages you want built.</p>
       <div class="site-map-iframe-wrap" style="border:1px solid var(--color-border); border-radius:12px; overflow:hidden; background:var(--color-surface); margin-top:1rem;">
-        <iframe id="siteMapFrame" style="width:100%; min-height:800px; border:0;" loading="lazy" title="Site map configurator"></iframe>
+        <iframe id="siteMapFrame" style="width:100%; min-height:800px; border:0;" title="Site map configurator"></iframe>
       </div>
     </div>
 
@@ -1253,13 +1253,24 @@ body.contact-locked .autosave-status { display: none !important; }
     document.querySelectorAll('.step-panel').forEach(function(p, i) {
       p.classList.toggle('active', i === idx);
     });
-    // Lazy-load the site-map configurator iframe the first time the panel
-    // activates. Cookie mr_pt_onboarding is Path=/ so it reaches /admin/site-map/
-    // automatically; same-origin embed, CSP frame-ancestors 'self'.
+    // The site-map configurator is iframed in so it can reuse the full
+    // admin/site-map UI. Cookie mr_pt_onboarding is Path=/ so it reaches
+    // /admin/site-map/ automatically; same-origin embed, CSP
+    // frame-ancestors 'self'. We set src every time the step activates
+    // (not only on first click) so returning to this step after adding
+    // bio data refreshes the view. Lazy loading was removed because
+    // same-origin display:none iframes don't always trigger the load
+    // observer in Chromium-based browsers with strict tracking protection.
     if (STEPS[idx] && STEPS[idx].key === 'site_map' && CLIENT_SLUG) {
       var frame = document.getElementById('siteMapFrame');
-      if (frame && !frame.getAttribute('src')) {
-        frame.setAttribute('src', '/admin/site-map?slug=' + encodeURIComponent(CLIENT_SLUG) + '&mode=client');
+      if (frame) {
+        var desiredSrc = '/admin/site-map?slug=' + encodeURIComponent(CLIENT_SLUG) + '&mode=client';
+        if (frame.getAttribute('src') !== desiredSrc) {
+          console.log('[onboarding] loading site-map iframe:', desiredSrc);
+          frame.onerror = function(e) { console.error('[onboarding] site-map iframe error', e); };
+          frame.onload  = function()  { console.log('[onboarding] site-map iframe loaded'); };
+          frame.setAttribute('src', desiredSrc);
+        }
       }
     }
     buildNav();
