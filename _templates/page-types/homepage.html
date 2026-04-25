@@ -494,7 +494,7 @@ img { max-width: 100%; height: auto; display: block; }
       <div class="hero-grid">
         <div class="hero-text">
           {{#if hero.eyebrow}}<span class="hero-eyebrow">{{hero.eyebrow}}</span>{{/if}}
-          <h1>{{#if hero.heading}}{{hero.heading}}{{else}}{{practice.name}}{{/if}}</h1>
+          <h1>{{#if hero.heading}}{{hero.heading}}{{/if}}{{#unless hero.heading}}{{practice.name}}{{/unless}}</h1>
           {{#if hero.subheading}}<p class="hero-subhead">{{hero.subheading}}</p>{{/if}}
 
           <div class="hero-ctas">
@@ -538,8 +538,8 @@ img { max-width: 100%; height: auto; display: block; }
   {{#if home.has_services}}
   <section class="section services">
     <div class="container">
-      <span class="section-eyebrow">{{#if content.services_eyebrow}}{{content.services_eyebrow}}{{else}}What We Treat{{/if}}</span>
-      <h2 class="section-heading">{{#if content.services_heading}}{{content.services_heading}}{{else}}Therapy services we offer{{/if}}</h2>
+      <span class="section-eyebrow">{{#if content.services_eyebrow}}{{content.services_eyebrow}}{{/if}}{{#unless content.services_eyebrow}}What We Treat{{/unless}}</span>
+      <h2 class="section-heading">{{#if content.services_heading}}{{content.services_heading}}{{/if}}{{#unless content.services_heading}}Therapy services we offer{{/unless}}</h2>
       {{#if content.services_intro}}<p class="section-intro">{{content.services_intro}}</p>{{/if}}
       <div class="services-grid">
         {{#each home.services}}
@@ -558,8 +558,8 @@ img { max-width: 100%; height: auto; display: block; }
   {{#if home.has_team}}
   <section class="section team">
     <div class="container">
-      <span class="section-eyebrow">{{#if content.team_eyebrow}}{{content.team_eyebrow}}{{else}}Meet the Team{{/if}}</span>
-      <h2 class="section-heading">{{#if content.team_heading}}{{content.team_heading}}{{else}}Therapists who get it{{/if}}</h2>
+      <span class="section-eyebrow">{{#if content.team_eyebrow}}{{content.team_eyebrow}}{{/if}}{{#unless content.team_eyebrow}}Meet the Team{{/unless}}</span>
+      <h2 class="section-heading">{{#if content.team_heading}}{{content.team_heading}}{{/if}}{{#unless content.team_heading}}Therapists who get it{{/unless}}</h2>
       {{#if content.team_intro}}<p class="section-intro">{{content.team_intro}}</p>{{/if}}
       <div class="team-grid">
         {{#each home.team}}
@@ -587,8 +587,8 @@ img { max-width: 100%; height: auto; display: block; }
   {{#if has_endorsements}}
   <section class="section endorsements">
     <div class="container">
-      <span class="section-eyebrow">{{#if content.endorsements_eyebrow}}{{content.endorsements_eyebrow}}{{else}}Peer Endorsements{{/if}}</span>
-      <h2 class="section-heading">{{#if content.endorsements_heading}}{{content.endorsements_heading}}{{else}}What colleagues say{{/if}}</h2>
+      <span class="section-eyebrow">{{#if content.endorsements_eyebrow}}{{content.endorsements_eyebrow}}{{/if}}{{#unless content.endorsements_eyebrow}}Peer Endorsements{{/unless}}</span>
+      <h2 class="section-heading">{{#if content.endorsements_heading}}{{content.endorsements_heading}}{{/if}}{{#unless content.endorsements_heading}}What colleagues say{{/unless}}</h2>
       {{#if content.endorsements_intro}}<p class="section-intro">{{content.endorsements_intro}}</p>{{/if}}
       <div class="endorsement-grid">
         {{#each endorsements}}
@@ -630,8 +630,8 @@ img { max-width: 100%; height: auto; display: block; }
     <div class="container">
       <div class="about-teaser">
         <div class="about-teaser-text">
-          <span class="section-eyebrow">{{#if content.about_eyebrow}}{{content.about_eyebrow}}{{else}}About the practice{{/if}}</span>
-          <h2>{{#if content.about_heading}}{{content.about_heading}}{{else}}Therapy that meets you where you are{{/if}}</h2>
+          <span class="section-eyebrow">{{#if content.about_eyebrow}}{{content.about_eyebrow}}{{/if}}{{#unless content.about_eyebrow}}About the practice{{/unless}}</span>
+          <h2>{{#if content.about_heading}}{{content.about_heading}}{{/if}}{{#unless content.about_heading}}Therapy that meets you where you are{{/unless}}</h2>
           <p>{{content.about_text}}</p>
           {{#if content.about_link_label}}
             <a href="{{content.about_link_href}}" class="btn btn-secondary" style="margin-top:1rem;">{{content.about_link_label}}</a>
@@ -654,7 +654,7 @@ img { max-width: 100%; height: auto; display: block; }
       <div class="location-block">
         <div class="location-text">
           <span class="section-eyebrow">Visit Us</span>
-          <h2>{{#if content.location_heading}}{{content.location_heading}}{{else}}{{practice.city}}{{/if}}</h2>
+          <h2>{{#if content.location_heading}}{{content.location_heading}}{{/if}}{{#unless content.location_heading}}{{practice.city}}{{/unless}}</h2>
           <p class="location-address">{{home.primary_location.full}}</p>
           <div class="location-meta">
             {{#if practice.phone}}<span class="location-meta-item"><strong>Phone:</strong> <a href="tel:{{practice.phone}}">{{practice.phone}}</a></span>{{/if}}
@@ -679,8 +679,8 @@ img { max-width: 100%; height: auto; display: block; }
   <!-- ── FINAL CTA BAND ──────────────────────────────────────── -->
   <section class="section cta-band">
     <div class="container">
-      <h2>{{#if cta.band_heading}}{{cta.band_heading}}{{else}}Ready to take the next step?{{/if}}</h2>
-      <p>{{#if cta.band_subheading}}{{cta.band_subheading}}{{else}}Reach out for a brief consultation. We'll listen, answer your questions, and match you with the right clinician.{{/if}}</p>
+      <h2>{{#if cta.band_heading}}{{cta.band_heading}}{{/if}}{{#unless cta.band_heading}}Ready to take the next step?{{/unless}}</h2>
+      <p>{{#if cta.band_subheading}}{{cta.band_subheading}}{{/if}}{{#unless cta.band_subheading}}Reach out for a brief consultation. We'll listen, answer your questions, and match you with the right clinician.{{/unless}}</p>
       {{#if cta.band_label}}
         <a href="{{cta.band_href}}" class="btn btn-primary">{{cta.band_label}}</a>
       {{/if}}
