@@ -1,0 +1,727 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>{{seo.title}} | {{practice.name}}</title>
+  <meta name="description" content="{{seo.description}}">
+  {{#if seo.canonical}}<link rel="canonical" href="{{seo.canonical}}">{{/if}}
+
+  {{#if design.typography.heading_font}}
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family={{design.typography.heading_font}}:wght@400;500;600;700&display=swap" rel="stylesheet">
+  {{/if}}
+
+  <style>
+{{{design.css_variables}}}
+
+* { box-sizing: border-box; margin: 0; padding: 0; }
+
+html { scroll-behavior: smooth; }
+
+body {
+  font-family: var(--font-body, system-ui, sans-serif);
+  font-size: var(--font-body-size, 1rem);
+  line-height: var(--line-height, 1.65);
+  color: var(--color-body-text, #1a1a1a);
+  background: var(--color-background, #ffffff);
+  -webkit-font-smoothing: antialiased;
+}
+
+h1, h2, h3, h4 {
+  font-family: var(--font-heading, var(--font-body));
+  color: var(--color-heading-text, var(--color-primary, #1a1a1a));
+  font-weight: 700;
+  line-height: 1.2;
+}
+
+h1 { font-size: var(--font-h1, 2.75rem); }
+h2 { font-size: var(--font-h2, 2rem); }
+h3 { font-size: var(--font-h3, 1.5rem); }
+
+p { margin-bottom: 1rem; }
+a { color: var(--color-accent, var(--color-primary)); text-decoration: none; }
+a:hover { text-decoration: underline; }
+
+.container {
+  max-width: 1180px;
+  margin: 0 auto;
+  padding: 0 1.5rem;
+}
+
+/* Hero — split layout when headshot present, full-width fallback when not */
+.hero {
+  padding: 4.5rem 0 3.5rem;
+  background: var(--color-surface, #fafafa);
+}
+.hero-grid {
+  display: grid;
+  grid-template-columns: 1.4fr 1fr;
+  gap: 3.5rem;
+  align-items: center;
+}
+.hero-text { max-width: 36rem; }
+.hero h1 { margin-bottom: 0.75rem; }
+.hero .credentials {
+  font-size: 1.0625rem;
+  color: var(--color-muted-text, var(--color-secondary));
+  margin-bottom: 1.25rem;
+  font-weight: 500;
+  letter-spacing: 0.01em;
+}
+.hero .meta {
+  display: inline-block;
+  font-size: 0.875rem;
+  text-transform: uppercase;
+  letter-spacing: 0.05em;
+  color: var(--color-accent, var(--color-secondary));
+  margin-bottom: 1rem;
+  font-weight: 600;
+}
+.hero .subheading {
+  font-size: 1.125rem;
+  color: var(--color-muted-text, var(--color-secondary));
+  margin-bottom: 1.75rem;
+  max-width: 50ch;
+}
+.hero-ctas {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.75rem;
+  align-items: center;
+  margin-top: 0.5rem;
+}
+
+/* Headshot */
+.hero-headshot {
+  width: 100%;
+  max-width: 380px;
+  aspect-ratio: 4 / 5;
+  border-radius: 16px;
+  overflow: hidden;
+  background: var(--color-background, #fff);
+  box-shadow: 0 12px 32px rgba(0,0,0,0.10), 0 2px 6px rgba(0,0,0,0.04);
+  margin-left: auto;
+}
+.hero-headshot img {
+  display: block;
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+}
+
+/* Buttons */
+.btn {
+  display: inline-block;
+  padding: var(--btn-padding, 0.875rem 1.75rem);
+  border-radius: var(--btn-radius, 8px);
+  font-weight: var(--btn-font-weight, 600);
+  font-size: 1rem;
+  text-decoration: none !important;
+  transition: transform 0.28s cubic-bezier(0.34, 1.56, 0.64, 1),
+              box-shadow 0.28s cubic-bezier(0.4, 0, 0.2, 1),
+              filter 0.2s ease,
+              background-color 0.2s ease,
+              color 0.2s ease;
+  border: 0;
+  cursor: pointer;
+  font-family: inherit;
+  will-change: transform;
+}
+.btn-primary {
+  background: var(--color-cta-background, var(--color-primary));
+  color: var(--color-cta-text, #fff);
+  box-shadow: 0 1px 2px rgba(0,0,0,0.06);
+}
+.btn-primary:hover {
+  filter: brightness(0.94);
+  transform: translateY(-2px);
+  box-shadow: 0 6px 16px rgba(0,0,0,0.14);
+}
+.btn-primary:active {
+  transform: translateY(0);
+  box-shadow: 0 1px 2px rgba(0,0,0,0.08);
+  transition-duration: 0.1s;
+}
+.btn-outline {
+  background: transparent;
+  color: var(--color-primary);
+  border: 2px solid var(--color-primary);
+}
+.btn-outline:hover {
+  background: var(--color-primary);
+  color: var(--color-cta-text, #fff);
+  transform: translateY(-2px);
+  box-shadow: 0 6px 16px rgba(0,0,0,0.10);
+}
+.btn-outline:active {
+  transform: translateY(0);
+  transition-duration: 0.1s;
+}
+
+/* Body content */
+.body-content { padding: 3.5rem 0; }
+.body-content .container { max-width: 760px; }
+.body-content h2 { margin: 2.75rem 0 1.25rem; }
+.body-content h3 { margin: 2.25rem 0 1rem; }
+.body-content h2:first-child, .body-content h3:first-child { margin-top: 0; }
+.body-content p { font-size: 1.0625rem; }
+.body-content ul, .body-content ol { margin: 1rem 0 1.5rem 1.5rem; }
+.body-content li { margin-bottom: 0.5rem; }
+.body-content blockquote {
+  border-left: 3px solid var(--color-accent, var(--color-primary));
+  padding: 0.5rem 0 0.5rem 1.5rem;
+  margin: 2rem 0;
+  font-style: italic;
+  color: var(--color-muted-text);
+}
+
+/* Approach — quieter alternate-tone section */
+.approach {
+  padding: 3.5rem 0;
+  background: var(--color-surface, #fafafa);
+}
+.approach .container { max-width: 760px; }
+.approach h2 { margin-bottom: 1.5rem; }
+.approach p { font-size: 1.0625rem; }
+
+/* Credentials grid */
+.credentials-block { padding: 4rem 0; }
+.credentials-block h2 { text-align: center; margin-bottom: 2.5rem; }
+.cred-grid {
+  display: grid;
+  grid-template-columns: repeat(2, 1fr);
+  gap: 1.5rem;
+  max-width: 960px;
+  margin: 0 auto;
+}
+.cred-card {
+  background: var(--color-surface, #fafafa);
+  border-radius: 14px;
+  padding: 1.75rem;
+  border: 1px solid rgba(0,0,0,0.06);
+}
+.cred-card h3 {
+  font-size: 1.0625rem;
+  margin-bottom: 1rem;
+  color: var(--color-heading-text);
+  display: flex;
+  align-items: center;
+  gap: 0.625rem;
+}
+.cred-card h3::before {
+  content: '';
+  display: inline-block;
+  width: 6px; height: 6px;
+  border-radius: 50%;
+  background: var(--color-accent, var(--color-primary));
+  flex-shrink: 0;
+}
+.cred-card ul { list-style: none; margin: 0; padding: 0; }
+.cred-card li {
+  padding: 0.5rem 0;
+  font-size: 0.9375rem;
+  color: var(--color-body-text);
+  border-bottom: 1px solid rgba(0,0,0,0.04);
+}
+.cred-card li:last-child { border-bottom: 0; }
+
+/* Media + awards */
+.media-block { padding: 3rem 0; background: var(--color-surface, #fafafa); }
+.media-block .container { max-width: 760px; }
+.media-block h2 { margin-bottom: 1.5rem; }
+.media-list { list-style: none; margin: 0; padding: 0; }
+.media-list li {
+  padding: 0.875rem 0;
+  border-bottom: 1px solid rgba(0,0,0,0.06);
+  font-size: 1rem;
+}
+.media-list li:last-child { border-bottom: 0; }
+.awards { margin-top: 2rem; padding-top: 2rem; border-top: 1px solid rgba(0,0,0,0.08); }
+.awards h3 { font-size: 1.125rem; margin-bottom: 0.75rem; }
+
+/* Endorsements */
+.endorsements { padding: 4rem 0; }
+.endorsements h2 { text-align: center; margin-bottom: 2.5rem; }
+.endorsement-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(320px, 1fr));
+  gap: 1.5rem;
+  max-width: 1080px;
+  margin: 0 auto;
+}
+.endorsement-card {
+  background: var(--color-background, #fff);
+  border: 1px solid rgba(0,0,0,0.08);
+  border-radius: 14px;
+  padding: 1.75rem;
+  position: relative;
+}
+.endorsement-card::before {
+  content: '\201C';
+  position: absolute;
+  top: 0.25rem;
+  left: 1.25rem;
+  font-size: 4rem;
+  line-height: 1;
+  color: var(--color-accent, var(--color-primary));
+  opacity: 0.18;
+  font-family: Georgia, serif;
+  pointer-events: none;
+}
+.endorsement-quote {
+  font-size: 1rem;
+  line-height: 1.6;
+  margin-bottom: 1.25rem;
+  color: var(--color-body-text);
+  position: relative;
+}
+.endorsement-author {
+  font-weight: 600;
+  font-size: 0.9375rem;
+  color: var(--color-heading-text);
+}
+.endorsement-meta {
+  font-size: 0.8125rem;
+  color: var(--color-muted-text);
+  margin-top: 0.125rem;
+}
+
+/* Booking */
+.booking-block {
+  padding: 3.5rem 0;
+  background: var(--color-surface, #fafafa);
+}
+.booking-block h2 { text-align: center; margin-bottom: 1rem; }
+.booking-intro {
+  text-align: center;
+  color: var(--color-muted-text);
+  margin-bottom: 2.5rem;
+  max-width: 50ch;
+  margin-left: auto;
+  margin-right: auto;
+}
+.booking-embed {
+  background: var(--color-background, #fff);
+  border-radius: 14px;
+  overflow: hidden;
+  border: 1px solid rgba(0,0,0,0.06);
+  max-width: 920px;
+  margin: 0 auto;
+}
+.booking-embed iframe {
+  display: block;
+  width: 100%;
+  border: 0;
+  min-height: 600px;
+}
+.booking-cta { text-align: center; }
+
+/* CTA band */
+.cta-band {
+  background: var(--color-primary);
+  color: var(--color-cta-text, #fff);
+  padding: 3.5rem 0;
+  text-align: center;
+}
+.cta-band h2 { color: var(--color-cta-text, #fff); margin-bottom: 1rem; }
+.cta-band p { font-size: 1.125rem; margin-bottom: 2rem; opacity: 0.92; }
+.cta-band .btn-primary {
+  background: var(--color-cta-text, #fff);
+  color: var(--color-primary);
+}
+.cta-band .btn-primary:hover { filter: brightness(0.95); }
+
+/* FAQs */
+.faqs { padding: 4rem 0; background: var(--color-surface, #fafafa); }
+.faqs h2 { text-align: center; margin-bottom: 2.5rem; }
+.faq-list { max-width: 780px; margin: 0 auto; }
+
+:root { interpolate-size: allow-keywords; }
+
+.faq-item {
+  background: var(--color-background, #fff);
+  border-radius: 12px;
+  margin-bottom: 0.75rem;
+  border: 1px solid rgba(0,0,0,0.06);
+  transition: box-shadow 0.3s ease, border-color 0.3s ease;
+  overflow: hidden;
+}
+.faq-item:hover { border-color: rgba(0,0,0,0.12); }
+.faq-item.is-open { box-shadow: 0 4px 16px rgba(0,0,0,0.06); }
+.faq-item summary {
+  padding: 1.25rem 1.5rem;
+  font-weight: 600;
+  cursor: pointer;
+  list-style: none;
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  font-size: 1.0625rem;
+  color: var(--color-heading-text);
+  user-select: none;
+  transition: background-color 0.2s ease;
+}
+.faq-item summary:hover { background: rgba(0,0,0,0.02); }
+.faq-item summary::-webkit-details-marker { display: none; }
+.faq-item summary::after {
+  content: '';
+  width: 11px;
+  height: 11px;
+  border-right: 2px solid var(--color-accent, var(--color-primary));
+  border-bottom: 2px solid var(--color-accent, var(--color-primary));
+  transform: rotate(45deg) translate(-2px, -2px);
+  transition: transform 0.4s cubic-bezier(0.34, 1.4, 0.5, 1);
+  flex-shrink: 0;
+  margin-left: 1rem;
+}
+.faq-item.is-open summary::after,
+.faq-item[open] summary::after {
+  transform: rotate(-135deg) translate(-2px, -2px);
+}
+.faq-content {
+  height: 0;
+  overflow: hidden;
+  transition: height 0.4s cubic-bezier(0.4, 0, 0.2, 1);
+}
+.faq-item.is-open .faq-content { height: auto; }
+.faq-answer {
+  padding: 0 1.5rem 1.5rem;
+  color: var(--color-body-text);
+}
+
+/* Crisis disclaimer */
+.crisis-banner {
+  background: rgba(0,0,0,0.04);
+  border-top: 1px solid rgba(0,0,0,0.06);
+  padding: 1.5rem 0;
+  font-size: 0.875rem;
+  color: var(--color-muted-text);
+  text-align: center;
+}
+.crisis-banner strong { color: var(--color-heading-text); }
+
+/* Subtle entrance */
+@keyframes mr-rise {
+  from { opacity: 0; transform: translateY(12px); }
+  to   { opacity: 1; transform: translateY(0); }
+}
+.hero h1 { animation: mr-rise 0.55s cubic-bezier(0.2, 0.8, 0.2, 1) both; }
+.hero .credentials { animation: mr-rise 0.55s cubic-bezier(0.2, 0.8, 0.2, 1) 0.06s both; }
+.hero .subheading { animation: mr-rise 0.55s cubic-bezier(0.2, 0.8, 0.2, 1) 0.12s both; }
+.hero .btn { animation: mr-rise 0.55s cubic-bezier(0.2, 0.8, 0.2, 1) 0.18s both; }
+.hero-headshot { animation: mr-rise 0.65s cubic-bezier(0.2, 0.8, 0.2, 1) both; }
+
+@media (max-width: 860px) {
+  .hero-grid { grid-template-columns: 1fr; gap: 2rem; }
+  .hero-headshot { max-width: 280px; margin: 0; }
+  .cred-grid { grid-template-columns: 1fr; }
+}
+
+@media (max-width: 768px) {
+  h1 { font-size: 2.125rem; }
+  h2 { font-size: 1.625rem; }
+  .hero { padding: 3rem 0 2.5rem; }
+  .body-content { padding: 2.5rem 0; }
+  .credentials-block { padding: 2.75rem 0; }
+  .endorsements { padding: 2.75rem 0; }
+  .hero-ctas { flex-direction: column; align-items: stretch; gap: 0.875rem; }
+  .hero-ctas .btn { width: 100%; text-align: center; }
+}
+
+/* Respect reduced-motion (vestibular, anxiety, post-concussion) */
+@media (prefers-reduced-motion: reduce) {
+  *, *::before, *::after {
+    animation-duration: 0.01ms !important;
+    animation-iteration-count: 1 !important;
+    transition-duration: 0.01ms !important;
+    scroll-behavior: auto !important;
+  }
+}
+  </style>
+
+  {{#if schema_json}}
+  <script type="application/ld+json">
+{{{schema_json}}}
+  </script>
+  {{/if}}
+</head>
+<body>
+
+{{> nav}}
+
+<main>
+  <section class="hero">
+    <div class="container">
+      {{#if bio.has_headshot}}
+      <div class="hero-grid">
+        <div class="hero-text">
+          {{#if hero.eyebrow}}<span class="meta">{{hero.eyebrow}}</span>{{/if}}
+          <h1>{{bio.name}}</h1>
+          {{#if bio.credentials}}<p class="credentials">{{bio.credentials}}</p>{{/if}}
+          {{#if hero.subheading}}<p class="subheading">{{hero.subheading}}</p>{{/if}}
+          {{#if cta.primary_label}}
+          <div class="hero-ctas">
+            <a href="{{cta.primary_href}}" class="btn btn-primary">{{cta.primary_label}}</a>
+            {{#if cta.secondary_label}}
+            <a href="{{cta.secondary_href}}" class="btn btn-outline">{{cta.secondary_label}}</a>
+            {{/if}}
+          </div>
+          {{/if}}
+        </div>
+        <div class="hero-headshot">
+          <img src="{{bio.headshot_url}}" alt="{{bio.name}}{{#if bio.credentials}}, {{bio.credentials}}{{/if}}" loading="eager">
+        </div>
+      </div>
+      {{/if}}
+      {{#unless bio.has_headshot}}
+      <div class="hero-text">
+        {{#if hero.eyebrow}}<span class="meta">{{hero.eyebrow}}</span>{{/if}}
+        <h1>{{bio.name}}</h1>
+        {{#if bio.credentials}}<p class="credentials">{{bio.credentials}}</p>{{/if}}
+        {{#if hero.subheading}}<p class="subheading">{{hero.subheading}}</p>{{/if}}
+        {{#if cta.primary_label}}
+        <div class="hero-ctas">
+          <a href="{{cta.primary_href}}" class="btn btn-primary">{{cta.primary_label}}</a>
+          {{#if cta.secondary_label}}
+          <a href="{{cta.secondary_href}}" class="btn btn-outline">{{cta.secondary_label}}</a>
+          {{/if}}
+        </div>
+        {{/if}}
+      </div>
+      {{/unless}}
+    </div>
+  </section>
+
+  {{#if body_html}}
+  <section class="body-content">
+    <div class="container">
+      {{{body_html}}}
+    </div>
+  </section>
+  {{/if}}
+
+  {{#if bio.has_approach}}
+  <section class="approach">
+    <div class="container">
+      <h2>{{#if content.approach_heading}}{{content.approach_heading}}{{/if}}{{#unless content.approach_heading}}My Approach{{/unless}}</h2>
+      <p>{{bio.clinical_approach}}</p>
+    </div>
+  </section>
+  {{/if}}
+
+  {{#if bio.has_credentials}}
+  <section class="credentials-block">
+    <div class="container">
+      <h2>Credentials &amp; Training</h2>
+      <div class="cred-grid">
+        {{#if bio.licenses}}
+        <div class="cred-card">
+          <h3>Licensure</h3>
+          <ul>{{#each bio.licenses}}<li>{{value}}</li>{{/each}}</ul>
+        </div>
+        {{/if}}
+        {{#if bio.education}}
+        <div class="cred-card">
+          <h3>Education</h3>
+          <ul>{{#each bio.education}}<li>{{value}}</li>{{/each}}</ul>
+        </div>
+        {{/if}}
+        {{#if bio.certifications}}
+        <div class="cred-card">
+          <h3>Certifications</h3>
+          <ul>{{#each bio.certifications}}<li>{{value}}</li>{{/each}}</ul>
+        </div>
+        {{/if}}
+        {{#if bio.associations}}
+        <div class="cred-card">
+          <h3>Professional Associations</h3>
+          <ul>{{#each bio.associations}}<li>{{value}}</li>{{/each}}</ul>
+        </div>
+        {{/if}}
+      </div>
+    </div>
+  </section>
+  {{/if}}
+
+  {{#if bio.has_media}}
+  <section class="media-block">
+    <div class="container">
+      <h2>Media &amp; Publications</h2>
+      <ul class="media-list">
+        {{#each bio.media}}<li>{{value}}</li>{{/each}}
+      </ul>
+      {{#if bio.has_awards}}
+      <div class="awards">
+        <h3>Awards &amp; Recognition</h3>
+        <p>{{bio.awards}}</p>
+      </div>
+      {{/if}}
+    </div>
+  </section>
+  {{/if}}
+
+  {{#if bio.has_awards}}
+  {{#unless bio.has_media}}
+  <section class="media-block">
+    <div class="container">
+      <h2>Awards &amp; Recognition</h2>
+      <p>{{bio.awards}}</p>
+    </div>
+  </section>
+  {{/unless}}
+  {{/if}}
+
+  {{#if has_endorsements}}
+  <section class="endorsements">
+    <div class="container">
+      <h2>What People Say</h2>
+      <div class="endorsement-grid">
+        {{#each endorsements}}
+        <div class="endorsement-card">
+          <p class="endorsement-quote">{{content}}</p>
+          {{#if endorser_name}}
+          <div class="endorsement-author">{{endorser_name}}</div>
+          {{#if endorser_title}}<div class="endorsement-meta">{{endorser_title}}{{#if endorser_org}}, {{endorser_org}}{{/if}}</div>{{/if}}
+          {{#unless endorser_title}}{{#if endorser_org}}<div class="endorsement-meta">{{endorser_org}}</div>{{/if}}{{/unless}}
+          {{/if}}
+        </div>
+        {{/each}}
+      </div>
+    </div>
+  </section>
+  {{/if}}
+
+  {{#if booking.has_embed}}
+  <section class="booking-block">
+    <div class="container">
+      <h2>Book a Session</h2>
+      {{#if content.booking_intro}}<p class="booking-intro">{{content.booking_intro}}</p>{{/if}}
+      <div class="booking-embed">{{{booking.embed}}}</div>
+    </div>
+  </section>
+  {{/if}}
+  {{#unless booking.has_embed}}
+  {{#if booking.has_url}}
+  <section class="booking-block">
+    <div class="container">
+      <h2>Book a Session</h2>
+      {{#if content.booking_intro}}<p class="booking-intro">{{content.booking_intro}}</p>{{/if}}
+      <div class="booking-cta">
+        <a href="{{booking.url}}" class="btn btn-primary" target="_blank" rel="noopener">Schedule with {{bio.name}}</a>
+      </div>
+    </div>
+  </section>
+  {{/if}}
+  {{/unless}}
+
+  {{#if cta.band_heading}}
+  <section class="cta-band">
+    <div class="container">
+      <h2>{{cta.band_heading}}</h2>
+      {{#if cta.band_subheading}}<p>{{cta.band_subheading}}</p>{{/if}}
+      <a href="{{cta.band_href}}" class="btn btn-primary">{{cta.band_label}}</a>
+    </div>
+  </section>
+  {{/if}}
+
+  {{#if faqs}}
+  <section class="faqs">
+    <div class="container">
+      <h2>Frequently Asked Questions</h2>
+      <div class="faq-list">
+        {{#each faqs}}
+        <details class="faq-item"{{#if @first}} open{{/if}}>
+          <summary>{{question}}</summary>
+          <div class="faq-content">
+            <div class="faq-answer">{{{answer}}}</div>
+          </div>
+        </details>
+        {{/each}}
+      </div>
+    </div>
+  </section>
+  {{/if}}
+</main>
+
+<div class="crisis-banner">
+  <div class="container">
+    <strong>In crisis?</strong> If you or someone you know is in immediate danger, call or text <a href="tel:988">988</a> for the Suicide &amp; Crisis Lifeline, or go to your nearest emergency room.
+  </div>
+</div>
+
+{{> footer}}
+
+<script>
+// Smooth accordion: intercept <details> toggle to animate height.
+// Single-open mode: opening one auto-closes any others in the same list.
+(function() {
+  var items = document.querySelectorAll('.faq-item');
+
+  function closeItem(item, content) {
+    if (!item.hasAttribute('open')) return;
+    var h = content.scrollHeight;
+    content.style.height = h + 'px';
+    content.offsetHeight;
+    item.classList.remove('is-open');
+    requestAnimationFrame(function() {
+      content.style.height = '0px';
+    });
+    var onEnd = function() {
+      item.removeAttribute('open');
+      content.style.height = '';
+      content.removeEventListener('transitionend', onEnd);
+    };
+    content.addEventListener('transitionend', onEnd);
+  }
+
+  function openItem(item, content) {
+    item.setAttribute('open', '');
+    var target = content.scrollHeight;
+    content.style.height = '0px';
+    content.offsetHeight;
+    item.classList.add('is-open');
+    requestAnimationFrame(function() {
+      content.style.height = target + 'px';
+    });
+    var onEnd = function() {
+      content.style.height = '';
+      content.removeEventListener('transitionend', onEnd);
+    };
+    content.addEventListener('transitionend', onEnd);
+  }
+
+  for (var i = 0; i < items.length; i++) {
+    var item = items[i];
+    var summary = item.querySelector('summary');
+    var content = item.querySelector('.faq-content');
+    if (!summary || !content) continue;
+
+    if (item.hasAttribute('open')) {
+      item.classList.add('is-open');
+    }
+
+    summary.addEventListener('click', (function(item, content) {
+      return function(e) {
+        e.preventDefault();
+        var isOpen = item.hasAttribute('open');
+
+        if (isOpen) {
+          closeItem(item, content);
+        } else {
+          for (var j = 0; j < items.length; j++) {
+            if (items[j] !== item && items[j].hasAttribute('open')) {
+              closeItem(items[j], items[j].querySelector('.faq-content'));
+            }
+          }
+          openItem(item, content);
+        }
+      };
+    })(item, content));
+  }
+})();
+</script>
+
+</body>
+</html>
