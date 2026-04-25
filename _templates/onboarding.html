@@ -103,6 +103,11 @@ strong { font-weight: 600; color: var(--color-heading); }
 .main-content { padding: 3rem 4rem; max-width: 960px; margin: 0 auto; }
 @media (max-width: 900px) { .main-content { padding: 1.5rem; } }
 
+/* Site map step uses the full available width — the configurator is dense
+   and benefits from horizontal room for the tree + page list. */
+body.site-map-wide .main-content { max-width: none; padding-left: 1.5rem; padding-right: 1.5rem; }
+@media (max-width: 900px) { body.site-map-wide .main-content { padding-left: 1rem; padding-right: 1rem; } }
+
 .step-panel { display: none; animation: fadeIn .4s ease; }
 .step-panel.active { display: block; }
 @keyframes fadeIn { from { opacity: 0; transform: translateY(10px); } to { opacity: 1; transform: translateY(0); } }
@@ -1261,7 +1266,9 @@ body.contact-locked .autosave-status { display: none !important; }
     // bio data refreshes the view. Lazy loading was removed because
     // same-origin display:none iframes don't always trigger the load
     // observer in Chromium-based browsers with strict tracking protection.
-    if (STEPS[idx] && STEPS[idx].key === 'site_map' && CLIENT_SLUG) {
+    var isSiteMap = STEPS[idx] && STEPS[idx].key === 'site_map';
+    document.body.classList.toggle('site-map-wide', !!isSiteMap);
+    if (isSiteMap && CLIENT_SLUG) {
       var frame = document.getElementById('siteMapFrame');
       if (frame) {
         var desiredSrc = '/admin/site-map?slug=' + encodeURIComponent(CLIENT_SLUG) + '&mode=client';
