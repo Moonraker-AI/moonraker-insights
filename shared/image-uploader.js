@@ -909,6 +909,9 @@
 
     '.mr-up__grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(140px, 1fr)); gap: 0.625rem; }',
     '.mr-uploader--single .mr-up__grid { grid-template-columns: minmax(180px, 240px); }',
+    /* When empty, fall back to a single full-width row so the helper text */
+    /* doesnt get squeezed into the 240px tile column. */
+    '.mr-uploader--single .mr-up__grid:has(.mr-up__grid-empty) { grid-template-columns: 1fr; }',
     '.mr-up__grid-empty { grid-column: 1 / -1; padding: 0.75rem 0; text-align: center; color: var(--color-muted, rgba(0,0,0,0.45)); font-size: 0.82rem; font-style: italic; }',
     '.mr-up__tile { position: relative; aspect-ratio: 1 / 1; border-radius: 10px; overflow: hidden; background: rgba(0,0,0,0.04); border: 1px solid rgba(0,0,0,0.06); }',
     '.mr-up__tile img { width: 100%; height: 100%; object-fit: cover; display: block; }',
