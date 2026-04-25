@@ -291,9 +291,11 @@ function buildRenderData(args) {
       });
 
     var team = (bioList || []).map(function (b) {
+      var nm = b.therapist_name || '';
       return {
         id: b.id,
-        name: b.therapist_name || '',
+        name: nm,
+        initial: nm ? nm.trim().charAt(0).toUpperCase() : '?',
         credentials: b.therapist_credentials || '',
         headshot_url: b.headshot_url || '',
         slug: b.slug || '',
