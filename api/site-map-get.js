@@ -106,7 +106,8 @@ module.exports = async function(req, res) {
       'site_maps?id=eq.' + siteMapId
       + '&select=id,contact_id,anonymous_session_id,source_type,status,root_url,'
       + 'mvp_locked_at,fully_locked_at,launched_at,addon_count,addon_total_cents,'
-      + 'addon_invoice_status,sitemap_scout_id,created_at,updated_at'
+      + 'addon_invoice_status,sitemap_scout_id,nav_extracted_at,nav_extraction_method,'
+      + 'created_at,updated_at'
     );
     if (!siteMap) return res.status(404).json({ error: 'site_map not found' });
 
@@ -118,7 +119,7 @@ module.exports = async function(req, res) {
     var pages = await sb.query(
       'site_map_pages?site_map_id=eq.' + siteMapId
       + '&select=id,category,status,title,notes,url,display_order,intake_status,'
-      + 'bio_material_id,addon_price_cents,created_at,updated_at'
+      + 'bio_material_id,in_nav,addon_price_cents,created_at,updated_at'
       + '&order=category,display_order'
     );
     pages = pages || [];
