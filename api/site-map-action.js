@@ -60,7 +60,12 @@ var REMOVED_STATUSES = ['existing_remove'];
 // discovered pages are inventory awaiting triage and don't count. Once a page
 // is committed to keep/update/draft/new it enters the highlighted set and
 // counts against the cap.
-var HIGHLIGHTED_STATUSES = ['existing_keep', 'existing_update', 'new', 'drafting'];
+// Statuses that count toward the budget cap and the submit gate.
+// "Highlighted" means the client actively chose to do something with the page.
+// existing_keep is excluded — it's the default no-op state (along with discovered)
+// and doesn't consume budget. Admins may still set existing_keep manually but
+// it never blocks a client submission or tips a category over its cap.
+var HIGHLIGHTED_STATUSES = ['existing_update', 'new', 'drafting'];
 
 function isUuid(s) {
   return typeof s === 'string' && /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(s);
@@ -361,6 +366,8 @@ async function actionDeletePage(body, siteMap) {
 async function actionSubmitForReview(body, siteMap) {
   // Gating: need at least 1 highlighted service + 1 highlighted location.
   // Checked server-side so a client can't flip this past the UI guard.
+  // "Highlighted" = the client actively chose to do something with the page
+  // (update, new, drafting). Discovered pages are the default-keep state.
   var serviceCount = await countHighlightedInCategory(siteMap.id, 'service');
   var locationCount = await countHighlightedInCategory(siteMap.id, 'location');
   if (serviceCount < 1 || locationCount < 1) {
