@@ -95,6 +95,10 @@
       "destination": "/_templates/endorsements"
     },
     {
+      "source": "/:slug([a-z0-9-]+)/endorse/:clinician([a-z0-9-]+)",
+      "destination": "/_templates/endorse"
+    },
+    {
       "source": "/:slug([a-z0-9-]+)/onboarding",
       "destination": "/_templates/onboarding"
     },
