@@ -198,11 +198,20 @@ async function processOne(row) {
   var year = new Date().getFullYear();
   var copyright = '(C) ' + year + ' ' + practiceName;
   var description = filenameToDescription(row.filename, practiceName);
+
+  // Per-row overrides (e.g. endorser_headshot rows want Artist=endorser_name,
+  // ImageDescription="Maya Lin's endorsement of Anna Skomorovskaia at Sky
+  // Therapies"). Set by the originating route at insert time, never trusted
+  // from end-users (the route sanitizes before storing).
+  var overrides = (row.metadata_json && row.metadata_json.exif_overrides) || {};
+  var artist = overrides.artist || practiceName;
+  if (overrides.description) description = overrides.description;
+
   // sharp's withExif takes a structured EXIF object. We inject the IFD0 (image-level) fields.
   img = img.withExif({
     IFD0: {
       Copyright: copyright,
-      Artist: practiceName,
+      Artist: artist,
       ImageDescription: description,
       Software: 'Moonraker Pagemaster',
     },
