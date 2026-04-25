@@ -488,7 +488,7 @@ img { max-width: 100%; height: auto; display: block; }
 
 <main>
 
-  {{!-- ── HERO ────────────────────────────────────────────────── --}}
+  <!-- ── HERO ────────────────────────────────────────────────── -->
   <section class="hero">
     <div class="container">
       <div class="hero-grid">
@@ -534,7 +534,7 @@ img { max-width: 100%; height: auto; display: block; }
     </div>
   </section>
 
-  {{!-- ── SERVICES ────────────────────────────────────────────── --}}
+  <!-- ── SERVICES ────────────────────────────────────────────── -->
   {{#if home.has_services}}
   <section class="section services">
     <div class="container">
@@ -554,7 +554,7 @@ img { max-width: 100%; height: auto; display: block; }
   </section>
   {{/if}}
 
-  {{!-- ── TEAM ────────────────────────────────────────────────── --}}
+  <!-- ── TEAM ────────────────────────────────────────────────── -->
   {{#if home.has_team}}
   <section class="section team">
     <div class="container">
@@ -569,7 +569,7 @@ img { max-width: 100%; height: auto; display: block; }
               <img src="{{headshot_url}}" alt="{{name}}{{#if credentials}}, {{credentials}}{{/if}}" loading="lazy">
             {{/if}}
             {{#unless headshot_url}}
-              <div class="team-headshot-fallback">{{name.[0]}}</div>
+              <div class="team-headshot-fallback">{{initial}}</div>
             {{/unless}}
           </div>
           <div class="team-name">{{name}}</div>
@@ -583,7 +583,7 @@ img { max-width: 100%; height: auto; display: block; }
   </section>
   {{/if}}
 
-  {{!-- ── ENDORSEMENTS ────────────────────────────────────────── --}}
+  <!-- ── ENDORSEMENTS ────────────────────────────────────────── -->
   {{#if has_endorsements}}
   <section class="section endorsements">
     <div class="container">
@@ -624,7 +624,7 @@ img { max-width: 100%; height: auto; display: block; }
   </section>
   {{/if}}
 
-  {{!-- ── ABOUT TEASER ────────────────────────────────────────── --}}
+  <!-- ── ABOUT TEASER ────────────────────────────────────────── -->
   {{#if content.about_text}}
   <section class="section about">
     <div class="container">
@@ -647,7 +647,7 @@ img { max-width: 100%; height: auto; display: block; }
   </section>
   {{/if}}
 
-  {{!-- ── LOCATION ────────────────────────────────────────────── --}}
+  <!-- ── LOCATION ────────────────────────────────────────────── -->
   {{#if home.primary_location.has_address}}
   <section class="section location">
     <div class="container">
@@ -676,7 +676,7 @@ img { max-width: 100%; height: auto; display: block; }
   </section>
   {{/if}}
 
-  {{!-- ── FINAL CTA BAND ──────────────────────────────────────── --}}
+  <!-- ── FINAL CTA BAND ──────────────────────────────────────── -->
   <section class="section cta-band">
     <div class="container">
       <h2>{{#if cta.band_heading}}{{cta.band_heading}}{{else}}Ready to take the next step?{{/if}}</h2>
