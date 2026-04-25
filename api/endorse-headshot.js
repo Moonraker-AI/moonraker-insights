@@ -142,11 +142,12 @@ async function signUpload(req, res, contact, body, serviceKey) {
   // We let Postgres generate the row's UUID, then use it as the filename so
   // the path and id are 1:1.
   var ext = EXT_BY_MIME[contentType] || 'jpg';
+  var SB_URL = sb.url();
 
-  // Insert pool row first (without storage_path — set on UPDATE once we
-  // know the row id). Use a two-step so we can use the row's own id in
-  // the path. Alternative: gen_random_uuid() in app layer; but matching
-  // existing-DB-as-source-of-truth is cleaner.
+  // Insert pool row first with placeholder storage_path + hosted_url, both
+  // updated below once we know the row's id. hosted_url is NOT NULL on this
+  // table by an older constraint — we satisfy it with the predicted public
+  // URL, which the cron later overwrites with the optimized version's URL.
   var poolRow;
   try {
     var rows = await sb.mutate('client_image_pool', 'POST', {
@@ -159,6 +160,7 @@ async function signUpload(req, res, contact, body, serviceKey) {
       bytes: declaredBytes,
       status: 'pending',
       storage_path: 'pending',  // placeholder; updated below
+      hosted_url: 'pending',    // placeholder; updated below
       uploaded_by: 'endorser_form',
       metadata_json: { uploaded_via: 'endorse-headshot' },
     });
@@ -175,11 +177,13 @@ async function signUpload(req, res, contact, body, serviceKey) {
   }
 
   var storagePath = contact.id + '/endorser_headshot/' + poolRow.id + '.' + ext;
+  var predictedHostedUrl = SB_URL + '/storage/v1/object/public/' + BUCKET + '/' + storagePath;
 
-  // Update the row with the real storage_path
+  // Update the row with the real storage_path + predicted public URL
   try {
     await sb.mutate('client_image_pool?id=eq.' + poolRow.id, 'PATCH', {
-      storage_path: storagePath
+      storage_path: storagePath,
+      hosted_url: predictedHostedUrl
     }, 'return=minimal');
   } catch (e) {
     monitor.logError('endorse-headshot', e, {
@@ -194,7 +198,6 @@ async function signUpload(req, res, contact, body, serviceKey) {
   // (using a new sign request, new path) we don't strictly need upsert. But
   // if their browser retries the same signed URL within 2h after a partial
   // upload we want the second attempt to succeed cleanly.
-  var SB_URL = sb.url();
   var signResp;
   try {
     signResp = await fetchT(
@@ -236,7 +239,6 @@ async function signUpload(req, res, contact, body, serviceKey) {
   // signData.url is e.g. "/object/upload/sign/<path>?token=<...>" (relative
   // to /storage/v1). Build the absolute URL the browser will PUT to.
   var uploadUrl = SB_URL + '/storage/v1' + signData.url;
-  var hostedUrl = SB_URL + '/storage/v1/object/public/' + BUCKET + '/' + storagePath;
 
   return res.status(200).json({
     ok: true,
@@ -245,7 +247,7 @@ async function signUpload(req, res, contact, body, serviceKey) {
     upload_url: uploadUrl,
     upload_method: 'PUT',
     content_type: contentType,
-    hosted_url: hostedUrl,
+    hosted_url: predictedHostedUrl,
     max_bytes: MAX_BYTES
   });
 }
