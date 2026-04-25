@@ -95,12 +95,19 @@ module.exports = async function(req, res) {
     // flow only covers existing clients adopting their current sitemap.
     // (core_new and standalone flows create their site_map via a different
     // route since there's no scout to adopt.)
+    var navUrls = (scout.report && Array.isArray(scout.report.nav_urls)) ? scout.report.nav_urls : [];
+    var navMethod = (scout.report && scout.report.nav_extraction_method) || null;
+    var navSet = {};
+    for (var n = 0; n < navUrls.length; n++) navSet[navUrls[n]] = true;
+
     var createResp = await sb.mutate('site_maps', 'POST', {
       contact_id: contact.id,
       source_type: 'core_existing',
       status: 'draft',
       sitemap_scout_id: scout.id,
-      root_url: scout.root_url || contact.website_url
+      root_url: scout.root_url || contact.website_url,
+      nav_extracted_at: navMethod ? new Date().toISOString() : null,
+      nav_extraction_method: navMethod
     }, 'return=representation');
 
     var siteMap = Array.isArray(createResp) ? createResp[0] : createResp;
@@ -224,7 +231,8 @@ module.exports = async function(req, res) {
           url: u,
           display_order: i,
           intake_status: (cat === 'bio') ? 'intake_pending' : null,
-          bio_material_id: (cat === 'bio') ? (bioMaterialIdByUrl[u] || null) : null
+          bio_material_id: (cat === 'bio') ? (bioMaterialIdByUrl[u] || null) : null,
+          in_nav: !!navSet[_normalizeForNav(u)]
         };
         rows.push(row);
       }
@@ -262,3 +270,20 @@ module.exports = async function(req, res) {
     return res.status(500).json({ error: 'Failed to materialize site_map' });
   }
 };
+
+// Mirror of sitemap_scout.py's _normalize_nav_url so a sitemap row's URL can
+// be compared against the scout's nav_urls set. Both produce
+// 'scheme://lowercase-host/path' with no trailing slash, no query, no fragment.
+// Returns null on any URL we can't parse — falsy match below preserves
+// in_nav=false default.
+function _normalizeForNav(rawUrl) {
+  if (!rawUrl) return null;
+  try {
+    var u = new URL(rawUrl);
+    if (u.protocol !== 'http:' && u.protocol !== 'https:') return null;
+    var path = (u.pathname || '/').replace(/\/+$/, '');
+    return (u.protocol + '//' + u.hostname.toLowerCase() + path).toLowerCase();
+  } catch (_) {
+    return null;
+  }
+}
