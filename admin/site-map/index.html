@@ -1135,6 +1135,20 @@
           el('div', { class: 'field-help', style: 'margin-top:0;margin-bottom:.5rem;' }, 'Leave this alone if you want to keep the page as-is. Pick an action only for pages you want changed.'),
           barRow
         ]));
+
+        // "Clear my selection" — visible only when the page has been actively
+        // chosen for an action (existing_update / existing_remove / drafting /
+        // existing_keep). Hidden for discovered (default) and new (handled by
+        // Delete in footer). Reverts to discovered = leave-alone.
+        if (p.status !== 'discovered') {
+          body.appendChild(el('div', { class: 'field-group', style: 'margin-top:-.5rem;' }, [
+            el('button', {
+              class: 'btn btn-outline btn-sm',
+              style: 'color:var(--color-text-muted);font-size:.85rem;',
+              onclick: function() { changeStatus(p.id, 'discovered'); }
+            }, 'Clear my selection')
+          ]));
+        }
       }
     } else {
       var pillRow = el('div', { class: 'status-pills' });
@@ -1151,6 +1165,29 @@
       body.appendChild(el('div', { class: 'field-group' }, [
         el('label', { class: 'field-label' }, 'Status'),
         pillRow
+      ]));
+
+      // Admin-only category recategorization. Useful for fixing sitemap-scout
+      // misclassifications (e.g. a service page bucketed as 'other'). Posts
+      // {action:'set_page_category'} and reloads on success since the page
+      // moves between tree groups.
+      var catSelect = el('select', {
+        class: 'form-input', id: 'detail-category-select',
+        style: 'max-width:280px;',
+        onchange: function() {
+          var newCat = this.value;
+          if (newCat && newCat !== p.category) changeCategory(p.id, newCat);
+        }
+      });
+      Object.keys(CATEGORY_LABELS).forEach(function(c) {
+        var opt = el('option', { value: c }, CATEGORY_LABELS[c]);
+        if (c === p.category) opt.selected = true;
+        catSelect.appendChild(opt);
+      });
+      body.appendChild(el('div', { class: 'field-group' }, [
+        el('label', { class: 'field-label' }, 'Category'),
+        el('div', { class: 'field-help', style: 'margin-top:0;margin-bottom:.4rem;' }, 'Admin only. Move this page to a different bucket (e.g. fix a misclassification).'),
+        catSelect
       ]));
     }
 
@@ -1222,6 +1259,38 @@
     }).catch(function(e) {
       p.status = prevStatus;
       repaintAfterStatusChange(pageId);
+      showToast('Network error', 'err');
+    });
+  }
+
+  // Admin-only category recategorization. Posts set_page_category and reloads
+  // on success since the page moves between tree groups (no clean way to
+  // surgically reposition the DOM node, and load() is fast enough). On error,
+  // revert the dropdown selection so the UI stays truthful.
+  function changeCategory(pageId, newCategory) {
+    var p = state.pageById[pageId];
+    if (!p || p.category === newCategory) return;
+    var prevCategory = p.category;
+
+    apiPost('/api/site-map-action', {
+      action: 'set_page_category',
+      site_map_id: state.site_map.id,
+      page_id: pageId,
+      category: newCategory
+    }).then(function(r) {
+      if (!r.ok) {
+        // Revert dropdown
+        var sel = document.getElementById('detail-category-select');
+        if (sel) sel.value = prevCategory;
+        showToast(r.body.error || 'Failed to recategorize', 'err');
+        return;
+      }
+      showToast('Moved to ' + (CATEGORY_LABELS[newCategory] || newCategory), 'ok');
+      closeModal('page-modal');
+      load();
+    }).catch(function(e) {
+      var sel = document.getElementById('detail-category-select');
+      if (sel) sel.value = prevCategory;
       showToast('Network error', 'err');
     });
   }
