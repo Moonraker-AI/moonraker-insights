@@ -397,9 +397,12 @@
     box-shadow: 0 4px 16px rgba(0,0,0,.15);
     opacity: 0; pointer-events: none;
     transition: opacity .3s;
-    max-width: min(520px, 90vw); width: max-content;
+    max-width: min(520px, 90vw);
+    width: auto; height: auto;
+    white-space: nowrap;
     text-align: center; line-height: 1.4;
     z-index: 10000;
+    display: inline-block;
   }
   .toast.show { opacity: 1; pointer-events: auto; }
   .toast.ok  { background: var(--color-primary); color: #fff; }
@@ -455,7 +458,7 @@
       <div class="field-group">
         <label class="field-label">Title (target keyword)</label>
         <input type="text" class="form-input" id="add-title" placeholder="e.g. couples therapy for entrepreneurs" oninput="updateAddPreview()">
-        <div class="field-help">Write it like a search query — this becomes the H1 and the SEO target.</div>
+        <div class="field-help">Write it like a search query. This becomes the H1 and the SEO target.</div>
       </div>
       <div class="field-group">
         <label class="field-label">URL path</label>
@@ -747,20 +750,29 @@
 
     // Client-only: intro callout + progress metrics
     if (CLIENT_MODE) {
-      var svcHi = (state.counts.service && state.counts.service.highlighted) || 0;
-      var locHi = (state.counts.location && state.counts.location.highlighted) || 0;
+      var svcCount = state.counts.service || { highlighted: 0, cap: 0 };
+      var locCount = state.counts.location || { highlighted: 0, cap: 0 };
+      var bioCount = state.counts.bio || { highlighted: 0, cap: 0 };
+      var svcCap = svcCount.cap || (state.plan_limits.service || 0);
+      var locCap = locCount.cap || (state.plan_limits.location || 0);
+      var bioCap = bioCount.cap || (state.plan_limits.bio || 0);
+
+      function metric(label, hi, cap) {
+        var ratio = cap ? (hi + ' / ' + cap) : String(hi);
+        return el('span', { class: 'client-callout-metric' }, [
+          el('b', {}, ratio), ' ' + label
+        ]);
+      }
+
       var callout = el('div', { class: 'client-callout' }, [
         el('div', { class: 'client-callout-text' }, [
-          el('strong', {}, 'Tell us what to keep. '),
-          'For each page, choose Keep, Update, or Remove — and add any new pages you want. Submit when you\'ve highlighted at least one service and one location.'
+          el('strong', {}, 'Select Your Campaign Targets. '),
+          'For each page, choose Keep, Update, or Remove, and add any new pages you want. Submit when you\'ve highlighted at least one service and one location.'
         ]),
         el('div', { class: 'client-callout-progress' }, [
-          el('span', { class: 'client-callout-metric' }, [
-            el('b', {}, String(svcHi)), ' service' + (svcHi === 1 ? '' : 's') + ' highlighted'
-          ]),
-          el('span', { class: 'client-callout-metric' }, [
-            el('b', {}, String(locHi)), ' location' + (locHi === 1 ? '' : 's') + ' highlighted'
-          ])
+          metric('services highlighted', svcCount.highlighted || 0, svcCap),
+          metric('locations highlighted', locCount.highlighted || 0, locCap),
+          metric('bios highlighted',      bioCount.highlighted || 0, bioCap)
         ])
       ]);
       content.appendChild(callout);
@@ -804,7 +816,7 @@
     if (CLIENT_MODE) {
       if (sm.status === 'client_submitted') {
         var submitted = el('div', { class: 'client-submitted-banner' }, [
-          el('h3', {}, 'Submitted — thanks!'),
+          el('h3', {}, 'Submitted. Thanks!'),
           el('p', {}, 'Our team is reviewing your picks. Once we approve, this step will mark complete and you can move on. We\'ll email you if we have any questions.')
         ]);
         content.appendChild(submitted);
@@ -1141,7 +1153,7 @@
       if (bio.therapist_credentials) summary.appendChild(el('div', { class: 'b-row' }, [el('span', { class: 'b-key' }, 'Credentials'), el('span', { class: 'b-val' }, bio.therapist_credentials)]));
       summary.appendChild(el('div', { class: 'b-row' }, [
         el('span', { class: 'b-key' }, 'Intake'),
-        el('span', { class: 'b-val' }, bio.has_bio ? 'Complete ✓' : 'Pending — client fills via onboarding step 6')
+        el('span', { class: 'b-val' }, bio.has_bio ? 'Complete ✓' : 'Pending. Client fills via onboarding step 7.')
       ]));
       if (bio.is_primary) summary.appendChild(el('div', { class: 'b-row' }, [el('span', { class: 'b-key' }, 'Role'), el('span', { class: 'b-val' }, '★ Primary bio')]));
       body.appendChild(el('div', { class: 'field-group' }, [
@@ -1219,11 +1231,26 @@
     }
     // Update active pill in open modal
     if (state.selectedPageId === pageId) {
+      // Admin status pills
       document.querySelectorAll('#page-modal-content .status-pill').forEach(function(b) {
         b.classList.remove('active');
       });
       var newActive = document.querySelector('#page-modal-content .status-pill.st-' + p.status);
       if (newActive) newActive.classList.add('active');
+      // Client 3-button bar (Keep / Update / Remove)
+      var statusToAct = {
+        existing_keep:   'keep',
+        existing_update: 'update',
+        existing_remove: 'remove'
+      };
+      document.querySelectorAll('#page-modal-content .client-action-btn').forEach(function(b) {
+        b.classList.remove('active');
+      });
+      var act = statusToAct[p.status];
+      if (act) {
+        var clientActive = document.querySelector('#page-modal-content .client-action-btn[data-act="' + act + '"]');
+        if (clientActive) clientActive.classList.add('active');
+      }
       // Update the eyebrow dot too
       var eyebrowDot = document.querySelector('#page-modal-content .modal-eyebrow .status-dot');
       if (eyebrowDot) eyebrowDot.className = 'status-dot st-' + p.status;
@@ -1392,7 +1419,7 @@
       site_map_id: state.site_map.id
     }).then(function(r) {
       if (!r.ok) { showToast(r.body.error || 'Failed to approve', 'err'); return; }
-      showToast('Approved — onboarding step marked complete', 'ok');
+      showToast('Approved. Onboarding step marked complete.', 'ok');
       load();
     });
   }
